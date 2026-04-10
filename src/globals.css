@@ -1,0 +1,164 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap");
+
+@import "tailwindcss";
+
+:root {
+  /* Brand colors */
+  --ivory: #F5F3EE;
+  --ivory-dark: #EAE7DF;
+  --black: #0F0F0F;
+  --charcoal: #1C1C1C;
+  --gray-900: #1A1A1A;
+  --gray-700: #404040;
+  --gray-500: #737373;
+  --gray-300: #D4D4D4;
+  --gray-100: #F5F5F5;
+  --copper: #C85A17;
+  --copper-light: #E8753A;
+  --white: #FFFFFF;
+
+  /* Semantic */
+  --bg: var(--ivory);
+  --bg-card: var(--white);
+  --text-primary: var(--black);
+  --text-secondary: var(--gray-700);
+  --text-muted: var(--gray-500);
+  --border: var(--gray-300);
+  --border-subtle: #E8E5DF;
+
+  /* Score colors */
+  --score-high: #16A34A;
+  --score-mid: #D97706;
+  --score-low: #DC2626;
+}
+
+@theme inline {
+  --color-ivory: var(--ivory);
+  --color-ivory-dark: var(--ivory-dark);
+  --color-copper: var(--copper);
+  --color-copper-light: var(--copper-light);
+  --font-sans: "DM Sans", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--ivory);
+  color: var(--black);
+  font-family: "DM Sans", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--ivory);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 3px;
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--copper);
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background: #C85A1722;
+  color: var(--black);
+}
+
+/* App shell for auth pages */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--white);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  background: var(--ivory);
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+}
+
+.animate-slide-in {
+  animation: slide-in-right 0.3s ease-out both;
+}
+
+.animate-spin {
+  animation: spin 0.8s linear infinite;
+}
+
+/* Score ring */
+.score-ring-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Upload dropzone */
+.dropzone-active {
+  border-color: var(--copper) !important;
+  background: #C85A1708 !important;
+}
+
+/* Progress bar */
+.progress-bar-fill {
+  transition: width 0.4s ease;
+  background: linear-gradient(90deg, var(--black), var(--charcoal));
+}
+
+/* Table */
+.candidates-table tbody tr {
+  transition: background 0.15s ease;
+}
+.candidates-table tbody tr:hover {
+  background: var(--ivory-dark);
+}

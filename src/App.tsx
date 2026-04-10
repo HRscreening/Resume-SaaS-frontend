@@ -1,0 +1,178 @@
+import { lazy as reactLazy, Suspense } from "react";
+import {
+  createRouter,
+  createRootRoute,
+  createRoute,
+  RouterProvider,
+  Outlet,
+} from "@tanstack/react-router";
+import { AuthGuard } from "@/components/AuthGuard";
+import { Sidebar } from "@/components/layout/Sidebar";
+
+// ─── Eager imports (small pages — no spinner flash) ─────────
+import Landing from "@/routes/Landing";
+import Login from "@/routes/Login";
+import Signup from "@/routes/Signup";
+import AuthCallback from "@/routes/AuthCallback";
+import Onboarding from "@/routes/Onboarding";
+import Dashboard from "@/routes/Dashboard";
+import Screenings from "@/routes/Screenings";
+import Settings from "@/routes/Settings";
+import NewScreening from "@/routes/NewScreening";
+
+// ─── Lazy imports (heavy pages — code-split) ────────────────
+
+function lazy(importFn: () => Promise<{ default: React.ComponentType }>) {
+  const LazyComponent = reactLazy(importFn);
+  return function LazyWrapper() {
+    return (
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-96">
+            <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
+          </div>
+        }
+      >
+        <LazyComponent />
+      </Suspense>
+    );
+  };
+}
+
+const ScreeningDetail = lazy(() => import("@/routes/ScreeningDetail"));
+const ResumeDetail = lazy(() => import("@/routes/ResumeDetail"));
+
+// ─── Layouts ────────────────────────────────────────────────
+
+function RootLayout() {
+  return <Outlet />;
+}
+
+function AppLayout() {
+  return (
+    <AuthGuard>
+      <div className="flex min-h-screen">
+        <Sidebar />
+        <main className="flex-1 min-w-0" style={{ backgroundColor: "#F5F3EE" }}>
+          <Outlet />
+        </main>
+      </div>
+    </AuthGuard>
+  );
+}
+
+// Import AuthLayout eagerly too
+import { AuthLayout } from "@/components/layout/AuthLayout";
+
+// ─── Route tree ─────────────────────────────────────────────
+
+const rootRoute = createRootRoute({ component: RootLayout });
+
+const landingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  component: Landing,
+});
+
+const authLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: "auth-layout",
+  component: AuthLayout,
+});
+
+const loginRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: "/login",
+  component: Login,
+});
+
+const signupRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: "/signup",
+  component: Signup,
+});
+
+const authCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/callback",
+  component: AuthCallback,
+});
+
+const onboardingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/onboarding",
+  component: Onboarding,
+});
+
+const appLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: "app-layout",
+  component: AppLayout,
+});
+
+const dashboardRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/dashboard",
+  component: Dashboard,
+});
+
+const screeningsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings",
+  component: Screenings,
+});
+
+const newScreeningRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings/new",
+  component: NewScreening,
+});
+
+const screeningDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings/$id",
+  component: ScreeningDetail,
+});
+
+const resumeDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings/$id/$resumeId",
+  component: ResumeDetail,
+});
+
+const settingsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/settings",
+  component: Settings,
+});
+
+// ─── Build router ───────────────────────────────────────────
+
+const routeTree = rootRoute.addChildren([
+  landingRoute,
+  authLayoutRoute.addChildren([loginRoute, signupRoute]),
+  authCallbackRoute,
+  onboardingRoute,
+  appLayoutRoute.addChildren([
+    dashboardRoute,
+    screeningsRoute,
+    newScreeningRoute,
+    screeningDetailRoute,
+    resumeDetailRoute,
+    settingsRoute,
+  ]),
+]);
+
+const router = createRouter({ routeTree });
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+}
+
+// ─── App ────────────────────────────────────────────────────
+
+export function App() {
+  return <RouterProvider router={router} />;
+}
