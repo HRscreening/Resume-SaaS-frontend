@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { createClient } from "@/lib/supabase/client";
-import { initAuth } from "@/lib/auth";
+import { initAuth, isAuthenticated } from "@/lib/auth";
 import { getProfile } from "@/lib/api";
 
 export default function AuthCallbackPage() {
@@ -14,30 +14,11 @@ export default function AuthCallbackPage() {
 
     const supabase = createClient();
 
-    // Single path: listen for SIGNED_IN from the hash/code exchange.
-    // Supabase SDK auto-detects tokens in the URL and fires this event.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === "SIGNED_IN" && session) {
-          subscription.unsubscribe();
-          // Re-hydrate the auth cache so AuthGuard picks up the session instantly
-          await initAuth();
-          await redirectAfterAuth();
-        }
-      }
-    );
-
-    // Timeout: if nothing happens in 8s, redirect to login
-    const timeout = setTimeout(() => {
-      subscription.unsubscribe();
-      navigate({ to: "/login" });
-    }, 8000);
-
     async function redirectAfterAuth() {
-      clearTimeout(timeout);
+      // Re-hydrate auth cache so AuthGuard picks up session instantly
+      await initAuth();
       const params = new URLSearchParams(window.location.search);
       const next = params.get("next") ?? "/dashboard";
-
       try {
         const profile = await getProfile();
         navigate({ to: profile.onboarding_completed ? next : "/onboarding" });
@@ -45,6 +26,30 @@ export default function AuthCallbackPage() {
         navigate({ to: next });
       }
     }
+
+    // Case 1: initAuth() already exchanged the tokens from the URL hash
+    // before this component mounted. Session exists — redirect now.
+    if (isAuthenticated()) {
+      redirectAfterAuth();
+      return;
+    }
+
+    // Case 2: tokens not yet exchanged. Wait for Supabase SDK to pick them up.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" && session) {
+          subscription.unsubscribe();
+          clearTimeout(timeout);
+          await redirectAfterAuth();
+        }
+      }
+    );
+
+    // Fallback: if nothing happens in 8s, go to login
+    const timeout = setTimeout(() => {
+      subscription.unsubscribe();
+      navigate({ to: "/login" });
+    }, 8000);
 
     return () => {
       clearTimeout(timeout);
