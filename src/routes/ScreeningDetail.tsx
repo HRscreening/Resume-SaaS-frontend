@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from "react";
-import { Link, useParams } from "@tanstack/react-router";
+import { useState, useRef } from "react";
+import { Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getScreening, getResults, getBatchProgress, exportResults,
-  uploadResumesToJob, getResumeDetail, getResumePdfUrl,
+  uploadResumesToJob,
 } from "@/lib/api";
-import { scoreColor, formatDate, truncate } from "@/lib/utils";
+import { formatDate, truncate } from "@/lib/utils";
 import type { RankedCandidate, BatchProgress, FileProgress, RubricCriterion } from "@/types";
 
 // ─── Tier config ─────────────────────────────────────────────────────────────
@@ -44,8 +44,8 @@ export default function ScreeningDetail() {
   const { id } = useParams({ strict: false }) as { id: string };
   const queryClient = useQueryClient();
 
+  const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
-  const [selectedCandidate, setSelectedCandidate] = useState<RankedCandidate | null>(null);
   const [collapsedTiers, setCollapsedTiers] = useState<Set<TierId>>(new Set(["poor"]));
 
   const [zipFile, setZipFile] = useState<File | null>(null);
@@ -53,10 +53,6 @@ export default function ScreeningDetail() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [detailData, setDetailData] = useState<any>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   const { data: screening, isLoading, error } = useQuery({
     queryKey: ["screening", id],
@@ -85,21 +81,6 @@ export default function ScreeningDetail() {
     queryFn: () => getResults(id),
     enabled: screening?.status === "completed" || screening?.status === "failed",
   });
-
-  useEffect(() => {
-    if (!selectedCandidate) { setDetailData(null); setPdfUrl(null); return; }
-    let cancelled = false;
-    setDetailLoading(true);
-    setDetailData(null);
-    setPdfUrl(null);
-    Promise.all([
-      getResumeDetail(id, selectedCandidate.resume_id),
-      getResumePdfUrl(id, selectedCandidate.resume_id),
-    ]).then(([detail, pdf]) => {
-      if (!cancelled) { setDetailData(detail); setPdfUrl(pdf.url); setDetailLoading(false); }
-    }).catch(() => { if (!cancelled) setDetailLoading(false); });
-    return () => { cancelled = true; };
-  }, [selectedCandidate?.resume_id, id]);
 
   async function handleExport() {
     setExporting(true);
@@ -144,8 +125,8 @@ export default function ScreeningDetail() {
     });
   }
 
-  function selectCandidate(c: RankedCandidate) {
-    setSelectedCandidate((prev) => (prev?.resume_id === c.resume_id ? null : c));
+  function openCandidate(c: RankedCandidate) {
+    navigate({ to: "/screenings/$id/$resumeId", params: { id, resumeId: c.resume_id } });
   }
 
   if (isLoading) {
@@ -180,10 +161,8 @@ export default function ScreeningDetail() {
     candidates: candidates.filter((c) => getTier(c.overall_score).id === tier.id),
   }));
 
-  const splitMode = !!selectedCandidate && candidates.length > 0;
-
   return (
-    <div className={splitMode ? "flex flex-col h-screen overflow-hidden" : "flex flex-col"}>
+    <div className="flex flex-col">
       {/* Header */}
       <div className="px-8 pt-8 pb-4 shrink-0">
         <div className="flex items-start justify-between mb-1">
@@ -244,9 +223,8 @@ export default function ScreeningDetail() {
       </div>
 
       {/* Content area */}
-      <div className={`flex-1 min-h-0 ${splitMode ? "flex overflow-hidden" : "flex flex-col px-8 pb-8 gap-4"}`}>
-        {/* Left / main panel */}
-        <div className={splitMode ? "w-[46%] shrink-0 overflow-y-auto px-8 pb-8 space-y-4" : "w-full space-y-4"}>
+      <div className="flex-1 min-h-0 flex flex-col px-8 pb-8 gap-4">
+        <div className="w-full space-y-4">
           {/* Draft upload */}
           {isDraft && (
             <div className="bg-white rounded-2xl border border-[#E8E5DF] p-8">
@@ -339,24 +317,11 @@ export default function ScreeningDetail() {
                 onToggle={() => toggleTier(tier.id as TierId)}
                 mustCriteria={mustCriteria}
                 otherCriteria={otherCriteria}
-                selectedId={selectedCandidate?.resume_id ?? null}
-                onSelect={selectCandidate}
+                onSelect={openCandidate}
               />
             );
           })}
         </div>
-
-        {/* Right panel */}
-        {splitMode && (
-          <DetailPanel
-            candidate={selectedCandidate!}
-            detailData={detailData}
-            pdfUrl={pdfUrl}
-            loading={detailLoading}
-            screeningId={id}
-            onClose={() => setSelectedCandidate(null)}
-          />
-        )}
       </div>
     </div>
   );
@@ -372,11 +337,10 @@ interface TierSectionProps {
   onToggle: () => void;
   mustCriteria: RubricCriterion[];
   otherCriteria: RubricCriterion[];
-  selectedId: string | null;
   onSelect: (c: RankedCandidate) => void;
 }
 
-function TierSection({ tier, candidates, collapsed, onToggle, mustCriteria, otherCriteria, selectedId, onSelect }: TierSectionProps) {
+function TierSection({ tier, candidates, collapsed, onToggle, mustCriteria, otherCriteria, onSelect }: TierSectionProps) {
   const allCriteria = [...mustCriteria, ...otherCriteria];
 
   return (
@@ -426,7 +390,6 @@ function TierSection({ tier, candidates, collapsed, onToggle, mustCriteria, othe
                   tier={tier}
                   mustCriteria={mustCriteria}
                   otherCriteria={otherCriteria}
-                  selected={selectedId === c.resume_id}
                   onSelect={() => onSelect(c)}
                 />
               ))}
@@ -446,11 +409,10 @@ interface CandidateRowProps {
   tier: typeof TIERS[number];
   mustCriteria: RubricCriterion[];
   otherCriteria: RubricCriterion[];
-  selected: boolean;
   onSelect: () => void;
 }
 
-function CandidateRow({ candidate, tier, mustCriteria, otherCriteria, selected, onSelect }: CandidateRowProps) {
+function CandidateRow({ candidate, tier, mustCriteria, otherCriteria, onSelect }: CandidateRowProps) {
   function getScore(criterionName: string): number | null {
     const match = candidate.top_criteria.find(
       (tc) => tc.criterion.toLowerCase().trim() === criterionName.toLowerCase().trim()
@@ -461,7 +423,7 @@ function CandidateRow({ candidate, tier, mustCriteria, otherCriteria, selected, 
   return (
     <tr
       onClick={onSelect}
-      className={`cursor-pointer transition-colors ${selected ? "bg-[#F5F3EE]" : "hover:bg-[#FAFAF8]"}`}
+      className="cursor-pointer transition-colors hover:bg-[#FAFAF8]"
     >
       <td className="px-5 py-3.5">
         <div className="flex items-center gap-3">
@@ -517,187 +479,6 @@ function CandidateRow({ candidate, tier, mustCriteria, otherCriteria, selected, 
         );
       })}
     </tr>
-  );
-}
-
-
-// ─── Detail Panel ─────────────────────────────────────────────────────────────
-
-interface DetailPanelProps {
-  candidate: RankedCandidate;
-  detailData: any;
-  pdfUrl: string | null;
-  loading: boolean;
-  screeningId: string;
-  onClose: () => void;
-}
-
-function DetailPanel({ candidate, detailData, pdfUrl, loading, screeningId, onClose }: DetailPanelProps) {
-  const score = detailData?.score;
-
-  return (
-    <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-l border-[#E8E5DF] bg-white">
-      {/* Panel header */}
-      <div className="px-5 py-3 border-b border-[#E8E5DF] flex items-center justify-between shrink-0">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#0F0F0F] truncate">
-            {candidate.candidate_name ?? candidate.filename}
-          </p>
-          {candidate.candidate_email && (
-            <p className="text-xs text-[#737373] truncate">{candidate.candidate_email}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-3 ml-3 shrink-0">
-          <Link
-            to="/screenings/$id/$resumeId"
-            params={{ id: screeningId, resumeId: candidate.resume_id }}
-            className="text-xs text-[#737373] hover:text-[#0F0F0F] underline"
-          >
-            Full report
-          </Link>
-          <button
-            onClick={onClose}
-            className="h-7 w-7 rounded-lg hover:bg-[#F5F3EE] flex items-center justify-center text-[#737373]"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M2 2l8 8M10 2l-8 8" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* PDF viewer */}
-      <div className="h-[45%] shrink-0 border-b border-[#E8E5DF] bg-[#F5F3EE] relative">
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
-          </div>
-        )}
-        {pdfUrl && !loading && (
-          <iframe
-            src={pdfUrl}
-            className="w-full h-full border-0"
-            title={`${candidate.candidate_name ?? candidate.filename} resume`}
-          />
-        )}
-        {!pdfUrl && !loading && (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-[#737373]">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>
-            </svg>
-            <p className="text-xs">Resume preview unavailable</p>
-          </div>
-        )}
-      </div>
-
-      {/* Analysis */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-5">
-        {loading && !detailData && (
-          <div className="flex items-center justify-center py-8">
-            <div className="h-5 w-5 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
-          </div>
-        )}
-
-        {score && (
-          <>
-            {/* Score summary */}
-            <div className="flex items-center gap-4 p-4 bg-[#F5F3EE] rounded-xl">
-              <div className="relative h-14 w-14 shrink-0">
-                <ScoreRing score={score.overall_score} />
-                <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-[#0F0F0F]">
-                  {Math.round(score.overall_score)}
-                </span>
-              </div>
-              <div className="min-w-0">
-                <p className={`text-base font-bold ${scoreColor(score.overall_score)}`}>
-                  {getTier(score.overall_score).label}
-                </p>
-                <p className="text-xs text-[#737373]">
-                  Rank #{score.rank ?? "—"}
-                  {candidate.candidate_current_job && ` · ${candidate.candidate_current_job}`}
-                </p>
-              </div>
-            </div>
-
-            {/* Summary */}
-            {score.overall_summary && (
-              <p className="text-xs text-[#404040] leading-relaxed">{score.overall_summary}</p>
-            )}
-
-            {/* Criteria scores */}
-            {score.breakdown?.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-3">Criteria Breakdown</p>
-                <div className="space-y-2.5">
-                  {score.breakdown.map((cs: any) => (
-                    <div key={cs.criterion}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-[#404040] font-medium truncate max-w-[60%]">{cs.criterion}</span>
-                        <span className="text-xs font-bold text-[#0F0F0F]">{cs.score}<span className="text-[#A0A0A0] font-normal">/10</span></span>
-                      </div>
-                      <div className="h-1.5 w-full bg-[#E8E5DF] rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${cs.score * 10}%`, backgroundColor: dotColor(cs.score) }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Strengths */}
-            {score.strengths?.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">Strengths</p>
-                <ul className="space-y-1.5">
-                  {score.strengths.map((s: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-[#404040]">
-                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
-                      {s}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Missing */}
-            {score.missing_elements?.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">Missing Elements</p>
-                <ul className="space-y-1.5">
-                  {score.missing_elements.map((s: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-[#404040]">
-                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
-                      {s}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-
-// ─── Score Ring ───────────────────────────────────────────────────────────────
-
-function ScoreRing({ score }: { score: number }) {
-  const r = 24;
-  const circ = 2 * Math.PI * r;
-  const fill = (score / 100) * circ;
-  const stroke = score >= 75 ? "#16A34A" : score >= 55 ? "#EAB308" : score >= 35 ? "#F97316" : "#DC2626";
-  return (
-    <svg width="56" height="56" className="-rotate-90" viewBox="0 0 56 56">
-      <circle cx="28" cy="28" r={r} fill="none" stroke="#E8E5DF" strokeWidth="5" />
-      <circle cx="28" cy="28" r={r} fill="none" stroke={stroke} strokeWidth="5"
-        strokeDasharray={circ} strokeDashoffset={circ - fill} strokeLinecap="round"
-        style={{ transition: "stroke-dashoffset 0.6s ease" }} />
-    </svg>
   );
 }
 
