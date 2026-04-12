@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getResumeDetail, getResumePdfUrl } from "@/lib/api";
@@ -44,8 +44,30 @@ export default function ResumeDetail() {
     queryKey: ["resume-pdf", id, resumeId],
     queryFn: () => getResumePdfUrl(id, resumeId),
     enabled: !!data,
-    staleTime: 50 * 60 * 1000, // 50 min — close to signed URL expiry
+    staleTime: 50 * 60 * 1000,
   });
+
+  // Fetch PDF as blob so the iframe renders inline instead of triggering a download
+  // (Supabase signed URLs have Content-Disposition: attachment by default)
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  useEffect(() => {
+    if (!pdfData?.url) return;
+    let objectUrl: string | null = null;
+    setPdfLoading(true);
+    fetch(pdfData.url)
+      .then((r) => r.blob())
+      .then((blob) => {
+        objectUrl = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+        setPdfBlobUrl(objectUrl);
+      })
+      .catch(() => {})
+      .finally(() => setPdfLoading(false));
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [pdfData?.url]);
 
   if (isLoading) {
     return (
@@ -134,32 +156,28 @@ export default function ResumeDetail() {
             )}
           </div>
 
-          <div className="flex-1 min-h-0">
-            {pdfData?.url && isPdf ? (
+          <div className="flex-1 min-h-0 relative">
+            {(pdfLoading || (!pdfBlobUrl && !pdfData?.url)) && (
+              <div className="absolute inset-0 flex items-center justify-center bg-[#F5F3EE]">
+                <div className="h-5 w-5 rounded-full border-2 border-[#A0A0A0] border-t-transparent animate-spin" />
+              </div>
+            )}
+            {pdfBlobUrl && isPdf && (
               <iframe
-                src={pdfData.url}
+                src={pdfBlobUrl}
                 className="w-full h-full border-0"
                 title="Resume PDF"
               />
-            ) : pdfData?.url && !isPdf ? (
+            )}
+            {pdfData?.url && !isPdf && !pdfLoading && (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-[#737373]">
                 <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M23 4H10a2 2 0 0 0-2 2v28a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2V13z"/>
                   <path d="M23 4v9h9M14 22h12M14 28h8"/>
                 </svg>
-                <p className="text-sm font-medium text-[#404040]">DOCX file</p>
-                <a
-                  href={pdfData.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-[#0F0F0F] underline"
-                >
-                  Download to view
-                </a>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="h-5 w-5 rounded-full border-2 border-[#A0A0A0] border-t-transparent animate-spin" />
+                <p className="text-sm font-medium text-[#404040]">DOCX — cannot preview in browser</p>
+                <a href={pdfData.url} target="_blank" rel="noopener noreferrer"
+                  className="text-sm text-[#0F0F0F] underline">Download to view</a>
               </div>
             )}
           </div>
