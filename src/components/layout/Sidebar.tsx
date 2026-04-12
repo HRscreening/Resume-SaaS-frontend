@@ -88,6 +88,9 @@ export function Sidebar() {
 
   function isActive(item: NavItem) {
     if (item.exact) return pathname === item.href;
+    // Don't highlight "Jobs" when on a route that matches another exact nav item
+    const exactMatch = navItems.find((n) => n.exact && n.href !== item.href && pathname === n.href);
+    if (exactMatch) return false;
     return pathname.startsWith(item.href);
   }
 
