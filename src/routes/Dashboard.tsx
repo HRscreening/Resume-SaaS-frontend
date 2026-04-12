@@ -31,14 +31,13 @@ export default function Dashboard() {
     queryKey: ["screenings"],
     queryFn: listScreenings,
   });
-  const { data: usage, isLoading: usageLoading } = useQuery({
+  const { data: usage } = useQuery({
     queryKey: ["usage"],
     queryFn: getUsage,
   });
 
-  const isLoading = screeningsLoading || usageLoading;
-
-  if (isLoading) {
+  // Only block on screenings — usage loads in the background
+  if (screeningsLoading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-96">
         <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />

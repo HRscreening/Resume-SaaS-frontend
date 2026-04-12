@@ -64,6 +64,8 @@ export default function ScreeningDetail() {
     },
   });
 
+  // Fetch batch-progress and results in parallel with screening (no waterfall).
+  // Both gracefully handle 404 when the screening is still in draft.
   const { data: progress } = useQuery({
     queryKey: ["batch-progress", id],
     queryFn: () => getBatchProgress(id),
@@ -71,15 +73,16 @@ export default function ScreeningDetail() {
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       if (status === "completed" || status === "failed") return false;
-      const count = query.state.dataUpdateCount;
-      return Math.min(3000 * Math.pow(1.5, count), 30000);
+      return 3000;
     },
   });
 
   const { data: candidates = [] } = useQuery({
     queryKey: ["results", id],
     queryFn: () => getResults(id),
-    enabled: screening?.status === "completed" || screening?.status === "failed",
+    // Start fetching as soon as we have a screening — if it's still processing,
+    // the backend returns [] which is fine. Cache will serve instantly on re-nav.
+    enabled: !!screening && screening.status !== "draft",
   });
 
   async function handleExport() {
