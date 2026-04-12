@@ -1,4 +1,3 @@
-import { lazy as reactLazy, Suspense } from "react";
 import {
   createRouter,
   createRootRoute,
@@ -20,27 +19,9 @@ import Screenings from "@/routes/Screenings";
 import Settings from "@/routes/Settings";
 import NewScreening from "@/routes/NewScreening";
 
-// ─── Lazy imports (heavy pages — code-split) ────────────────
-
-function lazy(importFn: () => Promise<{ default: React.ComponentType }>) {
-  const LazyComponent = reactLazy(importFn);
-  return function LazyWrapper() {
-    return (
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center min-h-96">
-            <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
-          </div>
-        }
-      >
-        <LazyComponent />
-      </Suspense>
-    );
-  };
-}
-
-const ScreeningDetail = lazy(() => import("@/routes/ScreeningDetail"));
-const ResumeDetail = lazy(() => import("@/routes/ResumeDetail"));
+// ─── Eager imports — these are the most-visited pages, no lazy delay ──
+import ScreeningDetail from "@/routes/ScreeningDetail";
+import ResumeDetail from "@/routes/ResumeDetail";
 
 // ─── Layouts ────────────────────────────────────────────────
 

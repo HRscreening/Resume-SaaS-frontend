@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { listScreenings } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { listScreenings, getScreening, getResults } from "@/lib/api";
 import { formatRelativeDate } from "@/lib/utils";
 import type { ScreeningListItem } from "@/types";
 
@@ -27,6 +27,14 @@ function StatusPill({ status }: { status: string }) {
 }
 
 export default function Screenings() {
+  const qc = useQueryClient();
+
+  // Prefetch screening data on row hover so detail page loads instantly
+  function prefetch(id: string) {
+    qc.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
+    qc.prefetchQuery({ queryKey: ["results", id], queryFn: () => getResults(id) });
+  }
+
   const { data: screenings = [], isLoading } = useQuery({
     queryKey: ["screenings"],
     queryFn: listScreenings,
@@ -88,7 +96,7 @@ export default function Screenings() {
             </thead>
             <tbody className="divide-y divide-[#E8E5DF]">
               {screenings.map((s: ScreeningListItem) => (
-                <tr key={s.id} className="hover:bg-[#F5F3EE] transition-colors">
+                <tr key={s.id} className="hover:bg-[#F5F3EE] transition-colors" onMouseEnter={() => prefetch(s.id)}>
                   <td className="px-6 py-4">
                     <Link to="/screenings/$id" params={{ id: s.id }} className="text-sm font-medium text-[#0F0F0F] hover:underline">
                       {s.title}

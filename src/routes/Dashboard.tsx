@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { listScreenings, getUsage } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { listScreenings, getUsage, getScreening, getResults } from "@/lib/api";
 import { formatRelativeDate } from "@/lib/utils";
 import type { ScreeningListItem } from "@/types";
 
@@ -27,6 +27,11 @@ function StatusPill({ status }: { status: string }) {
 }
 
 export default function Dashboard() {
+  const qc = useQueryClient();
+  function prefetch(id: string) {
+    qc.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
+    qc.prefetchQuery({ queryKey: ["results", id], queryFn: () => getResults(id) });
+  }
   const { data: screenings = [], isLoading: screeningsLoading } = useQuery({
     queryKey: ["screenings"],
     queryFn: listScreenings,
@@ -144,7 +149,7 @@ export default function Dashboard() {
         ) : (
           <ul className="divide-y divide-[#E8E5DF]">
             {recent.map((s: ScreeningListItem) => (
-              <li key={s.id}>
+              <li key={s.id} onMouseEnter={() => prefetch(s.id)}>
                 <Link
                   to="/screenings/$id" params={{ id: s.id }}
                   className="flex items-center justify-between px-6 py-4 hover:bg-[#F5F3EE] transition-colors"
