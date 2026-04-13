@@ -28,21 +28,33 @@ export interface UsageResponse {
 
 // ─── Rubric ──────────────────────────────────────────────────────────────────
 
-export type CriterionType = "must" | "should" | "nice";
-
-export interface RubricCriterion {
+export interface Subcategory {
   name: string;
-  type: CriterionType;
-  weight: number; // 1–5
+  weight: number; // 0–100, within category
   description: string;
 }
 
+export interface RubricCategory {
+  name: string;
+  weight: number; // 0–100, of overall
+  subcategories: Subcategory[];
+}
+
 export interface Rubric {
-  criteria: RubricCriterion[];
+  categories: RubricCategory[];
   threshold_score: number;
   source: "AI" | "manual";
   domain?: string;
   seniority_level?: string;
+}
+
+// Keep for backward compat with score breakdown
+export type CriterionType = "must" | "should" | "nice";
+export interface RubricCriterion {
+  name: string;
+  type: CriterionType;
+  weight: number;
+  description: string;
 }
 
 // ─── Screenings ───────────────────────────────────────────────────────────────
@@ -87,6 +99,7 @@ export type ResumeStatus =
 
 export interface CriterionScore {
   criterion: string;
+  category: string;
   score: number; // 1–10
   confidence: "high" | "medium" | "low";
   evidence: string[];

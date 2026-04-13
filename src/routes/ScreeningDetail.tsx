@@ -6,7 +6,7 @@ import {
   uploadResumesToJob,
 } from "@/lib/api";
 import { formatDate, truncate } from "@/lib/utils";
-import type { RankedCandidate, BatchProgress, FileProgress, RubricCriterion } from "@/types";
+import type { RankedCandidate, BatchProgress, FileProgress, RubricCategory } from "@/types";
 
 // ─── Tier config ─────────────────────────────────────────────────────────────
 
@@ -155,9 +155,8 @@ export default function ScreeningDetail() {
 
   const isDraft = screening.status === "draft";
   const isProcessing = !isDraft && !["completed", "failed"].includes(screening.status);
-  const rubricCriteria: RubricCriterion[] = (screening.rubric as any)?.criteria ?? [];
-  const mustCriteria = rubricCriteria.filter((c) => c.type === "must");
-  const otherCriteria = rubricCriteria.filter((c) => c.type !== "must");
+  const rubricCategories: RubricCategory[] = (screening.rubric as any)?.categories ?? [];
+  const [showRubric, setShowRubric] = useState(false);
 
   const tierGroups = TIERS.map((tier) => ({
     tier,
@@ -183,6 +182,14 @@ export default function ScreeningDetail() {
             </p>
           </div>
           {!isProcessing && candidates.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowRubric(true)}
+              className="h-9 px-4 border border-[#D4D4D4] text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5"/><path d="M4.5 5h5M4.5 7.5h3"/></svg>
+              Rubric
+            </button>
             <button
               onClick={handleExport}
               disabled={exporting}
@@ -194,6 +201,7 @@ export default function ScreeningDetail() {
               }
               Export CSV
             </button>
+          </div>
           )}
         </div>
 
@@ -233,15 +241,16 @@ export default function ScreeningDetail() {
             <div className="bg-white rounded-2xl border border-[#E8E5DF] p-8">
               <h2 className="text-lg font-semibold text-[#0F0F0F] mb-1">Upload resumes</h2>
               <p className="text-sm text-[#737373] mb-2">
-                Rubric ready with {rubricCriteria.length} criteria. Upload a ZIP of resumes to start screening.
+                Rubric ready with {rubricCategories.length} categories. Upload a ZIP of resumes to start screening.
               </p>
               <div className="flex flex-wrap gap-2 mb-6">
-                {rubricCriteria.map((c, i) => (
-                  <span key={i} className={`text-xs px-2 py-1 rounded-md border font-medium ${
-                    c.type === "must" ? "bg-red-50 text-red-700 border-red-200"
-                    : c.type === "should" ? "bg-amber-50 text-amber-700 border-amber-200"
-                    : "bg-green-50 text-green-700 border-green-200"
-                  }`}>{c.name}</span>
+                {rubricCategories.map((cat, i) => (
+                  <span key={i} className="text-xs px-2.5 py-1 rounded-md border border-[#D4D4D4] bg-[#F5F3EE] font-medium text-[#404040]">
+                    {cat.name} ({cat.weight}%)
+                    {cat.subcategories.length > 0 && (
+                      <span className="text-[#A0A0A0] ml-1">· {cat.subcategories.length} sub</span>
+                    )}
+                  </span>
                 ))}
               </div>
               {uploadError && (
@@ -318,12 +327,16 @@ export default function ScreeningDetail() {
                 candidates={tc}
                 collapsed={collapsed}
                 onToggle={() => toggleTier(tier.id as TierId)}
-                mustCriteria={mustCriteria}
-                otherCriteria={otherCriteria}
+                categories={rubricCategories}
                 onSelect={openCandidate}
               />
             );
           })}
+
+          {/* Rubric modal */}
+          {showRubric && (
+            <RubricModal categories={rubricCategories} onClose={() => setShowRubric(false)} />
+          )}
         </div>
       </div>
     </div>
@@ -333,68 +346,48 @@ export default function ScreeningDetail() {
 
 // ─── Tier Section ─────────────────────────────────────────────────────────────
 
+// Category colors for table headers
+const CAT_COLORS = ["#3B82F6", "#F59E0B", "#8B5CF6"];
+
 interface TierSectionProps {
   tier: typeof TIERS[number];
   candidates: RankedCandidate[];
   collapsed: boolean;
   onToggle: () => void;
-  mustCriteria: RubricCriterion[];
-  otherCriteria: RubricCriterion[];
+  categories: RubricCategory[];
   onSelect: (c: RankedCandidate) => void;
 }
 
-function TierSection({ tier, candidates, collapsed, onToggle, mustCriteria, otherCriteria, onSelect }: TierSectionProps) {
-  const allCriteria = [...mustCriteria, ...otherCriteria];
-
+function TierSection({ tier, candidates, collapsed, onToggle, categories, onSelect }: TierSectionProps) {
   return (
     <div className={`rounded-2xl border-2 overflow-hidden ${tier.border}`}>
-      {/* Section header */}
-      <button
-        onClick={onToggle}
-        className={`w-full flex items-center justify-between px-5 py-3.5 ${tier.bg}`}
-      >
+      <button onClick={onToggle} className={`w-full flex items-center justify-between px-5 py-3.5 ${tier.bg}`}>
         <div className="flex items-center gap-2">
           <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tier.dot }} />
           <span className={`text-sm font-semibold ${tier.text}`}>{tier.label}</span>
           <span className={`text-xs ${tier.text} opacity-70`}>{candidates.length} candidate{candidates.length !== 1 ? "s" : ""}</span>
         </div>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-          className={`${tier.text} transition-transform ${collapsed ? "" : "rotate-180"}`}>
-          <path d="M3 5l4 4 4-4" />
-        </svg>
+          className={`${tier.text} transition-transform ${collapsed ? "" : "rotate-180"}`}><path d="M3 5l4 4 4-4" /></svg>
       </button>
 
-      {/* Table */}
       {!collapsed && (
         <div className="bg-white overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#E8E5DF]">
-                <th className="px-5 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide whitespace-nowrap">Candidate</th>
-                <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Score</th>
-                {mustCriteria.map((c) => (
-                  <th key={c.name} className="px-2 py-2.5 text-center text-xs font-semibold uppercase tracking-wide whitespace-nowrap" style={{ color: tier.dot }}>
-                    {abbrev(c.name)}
-                  </th>
-                ))}
-                {otherCriteria.length > 0 && <th className="px-0" />}
-                {otherCriteria.map((c) => (
-                  <th key={c.name} className="px-2 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide whitespace-nowrap">
-                    {abbrev(c.name)}
+                <th className="px-5 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Candidate</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide">Score</th>
+                {categories.map((cat, i) => (
+                  <th key={cat.name} className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide whitespace-nowrap" style={{ color: CAT_COLORS[i] }}>
+                    {abbrev(cat.name)} <span className="font-normal text-[#A0A0A0]">{cat.weight}%</span>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8E5DF]">
               {candidates.map((c) => (
-                <CandidateRow
-                  key={c.resume_id}
-                  candidate={c}
-                  tier={tier}
-                  mustCriteria={mustCriteria}
-                  otherCriteria={otherCriteria}
-                  onSelect={() => onSelect(c)}
-                />
+                <CandidateRow key={c.resume_id} candidate={c} tier={tier} categories={categories} onSelect={() => onSelect(c)} />
               ))}
             </tbody>
           </table>
@@ -404,84 +397,104 @@ function TierSection({ tier, candidates, collapsed, onToggle, mustCriteria, othe
   );
 }
 
-
-// ─── Candidate Row ────────────────────────────────────────────────────────────
-
-interface CandidateRowProps {
-  candidate: RankedCandidate;
-  tier: typeof TIERS[number];
-  mustCriteria: RubricCriterion[];
-  otherCriteria: RubricCriterion[];
-  onSelect: () => void;
-}
-
-function CandidateRow({ candidate, tier, mustCriteria, otherCriteria, onSelect }: CandidateRowProps) {
-  function getScore(criterionName: string): number | null {
-    const match = candidate.top_criteria.find(
-      (tc) => tc.criterion.toLowerCase().trim() === criterionName.toLowerCase().trim()
-    );
-    return match?.score ?? null;
+function CandidateRow({ candidate, tier, categories, onSelect }: {
+  candidate: RankedCandidate; tier: typeof TIERS[number]; categories: RubricCategory[]; onSelect: () => void;
+}) {
+  // Compute category-level score = weighted avg of subcategory scores
+  function getCategoryScore(cat: RubricCategory): number | null {
+    const subs = cat.subcategories;
+    if (subs.length === 0) return null;
+    let weighted = 0, totalW = 0;
+    for (const sub of subs) {
+      const match = candidate.top_criteria.find(
+        (tc) => tc.criterion.toLowerCase().trim() === sub.name.toLowerCase().trim()
+      );
+      if (match) {
+        weighted += match.score * sub.weight;
+        totalW += sub.weight;
+      }
+    }
+    return totalW > 0 ? weighted / totalW : null;
   }
 
   return (
-    <tr
-      onClick={onSelect}
-      className="cursor-pointer transition-colors hover:bg-[#FAFAF8]"
-    >
+    <tr onClick={onSelect} className="cursor-pointer transition-colors hover:bg-[#FAFAF8]">
       <td className="px-5 py-3.5">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-[#F0EDE8] flex items-center justify-center shrink-0">
-            <span className="text-xs font-semibold text-[#404040]">
-              {(candidate.candidate_name ?? candidate.filename).slice(0, 2).toUpperCase()}
-            </span>
+            <span className="text-xs font-semibold text-[#404040]">{(candidate.candidate_name ?? candidate.filename).slice(0, 2).toUpperCase()}</span>
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-[#0F0F0F] truncate max-w-[160px]">
-              {candidate.candidate_name ?? candidate.filename}
-            </p>
-            {candidate.candidate_current_job && (
-              <p className="text-xs text-[#737373] truncate max-w-[160px]">{candidate.candidate_current_job}</p>
-            )}
+            <p className="text-sm font-semibold text-[#0F0F0F] truncate max-w-[180px]">{candidate.candidate_name ?? candidate.filename}</p>
+            {candidate.candidate_current_job && <p className="text-xs text-[#737373] truncate max-w-[180px]">{candidate.candidate_current_job}</p>}
           </div>
         </div>
       </td>
-      <td className="px-3 py-3.5">
-        <span className={`text-base font-bold ${tier.text}`}>
-          {Math.round(candidate.overall_score)}
-        </span>
+      <td className="px-3 py-3.5 text-center">
+        <span className={`text-base font-bold ${tier.text}`}>{Math.round(candidate.overall_score)}</span>
       </td>
-
-      {/* Must criteria dots */}
-      {mustCriteria.map((c) => {
-        const score = getScore(c.name);
+      {categories.map((cat, i) => {
+        const catScore = getCategoryScore(cat);
         return (
-          <td key={c.name} className="px-2 py-3.5 text-center">
-            {score !== null
-              ? <div className="h-3 w-3 rounded-full mx-auto" style={{ backgroundColor: dotColor(score) }} title={`${c.name}: ${score}/10`} />
-              : <div className="h-3 w-3 rounded-full mx-auto bg-[#E0E0E0]" title={`${c.name}: N/A`} />
-            }
-          </td>
-        );
-      })}
-
-      {/* Divider */}
-      {otherCriteria.length > 0 && (
-        <td className="px-0"><div className="w-px h-6 bg-[#E8E5DF] mx-auto" /></td>
-      )}
-
-      {/* Other criteria dots */}
-      {otherCriteria.map((c) => {
-        const score = getScore(c.name);
-        return (
-          <td key={c.name} className="px-2 py-3.5 text-center">
-            {score !== null
-              ? <div className="h-3 w-3 rounded-full mx-auto" title={`${c.name}: ${score}/10`} style={{ backgroundColor: dotColor(score) }} />
-              : <div className="h-3 w-3 rounded-full mx-auto bg-[#E0E0E0]" title={`${c.name}: N/A`} />
-            }
+          <td key={cat.name} className="px-3 py-3.5 text-center">
+            {catScore !== null ? (
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-xs font-bold" style={{ color: dotColor(catScore) }}>{catScore.toFixed(1)}</span>
+                <div className="w-10 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${catScore * 10}%`, backgroundColor: dotColor(catScore) }} />
+                </div>
+              </div>
+            ) : (
+              <span className="text-xs text-[#D4D4D4]">--</span>
+            )}
           </td>
         );
       })}
     </tr>
+  );
+}
+
+
+// ─── Rubric Modal ─────────────────────────────────────────────────────────────
+
+function RubricModal({ categories, onClose }: { categories: RubricCategory[]; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
+      <div className="bg-white rounded-2xl border border-[#E8E5DF] max-w-2xl w-full max-h-[80vh] overflow-y-auto m-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white px-6 py-4 border-b border-[#E8E5DF] flex items-center justify-between z-10">
+          <h2 className="text-base font-semibold text-[#0F0F0F]">Scoring Rubric</h2>
+          <button onClick={onClose} className="h-7 w-7 rounded-lg hover:bg-[#F5F3EE] flex items-center justify-center text-[#737373]">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8" /></svg>
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          {categories.map((cat, i) => (
+            <div key={cat.name} className="border border-[#E8E5DF] rounded-xl overflow-hidden">
+              <div className="px-4 py-3 bg-[#F5F3EE] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CAT_COLORS[i] }} />
+                  <span className="text-sm font-semibold text-[#0F0F0F]">{cat.name}</span>
+                </div>
+                <span className="text-xs font-bold text-[#404040]">{cat.weight}%</span>
+              </div>
+              {cat.subcategories.length > 0 && (
+                <div className="divide-y divide-[#E8E5DF]">
+                  {cat.subcategories.map((sub) => (
+                    <div key={sub.name} className="px-4 py-2.5 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[#0F0F0F]">{sub.name}</p>
+                        <p className="text-xs text-[#737373] mt-0.5">{sub.description}</p>
+                      </div>
+                      <span className="text-xs font-semibold text-[#404040] shrink-0">{sub.weight}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
