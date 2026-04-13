@@ -19,11 +19,19 @@ async function getAuthHeader(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${token}` };
 }
 
-function parseErrorDetail(body: any, status: number): string {
-  const detail = body.detail;
+function parseErrorDetail(body: unknown, status: number): string {
+  if (!body || typeof body !== "object") return `HTTP ${status}`;
+  const b = body as Record<string, unknown>;
+  const detail = b.detail;
   if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((d: any) => d.msg ?? JSON.stringify(d)).join("; ");
-  return body.message ?? `HTTP ${status}`;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((d: any) => (typeof d === "string" ? d : d?.msg ?? JSON.stringify(d)))
+      .join("; ");
+  }
+  if (detail != null) return JSON.stringify(detail);
+  if (typeof b.message === "string") return b.message;
+  return `HTTP ${status}`;
 }
 
 async function request<T>(
@@ -111,7 +119,7 @@ export async function uploadResumesToJob(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail ?? body.message ?? `HTTP ${res.status}`);
+    throw new Error(parseErrorDetail(body, res.status));
   }
 
   return res.json();
@@ -145,7 +153,7 @@ export async function createScreening(data: {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail ?? body.message ?? `HTTP ${res.status}`);
+    throw new Error(parseErrorDetail(body, res.status));
   }
 
   return res.json();
