@@ -197,13 +197,14 @@ export default function NewScreening() {
                     <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color.dot }} />
                     <h3 className={`text-sm font-bold ${color.text}`}>{cat.name}</h3>
                   </div>
-                  <div className="flex items-center gap-2 min-w-[160px]">
+                  <div className="flex items-center gap-2.5 min-w-[180px]">
                     <input
                       type="range"
                       min={0} max={100} step={5}
                       value={cat.weight}
                       onChange={(e) => updateCategoryWeight(catIdx, Number(e.target.value))}
-                      className="flex-1 h-1.5 accent-[#0F0F0F] cursor-pointer"
+                      className="weight-slider flex-1"
+                      style={{ background: `linear-gradient(to right, #0F0F0F ${cat.weight}%, #E8E5DF ${cat.weight}%)` }}
                     />
                     <span className="text-sm font-bold text-[#0F0F0F] w-10 text-right">{cat.weight}%</span>
                   </div>
@@ -234,13 +235,14 @@ export default function NewScreening() {
                             className="w-full text-xs text-[#737373] bg-transparent border-0 border-b border-transparent hover:border-[#D4D4D4] focus:border-[#C85A17] focus:outline-none pb-0.5 transition-colors"
                           />
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0 min-w-[140px]">
+                        <div className="flex items-center gap-1.5 shrink-0 min-w-[150px]">
                           <input
                             type="range"
                             min={0} max={100} step={5}
                             value={sub.weight}
                             onChange={(e) => updateSubcategory(catIdx, subIdx, { weight: Number(e.target.value) })}
-                            className="flex-1 h-1.5 accent-[#737373] cursor-pointer"
+                            className="weight-slider flex-1"
+                            style={{ background: `linear-gradient(to right, #0F0F0F ${sub.weight}%, #E8E5DF ${sub.weight}%)` }}
                           />
                           <span className="text-xs font-semibold text-[#0F0F0F] w-8 text-right">{sub.weight}%</span>
                           <button onClick={() => removeSubcategory(catIdx, subIdx)}
