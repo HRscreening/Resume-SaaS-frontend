@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -78,13 +78,28 @@ export default function ScreeningDetail() {
     },
   });
 
+  const batchDone = progress?.status === "completed" || progress?.status === "failed";
+
   const { data: candidates = [] } = useQuery({
     queryKey: ["results", id],
     queryFn: () => getResults(id),
-    // Start fetching as soon as we have a screening — if it's still processing,
-    // the backend returns [] which is fine. Cache will serve instantly on re-nav.
     enabled: !!screening && screening.status !== "draft",
+    // Poll every 4s while processing, stop once we have results or batch is done
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data && data.length > 0) return false; // have results, stop
+      if (batchDone) return false;
+      return 4000;
+    },
   });
+
+  // Instant results fetch when batch completes — no waiting for next poll cycle
+  useEffect(() => {
+    if (batchDone && candidates.length === 0) {
+      queryClient.invalidateQueries({ queryKey: ["results", id] });
+      queryClient.invalidateQueries({ queryKey: ["screening", id] });
+    }
+  }, [batchDone, candidates.length, id, queryClient]);
 
   async function handleExport() {
     setExporting(true);
