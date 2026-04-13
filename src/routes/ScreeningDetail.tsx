@@ -47,6 +47,7 @@ export default function ScreeningDetail() {
   const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
   const [collapsedTiers, setCollapsedTiers] = useState<Set<TierId>>(new Set(["poor"]));
+  const [showRubric, setShowRubric] = useState(false);
 
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -156,7 +157,6 @@ export default function ScreeningDetail() {
   const isDraft = screening.status === "draft";
   const isProcessing = !isDraft && !["completed", "failed"].includes(screening.status);
   const rubricCategories: RubricCategory[] = (screening.rubric as any)?.categories ?? [];
-  const [showRubric, setShowRubric] = useState(false);
 
   const tierGroups = TIERS.map((tier) => ({
     tier,
