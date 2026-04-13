@@ -132,33 +132,6 @@ export async function analyzeJD(jdText: string): Promise<Rubric> {
   });
 }
 
-export async function createScreening(data: {
-  title: string;
-  jd_text: string;
-  rubric: Rubric;
-  zip_file: File;
-}): Promise<{ screening_id: string; batch_id: string }> {
-  const authHeaders = await getAuthHeader();
-  const formData = new FormData();
-  formData.append("title", data.title);
-  formData.append("jd_text", data.jd_text);
-  formData.append("rubric", JSON.stringify(data.rubric));
-  formData.append("zip_file", data.zip_file);
-
-  const res = await fetch(`${API_BASE}/api/screenings`, {
-    method: "POST",
-    headers: authHeaders,
-    body: formData,
-  });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(parseErrorDetail(body, res.status));
-  }
-
-  return res.json();
-}
-
 export async function listScreenings(): Promise<ScreeningListItem[]> {
   return request<ScreeningListItem[]>("/api/screenings");
 }

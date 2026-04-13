@@ -38,6 +38,14 @@ export default function ResumeDetail() {
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging     = useRef(false);
 
+  // Prevent both panels being collapsed simultaneously — must be before early returns
+  useEffect(() => {
+    if (pdfCollapsed && infoCollapsed) {
+      setPdfCollapsed(false);
+      setInfoCollapsed(false);
+    }
+  }, [pdfCollapsed, infoCollapsed]);
+
   const startDrag = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     dragging.current = true;
@@ -114,9 +122,6 @@ export default function ResumeDetail() {
   const tier   = getTierLabel(score.overall_score);
   const initials = (resume.candidate_name ?? resume.original_filename).slice(0, 2).toUpperCase();
   const isPdf    = resume.original_filename.toLowerCase().endsWith(".pdf");
-
-  const bothCollapsed = pdfCollapsed && infoCollapsed;
-  if (bothCollapsed) { setPdfCollapsed(false); setInfoCollapsed(false); }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-white">
