@@ -19,6 +19,13 @@ async function getAuthHeader(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${token}` };
 }
 
+function parseErrorDetail(body: any, status: number): string {
+  const detail = body.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) return detail.map((d: any) => d.msg ?? JSON.stringify(d)).join("; ");
+  return body.message ?? `HTTP ${status}`;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
@@ -35,7 +42,7 @@ async function request<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail ?? body.message ?? `HTTP ${res.status}`);
+    throw new Error(parseErrorDetail(body, res.status));
   }
 
   return res.json() as Promise<T>;

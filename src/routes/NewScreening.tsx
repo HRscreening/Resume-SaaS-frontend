@@ -197,16 +197,15 @@ export default function NewScreening() {
                     <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color.dot }} />
                     <h3 className={`text-sm font-bold ${color.text}`}>{cat.name}</h3>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-[#737373]">Weight:</span>
+                  <div className="flex items-center gap-2 min-w-[160px]">
                     <input
-                      type="number"
-                      min={0} max={100}
+                      type="range"
+                      min={0} max={100} step={5}
                       value={cat.weight}
-                      onChange={(e) => updateCategoryWeight(catIdx, Math.min(100, Math.max(0, Number(e.target.value))))}
-                      className="w-16 h-7 px-2 text-center rounded-lg border border-[#D4D4D4] text-xs font-bold text-[#0F0F0F] bg-white focus:outline-none focus:ring-1 focus:ring-[#C85A17]"
+                      onChange={(e) => updateCategoryWeight(catIdx, Number(e.target.value))}
+                      className="flex-1 h-1.5 accent-[#0F0F0F] cursor-pointer"
                     />
-                    <span className="text-xs text-[#737373]">%</span>
+                    <span className="text-sm font-bold text-[#0F0F0F] w-10 text-right">{cat.weight}%</span>
                   </div>
                 </div>
 
@@ -235,15 +234,15 @@ export default function NewScreening() {
                             className="w-full text-xs text-[#737373] bg-transparent border-0 border-b border-transparent hover:border-[#D4D4D4] focus:border-[#C85A17] focus:outline-none pb-0.5 transition-colors"
                           />
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0 min-w-[140px]">
                           <input
-                            type="number"
-                            min={0} max={100}
+                            type="range"
+                            min={0} max={100} step={5}
                             value={sub.weight}
-                            onChange={(e) => updateSubcategory(catIdx, subIdx, { weight: Math.min(100, Math.max(0, Number(e.target.value))) })}
-                            className="w-14 h-7 px-2 text-center rounded-lg border border-[#D4D4D4] text-xs font-semibold bg-white focus:outline-none focus:ring-1 focus:ring-[#C85A17]"
+                            onChange={(e) => updateSubcategory(catIdx, subIdx, { weight: Number(e.target.value) })}
+                            className="flex-1 h-1.5 accent-[#737373] cursor-pointer"
                           />
-                          <span className="text-xs text-[#A0A0A0]">%</span>
+                          <span className="text-xs font-semibold text-[#0F0F0F] w-8 text-right">{sub.weight}%</span>
                           <button onClick={() => removeSubcategory(catIdx, subIdx)}
                             className="h-7 w-7 rounded-lg text-[#A0A0A0] hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors">
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8" /></svg>
