@@ -53,7 +53,11 @@ export default function ScreeningDetail() {
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [showUploadMore, setShowUploadMore] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadMoreFileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadMoreFile, setUploadMoreFile] = useState<File | null>(null);
+  const [uploadMoreDragActive, setUploadMoreDragActive] = useState(false);
 
   const { data: screening, isLoading, error } = useQuery({
     queryKey: ["screening", id],
@@ -136,6 +140,23 @@ export default function ScreeningDetail() {
     } finally { setUploading(false); }
   }
 
+  async function handleUploadMore() {
+    if (!uploadMoreFile) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      await uploadResumesToJob(id, uploadMoreFile);
+      setUploadMoreFile(null);
+      setShowUploadMore(false);
+      queryClient.invalidateQueries({ queryKey: ["screening", id] });
+      queryClient.invalidateQueries({ queryKey: ["batch-progress", id] });
+      queryClient.invalidateQueries({ queryKey: ["results", id] });
+      queryClient.invalidateQueries({ queryKey: ["screenings"] });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally { setUploading(false); }
+  }
+
   function toggleTier(tierId: TierId) {
     setCollapsedTiers((prev) => {
       const next = new Set(prev);
@@ -204,6 +225,13 @@ export default function ScreeningDetail() {
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5"/><path d="M4.5 5h5M4.5 7.5h3"/></svg>
               Rubric
+            </button>
+            <button
+              onClick={() => { setShowUploadMore((v) => !v); setUploadMoreFile(null); setUploadError(null); }}
+              className={`h-9 px-4 border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5v8M4 7l4-4 4 4"/><path d="M1.5 11.5h11"/></svg>
+              Add resumes
             </button>
             <button
               onClick={handleExport}
@@ -315,6 +343,66 @@ export default function ScreeningDetail() {
             </div>
           )}
 
+          {/* Add more resumes panel (non-draft screenings) */}
+          {!isDraft && showUploadMore && (
+            <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-base font-semibold text-[#0F0F0F]">Add more resumes</h2>
+                  <p className="text-xs text-[#737373] mt-0.5">Upload another ZIP to screen additional candidates against the same rubric.</p>
+                </div>
+                <button onClick={() => { setShowUploadMore(false); setUploadMoreFile(null); setUploadError(null); }}
+                  className="h-7 w-7 rounded-lg hover:bg-[#F5F3EE] flex items-center justify-center text-[#737373]">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8" /></svg>
+                </button>
+              </div>
+              {uploadError && (
+                <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">{uploadError}</div>
+              )}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setUploadMoreDragActive(true); }}
+                onDragLeave={() => setUploadMoreDragActive(false)}
+                onDrop={(e) => { e.preventDefault(); setUploadMoreDragActive(false); const f = e.dataTransfer.files[0]; if (f?.name.endsWith(".zip")) setUploadMoreFile(f); }}
+                onClick={() => uploadMoreFileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
+                  uploadMoreDragActive ? "border-[#C85A17] bg-[#C85A1708]"
+                  : uploadMoreFile ? "border-green-400 bg-green-50"
+                  : "border-[#D4D4D4] hover:border-[#A0A0A0] hover:bg-[#F5F3EE]"
+                }`}
+              >
+                <input ref={uploadMoreFileInputRef} type="file" accept=".zip" className="hidden"
+                  onChange={(e) => setUploadMoreFile(e.target.files?.[0] ?? null)} />
+                {uploadMoreFile ? (
+                  <div>
+                    <div className="h-10 w-10 rounded-full bg-green-50 border border-green-200 flex items-center justify-center mx-auto mb-3">
+                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 10l4 4 8-8"/></svg>
+                    </div>
+                    <p className="text-sm font-medium text-[#0F0F0F]">{uploadMoreFile.name}</p>
+                    <p className="text-xs text-[#737373] mt-1">{(uploadMoreFile.size / 1024 / 1024).toFixed(1)} MB</p>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setUploadMoreFile(null); }}
+                      className="mt-2 text-xs text-red-600 hover:underline">Remove</button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="h-10 w-10 rounded-full bg-[#F5F3EE] border border-[#D4D4D4] flex items-center justify-center mx-auto mb-3">
+                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
+                    </div>
+                    <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop your ZIP file here</p>
+                    <p className="text-xs text-[#737373]">or click to browse · .zip only</p>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={handleUploadMore}
+                disabled={!uploadMoreFile || uploading}
+                className="mt-4 w-full h-10 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                {uploading && <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+                {uploading ? "Uploading & processing…" : "Start screening new batch"}
+              </button>
+            </div>
+          )}
+
           {/* Processing */}
           {isProcessing && <ProcessingView progress={progress ?? null} totalFiles={screening.total_resumes} />}
 
@@ -388,14 +476,22 @@ function TierSection({ tier, candidates, collapsed, onToggle, categories, onSele
 
       {!collapsed && (
         <div className="bg-white overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col />
+              <col style={{ width: "72px" }} />
+              {categories.map((cat) => (
+                <col key={cat.name} style={{ width: "120px" }} />
+              ))}
+            </colgroup>
             <thead>
               <tr className="border-b border-[#E8E5DF]">
                 <th className="px-5 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Candidate</th>
                 <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide">Score</th>
                 {categories.map((cat, i) => (
-                  <th key={cat.name} className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide whitespace-nowrap" style={{ color: CAT_COLORS[i] }}>
-                    {abbrev(cat.name)} <span className="font-normal text-[#A0A0A0]">{cat.weight}%</span>
+                  <th key={cat.name} className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide" style={{ color: CAT_COLORS[i] }}>
+                    <span className="block truncate">{cat.name}</span>
+                    <span className="font-normal text-[#A0A0A0]">{cat.weight}%</span>
                   </th>
                 ))}
               </tr>
@@ -445,13 +541,18 @@ function CandidateRow({ candidate, tier, categories, onSelect }: {
           </div>
         </div>
       </td>
-      <td className="px-3 py-3.5 text-center">
-        <span className={`text-base font-bold ${tier.text}`}>{Math.round(candidate.overall_score)}</span>
+      <td className="px-3 py-3.5 text-center align-middle">
+        <div className="flex flex-col items-center gap-1">
+          <span className={`text-base font-bold ${tier.text}`}>{Math.round(candidate.overall_score)}</span>
+          <div className="w-10 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden">
+            <div className="h-full rounded-full" style={{ width: `${candidate.overall_score}%`, backgroundColor: tier.dot }} />
+          </div>
+        </div>
       </td>
       {categories.map((cat, i) => {
         const catScore = getCategoryScore(cat);
         return (
-          <td key={cat.name} className="px-3 py-3.5 text-center">
+          <td key={cat.name} className="px-3 py-3.5 text-center align-middle">
             {catScore !== null ? (
               <div className="flex flex-col items-center gap-1">
                 <span className="text-xs font-bold" style={{ color: dotColor(catScore) }}>{catScore.toFixed(1)}</span>
