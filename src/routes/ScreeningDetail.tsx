@@ -476,21 +476,23 @@ function TierSection({ tier, candidates, collapsed, onToggle, categories, onSele
 
       {!collapsed && (
         <div className="bg-white overflow-x-auto">
-          <table className="w-full text-sm table-fixed">
+          <table className="w-full text-sm">
             <colgroup>
-              <col />
+              <col style={{ minWidth: "200px" }} />
+              <col style={{ width: "140px" }} />
               <col style={{ width: "72px" }} />
               {categories.map((cat) => (
-                <col key={cat.name} style={{ width: "120px" }} />
+                <col key={cat.name} style={{ width: "130px" }} />
               ))}
             </colgroup>
             <thead>
               <tr className="border-b border-[#E8E5DF]">
                 <th className="px-5 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Candidate</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Current Role</th>
                 <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide">Score</th>
                 {categories.map((cat, i) => (
                   <th key={cat.name} className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide" style={{ color: CAT_COLORS[i] }}>
-                    <span className="block truncate">{cat.name}</span>
+                    <span className="block">{cat.name}</span>
                     <span className="font-normal text-[#A0A0A0]">{cat.weight}%</span>
                   </th>
                 ))}
@@ -536,10 +538,18 @@ function CandidateRow({ candidate, tier, categories, onSelect }: {
             <span className="text-xs font-semibold text-[#404040]">{(candidate.candidate_name ?? candidate.filename).slice(0, 2).toUpperCase()}</span>
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-[#0F0F0F] truncate max-w-[180px]">{candidate.candidate_name ?? candidate.filename}</p>
-            {candidate.candidate_current_job && <p className="text-xs text-[#737373] truncate max-w-[180px]">{candidate.candidate_current_job}</p>}
+            <p className="text-sm font-semibold text-[#0F0F0F] truncate">{candidate.candidate_name ?? candidate.filename}</p>
+            {candidate.candidate_email && (
+              <p className="text-xs text-[#737373] truncate">{candidate.candidate_email}</p>
+            )}
+            {candidate.candidate_phone && (
+              <p className="text-xs text-[#737373] truncate">{candidate.candidate_phone}</p>
+            )}
           </div>
         </div>
+      </td>
+      <td className="px-3 py-3.5 align-middle">
+        <p className="text-xs text-[#404040] line-clamp-2">{candidate.candidate_current_job ?? <span className="text-[#D4D4D4]">—</span>}</p>
       </td>
       <td className="px-3 py-3.5 text-center align-middle">
         <div className="flex flex-col items-center gap-1">

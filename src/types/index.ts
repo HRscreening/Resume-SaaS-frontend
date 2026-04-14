@@ -139,6 +139,7 @@ export interface RankedCandidate {
   filename: string;
   candidate_name: string | null;
   candidate_email: string | null;
+  candidate_phone: string | null;
   candidate_current_job: string | null;
   overall_score: number;
   top_criteria: CriterionScore[];
