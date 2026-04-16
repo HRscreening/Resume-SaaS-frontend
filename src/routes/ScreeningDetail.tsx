@@ -26,12 +26,6 @@ function getTier(score: number) {
   return TIERS[3];
 }
 
-function abbrev(name: string): string {
-  const words = name.trim().split(/[\s/_-]+/).filter(Boolean);
-  if (words.length >= 2) return words.map((w) => w[0]).join("").toUpperCase().slice(0, 5);
-  return name.length <= 5 ? name : name.slice(0, 4);
-}
-
 function dotColor(score: number): string {
   if (score >= 7) return "#22C55E";
   if (score >= 4) return "#EAB308";
@@ -88,10 +82,9 @@ export default function ScreeningDetail() {
     queryKey: ["results", id],
     queryFn: () => getResults(id),
     enabled: !!screening && screening.status !== "draft",
-    // Poll every 4s while processing, stop once we have results or batch is done
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      if (data && data.length > 0) return false; // have results, stop
+    // Keep polling until the batch is fully done — stop only then so all
+    // results (not just the first few that arrived) are fetched.
+    refetchInterval: () => {
       if (batchDone) return false;
       return 4000;
     },
@@ -99,11 +92,11 @@ export default function ScreeningDetail() {
 
   // Instant results fetch when batch completes — no waiting for next poll cycle
   useEffect(() => {
-    if (batchDone && candidates.length === 0) {
+    if (batchDone) {
       queryClient.invalidateQueries({ queryKey: ["results", id] });
       queryClient.invalidateQueries({ queryKey: ["screening", id] });
     }
-  }, [batchDone, candidates.length, id, queryClient]);
+  }, [batchDone, id, queryClient]);
 
   async function handleExport() {
     setExporting(true);
@@ -132,9 +125,13 @@ export default function ScreeningDetail() {
     try {
       await uploadResumesToJob(id, zipFile);
       setZipFile(null);
-      queryClient.invalidateQueries({ queryKey: ["screening", id] });
-      queryClient.invalidateQueries({ queryKey: ["batch-progress", id] });
-      queryClient.invalidateQueries({ queryKey: ["screenings"] });
+      // Await the refetches so the screening status is updated *before*
+      // uploading is set to false — prevents a flash of the draft upload panel.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["screening", id] }),
+        queryClient.invalidateQueries({ queryKey: ["batch-progress", id] }),
+        queryClient.invalidateQueries({ queryKey: ["screenings"] }),
+      ]);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally { setUploading(false); }
@@ -148,10 +145,12 @@ export default function ScreeningDetail() {
       await uploadResumesToJob(id, uploadMoreFile);
       setUploadMoreFile(null);
       setShowUploadMore(false);
-      queryClient.invalidateQueries({ queryKey: ["screening", id] });
-      queryClient.invalidateQueries({ queryKey: ["batch-progress", id] });
-      queryClient.invalidateQueries({ queryKey: ["results", id] });
-      queryClient.invalidateQueries({ queryKey: ["screenings"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["screening", id] }),
+        queryClient.invalidateQueries({ queryKey: ["batch-progress", id] }),
+        queryClient.invalidateQueries({ queryKey: ["results", id] }),
+        queryClient.invalidateQueries({ queryKey: ["screenings"] }),
+      ]);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally { setUploading(false); }
@@ -282,9 +281,15 @@ export default function ScreeningDetail() {
           {/* Draft upload */}
           {isDraft && (
             <div className="bg-white rounded-2xl border border-[#E8E5DF] p-8">
-              <h2 className="text-lg font-semibold text-[#0F0F0F] mb-1">Upload resumes</h2>
+              <div className="flex items-center gap-3 mb-1">
+                <h2 className="text-lg font-semibold text-[#0F0F0F]">Upload resumes</h2>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F0EDE8] border border-[#D4D4D4] text-xs font-semibold text-[#404040] tracking-wide">
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9.5h7M2 1.5h5l2 2v6"/><path d="M5 1.5v3h4"/></svg>
+                  .ZIP only
+                </span>
+              </div>
               <p className="text-sm text-[#737373] mb-2">
-                Rubric ready with {rubricCategories.length} categories. Upload a ZIP of resumes to start screening.
+                Rubric ready with {rubricCategories.length} categories. Pack your resumes (PDF or DOCX) into a single ZIP file and upload it to start screening.
               </p>
               <div className="flex flex-wrap gap-2 mb-6">
                 {rubricCategories.map((cat, i) => (
@@ -328,7 +333,8 @@ export default function ScreeningDetail() {
                       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
                     </div>
                     <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop your ZIP file here</p>
-                    <p className="text-xs text-[#737373]">or click to browse · .zip only</p>
+                    <p className="text-xs text-[#737373]">or click to browse</p>
+                    <p className="text-xs font-semibold text-[#A0A0A0] mt-2 uppercase tracking-wide">ZIP format required · PDF &amp; DOCX inside</p>
                   </div>
                 )}
               </div>
@@ -388,7 +394,8 @@ export default function ScreeningDetail() {
                       <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
                     </div>
                     <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop your ZIP file here</p>
-                    <p className="text-xs text-[#737373]">or click to browse · .zip only</p>
+                    <p className="text-xs text-[#737373]">or click to browse</p>
+                    <p className="text-xs font-semibold text-[#A0A0A0] mt-2 uppercase tracking-wide">ZIP format required · PDF &amp; DOCX inside</p>
                   </div>
                 )}
               </div>
