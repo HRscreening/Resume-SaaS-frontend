@@ -123,15 +123,26 @@ export default function ScreeningDetail() {
     setUploading(true);
     setUploadError(null);
     try {
-      await uploadResumesToJob(id, zipFile);
+      const result = await uploadResumesToJob(id, zipFile);
       setZipFile(null);
-      // Await the refetches so the screening status is updated *before*
-      // uploading is set to false — prevents a flash of the draft upload panel.
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["screening", id] }),
-        queryClient.invalidateQueries({ queryKey: ["batch-progress", id] }),
-        queryClient.invalidateQueries({ queryKey: ["screenings"] }),
-      ]);
+
+      // Immediately mark screening as "processing" in the cache so the UI
+      // never flashes back to the draft upload panel. This is not speculative —
+      // the backend has already committed the batch and resume rows by the time
+      // the 202 response arrives. The subsequent invalidation refetches for
+      // accuracy (batch progress, scored counts, etc.) but the status transition
+      // is guaranteed at this point.
+      queryClient.setQueryData(
+        ["screening", id],
+        (old: typeof screening) =>
+          old ? { ...old, status: "processing" as const, total_resumes: result.total_files } : old,
+      );
+
+      // Background-refresh for accurate progress data — don't await; the
+      // optimistic update above already flipped the UI to the processing view.
+      queryClient.invalidateQueries({ queryKey: ["screening", id] });
+      queryClient.invalidateQueries({ queryKey: ["batch-progress", id] });
+      queryClient.invalidateQueries({ queryKey: ["screenings"] });
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally { setUploading(false); }
@@ -142,15 +153,23 @@ export default function ScreeningDetail() {
     setUploading(true);
     setUploadError(null);
     try {
-      await uploadResumesToJob(id, uploadMoreFile);
+      const result = await uploadResumesToJob(id, uploadMoreFile);
       setUploadMoreFile(null);
       setShowUploadMore(false);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["screening", id] }),
-        queryClient.invalidateQueries({ queryKey: ["batch-progress", id] }),
-        queryClient.invalidateQueries({ queryKey: ["results", id] }),
-        queryClient.invalidateQueries({ queryKey: ["screenings"] }),
-      ]);
+
+      // Optimistic: bump total_resumes and keep status as "processing"
+      queryClient.setQueryData(
+        ["screening", id],
+        (old: typeof screening) =>
+          old
+            ? { ...old, status: "processing" as const, total_resumes: (old.total_resumes ?? 0) + result.total_files }
+            : old,
+      );
+
+      queryClient.invalidateQueries({ queryKey: ["screening", id] });
+      queryClient.invalidateQueries({ queryKey: ["batch-progress", id] });
+      queryClient.invalidateQueries({ queryKey: ["results", id] });
+      queryClient.invalidateQueries({ queryKey: ["screenings"] });
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally { setUploading(false); }
