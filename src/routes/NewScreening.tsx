@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { analyzeJD, createJob } from "@/lib/api";
+import { analyzeJD, createJob, parseJDFile } from "@/lib/api";
 import type { Rubric, RubricCategory, Subcategory } from "@/types";
 
 type Step = 1 | 2;
@@ -20,10 +20,31 @@ export default function NewScreening() {
   const [title, setTitle] = useState("");
   const [jdText, setJdText] = useState("");
   const [analyzingJD, setAnalyzingJD] = useState(false);
+  const [jdInputMode, setJdInputMode] = useState<"paste" | "upload">("paste");
+  const [jdFile, setJdFile] = useState<File | null>(null);
+  const [extractingJD, setExtractingJD] = useState(false);
+  const [jdFileDragActive, setJdFileDragActive] = useState(false);
+  const jdFileInputRef = useRef<HTMLInputElement>(null);
 
   const [rubric, setRubric] = useState<Rubric | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function handleJDFileSelect(file: File) {
+    setJdFile(file);
+    setJdText("");
+    setExtractingJD(true);
+    setError(null);
+    try {
+      const { text } = await parseJDFile(file);
+      setJdText(text);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not extract text from file");
+      setJdFile(null);
+    } finally {
+      setExtractingJD(false);
+    }
+  }
 
   async function handleAnalyzeJD() {
     if (!jdText.trim() || analyzingJD) return;
@@ -134,25 +155,107 @@ export default function NewScreening() {
       {step === 1 && (
         <div className="bg-white rounded-2xl border border-[#E8E5DF] p-8">
           <h2 className="text-lg font-semibold text-[#0F0F0F] mb-1">Job description</h2>
-          <p className="text-sm text-[#737373] mb-6">Paste your JD and we'll auto-generate a 3-category scoring rubric.</p>
+          <p className="text-sm text-[#737373] mb-6">We'll auto-generate a 3-category scoring rubric from your JD.</p>
           <div className="space-y-5">
+            {/* Job title */}
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-[#0F0F0F] mb-1.5">Job title <span className="text-red-500">*</span></label>
               <input id="title" type="text" value={title} onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Senior Backend Engineer — April 2026"
                 className="w-full h-11 px-3.5 rounded-xl border border-[#D4D4D4] bg-[#F5F3EE] text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] transition-shadow" />
             </div>
+
+            {/* JD input — paste or upload */}
             <div>
-              <label htmlFor="jd" className="block text-sm font-medium text-[#0F0F0F] mb-1.5">Job description <span className="text-red-500">*</span></label>
-              <textarea id="jd" rows={10} value={jdText} onChange={(e) => setJdText(e.target.value)}
-                placeholder="Paste your full job description here..."
-                className="w-full px-3.5 py-3 rounded-xl border border-[#D4D4D4] bg-[#F5F3EE] text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] transition-shadow resize-none" />
-              <p className="mt-1 text-xs text-[#A0A0A0]">{jdText.length} characters</p>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-[#0F0F0F]">Job description <span className="text-red-500">*</span></label>
+                {/* Mode toggle */}
+                <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#F0EDE8] border border-[#D4D4D4]">
+                  {(["paste", "upload"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => { setJdInputMode(mode); setJdFile(null); if (mode === "paste") setJdText(""); }}
+                      className={`h-6 px-3 rounded-md text-xs font-medium transition-colors ${
+                        jdInputMode === mode
+                          ? "bg-white text-[#0F0F0F] shadow-sm"
+                          : "text-[#737373] hover:text-[#404040]"
+                      }`}
+                    >
+                      {mode === "paste" ? "Paste" : "Upload file"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {jdInputMode === "paste" ? (
+                <>
+                  <textarea id="jd" rows={10} value={jdText} onChange={(e) => setJdText(e.target.value)}
+                    placeholder="Paste your full job description here..."
+                    className="w-full px-3.5 py-3 rounded-xl border border-[#D4D4D4] bg-[#F5F3EE] text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] transition-shadow resize-none" />
+                  <p className="mt-1 text-xs text-[#A0A0A0]">{jdText.length} characters</p>
+                </>
+              ) : (
+                /* File upload mode */
+                extractingJD ? (
+                  <div className="border border-[#D4D4D4] rounded-xl p-6 flex items-center gap-3 bg-[#FAFAF8]">
+                    <div className="h-5 w-5 rounded-full border-2 border-[#C85A17] border-t-transparent animate-spin shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-[#0F0F0F]">Extracting text…</p>
+                      <p className="text-xs text-[#737373] mt-0.5 truncate max-w-xs">{jdFile?.name}</p>
+                    </div>
+                  </div>
+                ) : jdFile && jdText ? (
+                  <div className="border border-green-200 bg-green-50 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7.5l2.5 2.5L11 4"/></svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-green-800 truncate">{jdFile.name}</p>
+                        <p className="text-xs text-green-700 mt-0.5">{jdText.length.toLocaleString()} characters extracted</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setJdFile(null); setJdText(""); }}
+                        className="text-xs text-green-700 hover:text-red-600 underline shrink-0"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setJdFileDragActive(true); }}
+                    onDragLeave={() => setJdFileDragActive(false)}
+                    onDrop={(e) => {
+                      e.preventDefault(); setJdFileDragActive(false);
+                      const f = e.dataTransfer.files[0];
+                      if (f && (f.name.endsWith(".pdf") || f.name.endsWith(".docx"))) handleJDFileSelect(f);
+                    }}
+                    onClick={() => jdFileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                      jdFileDragActive ? "border-[#C85A17] bg-[#C85A1708]" : "border-[#D4D4D4] hover:border-[#A0A0A0] hover:bg-[#F5F3EE]"
+                    }`}
+                  >
+                    <input ref={jdFileInputRef} type="file" accept=".pdf,.docx" className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleJDFileSelect(f); }} />
+                    <div className="h-10 w-10 rounded-full bg-[#F5F3EE] border border-[#D4D4D4] flex items-center justify-center mx-auto mb-3">
+                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
+                    </div>
+                    <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop your JD file here</p>
+                    <p className="text-xs text-[#737373]">or click to browse</p>
+                    <p className="text-xs font-semibold text-[#A0A0A0] mt-2 uppercase tracking-wide">PDF or DOCX · single file</p>
+                  </div>
+                )
+              )}
             </div>
-            <button onClick={handleAnalyzeJD} disabled={!title.trim() || !jdText.trim() || analyzingJD}
+
+            <button onClick={handleAnalyzeJD}
+              disabled={!title.trim() || !jdText.trim() || analyzingJD || extractingJD}
               className="w-full h-11 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
               {analyzingJD && <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
-              {analyzingJD ? "Analyzing job description..." : "Generate scoring rubric \u2192"}
+              {analyzingJD ? "Analyzing job description..." : "Generate scoring rubric →"}
             </button>
           </div>
         </div>

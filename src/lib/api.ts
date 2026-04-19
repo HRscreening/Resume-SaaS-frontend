@@ -125,6 +125,45 @@ export async function uploadResumesToJob(
   return res.json();
 }
 
+export async function addResumesToJob(
+  screeningId: string,
+  file: File,
+): Promise<{ screening_id: string; batch_id: string; new_files: number; total_resumes: number; skipped: number }> {
+  const authHeaders = await getAuthHeader();
+  const formData = new FormData();
+  if (file.name.toLowerCase().endsWith(".zip")) {
+    formData.append("zip_file", file);
+  } else {
+    formData.append("file", file);
+  }
+  const res = await fetch(`${API_BASE}/api/screenings/${screeningId}/add-resumes`, {
+    method: "POST",
+    headers: authHeaders,
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(parseErrorDetail(body, res.status));
+  }
+  return res.json();
+}
+
+export async function parseJDFile(file: File): Promise<{ text: string; char_count: number }> {
+  const authHeaders = await getAuthHeader();
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/api/screenings/parse-jd-file`, {
+    method: "POST",
+    headers: authHeaders,
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(parseErrorDetail(body, res.status));
+  }
+  return res.json();
+}
+
 export async function analyzeJD(jdText: string): Promise<Rubric> {
   return request<Rubric>("/api/screenings/generate-rubric", {
     method: "POST",
