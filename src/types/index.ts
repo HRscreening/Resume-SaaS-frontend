@@ -30,7 +30,7 @@ export interface UsageResponse {
 
 export interface Subcategory {
   name: string;
-  weight: number; // 0–100, within category
+  weight: number; // 1–5 importance (1=low, 5=critical); normalised to weights during scoring
   description: string;
 }
 

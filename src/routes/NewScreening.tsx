@@ -96,7 +96,7 @@ export default function NewScreening() {
     if (cat.subcategories.length >= 5) return;
     const updated = rubric.categories.map((c, ci) => {
       if (ci !== catIdx) return c;
-      return { ...c, subcategories: [...c.subcategories, { name: "", weight: 20, description: "" }] };
+      return { ...c, subcategories: [...c.subcategories, { name: "", weight: 3, description: "" }] };
     });
     setRubric({ ...rubric, categories: updated });
   }
@@ -291,7 +291,6 @@ export default function NewScreening() {
           {/* 3 Category cards */}
           {rubric.categories.map((cat, catIdx) => {
             const color = CATEGORY_COLORS[catIdx] ?? CATEGORY_COLORS[0];
-            const subWeightSum = cat.subcategories.reduce((s, sub) => s + sub.weight, 0);
             return (
               <div key={cat.name} className={`rounded-2xl border-2 overflow-hidden ${color.border}`}>
                 {/* Category header */}
@@ -338,16 +337,30 @@ export default function NewScreening() {
                             className="w-full text-xs text-[#737373] bg-transparent border-0 border-b border-transparent hover:border-[#D4D4D4] focus:border-[#C85A17] focus:outline-none pb-0.5 transition-colors"
                           />
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0 min-w-[150px]">
-                          <input
-                            type="range"
-                            min={0} max={100} step={5}
-                            value={sub.weight}
-                            onChange={(e) => updateSubcategory(catIdx, subIdx, { weight: Number(e.target.value) })}
-                            className="weight-slider flex-1"
-                            style={{ background: `linear-gradient(to right, #0F0F0F ${sub.weight}%, #E8E5DF ${sub.weight}%)` }}
-                          />
-                          <span className="text-xs font-semibold text-[#0F0F0F] w-8 text-right">{sub.weight}%</span>
+                        {/* Importance 1–5 picker */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-1">
+                              {([1, 2, 3, 4, 5] as const).map((lvl) => (
+                                <button
+                                  key={lvl}
+                                  type="button"
+                                  onClick={() => updateSubcategory(catIdx, subIdx, { weight: lvl })}
+                                  title={["Low", "Moderate", "Standard", "Important", "Critical"][lvl - 1]}
+                                  className={`h-6 w-6 rounded-md text-xs font-bold transition-colors ${
+                                    lvl <= sub.weight
+                                      ? "bg-[#0F0F0F] text-white"
+                                      : "bg-[#F0EDE8] text-[#A0A0A0] hover:bg-[#E8E5DF]"
+                                  }`}
+                                >
+                                  {lvl}
+                                </button>
+                              ))}
+                            </div>
+                            <span className="text-[10px] text-[#A0A0A0] font-medium">
+                              {["Low", "Moderate", "Standard", "Important", "Critical"][sub.weight - 1] ?? ""}
+                            </span>
+                          </div>
                           <button onClick={() => removeSubcategory(catIdx, subIdx)}
                             className="h-7 w-7 rounded-lg text-[#A0A0A0] hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors">
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8" /></svg>
@@ -357,7 +370,7 @@ export default function NewScreening() {
                     </div>
                   ))}
 
-                  {/* Add + weight sum */}
+                  {/* Add subcategory */}
                   <div className="flex items-center justify-between pt-1">
                     {cat.subcategories.length < 5 ? (
                       <button onClick={() => addSubcategory(catIdx)}
@@ -366,9 +379,7 @@ export default function NewScreening() {
                         Add subcategory
                       </button>
                     ) : <span />}
-                    <span className={`text-xs font-medium ${subWeightSum === 100 ? "text-green-600" : "text-red-500"}`}>
-                      {subWeightSum === 100 ? "100%" : `${subWeightSum}% (must be 100)`}
-                    </span>
+                    <span className="text-xs text-[#A0A0A0]">Importance is normalised during scoring</span>
                   </div>
                 </div>
               </div>
