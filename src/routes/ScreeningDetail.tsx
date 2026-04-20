@@ -234,12 +234,14 @@ export default function ScreeningDetail() {
             </div>
             <h1 className="text-2xl font-bold text-[#0F0F0F]">{screening.title}</h1>
             <p className="text-sm text-[#737373] mt-0.5">
-              {candidates.length > 0
+              {isProcessing && candidates.length > 0
+                ? `${candidates.length} scored so far · Ranking finalizes when all complete`
+                : candidates.length > 0
                 ? `Grouped by fit · ${candidates.length} candidates`
                 : `${screening.total_resumes} resumes · Created ${formatDate(screening.created_at)}`}
             </p>
           </div>
-          {!isProcessing && candidates.length > 0 && (
+          {candidates.length > 0 && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowRubric(true)}
@@ -509,8 +511,8 @@ export default function ScreeningDetail() {
             </div>
           )}
 
-          {/* Processing */}
-          {isProcessing && <ProcessingView progress={progress ?? null} totalFiles={screening.total_resumes} />}
+          {/* Processing banner */}
+          {isProcessing && <ProcessingBanner progress={progress ?? null} totalFiles={screening.total_resumes} />}
 
           {/* Partial failures */}
           {!isProcessing && progress && (progress.failed_count ?? 0) > 0 && (
@@ -525,8 +527,8 @@ export default function ScreeningDetail() {
             </div>
           )}
 
-          {/* Tiered results */}
-          {!isProcessing && candidates.length > 0 && tierGroups.map(({ tier, candidates: tc }) => {
+          {/* Tiered results — visible during processing too (no rank yet) */}
+          {candidates.length > 0 && tierGroups.map(({ tier, candidates: tc }) => {
             if (tc.length === 0) return null;
             const collapsed = collapsedTiers.has(tier.id as TierId);
             return (
@@ -541,6 +543,9 @@ export default function ScreeningDetail() {
               />
             );
           })}
+
+          {/* In-flight files during processing */}
+          {isProcessing && progress && <PendingFilesSection progress={progress} />}
 
           {/* Rubric modal */}
           {showRubric && (
@@ -731,71 +736,85 @@ function RubricModal({ categories, onClose }: { categories: RubricCategory[]; on
 }
 
 
-// ─── Processing View ──────────────────────────────────────────────────────────
+// ─── Processing Banner ────────────────────────────────────────────────────────
 
-function ProcessingView({ progress, totalFiles }: { progress: BatchProgress | null; totalFiles: number }) {
-  const files = progress?.per_file_results ?? [];
+function ProcessingBanner({ progress, totalFiles }: { progress: BatchProgress | null; totalFiles: number }) {
   const pct = progress?.percentage ?? 0;
   const scored = progress?.scored_count ?? 0;
   const failed = progress?.failed_count ?? 0;
   const total = progress?.total_files ?? totalFiles;
 
   return (
-    <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6">
-      <div className="flex items-center gap-4 mb-5">
-        <div className="h-10 w-10 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin shrink-0" />
-        <div className="flex-1">
-          <p className="text-base font-semibold text-[#0F0F0F]">Processing resumes...</p>
-          <p className="text-sm text-[#737373]">
-            {scored + failed} of {total} completed
-            {failed > 0 && <span className="text-red-600"> · {failed} failed</span>}
+    <div className="bg-white rounded-2xl border border-[#E8E5DF] p-4 flex items-center gap-4">
+      <div className="h-8 w-8 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-sm font-semibold text-[#0F0F0F]">
+            {scored + failed} of {total} processed
+            {failed > 0 && <span className="text-red-600 font-normal"> · {failed} failed</span>}
           </p>
+          <span className="text-sm font-bold text-[#0F0F0F] shrink-0 ml-4">{pct}%</span>
         </div>
-        <p className="text-2xl font-bold text-[#0F0F0F] shrink-0">{pct}%</p>
-      </div>
-      <div className="h-2 w-full bg-[#E8E5DF] rounded-full overflow-hidden mb-6">
-        <div className="h-full bg-[#0F0F0F] rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%` }} />
-      </div>
-      {files.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-3">Resume progress</p>
-          <div className="space-y-1 max-h-80 overflow-y-auto">
-            {files.map((f) => <ResumeProgressRow key={f.resume_id} file={f} />)}
-          </div>
+        <div className="h-1.5 w-full bg-[#E8E5DF] rounded-full overflow-hidden">
+          <div className="h-full bg-[#0F0F0F] rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%` }} />
         </div>
-      )}
-      <p className="text-xs text-[#A0A0A0] mt-4 text-center">Refreshing automatically...</p>
+        <p className="text-xs text-[#A0A0A0] mt-1.5">Scored candidates appear below · Ranking finalizes when all complete</p>
+      </div>
     </div>
   );
 }
 
 
-// ─── Resume Progress Row ──────────────────────────────────────────────────────
+// ─── Pending Files Section ────────────────────────────────────────────────────
 
 const STAGE_CONFIG: Record<string, { label: string; color: string; icon: "spin" | "check" | "error" | "wait" }> = {
-  queued:  { label: "Waiting",  color: "text-[#A0A0A0]",   icon: "wait"  },
-  parsing: { label: "Parsing",  color: "text-blue-600",    icon: "spin"  },
-  parsed:  { label: "Parsed",   color: "text-blue-600",    icon: "spin"  },
-  scoring: { label: "Scoring",  color: "text-amber-600",   icon: "spin"  },
-  scored:  { label: "Done",     color: "text-green-700",   icon: "check" },
-  error:   { label: "Failed",   color: "text-red-600",     icon: "error" },
+  queued:  { label: "Waiting",  color: "text-[#A0A0A0]", icon: "wait"  },
+  parsing: { label: "Parsing",  color: "text-blue-600",  icon: "spin"  },
+  parsed:  { label: "Parsed",   color: "text-blue-600",  icon: "spin"  },
+  scoring: { label: "Scoring",  color: "text-amber-600", icon: "spin"  },
+  scored:  { label: "Done",     color: "text-green-700", icon: "check" },
+  error:   { label: "Failed",   color: "text-red-600",   icon: "error" },
 };
 
-function ResumeProgressRow({ file }: { file: FileProgress }) {
+function PendingFilesSection({ progress }: { progress: BatchProgress }) {
+  const pending = progress.per_file_results.filter(
+    (f) => f.stage !== "scored" && f.stage !== "error",
+  );
+  if (pending.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border-2 border-[#E8E5DF] overflow-hidden">
+      <div className="flex items-center gap-2 px-5 py-3.5 bg-[#F5F3EE]">
+        <div className="h-2.5 w-2.5 rounded-full bg-[#A0A0A0]" />
+        <span className="text-sm font-semibold text-[#737373]">Processing</span>
+        <span className="text-xs text-[#737373] opacity-70">{pending.length} resume{pending.length !== 1 ? "s" : ""}</span>
+        <div className="h-3.5 w-3.5 rounded-full border-2 border-[#A0A0A0] border-t-transparent animate-spin ml-auto" />
+      </div>
+      <div className="bg-white divide-y divide-[#E8E5DF]">
+        {pending.map((f) => <PendingResumeRow key={f.resume_id} file={f} />)}
+      </div>
+    </div>
+  );
+}
+
+function PendingResumeRow({ file }: { file: FileProgress }) {
   const config = STAGE_CONFIG[file.stage] ?? STAGE_CONFIG.queued;
   return (
-    <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#F5F3EE] transition-colors">
-      <div className="w-4 h-4 shrink-0 flex items-center justify-center">
-        {config.icon === "spin"  && <div className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin text-blue-600" />}
-        {config.icon === "check" && <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-green-700"><path d="M3 7.5l2.5 2.5L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-        {config.icon === "error" && <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-red-600"><path d="M4 4l6 6M10 4l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>}
-        {config.icon === "wait"  && <div className="h-2 w-2 rounded-full bg-[#D4D4D4]" />}
+    <div className="flex items-center gap-3 px-5 py-3.5">
+      <div className="h-8 w-8 rounded-full bg-[#F0EDE8] flex items-center justify-center shrink-0">
+        {config.icon === "spin" && <div className="h-3.5 w-3.5 rounded-full border-2 border-[#A0A0A0] border-t-transparent animate-spin" />}
+        {config.icon === "wait" && <div className="h-2 w-2 rounded-full bg-[#D4D4D4]" />}
       </div>
-      <p className="text-xs text-[#404040] flex-1 min-w-0 truncate font-mono">{file.filename}</p>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-[#737373] truncate">{file.filename}</p>
+        <div className="h-2 bg-[#E8E5DF] rounded-full animate-pulse w-1/3 mt-1.5" />
+      </div>
       <span className={`text-xs font-medium ${config.color} shrink-0`}>{config.label}</span>
       {(file.stage === "parsing" || file.stage === "scoring") && (
-        <span className="flex gap-0.5 shrink-0">
-          {[0, 200, 400].map((d) => <span key={d} className="h-1 w-1 rounded-full bg-current animate-pulse" style={{ animationDelay: `${d}ms` }} />)}
+        <span className="flex gap-0.5 shrink-0 ml-1">
+          {[0, 200, 400].map((d) => (
+            <span key={d} className="h-1 w-1 rounded-full bg-[#A0A0A0] animate-pulse" style={{ animationDelay: `${d}ms` }} />
+          ))}
         </span>
       )}
     </div>
