@@ -133,42 +133,36 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* User profile section */}
-      <div className="border-t border-[#E8E5DF]">
-        {/* Avatar + user info */}
-        <div className="px-4 py-3 flex items-center gap-3">
-          <div
-            className="h-8 w-8 rounded-full bg-[#C85A17] flex items-center justify-center shrink-0 select-none"
-            draggable={false}
-            aria-hidden="true"
-          >
+      {/* User section */}
+      <div className="border-t border-[#E8E5DF] p-3 space-y-0.5">
+        {/* User row — links to settings */}
+        <Link
+          to="/settings"
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-[#F5F3EE] transition-colors group"
+        >
+          <div className="h-7 w-7 rounded-full bg-[#C85A17] flex items-center justify-center shrink-0 select-none">
             <span className="text-white text-xs font-semibold leading-none">{initials}</span>
           </div>
           <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-[#0F0F0F] truncate leading-tight">
+              {displayName ?? email ?? "—"}
+            </p>
             {displayName && (
-              <p className="text-xs font-medium text-[#0F0F0F] truncate leading-tight">{displayName}</p>
+              <p className="text-[11px] text-[#A0A0A0] truncate leading-tight">{email}</p>
             )}
-            <p className="text-xs text-[#737373] truncate leading-tight">{email ?? "\u2014"}</p>
           </div>
-        </div>
+          <GearIcon />
+        </Link>
 
-        {/* Account & Billing + Logout */}
-        <div className="px-3 pb-3 space-y-0.5">
-          <Link
-            to="/settings"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] hover:text-[#0F0F0F] transition-colors"
-          >
-            Account &amp; billing
-          </Link>
-          <button
-            onClick={handleLogout}
-            disabled={loggingOut}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-[#737373] hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
-          >
-            <LogoutIcon />
-            {loggingOut ? "Signing out\u2026" : "Sign out"}
-          </button>
-        </div>
+        {/* Sign out */}
+        <button
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-[#737373] hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+        >
+          <LogoutIcon />
+          {loggingOut ? "Signing out…" : "Sign out"}
+        </button>
       </div>
     </aside>
   );
