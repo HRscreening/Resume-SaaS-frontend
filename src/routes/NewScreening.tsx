@@ -52,7 +52,14 @@ export default function NewScreening() {
     setAnalyzingJD(true);
     try {
       const result = await analyzeJD(jdText);
-      setRubric(result);
+      const sorted = {
+        ...result,
+        categories: result.categories.map((cat) => ({
+          ...cat,
+          subcategories: [...cat.subcategories].sort((a, b) => b.weight - a.weight),
+        })),
+      };
+      setRubric(sorted);
       setStep(2);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to analyze JD");
@@ -73,9 +80,12 @@ export default function NewScreening() {
     if (!rubric) return;
     const updated = rubric.categories.map((cat, ci) => {
       if (ci !== catIdx) return cat;
-      const subs = cat.subcategories.map((s, si) =>
+      let subs = cat.subcategories.map((s, si) =>
         si === subIdx ? { ...s, ...updates } : s
       );
+      if ("weight" in updates) {
+        subs = [...subs].sort((a, b) => b.weight - a.weight);
+      }
       return { ...cat, subcategories: subs };
     });
     setRubric({ ...rubric, categories: updated });
