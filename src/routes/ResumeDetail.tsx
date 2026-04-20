@@ -32,7 +32,7 @@ export default function ResumeDetail() {
   const { id, resumeId } = useParams({ strict: false }) as { id: string; resumeId: string };
 
   // Panel layout state
-  const [leftWidth, setLeftWidth]         = useState(48);      // % of body width
+  const [leftWidth, setLeftWidth]         = useState(42);      // % of body width — analysis panel
   const [pdfCollapsed, setPdfCollapsed]   = useState(false);   // hide PDF panel
   const [infoCollapsed, setInfoCollapsed] = useState(false);   // hide analysis panel
   const containerRef = useRef<HTMLDivElement>(null);
@@ -162,7 +162,7 @@ export default function ResumeDetail() {
         {/* Panel toggles */}
         <div className="flex items-center gap-1 shrink-0 ml-1">
           <button
-            onClick={() => { setPdfCollapsed(false); setInfoCollapsed(false); setLeftWidth(48); }}
+            onClick={() => { setPdfCollapsed(false); setInfoCollapsed(false); setLeftWidth(42); }}
             title="Reset layout"
             className="h-7 px-2 rounded-lg text-xs text-[#737373] hover:bg-[#F5F3EE] hover:text-[#0F0F0F] transition-colors"
           >
@@ -188,105 +188,37 @@ export default function ResumeDetail() {
       {/* ─── Body ──────────────────────────────────────────────── */}
       <div ref={containerRef} className="flex flex-1 min-h-0 overflow-hidden select-none">
 
-        {/* Left: PDF panel */}
-        {!pdfCollapsed && (
-          <div
-            className="flex flex-col border-r border-[#E8E5DF] bg-[#F5F3EE] overflow-hidden"
-            style={{ width: infoCollapsed ? "100%" : `${leftWidth}%` }}
-          >
-            {/* PDF panel header */}
-            <div className="h-9 shrink-0 border-b border-[#E8E5DF] bg-white px-4 flex items-center justify-between">
-              <span className="text-xs text-[#737373] font-medium truncate max-w-[70%]">
-                {resume.original_filename}
-              </span>
-              <div className="flex items-center gap-2">
-                {pdfData?.url && (
-                  <a href={pdfData.url} target="_blank" rel="noopener noreferrer"
-                    className="text-xs text-[#737373] hover:text-[#0F0F0F] flex items-center gap-1">
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 2H2a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V8M8 1h3v3M11 1 6 6" />
-                    </svg>
-                    Open
-                  </a>
-                )}
-                {!infoCollapsed && (
-                  <button onClick={() => setPdfCollapsed(true)}
-                    title="Hide PDF"
-                    className="text-[#A0A0A0] hover:text-[#0F0F0F] transition-colors">
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                      <path d="M9 2l-5 5 5 5" />
-                    </svg>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* PDF viewer */}
-            <div className="flex-1 min-h-0 relative">
-              {(pdfLoading || (!pdfBlobUrl && isPdf)) && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-5 w-5 rounded-full border-2 border-[#A0A0A0] border-t-transparent animate-spin" />
-                </div>
-              )}
-              {pdfBlobUrl && isPdf && (
-                <iframe src={pdfBlobUrl} className="w-full h-full border-0" title="Resume PDF" />
-              )}
-              {pdfData?.url && !isPdf && !pdfLoading && (
-                <div className="flex flex-col items-center justify-center h-full gap-3 text-[#737373]">
-                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M23 4H10a2 2 0 0 0-2 2v28a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2V13z"/>
-                    <path d="M23 4v9h9M14 22h12M14 28h8"/>
-                  </svg>
-                  <p className="text-sm font-medium text-[#404040]">DOCX — cannot preview</p>
-                  <a href={pdfData.url} target="_blank" rel="noopener noreferrer"
-                    className="text-sm text-[#0F0F0F] underline">Download to view</a>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Drag divider */}
-        {!pdfCollapsed && !infoCollapsed && (
-          <div
-            onMouseDown={startDrag}
-            className="w-1.5 shrink-0 bg-[#E8E5DF] hover:bg-[#C85A17] cursor-col-resize transition-colors flex items-center justify-center group"
-            title="Drag to resize"
-          >
-            <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {[0,1,2,3,4].map((i) => <div key={i} className="h-0.5 w-0.5 rounded-full bg-white" />)}
-            </div>
-          </div>
-        )}
-
-        {/* Collapsed PDF restore strip */}
-        {pdfCollapsed && !infoCollapsed && (
+        {/* Collapsed analysis restore strip — LEFT edge */}
+        {infoCollapsed && !pdfCollapsed && (
           <button
-            onClick={() => setPdfCollapsed(false)}
-            className="w-8 shrink-0 border-r border-[#E8E5DF] bg-[#F5F3EE] hover:bg-[#EAE7E1] transition-colors flex flex-col items-center justify-center gap-2 text-[#737373] hover:text-[#0F0F0F]"
-            title="Show PDF"
+            onClick={() => setInfoCollapsed(false)}
+            className="w-8 shrink-0 border-r border-[#E8E5DF] bg-white hover:bg-[#F5F3EE] transition-colors flex flex-col items-center justify-center gap-2 text-[#737373] hover:text-[#0F0F0F]"
+            title="Show analysis"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M5 2l5 5-5 5" />
             </svg>
-            <span className="text-xs font-medium" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>PDF</span>
+            <span className="text-xs font-medium" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>Analysis</span>
           </button>
         )}
 
-        {/* Right: Analysis panel */}
+        {/* Left: Analysis panel */}
         {!infoCollapsed && (
-          <div className="flex-1 min-w-0 overflow-y-auto">
-            <div className="max-w-xl mx-auto px-6 py-6 space-y-5">
+          <div
+            className="flex flex-col border-r border-[#E8E5DF] overflow-y-auto"
+            style={{ width: pdfCollapsed ? "100%" : `${leftWidth}%` }}
+          >
+            <div className="max-w-xl mx-auto px-6 py-6 space-y-5 w-full">
 
-              {/* Collapse / show-PDF-only button in analysis header */}
+              {/* Hide analysis button */}
               {!pdfCollapsed && (
                 <div className="flex justify-end -mb-2">
                   <button onClick={() => setInfoCollapsed(true)}
                     className="text-xs text-[#A0A0A0] hover:text-[#0F0F0F] flex items-center gap-1 transition-colors">
+                    Hide analysis
                     <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                       <path d="M9 2l5 5-5 5" />
                     </svg>
-                    Hide analysis
                   </button>
                 </div>
               )}
@@ -372,17 +304,85 @@ export default function ResumeDetail() {
           </div>
         )}
 
-        {/* Collapsed analysis restore strip */}
-        {infoCollapsed && !pdfCollapsed && (
+        {/* Drag divider */}
+        {!pdfCollapsed && !infoCollapsed && (
+          <div
+            onMouseDown={startDrag}
+            className="w-1.5 shrink-0 bg-[#E8E5DF] hover:bg-[#C85A17] cursor-col-resize transition-colors flex items-center justify-center group"
+            title="Drag to resize"
+          >
+            <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {[0,1,2,3,4].map((i) => <div key={i} className="h-0.5 w-0.5 rounded-full bg-white" />)}
+            </div>
+          </div>
+        )}
+
+        {/* Right: PDF panel */}
+        {!pdfCollapsed && (
+          <div className="flex flex-col bg-[#F5F3EE] overflow-hidden flex-1 min-w-0">
+            {/* PDF panel header */}
+            <div className="h-9 shrink-0 border-b border-[#E8E5DF] bg-white px-4 flex items-center justify-between">
+              <span className="text-xs text-[#737373] font-medium truncate max-w-[70%]">
+                {resume.original_filename}
+              </span>
+              <div className="flex items-center gap-2">
+                {pdfData?.url && (
+                  <a href={pdfData.url} target="_blank" rel="noopener noreferrer"
+                    className="text-xs text-[#737373] hover:text-[#0F0F0F] flex items-center gap-1">
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 2H2a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V8M8 1h3v3M11 1 6 6" />
+                    </svg>
+                    Open
+                  </a>
+                )}
+                {!infoCollapsed && (
+                  <button onClick={() => setPdfCollapsed(true)}
+                    title="Hide PDF"
+                    className="text-[#A0A0A0] hover:text-[#0F0F0F] transition-colors">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                      <path d="M5 2l5 5-5 5" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* PDF viewer */}
+            <div className="flex-1 min-h-0 relative">
+              {(pdfLoading || (!pdfBlobUrl && isPdf)) && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-5 w-5 rounded-full border-2 border-[#A0A0A0] border-t-transparent animate-spin" />
+                </div>
+              )}
+              {pdfBlobUrl && isPdf && (
+                <iframe src={pdfBlobUrl} className="w-full h-full border-0" title="Resume PDF" />
+              )}
+              {pdfData?.url && !isPdf && !pdfLoading && (
+                <div className="flex flex-col items-center justify-center h-full gap-3 text-[#737373]">
+                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 4H10a2 2 0 0 0-2 2v28a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2V13z"/>
+                    <path d="M23 4v9h9M14 22h12M14 28h8"/>
+                  </svg>
+                  <p className="text-sm font-medium text-[#404040]">DOCX — cannot preview</p>
+                  <a href={pdfData.url} target="_blank" rel="noopener noreferrer"
+                    className="text-sm text-[#0F0F0F] underline">Download to view</a>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Collapsed PDF restore strip — RIGHT edge */}
+        {pdfCollapsed && !infoCollapsed && (
           <button
-            onClick={() => setInfoCollapsed(false)}
-            className="w-8 shrink-0 border-l border-[#E8E5DF] bg-white hover:bg-[#F5F3EE] transition-colors flex flex-col items-center justify-center gap-2 text-[#737373] hover:text-[#0F0F0F]"
-            title="Show analysis"
+            onClick={() => setPdfCollapsed(false)}
+            className="w-8 shrink-0 border-l border-[#E8E5DF] bg-[#F5F3EE] hover:bg-[#EAE7E1] transition-colors flex flex-col items-center justify-center gap-2 text-[#737373] hover:text-[#0F0F0F]"
+            title="Show PDF"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M9 2l-5 5 5 5" />
             </svg>
-            <span className="text-xs font-medium" style={{ writingMode: "vertical-rl" }}>Analysis</span>
+            <span className="text-xs font-medium" style={{ writingMode: "vertical-rl" }}>PDF</span>
           </button>
         )}
 
