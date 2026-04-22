@@ -56,7 +56,12 @@ export default function NewScreening() {
         ...result,
         categories: result.categories.map((cat) => ({
           ...cat,
-          subcategories: [...cat.subcategories].sort((a, b) => b.weight - a.weight),
+          // Non-negotiables first, then by weight descending
+          subcategories: [...cat.subcategories].sort((a, b) => {
+            if (a.is_non_negotiable && !b.is_non_negotiable) return -1;
+            if (!a.is_non_negotiable && b.is_non_negotiable) return 1;
+            return b.weight - a.weight;
+          }),
         })),
       };
       setRubric(sorted);
@@ -84,7 +89,11 @@ export default function NewScreening() {
         si === subIdx ? { ...s, ...updates } : s
       );
       if ("weight" in updates) {
-        subs = [...subs].sort((a, b) => b.weight - a.weight);
+        subs = [...subs].sort((a, b) => {
+          if (a.is_non_negotiable && !b.is_non_negotiable) return -1;
+          if (!a.is_non_negotiable && b.is_non_negotiable) return 1;
+          return b.weight - a.weight;
+        });
       }
       return { ...cat, subcategories: subs };
     });
@@ -329,7 +338,24 @@ export default function NewScreening() {
                   )}
 
                   {cat.subcategories.map((sub, subIdx) => (
-                    <div key={subIdx} className="border border-[#E8E5DF] rounded-xl p-3.5">
+                    <div key={subIdx} className={`rounded-xl p-3.5 border ${sub.is_non_negotiable ? "border-red-300 bg-red-50/40" : "border-[#E8E5DF]"}`}>
+                      {/* Badges */}
+                      {(sub.is_non_negotiable || sub.is_external_context) && (
+                        <div className="flex items-center gap-1.5 mb-2">
+                          {sub.is_non_negotiable && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
+                              <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><polygon points="4,0 8,8 0,8"/></svg>
+                              Must Have
+                            </span>
+                          )}
+                          {sub.is_external_context && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+                              <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 1.5C6 4 5 6 5 8s1 4 3 6.5M8 1.5C10 4 11 6 11 8s-1 4-3 6.5M1.5 8h13"/></svg>
+                              External Signal
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="flex items-start gap-3">
                         <div className="flex-1 min-w-0 space-y-2">
                           <input
@@ -337,7 +363,8 @@ export default function NewScreening() {
                             value={sub.name}
                             onChange={(e) => updateSubcategory(catIdx, subIdx, { name: e.target.value })}
                             placeholder="Subcategory name"
-                            className="w-full text-sm font-medium text-[#0F0F0F] bg-transparent border-0 border-b border-transparent hover:border-[#D4D4D4] focus:border-[#C85A17] focus:outline-none pb-0.5 transition-colors"
+                            disabled={sub.is_external_context}
+                            className="w-full text-sm font-medium text-[#0F0F0F] bg-transparent border-0 border-b border-transparent hover:border-[#D4D4D4] focus:border-[#C85A17] focus:outline-none pb-0.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                           />
                           <input
                             type="text"

@@ -32,6 +32,8 @@ export interface Subcategory {
   name: string;
   weight: number; // 1–5 importance (1=low, 5=critical); normalised to weights during scoring
   description: string;
+  is_non_negotiable?: boolean;
+  is_external_context?: boolean;
 }
 
 export interface RubricCategory {

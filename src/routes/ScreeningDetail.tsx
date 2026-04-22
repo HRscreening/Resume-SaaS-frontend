@@ -641,8 +641,20 @@ function CandidateRow({ candidate, tier, categories, onSelect }: {
     return totalW > 0 ? weighted / totalW : null;
   }
 
+  // Find non-negotiable criteria that this candidate failed (score < 4)
+  const failedNonNegotiables = categories
+    .flatMap((cat) => cat.subcategories)
+    .filter((sub) => sub.is_non_negotiable)
+    .map((sub) => {
+      const match = candidate.top_criteria.find(
+        (tc) => tc.criterion.toLowerCase().trim() === sub.name.toLowerCase().trim()
+      );
+      return match && match.score < 4 ? sub.name : null;
+    })
+    .filter(Boolean) as string[];
+
   return (
-    <tr onClick={onSelect} className="cursor-pointer transition-colors hover:bg-[#FAFAF8]">
+    <tr onClick={onSelect} className={`cursor-pointer transition-colors hover:bg-[#FAFAF8] ${failedNonNegotiables.length > 0 ? "bg-red-50/40" : ""}`}>
       <td className="px-5 py-3.5">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-[#F0EDE8] flex items-center justify-center shrink-0">
@@ -655,6 +667,18 @@ function CandidateRow({ candidate, tier, categories, onSelect }: {
             )}
             {candidate.candidate_phone && (
               <p className="text-xs text-[#737373] truncate">{candidate.candidate_phone}</p>
+            )}
+            {failedNonNegotiables.length > 0 && (
+              <div className="flex items-center gap-1 mt-0.5">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="#DC2626">
+                  <path d="M6 1L1 10h10L6 1z" />
+                  <rect x="5.5" y="5" width="1" height="3" fill="white" rx="0.5" />
+                  <circle cx="6" cy="9" r="0.6" fill="white" />
+                </svg>
+                <p className="text-xs text-red-600 font-medium">
+                  Failed: {failedNonNegotiables.join(", ")}
+                </p>
+              </div>
             )}
           </div>
         </div>

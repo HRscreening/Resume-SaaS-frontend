@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { getResumeDetail, getResumePdfUrl } from "@/lib/api";
+import { getResumeDetail, getResumePdfUrl, getScreening } from "@/lib/api";
 import { confidenceColor, formatDate } from "@/lib/utils";
 import type { Resume, Score } from "@/types";
 
@@ -74,6 +74,24 @@ export default function ResumeDetail() {
     queryKey: ["resume-detail", id, resumeId],
     queryFn: () => getResumeDetail(id, resumeId) as Promise<ResumeDetailData>,
   });
+
+  const { data: screening } = useQuery({
+    queryKey: ["screening", id],
+    queryFn: () => getScreening(id),
+    enabled: !!data,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Build set of non-negotiable criterion names from rubric
+  const nonNegotiableSet = useMemo(() => {
+    const set = new Set<string>();
+    screening?.rubric?.categories?.forEach((cat) =>
+      cat.subcategories?.forEach((sub) => {
+        if (sub.is_non_negotiable) set.add(sub.name);
+      })
+    );
+    return set;
+  }, [screening]);
 
   const { data: pdfData } = useQuery({
     queryKey: ["resume-pdf", id, resumeId],
@@ -293,7 +311,20 @@ export default function ResumeDetail() {
               <div>
                 <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-3">Criteria Breakdown</p>
                 <div className="space-y-2">
-                  {score.breakdown.map((cs, i) => <CriterionCard key={i} cs={cs} />)}
+                  {[...score.breakdown]
+                    .sort((a, b) => {
+                      const aNn = nonNegotiableSet.has(a.criterion) ? 1 : 0;
+                      const bNn = nonNegotiableSet.has(b.criterion) ? 1 : 0;
+                      return bNn - aNn;
+                    })
+                    .map((cs, i) => (
+                      <CriterionCard
+                        key={i}
+                        cs={cs}
+                        isNonNegotiable={nonNegotiableSet.has(cs.criterion)}
+                      />
+                    ))
+                  }
                 </div>
               </div>
 
@@ -394,18 +425,26 @@ export default function ResumeDetail() {
 
 // ─── Criterion Card ───────────────────────────────────────────────────────────
 
-function CriterionCard({ cs }: {
-  cs: { criterion: string; score: number; confidence: "high" | "medium" | "low"; evidence: string[]; explanation: string }
+function CriterionCard({ cs, isNonNegotiable = false }: {
+  cs: { criterion: string; score: number; confidence: "high" | "medium" | "low"; evidence: string[]; explanation: string };
+  isNonNegotiable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const pct      = cs.score * 10;
   const barColor = criterionBarColor(cs.score);
+  const failed   = isNonNegotiable && cs.score < 4;
+
+  const borderClass = failed
+    ? "border-red-400 bg-red-50"
+    : isNonNegotiable
+      ? "border-amber-300 bg-amber-50/30"
+      : "border-[#E8E5DF] bg-white";
 
   return (
-    <div className="bg-white border border-[#E8E5DF] rounded-xl overflow-hidden">
+    <div className={`border rounded-xl overflow-hidden ${borderClass}`}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#FAFAF8] transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-black/5 transition-colors"
       >
         <div className="shrink-0 w-14">
           <span className="text-sm font-bold text-[#0F0F0F]">
@@ -417,8 +456,20 @@ function CriterionCard({ cs }: {
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-[#0F0F0F] truncate">{cs.criterion}</span>
+            {isNonNegotiable && (
+              <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-semibold ${
+                failed ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+              }`}>
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
+                  <path d="M6 1L1 10h10L6 1z" />
+                  <rect x="5.5" y="5" width="1" height="3" fill="white" rx="0.5" />
+                  <circle cx="6" cy="9" r="0.6" fill="white" />
+                </svg>
+                Must Have{failed ? " · FAILED" : ""}
+              </span>
+            )}
             <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${confidenceColor(cs.confidence)}`}>
               {cs.confidence}
             </span>
