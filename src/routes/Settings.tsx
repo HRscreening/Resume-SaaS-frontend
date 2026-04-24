@@ -103,18 +103,67 @@ export default function Settings() {
   async function handleRazorpayCheckout(plan: "pro" | "business" | "enterprise") {
     setPaymentLoading(true);
     setPaymentError(null);
+    const previousPlan = profile?.plan;
+
     try {
       const order = await createRazorpayOrder(plan);
 
-      await new Promise<void>((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = "https://checkout.razorpay.com/v1/checkout.js";
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error("Failed to load Razorpay"));
-        document.body.appendChild(script);
-      });
+      // Load checkout.js once
+      if (!document.querySelector('script[src*="checkout.razorpay"]')) {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "https://checkout.razorpay.com/v1/checkout.js";
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("Failed to load Razorpay"));
+          document.body.appendChild(script);
+        });
+      }
 
       await new Promise<void>((resolve, reject) => {
+        let handlerFired = false;
+
+        const onSuccess = async (paymentId: string, orderId: string, signature: string) => {
+          handlerFired = true;
+          try {
+            await verifyRazorpayPayment({
+              razorpay_order_id: orderId,
+              razorpay_payment_id: paymentId,
+              razorpay_signature: signature,
+              plan,
+            });
+            const updated = await getProfile();
+            setProfile(updated);
+            const upgradedName = UPGRADE_PLANS.find(p => p.key === plan)?.name ?? plan;
+            setPaymentSuccess(`You're now on the ${upgradedName} plan!`);
+            setTimeout(() => setPaymentSuccess(null), 6000);
+            resolve();
+          } catch {
+            reject(new Error("Payment verification failed. Contact support."));
+          }
+        };
+
+        // UPI async: poll profile for up to 20s after popup closes
+        const pollAfterDismiss = async () => {
+          if (handlerFired) return;
+          setPaymentSuccess("Checking payment status…");
+          for (let i = 0; i < 10; i++) {
+            await new Promise((r) => setTimeout(r, 2000));
+            try {
+              const updated = await getProfile();
+              if (updated.plan !== previousPlan) {
+                setProfile(updated);
+                const upgradedName = UPGRADE_PLANS.find(p => p.key === plan)?.name ?? plan;
+                setPaymentSuccess(`You're now on the ${upgradedName} plan!`);
+                setTimeout(() => setPaymentSuccess(null), 6000);
+                resolve();
+                return;
+              }
+            } catch { /* ignore */ }
+          }
+          setPaymentSuccess(null);
+          reject(new Error("cancelled"));
+        };
+
         const options = {
           key: order.key_id,
           amount: order.amount,
@@ -127,32 +176,14 @@ export default function Settings() {
             name: profile?.full_name ?? "",
           },
           theme: { color: "#0F0F0F" },
-          handler: async (response: {
+          handler: (response: {
             razorpay_payment_id: string;
             razorpay_order_id: string;
             razorpay_signature: string;
           }) => {
-            try {
-              await verifyRazorpayPayment({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                plan,
-              });
-              // Refresh profile to show updated plan
-              const updated = await getProfile();
-              setProfile(updated);
-              const upgradedName = UPGRADE_PLANS.find(p => p.key === plan)?.name ?? plan;
-              setPaymentSuccess(`You're now on the ${upgradedName} plan!`);
-              setTimeout(() => setPaymentSuccess(null), 6000);
-              resolve();
-            } catch {
-              reject(new Error("Payment verification failed. Contact support."));
-            }
+            onSuccess(response.razorpay_payment_id, response.razorpay_order_id, response.razorpay_signature);
           },
-          modal: {
-            ondismiss: () => reject(new Error("cancelled")),
-          },
+          modal: { ondismiss: pollAfterDismiss },
         };
 
         // @ts-expect-error — Razorpay loaded via script tag
