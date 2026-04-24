@@ -6,11 +6,17 @@ import { createClient } from "@/lib/supabase/client";
 import type { Profile, UsageResponse } from "@/types";
 
 const PLAN_DETAILS = {
-  FREE: { name: "Free", price: "$0/mo", resumes: 50 },
-  PRO: { name: "Pro", price: "$29/mo", resumes: 500 },
-  BUSINESS: { name: "Business", price: "$99/mo", resumes: 2000 },
-  ENTERPRISE: { name: "Enterprise", price: "Custom", resumes: Infinity },
+  FREE:       { name: "Free",       price: "₹0/mo",   resumes: 50  },
+  PRO:        { name: "Starter",    price: "₹10/mo",  resumes: 100 },
+  BUSINESS:   { name: "Growth",     price: "₹20/mo",  resumes: 200 },
+  ENTERPRISE: { name: "Scale",      price: "₹30/mo",  resumes: 300 },
 };
+
+const UPGRADE_PLANS = [
+  { key: "pro"        as const, name: "Starter",  price: "₹10/mo",  resumes: 100, amount: "₹10" },
+  { key: "business"   as const, name: "Growth",   price: "₹20/mo",  resumes: 200, amount: "₹20" },
+  { key: "enterprise" as const, name: "Scale",    price: "₹30/mo",  resumes: 300, amount: "₹30" },
+];
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -93,7 +99,7 @@ export default function Settings() {
     }
   }
 
-  async function handleRazorpayCheckout(plan: "pro" | "business") {
+  async function handleRazorpayCheckout(plan: "pro" | "business" | "enterprise") {
     setPaymentLoading(true);
     setPaymentError(null);
     try {
@@ -342,38 +348,44 @@ export default function Settings() {
           </div>
         )}
 
-        <div className="flex flex-col gap-3">
-          {profile?.plan === "FREE" && (
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => handleRazorpayCheckout("pro")}
-                disabled={paymentLoading}
-                className="h-9 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center gap-2"
+        {/* Plan cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+          {UPGRADE_PLANS.map((plan) => {
+            const isCurrent = profile?.plan === plan.key.toUpperCase();
+            const isDowngrade = ["PRO","BUSINESS","ENTERPRISE"].indexOf(profile?.plan ?? "") >
+              ["pro","business","enterprise"].indexOf(plan.key);
+            return (
+              <div
+                key={plan.key}
+                className={`rounded-xl border p-4 flex flex-col gap-3 ${isCurrent ? "border-[#0F0F0F] bg-[#F5F3EE]" : "border-[#E8E5DF] bg-white"}`}
               >
-                {paymentLoading ? <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : null}
-                Upgrade to Pro — ₹2,900/mo
-              </button>
-              <button
-                onClick={() => handleRazorpayCheckout("business")}
-                disabled={paymentLoading}
-                className="h-9 px-4 border border-[#D4D4D4] text-sm font-medium text-[#404040] rounded-xl hover:bg-[#F5F3EE] disabled:opacity-60 transition-colors"
-              >
-                Business — ₹9,900/mo
-              </button>
-            </div>
-          )}
-          {profile?.plan !== "FREE" && (
-            <button
-              onClick={handleManageBilling}
-              className="h-9 px-4 border border-[#D4D4D4] text-sm font-medium text-[#404040] rounded-xl hover:bg-[#F5F3EE] transition-colors w-fit"
-            >
-              Manage billing
-            </button>
-          )}
-          {paymentError && (
-            <p className="text-xs text-red-600">{paymentError}</p>
-          )}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-semibold text-[#0F0F0F]">{plan.name}</span>
+                    {isCurrent && (
+                      <span className="text-xs px-2 py-0.5 bg-[#0F0F0F] text-white rounded-full">Current</span>
+                    )}
+                  </div>
+                  <p className="text-xl font-bold text-[#0F0F0F]">{plan.price}</p>
+                  <p className="text-xs text-[#737373] mt-1">{plan.resumes} resumes/month</p>
+                </div>
+                {!isCurrent && !isDowngrade && (
+                  <button
+                    onClick={() => handleRazorpayCheckout(plan.key)}
+                    disabled={paymentLoading}
+                    className="h-8 px-3 bg-[#0F0F0F] text-white text-xs font-medium rounded-lg hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
+                  >
+                    {paymentLoading ? <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" /> : null}
+                    Upgrade — {plan.amount}
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
+        {paymentError && (
+          <p className="text-xs text-red-600 mt-2">{paymentError}</p>
+        )}
       </div>
 
       {/* Token Usage & Cost */}
