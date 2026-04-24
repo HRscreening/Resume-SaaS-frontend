@@ -32,6 +32,7 @@ export default function Settings() {
   const [downloadingUsage, setDownloadingUsage] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
 
   // Editable fields
   const [name, setName] = useState("");
@@ -141,6 +142,9 @@ export default function Settings() {
               // Refresh profile to show updated plan
               const updated = await getProfile();
               setProfile(updated);
+              const upgradedName = UPGRADE_PLANS.find(p => p.key === plan)?.name ?? plan;
+              setPaymentSuccess(`You're now on the ${upgradedName} plan!`);
+              setTimeout(() => setPaymentSuccess(null), 6000);
               resolve();
             } catch {
               reject(new Error("Payment verification failed. Contact support."));
@@ -313,78 +317,84 @@ export default function Settings() {
 
       {/* Plan & Usage */}
       <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6 mb-5">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-semibold text-[#0F0F0F]">Plan & billing</h2>
-          <span className="text-xs font-medium px-2.5 py-1 rounded-lg bg-[#F5F3EE] border border-[#D4D4D4] text-[#404040]">
-            {planInfo.name}
-          </span>
-        </div>
+        <h2 className="text-base font-semibold text-[#0F0F0F] mb-5">Plan & billing</h2>
 
-        <div className="flex items-baseline gap-1 mb-1">
-          <span className="text-2xl font-bold text-[#0F0F0F]">{planInfo.price}</span>
-        </div>
-        <p className="text-sm text-[#737373] mb-5">
-          {planInfo.resumes === Infinity ? "Unlimited" : planInfo.resumes.toLocaleString()} resumes/month
-        </p>
-
-        {usage && (
-          <div className="mb-5">
-            <div className="flex items-center justify-between text-xs text-[#737373] mb-1.5">
-              <span>Monthly usage</span>
-              <span>{usage.resumes_processed} / {usage.quota_limit}</span>
-            </div>
-            <div className="h-2 w-full bg-[#E8E5DF] rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  usage.quota_limit > 0 && usage.resumes_processed / usage.quota_limit >= 0.9
-                    ? "bg-red-500"
-                    : "bg-[#0F0F0F]"
-                }`}
-                style={{
-                  width: `${usage.quota_limit > 0 ? Math.min(100, Math.round((usage.resumes_processed / usage.quota_limit) * 100)) : 0}%`,
-                }}
-              />
-            </div>
+        {/* Success banner */}
+        {paymentSuccess && (
+          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-5">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M3 8.5l3 3 7-7" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <p className="text-sm text-green-800 font-medium">{paymentSuccess}</p>
           </div>
         )}
 
-        {/* Plan cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+        {/* Current plan hero */}
+        <div className="bg-[#F5F3EE] rounded-xl p-4 mb-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-[#737373] mb-0.5">Current plan</p>
+            <p className="text-lg font-bold text-[#0F0F0F]">{planInfo.name}</p>
+            <p className="text-sm text-[#737373]">{planInfo.price} · {planInfo.resumes === Infinity ? "Unlimited" : planInfo.resumes.toLocaleString()} resumes/month</p>
+          </div>
+          {usage && (
+            <div className="text-right min-w-[100px]">
+              <p className="text-xs text-[#737373] mb-1">This month</p>
+              <p className="text-sm font-semibold text-[#0F0F0F]">{usage.resumes_processed} <span className="font-normal text-[#737373]">/ {usage.quota_limit}</span></p>
+              <div className="h-1.5 w-24 bg-[#E8E5DF] rounded-full overflow-hidden mt-1.5 ml-auto">
+                <div
+                  className={`h-full rounded-full ${usage.quota_limit > 0 && usage.resumes_processed / usage.quota_limit >= 0.9 ? "bg-red-500" : "bg-[#0F0F0F]"}`}
+                  style={{ width: `${usage.quota_limit > 0 ? Math.min(100, Math.round((usage.resumes_processed / usage.quota_limit) * 100)) : 0}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* All plan cards */}
+        <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-3">Available plans</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Free */}
+          <div className={`rounded-xl border p-4 flex flex-col gap-2 ${profile?.plan === "FREE" ? "border-[#0F0F0F] bg-[#F5F3EE]" : "border-[#E8E5DF]"}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-[#0F0F0F]">Free</span>
+              {profile?.plan === "FREE" && <span className="text-xs px-1.5 py-0.5 bg-[#0F0F0F] text-white rounded-full">Active</span>}
+            </div>
+            <p className="text-lg font-bold text-[#0F0F0F]">₹0<span className="text-xs font-normal text-[#737373]">/mo</span></p>
+            <p className="text-xs text-[#737373]">50 resumes</p>
+          </div>
+
           {UPGRADE_PLANS.map((plan) => {
             const isCurrent = profile?.plan === plan.key.toUpperCase();
-            const isDowngrade = ["PRO","BUSINESS","ENTERPRISE"].indexOf(profile?.plan ?? "") >
-              ["pro","business","enterprise"].indexOf(plan.key);
+            const planOrder = ["FREE","PRO","BUSINESS","ENTERPRISE"];
+            const isDowngrade = planOrder.indexOf(profile?.plan ?? "FREE") > planOrder.indexOf(plan.key.toUpperCase());
             return (
               <div
                 key={plan.key}
-                className={`rounded-xl border p-4 flex flex-col gap-3 ${isCurrent ? "border-[#0F0F0F] bg-[#F5F3EE]" : "border-[#E8E5DF] bg-white"}`}
+                className={`rounded-xl border p-4 flex flex-col gap-2 ${isCurrent ? "border-[#0F0F0F] bg-[#F5F3EE]" : "border-[#E8E5DF]"}`}
               >
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-semibold text-[#0F0F0F]">{plan.name}</span>
-                    {isCurrent && (
-                      <span className="text-xs px-2 py-0.5 bg-[#0F0F0F] text-white rounded-full">Current</span>
-                    )}
-                  </div>
-                  <p className="text-xl font-bold text-[#0F0F0F]">{plan.price}</p>
-                  <p className="text-xs text-[#737373] mt-1">{plan.resumes} resumes/month</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-[#0F0F0F]">{plan.name}</span>
+                  {isCurrent && <span className="text-xs px-1.5 py-0.5 bg-[#0F0F0F] text-white rounded-full">Active</span>}
                 </div>
+                <p className="text-lg font-bold text-[#0F0F0F]">{plan.amount}<span className="text-xs font-normal text-[#737373]">/mo</span></p>
+                <p className="text-xs text-[#737373]">{plan.resumes} resumes</p>
                 {!isCurrent && !isDowngrade && (
                   <button
                     onClick={() => handleRazorpayCheckout(plan.key)}
                     disabled={paymentLoading}
-                    className="h-8 px-3 bg-[#0F0F0F] text-white text-xs font-medium rounded-lg hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
+                    className="mt-1 h-7 px-2 bg-[#0F0F0F] text-white text-xs font-medium rounded-lg hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center justify-center gap-1.5"
                   >
                     {paymentLoading ? <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" /> : null}
-                    Upgrade — {plan.amount}
+                    Upgrade
                   </button>
                 )}
               </div>
             );
           })}
         </div>
+
         {paymentError && (
-          <p className="text-xs text-red-600 mt-2">{paymentError}</p>
+          <p className="text-xs text-red-600 mt-3">{paymentError}</p>
         )}
       </div>
 
