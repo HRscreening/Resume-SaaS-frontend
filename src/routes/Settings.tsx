@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { getProfile, updateProfile, getUsage, createPortalSession, deleteAccount } from "@/lib/api";
+import { getProfile, updateProfile, getUsage, createPortalSession, deleteAccount, getTokenUsage } from "@/lib/api";
 import { clearAuthCache } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, UsageResponse } from "@/types";
@@ -23,6 +23,7 @@ export default function Settings() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [downloadingUsage, setDownloadingUsage] = useState(false);
 
   // Editable fields
   const [name, setName] = useState("");
@@ -87,6 +88,38 @@ export default function Settings() {
       setSaveError(err instanceof Error ? err.message : "Delete failed. Please try again.");
       setDeleting(false);
       setShowDeleteConfirm(false);
+    }
+  }
+
+  async function handleDownloadTokenUsage(format: "json" | "csv") {
+    setDownloadingUsage(true);
+    try {
+      const data = await getTokenUsage();
+      let blob: Blob;
+      let filename: string;
+
+      if (format === "json") {
+        blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        filename = `hiresort_token_usage_${new Date().toISOString().slice(0, 10)}.json`;
+      } else {
+        const headers = ["created_at", "stage", "model", "input_tokens", "output_tokens", "total_tokens", "cost_usd", "screening_id", "resume_id"];
+        const rows = data.entries.map((e) =>
+          headers.map((h) => JSON.stringify(e[h as keyof typeof e] ?? "")).join(",")
+        );
+        blob = new Blob([[headers.join(","), ...rows].join("\n")], { type: "text/csv" });
+        filename = `hiresort_token_usage_${new Date().toISOString().slice(0, 10)}.csv`;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setSaveError("Failed to download token usage data.");
+    } finally {
+      setDownloadingUsage(false);
     }
   }
 
@@ -260,6 +293,36 @@ export default function Settings() {
               Upgrade to Pro
             </a>
           )}
+        </div>
+      </div>
+
+      {/* Token Usage & Cost */}
+      <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6">
+        <h2 className="text-base font-semibold text-[#0F0F0F] mb-1">AI usage & cost</h2>
+        <p className="text-sm text-[#737373] mb-4">
+          Download a breakdown of your Gemini API token usage and estimated cost per stage.
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => handleDownloadTokenUsage("json")}
+            disabled={downloadingUsage}
+            className="h-9 px-4 border border-[#E8E5DF] text-sm font-medium text-[#0F0F0F] rounded-xl hover:bg-[#F5F3EE] transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 2v7M4 6l3 3 3-3M2 11h10" />
+            </svg>
+            {downloadingUsage ? "Downloading…" : "Download JSON"}
+          </button>
+          <button
+            onClick={() => handleDownloadTokenUsage("csv")}
+            disabled={downloadingUsage}
+            className="h-9 px-4 border border-[#E8E5DF] text-sm font-medium text-[#0F0F0F] rounded-xl hover:bg-[#F5F3EE] transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 2v7M4 6l3 3 3-3M2 11h10" />
+            </svg>
+            {downloadingUsage ? "Downloading…" : "Download CSV"}
+          </button>
         </div>
       </div>
 

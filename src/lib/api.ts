@@ -90,6 +90,30 @@ export async function deleteAccount(): Promise<void> {
   return request<void>("/api/user/account", { method: "DELETE" });
 }
 
+export interface TokenUsageEntry {
+  stage: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  cost_usd: number;
+  screening_id: string | null;
+  resume_id: string | null;
+  created_at: string;
+}
+
+export interface TokenUsageResponse {
+  total_calls: number;
+  total_tokens: number;
+  total_cost_usd: number;
+  by_stage: Record<string, { calls: number; input_tokens: number; output_tokens: number; total_tokens: number; cost_usd: number }>;
+  entries: TokenUsageEntry[];
+}
+
+export async function getTokenUsage(): Promise<TokenUsageResponse> {
+  return request<TokenUsageResponse>("/api/user/token-usage");
+}
+
 // ─── Screenings ───────────────────────────────────────────────────────────────
 
 export async function createJob(data: {
