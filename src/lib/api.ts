@@ -255,3 +255,25 @@ export async function createCheckoutSession(plan: string): Promise<{ url: string
 export async function createPortalSession(): Promise<{ url: string }> {
   return request<{ url: string }>("/api/billing/portal", { method: "POST" });
 }
+
+export async function createRazorpayOrder(plan: string): Promise<{
+  order_id: string;
+  amount: number;
+  currency: string;
+  key_id: string;
+}> {
+  return request(`/api/billing/razorpay/order?plan=${plan}`, { method: "POST" });
+}
+
+export async function verifyRazorpayPayment(data: {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+  plan: string;
+}): Promise<{ success: boolean; plan: string }> {
+  return request("/api/billing/razorpay/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { getProfile, updateProfile, getUsage, createPortalSession, deleteAccount, getTokenUsage } from "@/lib/api";
+import { getProfile, updateProfile, getUsage, createPortalSession, deleteAccount, getTokenUsage, createRazorpayOrder, verifyRazorpayPayment } from "@/lib/api";
 import { clearAuthCache } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, UsageResponse } from "@/types";
@@ -24,6 +24,8 @@ export default function Settings() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [downloadingUsage, setDownloadingUsage] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   // Editable fields
   const [name, setName] = useState("");
@@ -88,6 +90,70 @@ export default function Settings() {
       setSaveError(err instanceof Error ? err.message : "Delete failed. Please try again.");
       setDeleting(false);
       setShowDeleteConfirm(false);
+    }
+  }
+
+  async function handleRazorpayCheckout(plan: "pro" | "business") {
+    setPaymentLoading(true);
+    setPaymentError(null);
+    try {
+      const order = await createRazorpayOrder(plan);
+
+      await new Promise<void>((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("Failed to load Razorpay"));
+        document.body.appendChild(script);
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        const options = {
+          key: order.key_id,
+          amount: order.amount,
+          currency: order.currency,
+          name: "HireSort",
+          description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
+          order_id: order.order_id,
+          prefill: {
+            email: profile?.email ?? "",
+            name: profile?.full_name ?? "",
+          },
+          theme: { color: "#0F0F0F" },
+          handler: async (response: {
+            razorpay_payment_id: string;
+            razorpay_order_id: string;
+            razorpay_signature: string;
+          }) => {
+            try {
+              await verifyRazorpayPayment({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                plan,
+              });
+              // Refresh profile to show updated plan
+              const updated = await getProfile();
+              setProfile(updated);
+              resolve();
+            } catch {
+              reject(new Error("Payment verification failed. Contact support."));
+            }
+          },
+          modal: {
+            ondismiss: () => reject(new Error("cancelled")),
+          },
+        };
+
+        // @ts-expect-error — Razorpay loaded via script tag
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Payment failed";
+      if (msg !== "cancelled") setPaymentError(msg);
+    } finally {
+      setPaymentLoading(false);
     }
   }
 
@@ -276,22 +342,36 @@ export default function Settings() {
           </div>
         )}
 
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3">
+          {profile?.plan === "FREE" && (
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => handleRazorpayCheckout("pro")}
+                disabled={paymentLoading}
+                className="h-9 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center gap-2"
+              >
+                {paymentLoading ? <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> : null}
+                Upgrade to Pro — ₹2,900/mo
+              </button>
+              <button
+                onClick={() => handleRazorpayCheckout("business")}
+                disabled={paymentLoading}
+                className="h-9 px-4 border border-[#D4D4D4] text-sm font-medium text-[#404040] rounded-xl hover:bg-[#F5F3EE] disabled:opacity-60 transition-colors"
+              >
+                Business — ₹9,900/mo
+              </button>
+            </div>
+          )}
           {profile?.plan !== "FREE" && (
             <button
               onClick={handleManageBilling}
-              className="h-9 px-4 border border-[#D4D4D4] text-sm font-medium text-[#404040] rounded-xl hover:bg-[#F5F3EE] transition-colors"
+              className="h-9 px-4 border border-[#D4D4D4] text-sm font-medium text-[#404040] rounded-xl hover:bg-[#F5F3EE] transition-colors w-fit"
             >
               Manage billing
             </button>
           )}
-          {profile?.plan === "FREE" && (
-            <a
-              href="/settings?upgrade=1"
-              className="h-9 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center"
-            >
-              Upgrade to Pro
-            </a>
+          {paymentError && (
+            <p className="text-xs text-red-600">{paymentError}</p>
           )}
         </div>
       </div>
