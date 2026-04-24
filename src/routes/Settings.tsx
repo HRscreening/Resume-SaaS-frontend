@@ -7,13 +7,13 @@ import type { Profile, UsageResponse } from "@/types";
 
 const PLAN_DETAILS = {
   FREE:       { name: "Free",       price: "₹0/mo",   resumes: 50  },
-  PRO:        { name: "Starter",    price: "₹10/mo",  resumes: 100 },
+  PRO:        { name: "Starter",    price: "₹1/mo",   resumes: 100 },
   BUSINESS:   { name: "Growth",     price: "₹20/mo",  resumes: 200 },
   ENTERPRISE: { name: "Scale",      price: "₹30/mo",  resumes: 300 },
 };
 
 const UPGRADE_PLANS = [
-  { key: "pro"        as const, name: "Starter",  price: "₹10/mo",  resumes: 100, amount: "₹10" },
+  { key: "pro"        as const, name: "Starter",  price: "₹1/mo",   resumes: 100, amount: "₹1"  },
   { key: "business"   as const, name: "Growth",   price: "₹20/mo",  resumes: 200, amount: "₹20" },
   { key: "enterprise" as const, name: "Scale",    price: "₹30/mo",  resumes: 300, amount: "₹30" },
 ];
@@ -30,7 +30,7 @@ export default function Settings() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [downloadingUsage, setDownloadingUsage] = useState(false);
-  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
 
@@ -101,7 +101,7 @@ export default function Settings() {
   }
 
   async function handleRazorpayCheckout(plan: "pro" | "business" | "enterprise") {
-    setPaymentLoading(true);
+    setPaymentLoading(plan);
     setPaymentError(null);
     const previousPlan = profile?.plan;
 
@@ -194,7 +194,7 @@ export default function Settings() {
       const msg = err instanceof Error ? err.message : "Payment failed";
       if (msg !== "cancelled") setPaymentError(msg);
     } finally {
-      setPaymentLoading(false);
+      setPaymentLoading(null);
     }
   }
 
@@ -412,11 +412,13 @@ export default function Settings() {
                 {!isCurrent && !isDowngrade && (
                   <button
                     onClick={() => handleRazorpayCheckout(plan.key)}
-                    disabled={paymentLoading}
+                    disabled={paymentLoading !== null}
                     className="mt-1 h-7 px-2 bg-[#0F0F0F] text-white text-xs font-medium rounded-lg hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center justify-center gap-1.5"
                   >
-                    {paymentLoading ? <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" /> : null}
-                    Upgrade
+                    {paymentLoading === plan.key
+                      ? <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      : null}
+                    {paymentLoading === plan.key ? "Processing…" : "Upgrade"}
                   </button>
                 )}
               </div>
