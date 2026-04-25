@@ -754,15 +754,25 @@ function RubricModal({ categories, onClose }: { categories: RubricCategory[]; on
                         </div>
                         <p className="text-xs text-[#737373] mt-0.5">{sub.description}</p>
                       </div>
-                      <div className="shrink-0 flex items-center gap-1.5" title={`Importance: ${sub.weight} / 5`}>
-                        {[1,2,3,4,5].map((i) => (
-                          <div
-                            key={i}
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={{ backgroundColor: i <= sub.weight ? "#0F0F0F" : "#E8E5DF" }}
-                          />
-                        ))}
-                        <span className="text-xs font-semibold text-[#404040] ml-1">{sub.weight}/5</span>
+                      <div className="shrink-0 flex flex-col items-end gap-1">
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((lvl) => (
+                            <div
+                              key={lvl}
+                              title={["Low", "Moderate", "Standard", "Important", "Critical"][lvl - 1]}
+                              className={`h-5 w-5 rounded-md text-[10px] font-bold flex items-center justify-center ${
+                                lvl <= sub.weight
+                                  ? "bg-[#0F0F0F] text-white"
+                                  : "bg-[#F0EDE8] text-[#A0A0A0]"
+                              }`}
+                            >
+                              {lvl}
+                            </div>
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-[#A0A0A0] font-medium">
+                          {["Low", "Moderate", "Standard", "Important", "Critical"][sub.weight - 1] ?? ""}
+                        </span>
                       </div>
                     </div>
                   ))}
