@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/api";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -101,19 +102,16 @@ export default function LoginPage() {
             <label htmlFor="password" className="block text-sm font-medium text-[#0F0F0F]">
               Password
             </label>
-            <a href="/forgot-password" className="text-xs text-[#737373] hover:text-[#0F0F0F]">
+            <Link to="/forgot-password" className="text-xs text-[#737373] hover:text-[#0F0F0F]">
               Forgot password?
-            </a>
+            </Link>
           </div>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
-            autoComplete="current-password"
-            required
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={setPassword}
+            autoComplete="current-password"
             placeholder="••••••••"
-            className="w-full h-11 px-3.5 rounded-xl border border-[#D4D4D4] bg-white text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] focus:ring-offset-0 transition-shadow"
           />
         </div>
 

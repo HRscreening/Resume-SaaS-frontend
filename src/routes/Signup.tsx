@@ -1,19 +1,36 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/PasswordInput";
+import { passwordStrength } from "@/lib/passwordValidation";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [existingUser, setExistingUser] = useState(false);
 
+  const strength = passwordStrength(password);
+  const passwordsMatch = password.length > 0 && password === confirmPassword;
+  const canSubmit = strength.isValid && passwordsMatch && email.length > 0;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setExistingUser(false);
+
+    if (!strength.isValid) {
+      setError("Password doesn't meet requirements");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords don't match");
+      return;
+    }
+
     setLoading(true);
     try {
       const supabase = createClient();
@@ -152,22 +169,41 @@ export default function SignupPage() {
           <label htmlFor="password" className="block text-sm font-medium text-[#0F0F0F] mb-1.5">
             Password
           </label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={8}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="At least 8 characters"
-            className="w-full h-11 px-3.5 rounded-xl border border-[#D4D4D4] bg-white text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] transition-shadow"
+            onChange={setPassword}
+            placeholder="Create a strong password"
+            showStrength
           />
+        </div>
+
+        <div>
+          <label htmlFor="confirm-password" className="block text-sm font-medium text-[#0F0F0F] mb-1.5">
+            Confirm password
+          </label>
+          <PasswordInput
+            id="confirm-password"
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            placeholder="Re-enter password"
+          />
+          {confirmPassword.length > 0 && !passwordsMatch && (
+            <p className="text-xs text-red-600 mt-1.5">Passwords don't match</p>
+          )}
+          {passwordsMatch && (
+            <p className="text-xs text-green-700 mt-1.5 flex items-center gap-1">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6.5l2.5 2.5L10 3.5" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Passwords match
+            </p>
+          )}
         </div>
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !canSubmit}
           className="w-full h-11 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
         >
           {loading && (

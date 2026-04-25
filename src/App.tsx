@@ -12,6 +12,8 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import Landing from "@/routes/Landing";
 import Login from "@/routes/Login";
 import Signup from "@/routes/Signup";
+import ForgotPassword from "@/routes/ForgotPassword";
+import ResetPassword from "@/routes/ResetPassword";
 import AuthCallback from "@/routes/AuthCallback";
 import Onboarding from "@/routes/Onboarding";
 import Dashboard from "@/routes/Dashboard";
@@ -73,6 +75,18 @@ const signupRoute = createRoute({
   component: Signup,
 });
 
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: "/forgot-password",
+  component: ForgotPassword,
+});
+
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => authLayoutRoute,
+  path: "/reset-password",
+  component: ResetPassword,
+});
+
 const authCallbackRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/auth/callback",
@@ -131,7 +145,7 @@ const settingsRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   landingRoute,
-  authLayoutRoute.addChildren([loginRoute, signupRoute]),
+  authLayoutRoute.addChildren([loginRoute, signupRoute, forgotPasswordRoute, resetPasswordRoute]),
   authCallbackRoute,
   onboardingRoute,
   appLayoutRoute.addChildren([
