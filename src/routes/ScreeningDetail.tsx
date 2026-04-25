@@ -743,10 +743,27 @@ function RubricModal({ categories, onClose }: { categories: RubricCategory[]; on
                   {cat.subcategories.map((sub) => (
                     <div key={sub.name} className="px-4 py-2.5 flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#0F0F0F]">{sub.name}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-[#0F0F0F]">{sub.name}</p>
+                          {sub.is_non_negotiable && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-red-100 text-red-700">Must Have</span>
+                          )}
+                          {sub.is_external_context && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-blue-100 text-blue-700">External Signal</span>
+                          )}
+                        </div>
                         <p className="text-xs text-[#737373] mt-0.5">{sub.description}</p>
                       </div>
-                      <span className="text-xs font-semibold text-[#404040] shrink-0">{sub.weight}%</span>
+                      <div className="shrink-0 flex items-center gap-1.5" title={`Importance: ${sub.weight} / 5`}>
+                        {[1,2,3,4,5].map((i) => (
+                          <div
+                            key={i}
+                            className="h-1.5 w-1.5 rounded-full"
+                            style={{ backgroundColor: i <= sub.weight ? "#0F0F0F" : "#E8E5DF" }}
+                          />
+                        ))}
+                        <span className="text-xs font-semibold text-[#404040] ml-1">{sub.weight}/5</span>
+                      </div>
                     </div>
                   ))}
                 </div>
