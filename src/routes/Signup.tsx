@@ -8,19 +8,29 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [existingUser, setExistingUser] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setExistingUser(false);
     setLoading(true);
     try {
       const supabase = createClient();
-      const { error: authError } = await supabase.auth.signUp({
+      const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding` },
       });
       if (authError) throw authError;
+
+      // Supabase returns user with empty identities[] when account already exists
+      // (it doesn't throw an error to prevent email enumeration)
+      if (data.user && data.user.identities?.length === 0) {
+        setExistingUser(true);
+        return;
+      }
+
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign up failed");
@@ -35,6 +45,37 @@ export default function SignupPage() {
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback?next=/onboarding` },
     });
+  }
+
+  if (existingUser) {
+    return (
+      <div className="text-center">
+        <div className="h-16 w-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-6">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="14" cy="14" r="11"/>
+            <path d="M14 9v6M14 19h.01"/>
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-[#0F0F0F] mb-2">Account already exists</h2>
+        <p className="text-sm text-[#737373] mb-6">
+          An account with <strong className="text-[#0F0F0F]">{email}</strong> already exists.
+        </p>
+        <div className="flex flex-col gap-2">
+          <Link
+            to="/login"
+            className="w-full h-11 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors flex items-center justify-center"
+          >
+            Sign in instead
+          </Link>
+          <button
+            onClick={() => { setExistingUser(false); setEmail(""); setPassword(""); }}
+            className="text-xs text-[#737373] hover:text-[#0F0F0F]"
+          >
+            Use a different email
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (success) {
