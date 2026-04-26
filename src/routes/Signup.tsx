@@ -151,7 +151,7 @@ export default function SignupPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-[#0F0F0F] mb-1.5">
-            Work email
+            Email
           </label>
           <input
             id="email"
@@ -215,9 +215,9 @@ export default function SignupPage() {
 
       <p className="mt-6 text-xs text-[#A0A0A0] text-center">
         By signing up you agree to our{" "}
-        <a href="#" className="underline">Terms</a>{" "}
+        <Link to="/terms" className="underline hover:text-[#0F0F0F]">Terms</Link>{" "}
         and{" "}
-        <a href="#" className="underline">Privacy Policy</a>.
+        <Link to="/privacy" className="underline hover:text-[#0F0F0F]">Privacy Policy</Link>.
       </p>
     </>
   );

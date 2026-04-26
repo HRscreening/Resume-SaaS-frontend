@@ -16,6 +16,8 @@ import ForgotPassword from "@/routes/ForgotPassword";
 import ResetPassword from "@/routes/ResetPassword";
 import AuthCallback from "@/routes/AuthCallback";
 import Onboarding from "@/routes/Onboarding";
+import Terms from "@/routes/Terms";
+import Privacy from "@/routes/Privacy";
 import Dashboard from "@/routes/Dashboard";
 import Screenings from "@/routes/Screenings";
 import Settings from "@/routes/Settings";
@@ -99,6 +101,18 @@ const onboardingRoute = createRoute({
   component: Onboarding,
 });
 
+const termsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/terms",
+  component: Terms,
+});
+
+const privacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/privacy",
+  component: Privacy,
+});
+
 const appLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "app-layout",
@@ -148,6 +162,8 @@ const routeTree = rootRoute.addChildren([
   authLayoutRoute.addChildren([loginRoute, signupRoute, forgotPasswordRoute, resetPasswordRoute]),
   authCallbackRoute,
   onboardingRoute,
+  termsRoute,
+  privacyRoute,
   appLayoutRoute.addChildren([
     dashboardRoute,
     screeningsRoute,

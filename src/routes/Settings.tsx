@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { getProfile, updateProfile, getUsage, createPortalSession, deleteAccount, getTokenUsage, createRazorpayOrder, verifyRazorpayPayment } from "@/lib/api";
 import { clearAuthCache } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
@@ -20,6 +21,7 @@ const UPGRADE_PLANS = [
 
 export default function Settings() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [usage, setUsage] = useState<UsageResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,6 +102,18 @@ export default function Settings() {
     }
   }
 
+  async function refreshAfterUpgrade(plan: "pro" | "business" | "enterprise") {
+    const [updatedProfile, freshUsage] = await Promise.all([getProfile(), getUsage()]);
+    setProfile(updatedProfile);
+    setUsage(freshUsage);
+    // Invalidate everywhere so Dashboard / Sidebar etc. show the new limit too.
+    queryClient.invalidateQueries({ queryKey: ["usage"] });
+    queryClient.invalidateQueries({ queryKey: ["profile"] });
+    const upgradedName = UPGRADE_PLANS.find(p => p.key === plan)?.name ?? plan;
+    setPaymentSuccess(`You're now on the ${upgradedName} plan!`);
+    setTimeout(() => setPaymentSuccess(null), 6000);
+  }
+
   async function handleRazorpayCheckout(plan: "pro" | "business" | "enterprise") {
     setPaymentLoading(plan);
     setPaymentError(null);
@@ -131,11 +145,7 @@ export default function Settings() {
               razorpay_signature: signature,
               plan,
             });
-            const updated = await getProfile();
-            setProfile(updated);
-            const upgradedName = UPGRADE_PLANS.find(p => p.key === plan)?.name ?? plan;
-            setPaymentSuccess(`You're now on the ${upgradedName} plan!`);
-            setTimeout(() => setPaymentSuccess(null), 6000);
+            await refreshAfterUpgrade(plan);
             resolve();
           } catch {
             reject(new Error("Payment verification failed. Contact support."));
@@ -151,10 +161,7 @@ export default function Settings() {
             try {
               const updated = await getProfile();
               if (updated.plan !== previousPlan) {
-                setProfile(updated);
-                const upgradedName = UPGRADE_PLANS.find(p => p.key === plan)?.name ?? plan;
-                setPaymentSuccess(`You're now on the ${upgradedName} plan!`);
-                setTimeout(() => setPaymentSuccess(null), 6000);
+                await refreshAfterUpgrade(plan);
                 resolve();
                 return;
               }
