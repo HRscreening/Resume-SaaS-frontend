@@ -113,9 +113,9 @@ export default function PrivacyPage() {
 
         <Section title="9. International Data Transfers">
           <p>
-            HireSort is operated from India and uses sub-processors located in India, the
-            United States, and the European Union. Where personal data is transferred across
-            borders, we rely on Standard Contractual Clauses or equivalent safeguards.
+            HireSort is operated from Noida, India, and uses sub-processors located in India,
+            the United States, and the European Union. Where personal data is transferred
+            across borders, we rely on Standard Contractual Clauses or equivalent safeguards.
           </p>
         </Section>
 
@@ -135,7 +135,7 @@ export default function PrivacyPage() {
           </ul>
           <p>
             To exercise any of these rights, contact us at{" "}
-            <a href="mailto:privacy@hiresort.app" className="text-[#0F0F0F] underline">privacy@hiresort.app</a>.
+            <a href="mailto:privacy@hiresort.ai" className="text-[#0F0F0F] underline">privacy@hiresort.ai</a>.
             We will respond within thirty (30) days.
           </p>
         </Section>
@@ -190,7 +190,7 @@ export default function PrivacyPage() {
         <Section title="16. Contact">
           <p>
             For privacy questions, requests, or complaints, write to{" "}
-            <a href="mailto:privacy@hiresort.app" className="text-[#0F0F0F] underline">privacy@hiresort.app</a>.
+            <a href="mailto:privacy@hiresort.ai" className="text-[#0F0F0F] underline">privacy@hiresort.ai</a>.
           </p>
         </Section>
 

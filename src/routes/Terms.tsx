@@ -174,15 +174,17 @@ export default function TermsPage() {
         <Section title="17. Governing Law and Disputes">
           <p>
             These Terms are governed by the laws of India, without regard to conflict-of-laws
-            principles. The courts at Bengaluru, Karnataka shall have exclusive jurisdiction,
-            subject to any rights you may have under mandatory consumer-protection law.
+            principles. The courts at New Delhi, India shall have exclusive jurisdiction over
+            any dispute arising from or in connection with these Terms, subject to any rights
+            you may have under mandatory consumer-protection law. Any arbitration proceedings
+            shall be seated in New Delhi and conducted in English.
           </p>
         </Section>
 
         <Section title="18. Contact">
           <p>
             Questions about these Terms can be sent to{" "}
-            <a href="mailto:support@hiresort.app" className="text-[#0F0F0F] underline">support@hiresort.app</a>.
+            <a href="mailto:support@hiresort.ai" className="text-[#0F0F0F] underline">support@hiresort.ai</a>.
           </p>
         </Section>
 
