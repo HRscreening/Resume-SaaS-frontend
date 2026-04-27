@@ -85,16 +85,9 @@ export default function NewScreening() {
     if (!rubric) return;
     const updated = rubric.categories.map((cat, ci) => {
       if (ci !== catIdx) return cat;
-      let subs = cat.subcategories.map((s, si) =>
+      const subs = cat.subcategories.map((s, si) =>
         si === subIdx ? { ...s, ...updates } : s
       );
-      if ("weight" in updates) {
-        subs = [...subs].sort((a, b) => {
-          if (a.is_non_negotiable && !b.is_non_negotiable) return -1;
-          if (!a.is_non_negotiable && b.is_non_negotiable) return 1;
-          return b.weight - a.weight;
-        });
-      }
       return { ...cat, subcategories: subs };
     });
     setRubric({ ...rubric, categories: updated });
@@ -364,14 +357,14 @@ export default function NewScreening() {
                             onChange={(e) => updateSubcategory(catIdx, subIdx, { name: e.target.value })}
                             placeholder="Subcategory name"
                             disabled={sub.is_external_context}
-                            className="w-full text-sm font-medium text-[#0F0F0F] bg-transparent border-0 border-b border-transparent hover:border-[#D4D4D4] focus:border-[#C85A17] focus:outline-none pb-0.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="w-full text-sm font-medium text-[#0F0F0F] bg-white border border-[#E8E5DF] rounded-md px-2.5 py-1.5 hover:border-[#A0A0A0] focus:border-[#C85A17] focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-[#F5F4F1]"
                           />
                           <input
                             type="text"
                             value={sub.description}
                             onChange={(e) => updateSubcategory(catIdx, subIdx, { description: e.target.value })}
                             placeholder="Brief description of what to evaluate..."
-                            className="w-full text-xs text-[#737373] bg-transparent border-0 border-b border-transparent hover:border-[#D4D4D4] focus:border-[#C85A17] focus:outline-none pb-0.5 transition-colors"
+                            className="w-full text-xs text-[#737373] bg-white border border-[#E8E5DF] rounded-md px-2.5 py-1.5 hover:border-[#A0A0A0] focus:border-[#C85A17] focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors"
                           />
                         </div>
                         {/* Importance 1–5 picker */}
@@ -398,8 +391,11 @@ export default function NewScreening() {
                               {["Low", "Moderate", "Standard", "Important", "Critical"][sub.weight - 1] ?? ""}
                             </span>
                           </div>
-                          <button onClick={() => removeSubcategory(catIdx, subIdx)}
-                            className="h-7 w-7 rounded-lg text-[#A0A0A0] hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors">
+                          <button
+                            onClick={() => removeSubcategory(catIdx, subIdx)}
+                            title="Delete subcategory"
+                            className="h-7 w-7 rounded-lg border border-[#E8E5DF] text-[#737373] hover:text-red-600 hover:border-red-300 hover:bg-red-50 flex items-center justify-center transition-colors"
+                          >
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8" /></svg>
                           </button>
                         </div>
@@ -408,16 +404,18 @@ export default function NewScreening() {
                   ))}
 
                   {/* Add subcategory */}
-                  <div className="flex items-center justify-between pt-1">
-                    {cat.subcategories.length < 5 ? (
-                      <button onClick={() => addSubcategory(catIdx)}
-                        className="text-xs text-[#737373] hover:text-[#0F0F0F] flex items-center gap-1 transition-colors">
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6 1v10M1 6h10" /></svg>
-                        Add subcategory
-                      </button>
-                    ) : <span />}
-                    <span className="text-xs text-[#A0A0A0]">Importance is normalised during scoring</span>
-                  </div>
+                  {cat.subcategories.length < 5 ? (
+                    <button
+                      onClick={() => addSubcategory(catIdx)}
+                      className="w-full mt-1 rounded-xl border border-dashed border-[#D4D4D4] hover:border-[#0F0F0F] hover:bg-[#FAFAF7] py-3 text-sm text-[#737373] hover:text-[#0F0F0F] flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6 1v10M1 6h10" /></svg>
+                      Add subcategory
+                    </button>
+                  ) : (
+                    <p className="text-xs text-[#A0A0A0] text-center pt-1">Maximum 5 subcategories per category</p>
+                  )}
+                  <p className="text-xs text-[#A0A0A0] text-right pt-0.5">Importance is normalised during scoring</p>
                 </div>
               </div>
             );
