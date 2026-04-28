@@ -277,3 +277,12 @@ export async function verifyRazorpayPayment(data: {
     body: JSON.stringify(data),
   });
 }
+
+export async function cancelSubscription(): Promise<{
+  success: boolean;
+  plan: string;
+  previous_plan?: string;
+  already_free?: boolean;
+}> {
+  return request("/api/billing/cancel", { method: "POST" });
+}

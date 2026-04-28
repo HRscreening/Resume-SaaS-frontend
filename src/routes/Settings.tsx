@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { getProfile, updateProfile, getUsage, createPortalSession, deleteAccount, getTokenUsage, createRazorpayOrder, verifyRazorpayPayment } from "@/lib/api";
+import { getProfile, updateProfile, getUsage, createPortalSession, deleteAccount, getTokenUsage, createRazorpayOrder, verifyRazorpayPayment, cancelSubscription } from "@/lib/api";
 import { clearAuthCache } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/PasswordInput";
+import { passwordStrength } from "@/lib/passwordValidation";
 import type { Profile, UsageResponse } from "@/types";
 
 const PLAN_DETAILS = {
@@ -39,6 +41,19 @@ export default function Settings() {
   // Editable fields
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState(false);
+
+  // Cancel subscription state
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([getProfile(), getUsage()])
@@ -83,6 +98,78 @@ export default function Settings() {
       window.location.href = url;
     } catch {
       setSaveError("Could not open billing portal. Please try again.");
+    }
+  }
+
+  async function handleCancelSubscription() {
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      await cancelSubscription();
+      // Refresh local profile + usage so the UI reflects FREE immediately.
+      const [freshProfile, freshUsage] = await Promise.all([getProfile(), getUsage()]);
+      setProfile(freshProfile);
+      setUsage(freshUsage);
+      queryClient.invalidateQueries({ queryKey: ["usage"] });
+      setShowCancelConfirm(false);
+    } catch (err) {
+      setCancelError(err instanceof Error ? err.message : "Could not cancel subscription. Please try again.");
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwError(null);
+    setPwSuccess(false);
+
+    const strength = passwordStrength(newPassword);
+    if (!strength.isValid) {
+      setPwError("New password does not meet all requirements.");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPwError("New passwords do not match.");
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setPwError("New password must be different from your current password.");
+      return;
+    }
+    if (!profile?.email) {
+      setPwError("Could not load your account. Please refresh and try again.");
+      return;
+    }
+
+    setPwSaving(true);
+    try {
+      const supabase = createClient();
+      // Re-verify current password by attempting a fresh sign-in. Supabase's
+      // updateUser does NOT require the current password, so we verify it
+      // ourselves to prevent silent password changes from a hijacked session.
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password: currentPassword,
+      });
+      if (signInError) {
+        throw new Error("Current password is incorrect.");
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (updateError) throw updateError;
+
+      setPwSuccess(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setTimeout(() => setPwSuccess(false), 4000);
+    } catch (err) {
+      setPwError(err instanceof Error ? err.message : "Could not update password.");
+    } finally {
+      setPwSaving(false);
     }
   }
 
@@ -373,6 +460,14 @@ export default function Settings() {
             <p className="text-xs text-[#737373] mb-0.5">Current plan</p>
             <p className="text-lg font-bold text-[#0F0F0F]">{planInfo.name}</p>
             <p className="text-sm text-[#737373]">{planInfo.price} · {planInfo.resumes === Infinity ? "Unlimited" : planInfo.resumes.toLocaleString()} resumes/month</p>
+            {profile?.plan !== "FREE" && !showCancelConfirm && (
+              <button
+                onClick={() => { setCancelError(null); setShowCancelConfirm(true); }}
+                className="mt-2 text-xs text-[#737373] hover:text-red-600 underline underline-offset-2 transition-colors"
+              >
+                Cancel plan
+              </button>
+            )}
           </div>
           {usage && (
             <div className="text-right min-w-[100px]">
@@ -387,6 +482,37 @@ export default function Settings() {
             </div>
           )}
         </div>
+
+        {/* Cancel-subscription confirm */}
+        {showCancelConfirm && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5">
+            <p className="text-sm font-semibold text-red-900 mb-1">Cancel your {planInfo.name} plan?</p>
+            <p className="text-xs text-red-700/90 mb-3">
+              You'll be downgraded to the Free plan immediately. Your monthly limit will drop to 50 resumes
+              for the rest of this month, and you can re-subscribe anytime.
+            </p>
+            {cancelError && (
+              <p className="text-xs text-red-700 mb-3">{cancelError}</p>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={handleCancelSubscription}
+                disabled={cancelling}
+                className="h-9 px-4 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 disabled:opacity-60 transition-colors flex items-center gap-2"
+              >
+                {cancelling && <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+                {cancelling ? "Cancelling…" : "Yes, cancel plan"}
+              </button>
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                disabled={cancelling}
+                className="h-9 px-4 border border-[#D4D4D4] text-sm font-medium text-[#0F0F0F] rounded-xl hover:bg-white transition-colors disabled:opacity-60"
+              >
+                Keep plan
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* All plan cards */}
         <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-3">Available plans</p>
@@ -466,6 +592,80 @@ export default function Settings() {
             {downloadingUsage ? "Downloading…" : "Download CSV"}
           </button>
         </div>
+      </div>
+
+      {/* Password */}
+      <div id="password" className="bg-white rounded-2xl border border-[#E8E5DF] p-6 mb-5 scroll-mt-20">
+        <h2 className="text-base font-semibold text-[#0F0F0F] mb-1">Password</h2>
+        <p className="text-sm text-[#737373] mb-5">
+          Change your password. You'll need to enter your current password to confirm it's you.
+        </p>
+
+        {pwError && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+            {pwError}
+          </div>
+        )}
+        {pwSuccess && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 7.5l3 3 5-6" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Password updated successfully.
+          </div>
+        )}
+
+        <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+          <div>
+            <label htmlFor="current-password" className="block text-sm font-medium text-[#0F0F0F] mb-1.5">
+              Current password
+            </label>
+            <PasswordInput
+              id="current-password"
+              value={currentPassword}
+              onChange={setCurrentPassword}
+              placeholder="Enter current password"
+              autoComplete="current-password"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="new-password" className="block text-sm font-medium text-[#0F0F0F] mb-1.5">
+              New password
+            </label>
+            <PasswordInput
+              id="new-password"
+              value={newPassword}
+              onChange={setNewPassword}
+              placeholder="Enter new password"
+              showStrength
+            />
+          </div>
+
+          <div>
+            <label htmlFor="confirm-new-password" className="block text-sm font-medium text-[#0F0F0F] mb-1.5">
+              Confirm new password
+            </label>
+            <PasswordInput
+              id="confirm-new-password"
+              value={confirmNewPassword}
+              onChange={setConfirmNewPassword}
+              placeholder="Re-enter new password"
+            />
+            {confirmNewPassword.length > 0 && newPassword !== confirmNewPassword && (
+              <p className="text-xs text-red-600 mt-1.5">Passwords don't match</p>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={pwSaving || !currentPassword || !newPassword || newPassword !== confirmNewPassword}
+            className="h-9 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center gap-2"
+          >
+            {pwSaving && <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+            {pwSaving ? "Updating…" : "Update password"}
+          </button>
+        </form>
       </div>
 
       {/* Danger zone */}

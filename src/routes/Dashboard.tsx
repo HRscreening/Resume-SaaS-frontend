@@ -90,6 +90,32 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {/* Quota-exhausted banner — shown when usage has reached or passed the limit */}
+      {usage && usage.quota_limit > 0 && usage.resumes_processed >= usage.quota_limit && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 flex items-start gap-3">
+          <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#DC2626" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 1.5L1 14h14L8 1.5z" />
+              <path d="M8 6v3.5M8 11.5v.5" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-red-900">You've hit your monthly limit</p>
+            <p className="text-xs text-red-800/80 mt-0.5">
+              You've processed all {usage.quota_limit} resumes included in your {usage.plan} plan this month.
+              Upgrade to keep screening, or wait for your quota to refresh on the 1st.
+            </p>
+          </div>
+          <Link
+            to="/settings"
+            hash="billing"
+            className="shrink-0 h-8 px-3 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center"
+          >
+            Upgrade plan
+          </Link>
+        </div>
+      )}
+
       {/* Usage bar */}
       {usage && (
         <div className="bg-white rounded-xl border border-[#E8E5DF] p-5 mb-8">
@@ -106,17 +132,25 @@ export default function Dashboard() {
           </div>
           <div className="h-2 w-full bg-[#E8E5DF] rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#0F0F0F] rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.round((usage.resumes_processed / usage.quota_limit) * 100))}%` }}
+              className={`h-full rounded-full transition-all duration-500 ${
+                usage.quota_limit > 0 && usage.resumes_processed / usage.quota_limit >= 1
+                  ? "bg-red-500"
+                  : usage.quota_limit > 0 && usage.resumes_processed / usage.quota_limit >= 0.8
+                    ? "bg-amber-500"
+                    : "bg-[#0F0F0F]"
+              }`}
+              style={{ width: `${usage.quota_limit > 0 ? Math.min(100, Math.round((usage.resumes_processed / usage.quota_limit) * 100)) : 0}%` }}
             />
           </div>
-          {usage.plan === "FREE" && usage.resumes_processed / usage.quota_limit >= 0.8 && (
-            <p className="mt-3 text-xs text-[#C85A17]">
-              Running low.{" "}
-              <Link to="/settings" className="underline font-medium">Upgrade to Pro</Link>{" "}
-              for 500 resumes/month.
-            </p>
-          )}
+          {usage.plan === "FREE" && usage.quota_limit > 0
+            && usage.resumes_processed / usage.quota_limit >= 0.8
+            && usage.resumes_processed < usage.quota_limit && (
+              <p className="mt-3 text-xs text-[#C85A17]">
+                Running low.{" "}
+                <Link to="/settings" hash="billing" className="underline font-medium">Upgrade your plan</Link>{" "}
+                to keep screening.
+              </p>
+            )}
         </div>
       )}
 
