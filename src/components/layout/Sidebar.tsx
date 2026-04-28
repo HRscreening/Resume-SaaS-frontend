@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { clearAuthCache } from "@/lib/auth";
+import { getUsage } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import type { SubscriptionPlan } from "@/types";
 
 interface NavItem {
   href: string;
@@ -29,10 +32,36 @@ const PlusIcon = () => (
   </svg>
 );
 
+const UserIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="8" cy="5.5" r="2.5"/>
+    <path d="M2.5 13.5c.8-2.4 3-3.5 5.5-3.5s4.7 1.1 5.5 3.5"/>
+  </svg>
+);
+
+const StarIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 1.5l1.9 4.1 4.5.5-3.4 3 1 4.4L8 11.3 4 13.5l1-4.4-3.4-3 4.5-.5L8 1.5z"/>
+  </svg>
+);
+
+const CardIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/>
+    <path d="M1.5 6.5h13"/>
+  </svg>
+);
+
 const GearIcon = () => (
   <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="8" cy="8" r="2.5"/>
     <path d="M8 1.5v1M8 13.5v1M1.5 8h1M13.5 8h1M3.3 3.3l.7.7M12 12l.7.7M12 3.3l-.7.7M3.3 12.7l.7-.7"/>
+  </svg>
+);
+
+const ExternalIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9.5 2.5h4v4M13.5 2.5L7 9M6 3.5H3a1 1 0 0 0-1 1V13a1 1 0 0 0 1 1h8.5a1 1 0 0 0 1-1V10"/>
   </svg>
 );
 
@@ -42,17 +71,18 @@ const LogoutIcon = () => (
   </svg>
 );
 
-const ChevronRight = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M5 3l4 4-4 4"/>
-  </svg>
-);
-
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: <HomeIcon />, exact: true },
   { href: "/screenings", label: "Jobs", icon: <ListIcon /> },
   { href: "/screenings/new", label: "New Job", icon: <PlusIcon />, exact: true },
 ];
+
+const PLAN_LABEL: Record<SubscriptionPlan, string> = {
+  FREE: "Free",
+  PRO: "Starter",
+  BUSINESS: "Growth",
+  ENTERPRISE: "Scale",
+};
 
 function getInitials(name: string | null | undefined, email: string | null | undefined): string {
   if (name?.trim()) {
@@ -75,6 +105,12 @@ export function Sidebar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const { data: usage } = useQuery({
+    queryKey: ["usage"],
+    queryFn: getUsage,
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     const supabase = createClient();
@@ -119,6 +155,11 @@ export function Sidebar() {
   }
 
   const initials = getInitials(displayName, email);
+  const planLabel = usage ? PLAN_LABEL[usage.plan] : null;
+  const used = usage?.resumes_processed ?? 0;
+  const limit = usage?.quota_limit ?? 0;
+  const usedPct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const isFree = usage?.plan === "FREE";
 
   return (
     <aside className="w-[220px] h-full flex flex-col bg-white border-r border-[#E8E5DF] shrink-0">
@@ -161,46 +202,122 @@ export function Sidebar() {
         {/* Popup menu — appears above the trigger */}
         {menuOpen && (
           <div className="absolute bottom-full left-2 right-2 mb-1.5 bg-white rounded-2xl border border-[#E8E5DF] shadow-lg overflow-hidden z-50">
-            {/* User row in menu */}
-            <Link
-              to="/settings"
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-[#F5F3EE] transition-colors"
-            >
-              <div className="h-8 w-8 rounded-full bg-[#C85A17] flex items-center justify-center shrink-0">
-                <span className="text-white text-xs font-semibold leading-none">{initials}</span>
+            {/* Identity card */}
+            <div className="px-4 pt-4 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-[#C85A17] flex items-center justify-center shrink-0">
+                  <span className="text-white text-sm font-semibold leading-none">{initials}</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-[#0F0F0F] truncate leading-tight">
+                    {displayName ?? "—"}
+                  </p>
+                  <p className="text-xs text-[#737373] truncate leading-tight mt-0.5">
+                    {email ?? ""}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-[#0F0F0F] truncate leading-tight">
-                  {displayName ?? email ?? "—"}
-                </p>
-                {displayName && (
-                  <p className="text-xs text-[#A0A0A0] truncate leading-tight">{email}</p>
+              {planLabel && (
+                <span className="inline-block mt-2 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-[#F0EDE8] text-[#404040] border border-[#E8E5DF]">
+                  {planLabel}
+                </span>
+              )}
+            </div>
+
+            {/* Usage progress */}
+            {usage && limit > 0 && (
+              <div className="px-4 pb-3">
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="text-[#737373]">Resumes this month</span>
+                  <span className="font-semibold text-[#0F0F0F] tabular-nums">{used} / {limit}</span>
+                </div>
+                <div className="h-1.5 w-full bg-[#F0EDE8] rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      usedPct >= 90 ? "bg-red-500" : usedPct >= 70 ? "bg-amber-500" : "bg-[#0F0F0F]",
+                    )}
+                    style={{ width: `${usedPct}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="h-px bg-[#E8E5DF]" />
+
+            {/* ACCOUNT section */}
+            <div className="py-2">
+              <p className="px-4 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#A0A0A0]">
+                Account
+              </p>
+              <Link
+                to="/settings"
+                hash="profile"
+                className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+              >
+                <UserIcon />
+                Profile
+              </Link>
+              <Link
+                to="/settings"
+                hash="billing"
+                className="flex items-center justify-between gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+              >
+                <span className="flex items-center gap-3">
+                  <StarIcon />
+                  Upgrade plan
+                </span>
+                {isFree && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                    New
+                  </span>
                 )}
-              </div>
-              <ChevronRight />
-            </Link>
+              </Link>
+              <Link
+                to="/settings"
+                hash="billing"
+                className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+              >
+                <CardIcon />
+                Billing
+              </Link>
+            </div>
 
-            <div className="h-px bg-[#E8E5DF] mx-3" />
+            <div className="h-px bg-[#E8E5DF]" />
 
-            {/* Settings */}
-            <Link
-              to="/settings"
-              className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
-            >
-              <GearIcon />
-              Settings
-            </Link>
+            {/* WORKSPACE section */}
+            <div className="py-2">
+              <p className="px-4 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#A0A0A0]">
+                Workspace
+              </p>
+              <Link
+                to="/settings"
+                className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+              >
+                <GearIcon />
+                Settings
+              </Link>
+              <a
+                href="https://hiresort.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+              >
+                <ExternalIcon />
+                Docs &amp; help
+              </a>
+            </div>
 
-            <div className="h-px bg-[#E8E5DF] mx-3" />
+            <div className="h-px bg-[#E8E5DF]" />
 
-            {/* Log out */}
+            {/* Sign out */}
             <button
               onClick={handleLogout}
               disabled={loggingOut}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#737373] hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
             >
               <LogoutIcon />
-              {loggingOut ? "Signing out…" : "Log out"}
+              {loggingOut ? "Signing out…" : "Sign out"}
             </button>
           </div>
         )}
@@ -213,16 +330,20 @@ export function Sidebar() {
             menuOpen ? "bg-[#F0EDE8]" : "hover:bg-[#F5F3EE]",
           )}
         >
-          <div className="h-7 w-7 rounded-full bg-[#C85A17] flex items-center justify-center shrink-0 select-none">
+          <div className="h-8 w-8 rounded-full bg-[#C85A17] flex items-center justify-center shrink-0 select-none">
             <span className="text-white text-xs font-semibold leading-none">{initials}</span>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-[#0F0F0F] truncate leading-tight">
+            <p className="text-sm font-semibold text-[#0F0F0F] truncate leading-tight">
               {displayName ?? email ?? "—"}
             </p>
-            {displayName && (
-              <p className="text-[11px] text-[#A0A0A0] truncate leading-tight">{email}</p>
-            )}
+            <p className="text-[11px] text-[#737373] truncate leading-tight mt-0.5">
+              {planLabel
+                ? limit > 0
+                  ? `${planLabel} plan · ${used}/${limit} used`
+                  : `${planLabel} plan`
+                : email ?? ""}
+            </p>
           </div>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
             className={cn("text-[#A0A0A0] shrink-0 transition-transform", menuOpen && "rotate-180")}>

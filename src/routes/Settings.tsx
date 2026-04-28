@@ -285,7 +285,7 @@ export default function Settings() {
       )}
 
       {/* Profile */}
-      <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6 mb-5">
+      <div id="profile" className="bg-white rounded-2xl border border-[#E8E5DF] p-6 mb-5 scroll-mt-20">
         <h2 className="text-base font-semibold text-[#0F0F0F] mb-5">Profile</h2>
         <form onSubmit={handleSaveProfile} className="space-y-4">
           <div>
@@ -354,7 +354,7 @@ export default function Settings() {
       </div>
 
       {/* Plan & Usage */}
-      <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6 mb-5">
+      <div id="billing" className="bg-white rounded-2xl border border-[#E8E5DF] p-6 mb-5 scroll-mt-20">
         <h2 className="text-base font-semibold text-[#0F0F0F] mb-5">Plan & billing</h2>
 
         {/* Success banner */}
