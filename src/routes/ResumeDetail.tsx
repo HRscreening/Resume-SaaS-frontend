@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getResumeDetail, getResumePdfUrl, getScreening } from "@/lib/api";
-import { confidenceColor, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import type { Resume, Score } from "@/types";
 
 interface ResumeDetailData extends Resume {
@@ -470,9 +470,6 @@ function CriterionCard({ cs, isNonNegotiable = false }: {
                 Must Have{failed ? " · FAILED" : ""}
               </span>
             )}
-            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${confidenceColor(cs.confidence)}`}>
-              {cs.confidence}
-            </span>
           </div>
           {!open && cs.explanation && (
             <p className="text-xs text-[#737373] truncate mt-0.5">{cs.explanation}</p>
