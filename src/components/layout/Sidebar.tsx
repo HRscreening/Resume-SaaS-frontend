@@ -163,7 +163,7 @@ export function Sidebar() {
   const isFree = usage?.plan === "FREE";
 
   return (
-    <aside className="w-[220px] h-full flex flex-col bg-white border-r border-[#E8E5DF] shrink-0">
+    <aside className="w-[220px] h-screen sticky top-0 flex flex-col bg-white border-r border-[#E8E5DF] shrink-0">
       {/* Logo */}
       <div className="h-14 flex items-center px-5 border-b border-[#E8E5DF]">
         <div className="flex items-center gap-2.5">
