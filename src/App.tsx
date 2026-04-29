@@ -21,6 +21,7 @@ import Privacy from "@/routes/Privacy";
 import Dashboard from "@/routes/Dashboard";
 import Screenings from "@/routes/Screenings";
 import Settings from "@/routes/Settings";
+import ChangePassword from "@/routes/ChangePassword";
 import NewScreening from "@/routes/NewScreening";
 
 // ─── Eager imports — these are the most-visited pages, no lazy delay ──
@@ -155,6 +156,12 @@ const settingsRoute = createRoute({
   component: Settings,
 });
 
+const changePasswordRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/settings/password",
+  component: ChangePassword,
+});
+
 // ─── Build router ───────────────────────────────────────────
 
 const routeTree = rootRoute.addChildren([
@@ -171,6 +178,7 @@ const routeTree = rootRoute.addChildren([
     screeningDetailRoute,
     resumeDetailRoute,
     settingsRoute,
+    changePasswordRoute,
   ]),
 ]);
 
