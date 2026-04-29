@@ -33,41 +33,42 @@ const PlusIcon = () => (
 );
 
 const UserIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="8" cy="5.5" r="2.5"/>
-    <path d="M2.5 13.5c.8-2.4 3-3.5 5.5-3.5s4.7 1.1 5.5 3.5"/>
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="8" cy="6" r="3"/>
+    <circle cx="8" cy="8" r="6.5"/>
   </svg>
 );
 
 const StarIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M8 1.5l1.9 4.1 4.5.5-3.4 3 1 4.4L8 11.3 4 13.5l1-4.4-3.4-3 4.5-.5L8 1.5z"/>
-  </svg>
-);
-
-const CardIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/>
-    <path d="M1.5 6.5h13"/>
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 1.5l1.4 3.7c.2.4.5.7.9.9L14 7.5l-3.7 1.4c-.4.2-.7.5-.9.9L8 13.5l-1.4-3.7c-.2-.4-.5-.7-.9-.9L2 7.5l3.7-1.4c.4-.2.7-.5.9-.9L8 1.5z"/>
   </svg>
 );
 
 const GearIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="8" cy="8" r="2.5"/>
-    <path d="M8 1.5v1M8 13.5v1M1.5 8h1M13.5 8h1M3.3 3.3l.7.7M12 12l.7.7M12 3.3l-.7.7M3.3 12.7l.7-.7"/>
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="8" cy="8" r="2.2"/>
+    <path d="M13 9.4a1 1 0 0 0 .2 1.1l.04.04a1.2 1.2 0 1 1-1.7 1.7l-.04-.04a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V13a1.2 1.2 0 1 1-2.4 0v-.06a1 1 0 0 0-.66-.92 1 1 0 0 0-1.1.2l-.04.04A1.2 1.2 0 1 1 3.86 10.56l.04-.04a1 1 0 0 0 .2-1.1 1 1 0 0 0-.92-.6H3a1.2 1.2 0 1 1 0-2.4h.06a1 1 0 0 0 .92-.66 1 1 0 0 0-.2-1.1l-.04-.04A1.2 1.2 0 1 1 5.44 2.94l.04.04a1 1 0 0 0 1.1.2H6.6a1 1 0 0 0 .6-.92V2.2a1.2 1.2 0 1 1 2.4 0v.06a1 1 0 0 0 .6.92 1 1 0 0 0 1.1-.2l.04-.04a1.2 1.2 0 1 1 1.7 1.7l-.04.04a1 1 0 0 0-.2 1.1V5.94a1 1 0 0 0 .92.6H14a1.2 1.2 0 1 1 0 2.4h-.06a1 1 0 0 0-.92.6z"/>
   </svg>
 );
 
-const ExternalIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9.5 2.5h4v4M13.5 2.5L7 9M6 3.5H3a1 1 0 0 0-1 1V13a1 1 0 0 0 1 1h8.5a1 1 0 0 0 1-1V10"/>
+const HelpIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="8" cy="8" r="6.5"/>
+    <path d="M6.3 6a1.7 1.7 0 0 1 3.3.5c0 1-1.6 1.5-1.6 1.5"/>
+    <circle cx="8" cy="11" r="0.4" fill="currentColor"/>
   </svg>
 );
 
 const LogoutIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M11 11l3-3-3-3M14 8H6"/>
+  </svg>
+);
+
+const ChevronRight = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 3l4 4-4 4"/>
   </svg>
 );
 
@@ -199,32 +200,34 @@ export function Sidebar() {
       {/* User trigger + popup */}
       <div ref={menuRef} className="relative border-t border-[#E8E5DF] p-2">
 
-        {/* Popup menu — appears above the trigger */}
+        {/* Popup menu — opens upward, anchored to the trigger */}
         {menuOpen && (
           <div className="absolute bottom-full left-2 right-2 mb-1.5 bg-white rounded-2xl border border-[#E8E5DF] shadow-lg overflow-hidden z-50">
-            {/* Identity card */}
-            <div className="px-4 pt-4 pb-3">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-[#C85A17] flex items-center justify-center shrink-0">
-                  <span className="text-white text-sm font-semibold leading-none">{initials}</span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-[#0F0F0F] truncate leading-tight">
-                    {displayName ?? "—"}
-                  </p>
-                  <p className="text-xs text-[#737373] truncate leading-tight mt-0.5">
-                    {email ?? ""}
-                  </p>
-                </div>
+            {/* Identity card — clickable, navigates to profile */}
+            <Link
+              to="/settings"
+              hash="profile"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-[#F5F3EE] transition-colors"
+            >
+              <div className="h-9 w-9 rounded-full bg-[#0F0F0F] flex items-center justify-center shrink-0">
+                <span className="text-white text-xs font-semibold leading-none">{initials}</span>
               </div>
-              {planLabel && (
-                <span className="inline-block mt-2 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-[#F0EDE8] text-[#404040] border border-[#E8E5DF]">
-                  {planLabel}
-                </span>
-              )}
-            </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-[#0F0F0F] truncate leading-tight">
+                  {displayName ?? email ?? "—"}
+                </p>
+                {planLabel && (
+                  <p className="text-xs text-[#737373] truncate leading-tight mt-0.5">
+                    {planLabel}
+                  </p>
+                )}
+              </div>
+              <span className="text-[#A0A0A0] shrink-0">
+                <ChevronRight />
+              </span>
+            </Link>
 
-            {/* Usage progress */}
+            {/* Usage progress (HireSort-specific) */}
             {usage && limit > 0 && (
               <div className="px-4 pb-3">
                 <div className="flex items-center justify-between text-xs mb-1.5">
@@ -245,19 +248,7 @@ export function Sidebar() {
 
             <div className="h-px bg-[#E8E5DF]" />
 
-            {/* ACCOUNT section */}
-            <div className="py-2">
-              <p className="px-4 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#A0A0A0]">
-                Account
-              </p>
-              <Link
-                to="/settings"
-                hash="profile"
-                className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
-              >
-                <UserIcon />
-                Profile
-              </Link>
+            <div className="py-1.5">
               <Link
                 to="/settings"
                 hash="billing"
@@ -275,21 +266,12 @@ export function Sidebar() {
               </Link>
               <Link
                 to="/settings"
-                hash="billing"
+                hash="profile"
                 className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
               >
-                <CardIcon />
-                Billing
+                <UserIcon />
+                Profile
               </Link>
-            </div>
-
-            <div className="h-px bg-[#E8E5DF]" />
-
-            {/* WORKSPACE section */}
-            <div className="py-2">
-              <p className="px-4 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[#A0A0A0]">
-                Workspace
-              </p>
               <Link
                 to="/settings"
                 className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
@@ -297,32 +279,33 @@ export function Sidebar() {
                 <GearIcon />
                 Settings
               </Link>
+            </div>
+
+            <div className="h-px bg-[#E8E5DF]" />
+
+            <div className="py-1.5">
               <a
                 href="https://hiresort.ai"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
               >
-                <ExternalIcon />
-                Docs &amp; help
+                <HelpIcon />
+                Help
               </a>
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors disabled:opacity-50"
+              >
+                <LogoutIcon />
+                {loggingOut ? "Signing out…" : "Log out"}
+              </button>
             </div>
-
-            <div className="h-px bg-[#E8E5DF]" />
-
-            {/* Sign out */}
-            <button
-              onClick={handleLogout}
-              disabled={loggingOut}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-            >
-              <LogoutIcon />
-              {loggingOut ? "Signing out…" : "Sign out"}
-            </button>
           </div>
         )}
 
-        {/* Trigger button */}
+        {/* Trigger button — bottom-pinned identity card */}
         <button
           onClick={() => setMenuOpen((v) => !v)}
           className={cn(
@@ -330,25 +313,19 @@ export function Sidebar() {
             menuOpen ? "bg-[#F0EDE8]" : "hover:bg-[#F5F3EE]",
           )}
         >
-          <div className="h-8 w-8 rounded-full bg-[#C85A17] flex items-center justify-center shrink-0 select-none">
+          <div className="h-8 w-8 rounded-full bg-[#0F0F0F] flex items-center justify-center shrink-0 select-none">
             <span className="text-white text-xs font-semibold leading-none">{initials}</span>
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-[#0F0F0F] truncate leading-tight">
               {displayName ?? email ?? "—"}
             </p>
-            <p className="text-[11px] text-[#737373] truncate leading-tight mt-0.5">
-              {planLabel
-                ? limit > 0
-                  ? `${planLabel} plan · ${used}/${limit} used`
-                  : `${planLabel} plan`
-                : email ?? ""}
-            </p>
+            {planLabel && (
+              <p className="text-[11px] text-[#737373] truncate leading-tight mt-0.5">
+                {planLabel}
+              </p>
+            )}
           </div>
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-            className={cn("text-[#A0A0A0] shrink-0 transition-transform", menuOpen && "rotate-180")}>
-            <path d="M3 5l4 4 4-4"/>
-          </svg>
         </button>
       </div>
     </aside>
