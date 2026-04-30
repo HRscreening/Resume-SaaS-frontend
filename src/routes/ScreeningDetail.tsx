@@ -36,6 +36,7 @@ export default function ScreeningDetail() {
   const [exporting, setExporting] = useState(false);
   const [collapsedTiers, setCollapsedTiers] = useState<Set<TierId>>(new Set(["poor"]));
   const [showRubric, setShowRubric] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -210,9 +211,23 @@ export default function ScreeningDetail() {
   const isProcessing = !isDraft && !["completed", "failed"].includes(screening.status);
   const rubricCategories: RubricCategory[] = (screening.rubric as any)?.categories ?? [];
 
-  const tierGroups = TIERS.map((tier) => ({
+  const PAGE_SIZE = 100;
+  const totalPages = Math.max(1, Math.ceil(candidates.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedCandidates = candidates.length > PAGE_SIZE
+    ? candidates.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+    : candidates;
+  const showPagination = candidates.length > PAGE_SIZE;
+
+  // Tier counts use the full result set (so pill counts stay stable across pages);
+  // the rendered tier rows use the current page slice.
+  const tierGroupsAll = TIERS.map((tier) => ({
     tier,
     candidates: candidates.filter((c) => getTier(c.overall_score).id === tier.id),
+  }));
+  const tierGroups = TIERS.map((tier) => ({
+    tier,
+    candidates: pagedCandidates.filter((c) => getTier(c.overall_score).id === tier.id),
   }));
 
   return (
@@ -231,7 +246,9 @@ export default function ScreeningDetail() {
               {isProcessing && candidates.length > 0
                 ? `${candidates.length} scored so far · Ranking finalizes when all complete`
                 : candidates.length > 0
-                ? `Grouped by fit · ${candidates.length} candidates`
+                ? showPagination
+                  ? `Grouped by fit · ${candidates.length} candidates · Page ${safePage} of ${totalPages}`
+                  : `Grouped by fit · ${candidates.length} candidates`
                 : `${screening.total_resumes} resumes · Created ${formatDate(screening.created_at)}`}
             </p>
           </div>
@@ -269,7 +286,7 @@ export default function ScreeningDetail() {
         {/* Tier pills */}
         {candidates.length > 0 && (
           <div className="flex items-center gap-2 mt-4 flex-wrap">
-            {tierGroups.map(({ tier, candidates: tc }) => (
+            {tierGroupsAll.map(({ tier, candidates: tc }) => (
               <button
                 key={tier.id}
                 onClick={() => toggleTier(tier.id as TierId)}
@@ -533,6 +550,20 @@ export default function ScreeningDetail() {
             );
           })}
 
+          {/* Pagination — appears when there are more than 100 candidates */}
+          {showPagination && (
+            <Pagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              total={candidates.length}
+              pageSize={PAGE_SIZE}
+              onChange={(p) => {
+                setCurrentPage(p);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            />
+          )}
+
           {/* In-flight files during processing */}
           {isProcessing && progress && <PendingFilesSection progress={progress} />}
 
@@ -561,11 +592,11 @@ interface TierSectionProps {
 function TierSection({ tier, candidates, collapsed, onToggle, categories, onSelect }: TierSectionProps) {
   return (
     <div className="rounded-2xl border border-[#E8E5DF] bg-white overflow-hidden">
-      <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-[#FAFAF8] transition-colors">
+      <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3 bg-[#F5F3EE] hover:bg-[#EFEAE0] transition-colors">
         <div className="flex items-center gap-2.5">
           <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: tier.dot }} />
           <span className="text-sm font-semibold text-[#0F0F0F]">{tier.label}</span>
-          <span className="text-xs text-[#737373]">{candidates.length} candidate{candidates.length !== 1 ? "s" : ""}</span>
+          <span className="text-xs text-[#737373]">· {candidates.length} candidate{candidates.length !== 1 ? "s" : ""}</span>
         </div>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
           className={`text-[#A0A0A0] transition-transform ${collapsed ? "" : "rotate-180"}`}><path d="M3 5l4 4 4-4" /></svg>
@@ -643,8 +674,8 @@ function CandidateRow({ candidate, categories, onSelect }: {
     <tr onClick={onSelect} className={`cursor-pointer transition-colors hover:bg-[#FAFAF8] ${failedNonNegotiables.length > 0 ? "bg-red-50/40" : ""}`}>
       <td className="px-5 py-3.5">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-[#F0EDE8] flex items-center justify-center shrink-0">
-            <span className="text-xs font-semibold text-[#404040]">{(candidate.candidate_name ?? candidate.filename).slice(0, 2).toUpperCase()}</span>
+          <div className="h-8 w-8 rounded-full bg-[#FBF1E7] flex items-center justify-center shrink-0">
+            <span className="text-xs font-semibold text-[#C85A17]">{(candidate.candidate_name ?? candidate.filename).slice(0, 2).toUpperCase()}</span>
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-[#0F0F0F] truncate">{candidate.candidate_name ?? candidate.filename}</p>
@@ -673,10 +704,10 @@ function CandidateRow({ candidate, categories, onSelect }: {
         <p className="text-xs text-[#404040] line-clamp-2">{candidate.candidate_current_job ?? <span className="text-[#D4D4D4]">—</span>}</p>
       </td>
       <td className="px-3 py-3.5 text-center align-middle">
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-base font-bold text-[#0F0F0F]">{Math.round(candidate.overall_score)}</span>
-          <div className="w-10 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden">
-            <div className="h-full rounded-full bg-[#0F0F0F]" style={{ width: `${candidate.overall_score}%` }} />
+        <div className="flex flex-col items-center gap-1.5">
+          <span className="text-lg font-bold text-[#0F0F0F] leading-none">{Math.round(candidate.overall_score)}</span>
+          <div className="w-12 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-[#C85A17]" style={{ width: `${candidate.overall_score}%` }} />
           </div>
         </div>
       </td>
@@ -685,10 +716,10 @@ function CandidateRow({ candidate, categories, onSelect }: {
         return (
           <td key={cat.name} className="px-3 py-3.5 text-center align-middle">
             {catScore !== null ? (
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex flex-col items-center gap-1.5">
                 <span className="text-xs font-bold text-[#0F0F0F]">{catScore.toFixed(1)}</span>
-                <div className="w-10 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-[#0F0F0F]" style={{ width: `${catScore * 10}%` }} />
+                <div className="w-12 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-[#C85A17]" style={{ width: `${catScore * 10}%` }} />
                 </div>
               </div>
             ) : (
@@ -899,6 +930,84 @@ function FailedView({ progress, hasResults }: { progress: BatchProgress | null; 
           </div>
         </details>
       )}
+    </div>
+  );
+}
+
+
+// ─── Pagination ───────────────────────────────────────────────────────────────
+
+interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  total: number;
+  pageSize: number;
+  onChange: (page: number) => void;
+}
+
+function Pagination({ currentPage, totalPages, total, pageSize, onChange }: PaginationProps) {
+  const start = (currentPage - 1) * pageSize + 1;
+  const end = Math.min(currentPage * pageSize, total);
+
+  // Build a compact page list: 1 … (cur-1) cur (cur+1) … last
+  const pages: (number | "…")[] = [];
+  const push = (p: number | "…") => pages.push(p);
+  const window = new Set<number>([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
+  let last: number | null = null;
+  for (let i = 1; i <= totalPages; i++) {
+    if (window.has(i) && i >= 1 && i <= totalPages) {
+      if (last !== null && i - last > 1) push("…");
+      push(i);
+      last = i;
+    }
+  }
+
+  const btnBase =
+    "h-9 min-w-9 px-3 rounded-xl border text-sm font-medium transition-colors flex items-center justify-center";
+  const btnIdle =
+    "border-[#E8E5DF] bg-white text-[#404040] hover:bg-[#F5F3EE]";
+  const btnActive =
+    "border-[#0F0F0F] bg-[#0F0F0F] text-white";
+  const btnDisabled =
+    "border-[#E8E5DF] bg-white text-[#D4D4D4] cursor-not-allowed";
+
+  return (
+    <div className="flex items-center justify-between px-1 pt-1">
+      <p className="text-xs text-[#737373]">
+        Showing <span className="font-semibold text-[#404040]">{start}</span>–<span className="font-semibold text-[#404040]">{end}</span> of <span className="font-semibold text-[#404040]">{total}</span>
+      </p>
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => onChange(currentPage - 1)}
+          disabled={currentPage <= 1}
+          className={`${btnBase} ${currentPage <= 1 ? btnDisabled : btnIdle}`}
+          aria-label="Previous page"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7.5 2.5L4 6l3.5 3.5"/></svg>
+        </button>
+        {pages.map((p, idx) =>
+          p === "…" ? (
+            <span key={`gap-${idx}`} className="px-1 text-xs text-[#A0A0A0]">…</span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onChange(p)}
+              className={`${btnBase} ${p === currentPage ? btnActive : btnIdle}`}
+              aria-current={p === currentPage ? "page" : undefined}
+            >
+              {p}
+            </button>
+          ),
+        )}
+        <button
+          onClick={() => onChange(currentPage + 1)}
+          disabled={currentPage >= totalPages}
+          className={`${btnBase} ${currentPage >= totalPages ? btnDisabled : btnIdle}`}
+          aria-label="Next page"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 2.5L8 6l-3.5 3.5"/></svg>
+        </button>
+      </div>
     </div>
   );
 }
