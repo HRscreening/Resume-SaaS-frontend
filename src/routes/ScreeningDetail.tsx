@@ -11,10 +11,10 @@ import type { RankedCandidate, BatchProgress, FileProgress, RubricCategory } fro
 // ─── Tier config ─────────────────────────────────────────────────────────────
 
 const TIERS = [
-  { id: "strong",    label: "Strong Match", min: 75, dot: "#22C55E", bg: "bg-green-50",  border: "border-green-200",  text: "text-green-700"  },
-  { id: "potential", label: "Potential",    min: 55, dot: "#EAB308", bg: "bg-yellow-50", border: "border-yellow-200", text: "text-yellow-700" },
-  { id: "risky",     label: "Risky",        min: 35, dot: "#F97316", bg: "bg-orange-50", border: "border-orange-200", text: "text-orange-700" },
-  { id: "poor",      label: "Poor Fit",     min: 0,  dot: "#EF4444", bg: "bg-red-50",    border: "border-red-200",    text: "text-red-700"    },
+  { id: "strong",    label: "Strong Match", min: 75, dot: "#22C55E" },
+  { id: "potential", label: "Potential",    min: 55, dot: "#EAB308" },
+  { id: "risky",     label: "Risky",        min: 35, dot: "#F97316" },
+  { id: "poor",      label: "Poor Fit",     min: 0,  dot: "#EF4444" },
 ];
 
 type TierId = "strong" | "potential" | "risky" | "poor";
@@ -24,12 +24,6 @@ function getTier(score: number) {
   if (score >= 55) return TIERS[1];
   if (score >= 35) return TIERS[2];
   return TIERS[3];
-}
-
-function dotColor(score: number): string {
-  if (score >= 7) return "#22C55E";
-  if (score >= 4) return "#EAB308";
-  return "#EF4444";
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -272,30 +266,25 @@ export default function ScreeningDetail() {
           )}
         </div>
 
-        {/* Tier pills + legend */}
+        {/* Tier pills */}
         {candidates.length > 0 && (
           <div className="flex items-center gap-2 mt-4 flex-wrap">
             {tierGroups.map(({ tier, candidates: tc }) => (
               <button
                 key={tier.id}
                 onClick={() => toggleTier(tier.id as TierId)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl border-2 text-sm font-semibold transition-opacity ${tier.bg} ${tier.border} ${tier.text} ${tc.length === 0 ? "opacity-40 cursor-default" : ""}`}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl border bg-white border-[#E8E5DF] text-sm font-medium text-[#0F0F0F] hover:bg-[#F5F3EE] transition-colors ${tc.length === 0 ? "opacity-40 cursor-default" : ""}`}
                 disabled={tc.length === 0}
               >
                 <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: tier.dot }} />
                 {tier.label}
-                <span>{tc.length}</span>
+                <span className="text-[#737373] font-normal">{tc.length}</span>
                 <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-                  className={`transition-transform ${collapsedTiers.has(tier.id as TierId) ? "" : "rotate-180"}`}>
+                  className={`text-[#A0A0A0] transition-transform ${collapsedTiers.has(tier.id as TierId) ? "" : "rotate-180"}`}>
                   <path d="M2 4l3.5 3.5L9 4" />
                 </svg>
               </button>
             ))}
-            <div className="ml-auto flex items-center gap-4 text-xs text-[#737373]">
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-green-500 inline-block" />Met</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-yellow-400 inline-block" />Partial</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-red-500 inline-block" />Missing</span>
-            </div>
           </div>
         )}
       </div>
@@ -560,9 +549,6 @@ export default function ScreeningDetail() {
 
 // ─── Tier Section ─────────────────────────────────────────────────────────────
 
-// Category colors for table headers
-const CAT_COLORS = ["#3B82F6", "#F59E0B", "#8B5CF6"];
-
 interface TierSectionProps {
   tier: typeof TIERS[number];
   candidates: RankedCandidate[];
@@ -574,19 +560,19 @@ interface TierSectionProps {
 
 function TierSection({ tier, candidates, collapsed, onToggle, categories, onSelect }: TierSectionProps) {
   return (
-    <div className={`rounded-2xl border-2 overflow-hidden ${tier.border}`}>
-      <button onClick={onToggle} className={`w-full flex items-center justify-between px-5 py-3.5 ${tier.bg}`}>
-        <div className="flex items-center gap-2">
-          <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tier.dot }} />
-          <span className={`text-sm font-semibold ${tier.text}`}>{tier.label}</span>
-          <span className={`text-xs ${tier.text} opacity-70`}>{candidates.length} candidate{candidates.length !== 1 ? "s" : ""}</span>
+    <div className="rounded-2xl border border-[#E8E5DF] bg-white overflow-hidden">
+      <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-[#FAFAF8] transition-colors">
+        <div className="flex items-center gap-2.5">
+          <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: tier.dot }} />
+          <span className="text-sm font-semibold text-[#0F0F0F]">{tier.label}</span>
+          <span className="text-xs text-[#737373]">{candidates.length} candidate{candidates.length !== 1 ? "s" : ""}</span>
         </div>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-          className={`${tier.text} transition-transform ${collapsed ? "" : "rotate-180"}`}><path d="M3 5l4 4 4-4" /></svg>
+          className={`text-[#A0A0A0] transition-transform ${collapsed ? "" : "rotate-180"}`}><path d="M3 5l4 4 4-4" /></svg>
       </button>
 
       {!collapsed && (
-        <div className="bg-white overflow-x-auto">
+        <div className="border-t border-[#E8E5DF] overflow-x-auto">
           <table className="w-full text-sm">
             <colgroup>
               <col style={{ minWidth: "200px" }} />
@@ -601,17 +587,17 @@ function TierSection({ tier, candidates, collapsed, onToggle, categories, onSele
                 <th className="px-5 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Candidate</th>
                 <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Current Role</th>
                 <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide">Score</th>
-                {categories.map((cat, i) => (
-                  <th key={cat.name} className="px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide" style={{ color: CAT_COLORS[i] }}>
+                {categories.map((cat) => (
+                  <th key={cat.name} className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide">
                     <span className="block">{cat.name}</span>
-                    <span className="font-normal text-[#A0A0A0]">{cat.weight}%</span>
+                    <span className="font-normal text-[#A0A0A0] normal-case tracking-normal">{cat.weight}%</span>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8E5DF]">
               {candidates.map((c) => (
-                <CandidateRow key={c.resume_id} candidate={c} tier={tier} categories={categories} onSelect={() => onSelect(c)} />
+                <CandidateRow key={c.resume_id} candidate={c} categories={categories} onSelect={() => onSelect(c)} />
               ))}
             </tbody>
           </table>
@@ -621,8 +607,8 @@ function TierSection({ tier, candidates, collapsed, onToggle, categories, onSele
   );
 }
 
-function CandidateRow({ candidate, tier, categories, onSelect }: {
-  candidate: RankedCandidate; tier: typeof TIERS[number]; categories: RubricCategory[]; onSelect: () => void;
+function CandidateRow({ candidate, categories, onSelect }: {
+  candidate: RankedCandidate; categories: RubricCategory[]; onSelect: () => void;
 }) {
   // Compute category-level score = weighted avg of subcategory scores
   function getCategoryScore(cat: RubricCategory): number | null {
@@ -688,21 +674,21 @@ function CandidateRow({ candidate, tier, categories, onSelect }: {
       </td>
       <td className="px-3 py-3.5 text-center align-middle">
         <div className="flex flex-col items-center gap-1">
-          <span className={`text-base font-bold ${tier.text}`}>{Math.round(candidate.overall_score)}</span>
+          <span className="text-base font-bold text-[#0F0F0F]">{Math.round(candidate.overall_score)}</span>
           <div className="w-10 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${candidate.overall_score}%`, backgroundColor: tier.dot }} />
+            <div className="h-full rounded-full bg-[#0F0F0F]" style={{ width: `${candidate.overall_score}%` }} />
           </div>
         </div>
       </td>
-      {categories.map((cat, i) => {
+      {categories.map((cat) => {
         const catScore = getCategoryScore(cat);
         return (
           <td key={cat.name} className="px-3 py-3.5 text-center align-middle">
             {catScore !== null ? (
               <div className="flex flex-col items-center gap-1">
-                <span className="text-xs font-bold" style={{ color: dotColor(catScore) }}>{catScore.toFixed(1)}</span>
+                <span className="text-xs font-bold text-[#0F0F0F]">{catScore.toFixed(1)}</span>
                 <div className="w-10 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${catScore * 10}%`, backgroundColor: dotColor(catScore) }} />
+                  <div className="h-full rounded-full bg-[#0F0F0F]" style={{ width: `${catScore * 10}%` }} />
                 </div>
               </div>
             ) : (
@@ -729,13 +715,10 @@ function RubricModal({ categories, onClose }: { categories: RubricCategory[]; on
           </button>
         </div>
         <div className="p-6 space-y-4">
-          {categories.map((cat, i) => (
+          {categories.map((cat) => (
             <div key={cat.name} className="border border-[#E8E5DF] rounded-xl overflow-hidden">
               <div className="px-4 py-3 bg-[#F5F3EE] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CAT_COLORS[i] }} />
-                  <span className="text-sm font-semibold text-[#0F0F0F]">{cat.name}</span>
-                </div>
+                <span className="text-sm font-semibold text-[#0F0F0F]">{cat.name}</span>
                 <span className="text-xs font-bold text-[#404040]">{cat.weight}%</span>
               </div>
               {cat.subcategories.length > 0 && (
