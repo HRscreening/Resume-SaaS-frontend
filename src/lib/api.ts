@@ -151,14 +151,18 @@ export async function uploadResumesToJob(
 
 export async function addResumesToJob(
   screeningId: string,
-  file: File,
+  input: File | File[],
 ): Promise<{ screening_id: string; batch_id: string; new_files: number; total_resumes: number; skipped: number }> {
   const authHeaders = await getAuthHeader();
   const formData = new FormData();
-  if (file.name.toLowerCase().endsWith(".zip")) {
-    formData.append("zip_file", file);
+  const fileList = Array.isArray(input) ? input : [input];
+  const isZip = fileList.length === 1 && fileList[0].name.toLowerCase().endsWith(".zip");
+  if (isZip) {
+    formData.append("zip_file", fileList[0]);
   } else {
-    formData.append("file", file);
+    for (const f of fileList) {
+      formData.append("files", f);
+    }
   }
   const res = await fetch(`${API_BASE}/api/screenings/${screeningId}/add-resumes`, {
     method: "POST",

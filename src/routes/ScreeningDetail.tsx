@@ -46,7 +46,7 @@ export default function ScreeningDetail() {
   const [showUploadMore, setShowUploadMore] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadMoreFileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadMoreFile, setUploadMoreFile] = useState<File | null>(null);
+  const [uploadMoreFiles, setUploadMoreFiles] = useState<File[]>([]);
   const [uploadMoreDragActive, setUploadMoreDragActive] = useState(false);
 
   const { data: screening, isLoading, error } = useQuery({
@@ -149,12 +149,16 @@ export default function ScreeningDetail() {
   }
 
   async function handleUploadMore() {
-    if (!uploadMoreFile) return;
+    if (uploadMoreFiles.length === 0) return;
+    const isZipBatch =
+      uploadMoreFiles.length === 1 &&
+      uploadMoreFiles[0].name.toLowerCase().endsWith(".zip");
+    const payload: File | File[] = isZipBatch ? uploadMoreFiles[0] : uploadMoreFiles;
     setUploading(true);
     setUploadError(null);
     try {
-      const result = await addResumesToJob(id, uploadMoreFile);
-      setUploadMoreFile(null);
+      const result = await addResumesToJob(id, payload);
+      setUploadMoreFiles([]);
       setShowUploadMore(false);
 
       queryClient.setQueryData(
@@ -172,6 +176,46 @@ export default function ScreeningDetail() {
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally { setUploading(false); }
+  }
+
+  function acceptUploadMoreFiles(picked: FileList | File[] | null): void {
+    if (!picked || picked.length === 0) return;
+    const arr = Array.from(picked);
+    const zips = arr.filter((f) => f.name.toLowerCase().endsWith(".zip"));
+    const docs = arr.filter((f) => {
+      const n = f.name.toLowerCase();
+      return n.endsWith(".pdf") || n.endsWith(".docx");
+    });
+    if (zips.length > 0 && docs.length > 0) {
+      setUploadError("Drop either a single ZIP or one-or-more PDF/DOCX files — not both.");
+      return;
+    }
+    if (zips.length > 1) {
+      setUploadError("Only one ZIP archive at a time.");
+      return;
+    }
+    if (zips.length === 1) {
+      setUploadError(null);
+      setUploadMoreFiles([zips[0]]);
+      return;
+    }
+    if (docs.length === 0) {
+      setUploadError("Unsupported file type. Use ZIP, PDF, or DOCX.");
+      return;
+    }
+    setUploadError(null);
+    setUploadMoreFiles((prev) => {
+      const seen = new Set(prev.map((f) => `${f.name}_${f.size}`));
+      const merged = [...prev];
+      for (const f of docs) {
+        const key = `${f.name}_${f.size}`;
+        if (!seen.has(key)) {
+          merged.push(f);
+          seen.add(key);
+        }
+      }
+      return merged;
+    });
   }
 
   function toggleTier(tierId: TierId) {
@@ -262,7 +306,7 @@ export default function ScreeningDetail() {
               Rubric
             </button>
             <button
-              onClick={() => { setShowUploadMore((v) => !v); setUploadMoreFile(null); setUploadError(null); }}
+              onClick={() => { setShowUploadMore((v) => !v); setUploadMoreFiles([]); setUploadError(null); }}
               className={`h-9 px-4 border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5v8M4 7l4-4 4 4"/><path d="M1.5 11.5h11"/></svg>
@@ -436,11 +480,11 @@ export default function ScreeningDetail() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-base font-semibold text-[#0F0F0F]">Add more resumes</h2>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F0EDE8] border border-[#D4D4D4] text-xs font-semibold text-[#404040] tracking-wide">.PDF &amp; .DOCX</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F0EDE8] border border-[#D4D4D4] text-xs font-semibold text-[#404040] tracking-wide">.ZIP · .PDF · .DOCX</span>
                   </div>
-                  <p className="text-xs text-[#737373] mt-1">Upload a single resume file. It will be scored and re-ranked against all existing candidates.</p>
+                  <p className="text-xs text-[#737373] mt-1">Upload a ZIP archive or one-or-more PDF/DOCX files. New resumes are scored and re-ranked against all existing candidates.</p>
                 </div>
-                <button onClick={() => { setShowUploadMore(false); setUploadMoreFile(null); setUploadError(null); }}
+                <button onClick={() => { setShowUploadMore(false); setUploadMoreFiles([]); setUploadError(null); }}
                   className="h-7 w-7 rounded-lg hover:bg-[#F5F3EE] flex items-center justify-center text-[#737373] shrink-0 ml-4">
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8" /></svg>
                 </button>
@@ -448,37 +492,54 @@ export default function ScreeningDetail() {
               {uploadError && (
                 <div className="mt-3 mb-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">{uploadError}</div>
               )}
+              <input ref={uploadMoreFileInputRef} type="file" accept=".zip,.pdf,.docx" multiple className="hidden"
+                onChange={(e) => { acceptUploadMoreFiles(e.target.files); e.target.value = ""; }} />
               <div className="mt-4">
-                {uploadMoreFile ? (
-                  <div
-                    onClick={() => uploadMoreFileInputRef.current?.click()}
-                    className="border border-[#D4D4D4] rounded-2xl p-5 cursor-pointer hover:border-[#A0A0A0] hover:bg-[#FAFAF8] transition-all"
-                  >
-                    <input ref={uploadMoreFileInputRef} type="file" accept=".pdf,.docx" className="hidden"
-                      onChange={(e) => setUploadMoreFile(e.target.files?.[0] ?? null)} />
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-[#F0EDE8] border border-[#D4D4D4] flex items-center justify-center shrink-0">
-                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#404040" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M4 18h12M4 2h8l4 4v12"/><path d="M12 2v5h5"/>
-                        </svg>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-[#0F0F0F] truncate">{uploadMoreFile.name}</p>
-                        <p className="text-xs text-[#737373] mt-0.5">
-                          {uploadMoreFile.size > 1024 * 1024
-                            ? `${(uploadMoreFile.size / 1024 / 1024).toFixed(1)} MB`
-                            : `${(uploadMoreFile.size / 1024).toFixed(0)} KB`}
-                          {" · "}{uploadMoreFile.name.endsWith(".pdf") ? "PDF" : "Word"} document
-                        </p>
-                        <p className="text-xs text-[#A0A0A0] mt-0.5">Click to change</p>
-                      </div>
+                {uploadMoreFiles.length > 0 ? (
+                  <div className="border border-[#D4D4D4] rounded-2xl p-4 bg-[#FAFAF8]">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-semibold text-[#404040] uppercase tracking-wide">
+                        {uploadMoreFiles.length === 1 && uploadMoreFiles[0].name.toLowerCase().endsWith(".zip")
+                          ? "ZIP archive selected"
+                          : `${uploadMoreFiles.length} file${uploadMoreFiles.length === 1 ? "" : "s"} selected`}
+                      </p>
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); setUploadMoreFile(null); }}
-                        className="h-7 w-7 rounded-lg text-[#A0A0A0] hover:text-red-600 hover:bg-red-50 flex items-center justify-center shrink-0 transition-colors"
+                        onClick={() => uploadMoreFileInputRef.current?.click()}
+                        className="text-xs font-medium text-[#C85A17] hover:underline"
                       >
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+                        Add more
                       </button>
+                    </div>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {uploadMoreFiles.map((f, idx) => {
+                        const lower = f.name.toLowerCase();
+                        const kind = lower.endsWith(".zip") ? "ZIP" : lower.endsWith(".pdf") ? "PDF" : "Word";
+                        const sizeStr = f.size > 1024 * 1024
+                          ? `${(f.size / 1024 / 1024).toFixed(1)} MB`
+                          : `${(f.size / 1024).toFixed(0)} KB`;
+                        return (
+                          <div key={`${f.name}_${f.size}_${idx}`} className="flex items-center gap-3 bg-white border border-[#E8E5DF] rounded-xl px-3 py-2">
+                            <div className="h-8 w-8 rounded-lg bg-[#FBF1E7] flex items-center justify-center shrink-0">
+                              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#C85A17" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 18h12M4 2h8l4 4v12"/><path d="M12 2v5h5"/>
+                              </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-[#0F0F0F] truncate">{f.name}</p>
+                              <p className="text-xs text-[#737373]">{sizeStr} · {kind}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setUploadMoreFiles((prev) => prev.filter((_, i) => i !== idx))}
+                              className="h-7 w-7 rounded-lg text-[#A0A0A0] hover:text-red-600 hover:bg-red-50 flex items-center justify-center shrink-0 transition-colors"
+                              aria-label={`Remove ${f.name}`}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : (
@@ -486,29 +547,27 @@ export default function ScreeningDetail() {
                     onDragOver={(e) => { e.preventDefault(); setUploadMoreDragActive(true); }}
                     onDragLeave={() => setUploadMoreDragActive(false)}
                     onDrop={(e) => {
-                      e.preventDefault(); setUploadMoreDragActive(false);
-                      const f = e.dataTransfer.files[0];
-                      if (f && (f.name.endsWith(".pdf") || f.name.endsWith(".docx"))) setUploadMoreFile(f);
+                      e.preventDefault();
+                      setUploadMoreDragActive(false);
+                      acceptUploadMoreFiles(e.dataTransfer.files);
                     }}
                     onClick={() => uploadMoreFileInputRef.current?.click()}
                     className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
                       uploadMoreDragActive ? "border-[#C85A17] bg-[#C85A1708]" : "border-[#D4D4D4] hover:border-[#A0A0A0] hover:bg-[#F5F3EE]"
                     }`}
                   >
-                    <input ref={uploadMoreFileInputRef} type="file" accept=".pdf,.docx" className="hidden"
-                      onChange={(e) => setUploadMoreFile(e.target.files?.[0] ?? null)} />
                     <div className="h-10 w-10 rounded-full bg-[#F5F3EE] border border-[#D4D4D4] flex items-center justify-center mx-auto mb-3">
                       <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
                     </div>
-                    <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop a resume file here</p>
+                    <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop files here</p>
                     <p className="text-xs text-[#737373]">or click to browse</p>
-                    <p className="text-xs font-semibold text-[#A0A0A0] mt-2 uppercase tracking-wide">PDF or DOCX · single file</p>
+                    <p className="text-xs font-semibold text-[#A0A0A0] mt-2 uppercase tracking-wide">ZIP archive · or one-or-more PDF/DOCX</p>
                   </div>
                 )}
               </div>
               <button
                 onClick={handleUploadMore}
-                disabled={!uploadMoreFile || uploading}
+                disabled={uploadMoreFiles.length === 0 || uploading}
                 className="mt-4 w-full h-10 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {uploading && <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
