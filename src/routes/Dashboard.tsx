@@ -142,13 +142,19 @@ export default function Dashboard() {
               style={{ width: `${usage.quota_limit > 0 ? Math.min(100, Math.round((usage.resumes_processed / usage.quota_limit) * 100)) : 0}%` }}
             />
           </div>
-          {usage.plan === "FREE" && usage.quota_limit > 0
+          {usage.quota_limit > 0
             && usage.resumes_processed / usage.quota_limit >= 0.8
             && usage.resumes_processed < usage.quota_limit && (
               <p className="mt-3 text-xs text-[#C85A17]">
-                Running low.{" "}
-                <Link to="/settings" hash="billing" className="underline font-medium">Upgrade your plan</Link>{" "}
-                to keep screening.
+                Running low — {Math.max(0, usage.quota_limit - usage.resumes_processed)} resumes left this month.{" "}
+                {usage.plan !== "ENTERPRISE" ? (
+                  <>
+                    <Link to="/settings" hash="billing" className="underline font-medium">Upgrade your plan</Link>{" "}
+                    to keep screening.
+                  </>
+                ) : (
+                  <>Quota refreshes on the 1st.</>
+                )}
               </p>
             )}
         </div>

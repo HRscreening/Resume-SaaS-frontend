@@ -26,6 +26,23 @@ export interface UsageResponse {
   month: string;
 }
 
+// Plan catalog — fetched from GET /api/billing/plans. Single source of
+// truth lives in backend/app/core/quota.py PLAN_LIMITS.
+export interface PlanSpec {
+  key: SubscriptionPlan;
+  display_name: string;
+  price_monthly_inr: number;
+  price_label: string;
+  razorpay_amount_paise: number;
+  max_resumes_per_month: number;
+  max_batch_size: number;
+  max_screenings: number;
+  data_retention_days: number;
+  scoring_models: string[];
+  export_formats: string[];
+  api_access: boolean;
+}
+
 // ─── Rubric ──────────────────────────────────────────────────────────────────
 
 export interface Subcategory {

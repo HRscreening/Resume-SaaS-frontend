@@ -249,6 +249,11 @@ export async function deleteScreening(id: string): Promise<void> {
 
 // ─── Billing ─────────────────────────────────────────────────────────────────
 
+export async function getPlans(): Promise<import("@/types").PlanSpec[]> {
+  const res = await request<{ plans: import("@/types").PlanSpec[] }>("/api/billing/plans");
+  return res.plans;
+}
+
 export async function createRazorpayOrder(plan: string): Promise<{
   order_id: string;
   amount: number;

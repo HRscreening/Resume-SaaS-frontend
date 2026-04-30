@@ -1,29 +1,26 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { getProfile, updateProfile, getUsage, deleteAccount, getTokenUsage, createRazorpayOrder, verifyRazorpayPayment, cancelSubscription } from "@/lib/api";
+import { getProfile, updateProfile, getUsage, getPlans, deleteAccount, getTokenUsage, createRazorpayOrder, verifyRazorpayPayment, cancelSubscription } from "@/lib/api";
 import { clearAuthCache } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
-import type { Profile, UsageResponse } from "@/types";
+import type { Profile, UsageResponse, PlanSpec, SubscriptionPlan } from "@/types";
 
-const PLAN_DETAILS = {
-  FREE:       { name: "Free",       price: "₹0/mo",   resumes: 50  },
-  PRO:        { name: "Starter",    price: "₹1/mo",   resumes: 100 },
-  BUSINESS:   { name: "Growth",     price: "₹20/mo",  resumes: 200 },
-  ENTERPRISE: { name: "Scale",      price: "₹30/mo",  resumes: 300 },
-};
+type UpgradeSlug = "pro" | "business" | "enterprise";
 
-const UPGRADE_PLANS = [
-  { key: "pro"        as const, name: "Starter",  price: "₹1/mo",   resumes: 100, amount: "₹1"  },
-  { key: "business"   as const, name: "Growth",   price: "₹20/mo",  resumes: 200, amount: "₹20" },
-  { key: "enterprise" as const, name: "Scale",    price: "₹30/mo",  resumes: 300, amount: "₹30" },
-];
+function planKeyToSlug(key: SubscriptionPlan): UpgradeSlug | null {
+  if (key === "PRO") return "pro";
+  if (key === "BUSINESS") return "business";
+  if (key === "ENTERPRISE") return "enterprise";
+  return null;
+}
 
 export default function Settings() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [usage, setUsage] = useState<UsageResponse | null>(null);
+  const [plans, setPlans] = useState<PlanSpec[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -46,10 +43,11 @@ export default function Settings() {
   const [cancelError, setCancelError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getProfile(), getUsage()])
-      .then(([p, u]) => {
+    Promise.all([getProfile(), getUsage(), getPlans()])
+      .then(([p, u, planList]) => {
         setProfile(p);
         setUsage(u);
+        setPlans(planList);
         setName(p.full_name ?? "");
         setCompany(p.company_name ?? "");
       })
@@ -122,7 +120,7 @@ export default function Settings() {
     // Invalidate everywhere so Dashboard / Sidebar etc. show the new limit too.
     queryClient.invalidateQueries({ queryKey: ["usage"] });
     queryClient.invalidateQueries({ queryKey: ["profile"] });
-    const upgradedName = UPGRADE_PLANS.find(p => p.key === plan)?.name ?? plan;
+    const upgradedName = plans.find(p => planKeyToSlug(p.key) === plan)?.display_name ?? plan;
     setPaymentSuccess(`You're now on the ${upgradedName} plan!`);
     setTimeout(() => setPaymentSuccess(null), 6000);
   }
@@ -281,8 +279,8 @@ export default function Settings() {
     );
   }
 
-  const planKey = (profile?.plan ?? "FREE") as keyof typeof PLAN_DETAILS;
-  const planInfo = PLAN_DETAILS[planKey];
+  const planKey: SubscriptionPlan = profile?.plan ?? "FREE";
+  const planInfo = plans.find((p) => p.key === planKey);
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
@@ -384,8 +382,10 @@ export default function Settings() {
         <div className="bg-[#F5F3EE] rounded-xl p-4 mb-5 flex items-center justify-between">
           <div>
             <p className="text-xs text-[#737373] mb-0.5">Current plan</p>
-            <p className="text-lg font-bold text-[#0F0F0F]">{planInfo.name}</p>
-            <p className="text-sm text-[#737373]">{planInfo.price} · {planInfo.resumes === Infinity ? "Unlimited" : planInfo.resumes.toLocaleString()} resumes/month</p>
+            <p className="text-lg font-bold text-[#0F0F0F]">{planInfo?.display_name ?? planKey}</p>
+            <p className="text-sm text-[#737373]">
+              {planInfo?.price_label ?? "—"} · {planInfo ? planInfo.max_resumes_per_month.toLocaleString() : "—"} resumes/month
+            </p>
             {profile?.plan !== "FREE" && !showCancelConfirm && (
               <button
                 onClick={() => { setCancelError(null); setShowCancelConfirm(true); }}
@@ -412,9 +412,9 @@ export default function Settings() {
         {/* Cancel-subscription confirm */}
         {showCancelConfirm && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5">
-            <p className="text-sm font-semibold text-red-900 mb-1">Cancel your {planInfo.name} plan?</p>
+            <p className="text-sm font-semibold text-red-900 mb-1">Cancel your {planInfo?.display_name ?? "current"} plan?</p>
             <p className="text-xs text-red-700/90 mb-3">
-              You'll be downgraded to the Free plan immediately. Your monthly limit will drop to 50 resumes
+              You'll be downgraded to the Free plan immediately. Your monthly limit will drop to {plans.find((p) => p.key === "FREE")?.max_resumes_per_month ?? 50} resumes
               for the rest of this month, and you can re-subscribe anytime.
             </p>
             {cancelError && (
@@ -440,44 +440,39 @@ export default function Settings() {
           </div>
         )}
 
-        {/* All plan cards */}
+        {/* All plan cards — fully driven by /api/billing/plans */}
         <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-3">Available plans</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {/* Free */}
-          <div className={`rounded-xl border p-4 flex flex-col gap-2 ${profile?.plan === "FREE" ? "border-[#0F0F0F] bg-[#F5F3EE]" : "border-[#E8E5DF]"}`}>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-[#0F0F0F]">Free</span>
-              {profile?.plan === "FREE" && <span className="text-xs px-1.5 py-0.5 bg-[#0F0F0F] text-white rounded-full">Active</span>}
-            </div>
-            <p className="text-lg font-bold text-[#0F0F0F]">₹0<span className="text-xs font-normal text-[#737373]">/mo</span></p>
-            <p className="text-xs text-[#737373]">50 resumes</p>
-          </div>
-
-          {UPGRADE_PLANS.map((plan) => {
-            const isCurrent = profile?.plan === plan.key.toUpperCase();
-            const planOrder = ["FREE","PRO","BUSINESS","ENTERPRISE"];
-            const isDowngrade = planOrder.indexOf(profile?.plan ?? "FREE") > planOrder.indexOf(plan.key.toUpperCase());
+          {plans.map((plan) => {
+            const isCurrent = profile?.plan === plan.key;
+            const planOrder: SubscriptionPlan[] = ["FREE", "PRO", "BUSINESS", "ENTERPRISE"];
+            const isDowngrade = planOrder.indexOf(profile?.plan ?? "FREE") > planOrder.indexOf(plan.key);
+            const slug = planKeyToSlug(plan.key);
+            const showUpgrade = !isCurrent && !isDowngrade && slug !== null;
             return (
               <div
                 key={plan.key}
                 className={`rounded-xl border p-4 flex flex-col gap-2 ${isCurrent ? "border-[#0F0F0F] bg-[#F5F3EE]" : "border-[#E8E5DF]"}`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-[#0F0F0F]">{plan.name}</span>
+                  <span className="text-sm font-semibold text-[#0F0F0F]">{plan.display_name}</span>
                   {isCurrent && <span className="text-xs px-1.5 py-0.5 bg-[#0F0F0F] text-white rounded-full">Active</span>}
                 </div>
-                <p className="text-lg font-bold text-[#0F0F0F]">{plan.amount}<span className="text-xs font-normal text-[#737373]">/mo</span></p>
-                <p className="text-xs text-[#737373]">{plan.resumes} resumes</p>
-                {!isCurrent && !isDowngrade && (
+                <p className="text-lg font-bold text-[#0F0F0F]">
+                  ₹{plan.price_monthly_inr}
+                  <span className="text-xs font-normal text-[#737373]">/mo</span>
+                </p>
+                <p className="text-xs text-[#737373]">{plan.max_resumes_per_month} resumes</p>
+                {showUpgrade && slug && (
                   <button
-                    onClick={() => handleRazorpayCheckout(plan.key)}
+                    onClick={() => handleRazorpayCheckout(slug)}
                     disabled={paymentLoading !== null}
                     className="mt-1 h-7 px-2 bg-[#0F0F0F] text-white text-xs font-medium rounded-lg hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center justify-center gap-1.5"
                   >
-                    {paymentLoading === plan.key
+                    {paymentLoading === slug
                       ? <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
                       : null}
-                    {paymentLoading === plan.key ? "Processing…" : "Upgrade"}
+                    {paymentLoading === slug ? "Processing…" : "Upgrade"}
                   </button>
                 )}
               </div>
