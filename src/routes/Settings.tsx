@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { getProfile, updateProfile, getUsage, createPortalSession, deleteAccount, getTokenUsage, createRazorpayOrder, verifyRazorpayPayment, cancelSubscription } from "@/lib/api";
+import { getProfile, updateProfile, getUsage, deleteAccount, getTokenUsage, createRazorpayOrder, verifyRazorpayPayment, cancelSubscription } from "@/lib/api";
 import { clearAuthCache } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, UsageResponse } from "@/types";
@@ -78,16 +78,6 @@ export default function Settings() {
       setSaveError(err instanceof Error ? err.message : "Save failed. Please try again.");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleManageBilling() {
-    setSaveError(null);
-    try {
-      const { url } = await createPortalSession();
-      window.location.href = url;
-    } catch {
-      setSaveError("Could not open billing portal. Please try again.");
     }
   }
 

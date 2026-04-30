@@ -245,17 +245,6 @@ export async function deleteScreening(id: string): Promise<void> {
 
 // ─── Billing ─────────────────────────────────────────────────────────────────
 
-export async function createCheckoutSession(plan: string): Promise<{ url: string }> {
-  return request<{ url: string }>("/api/billing/checkout", {
-    method: "POST",
-    body: JSON.stringify({ plan }),
-  });
-}
-
-export async function createPortalSession(): Promise<{ url: string }> {
-  return request<{ url: string }>("/api/billing/portal", { method: "POST" });
-}
-
 export async function createRazorpayOrder(plan: string): Promise<{
   order_id: string;
   amount: number;

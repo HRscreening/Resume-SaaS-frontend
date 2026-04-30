@@ -23,6 +23,7 @@ import Screenings from "@/routes/Screenings";
 import Settings from "@/routes/Settings";
 import ChangePassword from "@/routes/ChangePassword";
 import NewScreening from "@/routes/NewScreening";
+import NotFound from "@/routes/NotFound";
 
 // ─── Eager imports — these are the most-visited pages, no lazy delay ──
 import ScreeningDetail from "@/routes/ScreeningDetail";
@@ -182,7 +183,7 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
-const router = createRouter({ routeTree });
+const router = createRouter({ routeTree, defaultNotFoundComponent: NotFound });
 
 declare module "@tanstack/react-router" {
   interface Register {
