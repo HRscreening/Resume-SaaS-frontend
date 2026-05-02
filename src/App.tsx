@@ -3,6 +3,7 @@ import {
   createRootRoute,
   createRoute,
   RouterProvider,
+  redirect,
   Outlet,
 } from "@tanstack/react-router";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -58,7 +59,11 @@ const rootRoute = createRootRoute({ component: RootLayout });
 const landingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: Landing,
+  beforeLoad: () => {
+    throw redirect({
+      to: "/login",
+    });
+  },
 });
 
 const authLayoutRoute = createRoute({

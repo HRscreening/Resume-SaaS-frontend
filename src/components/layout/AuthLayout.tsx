@@ -1,14 +1,14 @@
 import { Link, Outlet } from "@tanstack/react-router";
 
+const home_page_url = import.meta.env.VITE_HOME_PAGE_URL || "http://localhost:8000";
+
 export function AuthLayout() {
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "#F5F3EE" }}>
       {/* Left panel */}
       <div className="hidden lg:flex w-[480px] bg-[#0F0F0F] flex-col justify-between p-12 shrink-0">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="h-8 w-8 bg-white/10 rounded-lg flex items-center justify-center">
-            <span className="text-white text-xs font-bold">HS</span>
-          </div>
+        <Link to={`${home_page_url as  string}`} className="flex items-center gap-2.5">
+          <img src="/logo.png" alt="HireSort Logo" className="h-8 w-auto" />
           <span className="text-white font-semibold">HireSort</span>
         </Link>
 
