@@ -105,11 +105,22 @@ export async function createJob(data: {
 
 export async function uploadResumesToJob(
   screeningId: string,
-  zipFile: File
+  input: File | File[],
 ): Promise<{ screening_id: string; batch_id: string; total_files: number; skipped: number }> {
   const authHeaders = await getAuthHeader();
   const formData = new FormData();
-  formData.append("zip_file", zipFile);
+  const fileList = Array.isArray(input) ? input : [input];
+  // Mirrors addResumesToJob: a single ZIP rides the zip_file field; PDFs and
+  // DOCXs ride the repeated `files` field. Backend accepts both shapes on
+  // /upload and /add-resumes (commit 59ca9f7).
+  const isZip = fileList.length === 1 && fileList[0].name.toLowerCase().endsWith(".zip");
+  if (isZip) {
+    formData.append("zip_file", fileList[0]);
+  } else {
+    for (const f of fileList) {
+      formData.append("files", f);
+    }
+  }
 
   const res = await fetch(`${API_BASE}/api/screenings/${screeningId}/upload`, {
     method: "POST",

@@ -38,7 +38,7 @@ export default function ScreeningDetail() {
   const [showRubric, setShowRubric] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [zipFile, setZipFile] = useState<File | null>(null);
+  const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadStep, setUploadStep] = useState<0 | 1 | 2>(0);
@@ -110,20 +110,23 @@ export default function ScreeningDetail() {
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragActive(false);
-    const file = e.dataTransfer.files[0];
-    if (file?.name.endsWith(".zip")) setZipFile(file);
+    pickResumeFiles(e.dataTransfer.files, draftFiles, setDraftFiles);
   }
 
   async function handleUploadAndStart() {
-    if (!zipFile) return;
+    if (draftFiles.length === 0) return;
+    const isZipBatch =
+      draftFiles.length === 1 &&
+      draftFiles[0].name.toLowerCase().endsWith(".zip");
+    const payload: File | File[] = isZipBatch ? draftFiles[0] : draftFiles;
     setUploading(true);
     setUploadStep(1);
     setUploadError(null);
     const t = setTimeout(() => setUploadStep(2), 1800);
     try {
-      const result = await uploadResumesToJob(id, zipFile);
+      const result = await uploadResumesToJob(id, payload);
       clearTimeout(t);
-      setZipFile(null);
+      setDraftFiles([]);
 
       // Immediately mark screening as "processing" in the cache so the UI
       // never flashes back to the draft upload panel. This is not speculative —
@@ -178,7 +181,17 @@ export default function ScreeningDetail() {
     } finally { setUploading(false); }
   }
 
-  function acceptUploadMoreFiles(picked: FileList | File[] | null): void {
+  /**
+   * Validate and merge a picked FileList into a target file-list state.
+   * Used by both the draft-upload and add-more panels — keeps one source of
+   * truth for the "single ZIP XOR multiple PDF/DOCX" rule and the de-dupe
+   * logic, so the two panels can't drift apart.
+   */
+  function pickResumeFiles(
+    picked: FileList | File[] | null,
+    current: File[],
+    setter: (files: File[]) => void,
+  ): void {
     if (!picked || picked.length === 0) return;
     const arr = Array.from(picked);
     const zips = arr.filter((f) => f.name.toLowerCase().endsWith(".zip"));
@@ -196,7 +209,7 @@ export default function ScreeningDetail() {
     }
     if (zips.length === 1) {
       setUploadError(null);
-      setUploadMoreFiles([zips[0]]);
+      setter([zips[0]]);
       return;
     }
     if (docs.length === 0) {
@@ -204,18 +217,20 @@ export default function ScreeningDetail() {
       return;
     }
     setUploadError(null);
-    setUploadMoreFiles((prev) => {
-      const seen = new Set(prev.map((f) => `${f.name}_${f.size}`));
-      const merged = [...prev];
-      for (const f of docs) {
-        const key = `${f.name}_${f.size}`;
-        if (!seen.has(key)) {
-          merged.push(f);
-          seen.add(key);
-        }
+    const seen = new Set(current.map((f) => `${f.name}_${f.size}`));
+    const merged = [...current];
+    for (const f of docs) {
+      const key = `${f.name}_${f.size}`;
+      if (!seen.has(key)) {
+        merged.push(f);
+        seen.add(key);
       }
-      return merged;
-    });
+    }
+    setter(merged);
+  }
+
+  function acceptUploadMoreFiles(picked: FileList | File[] | null): void {
+    pickResumeFiles(picked, uploadMoreFiles, setUploadMoreFiles);
   }
 
   function toggleTier(tierId: TierId) {
@@ -354,17 +369,18 @@ export default function ScreeningDetail() {
       <div className="flex-1 min-h-0 flex flex-col px-8 pb-8 gap-4">
         <div className="w-full space-y-4">
           {/* Draft upload */}
-          {isDraft && (
+          {isDraft && (() => {
+            const isZipDraft =
+              draftFiles.length === 1 &&
+              draftFiles[0].name.toLowerCase().endsWith(".zip");
+            return (
             <div className="bg-white rounded-2xl border border-[#E8E5DF] p-8">
               <div className="flex items-center gap-3 mb-1">
                 <h2 className="text-lg font-semibold text-[#0F0F0F]">Upload resumes</h2>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F0EDE8] border border-[#D4D4D4] text-xs font-semibold text-[#404040] tracking-wide">
-                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 9.5h7M2 1.5h5l2 2v6"/><path d="M5 1.5v3h4"/></svg>
-                  .ZIP only
-                </span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F0EDE8] border border-[#D4D4D4] text-xs font-semibold text-[#404040] tracking-wide">.ZIP · .PDF · .DOCX</span>
               </div>
               <p className="text-sm text-[#737373] mb-2">
-                Compress all candidate resume files (PDF or DOCX) into a single <strong>.zip</strong> and upload below to start screening.
+                Upload a <strong>.zip</strong> archive of resumes, or drop in one-or-more <strong>.pdf</strong> / <strong>.docx</strong> files directly to start screening.
               </p>
               <div className="flex flex-wrap gap-2 mb-6">
                 {rubricCategories.map((cat, i) => (
@@ -380,14 +396,23 @@ export default function ScreeningDetail() {
                 <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">{uploadError}</div>
               )}
 
+              <input ref={fileInputRef} type="file" accept=".zip,.pdf,.docx" multiple className="hidden"
+                onChange={(e) => { pickResumeFiles(e.target.files, draftFiles, setDraftFiles); e.target.value = ""; }} />
+
               {/* Upload stages — shown while uploading */}
               {uploading ? (
                 <div className="border border-[#E8E5DF] rounded-2xl p-6 bg-[#FAFAF8]">
                   <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-4">Upload progress</p>
                   {(
                     [
-                      { label: "Sending ZIP to server", detail: zipFile?.name ?? "" },
-                      { label: "Extracting & validating files", detail: "Checking PDF & DOCX files inside the archive" },
+                      {
+                        label: isZipDraft ? "Sending ZIP to server" : `Sending ${draftFiles.length} file${draftFiles.length === 1 ? "" : "s"} to server`,
+                        detail: isZipDraft ? draftFiles[0]?.name ?? "" : draftFiles.map((f) => f.name).join(", "),
+                      },
+                      {
+                        label: "Extracting & validating files",
+                        detail: isZipDraft ? "Checking PDF & DOCX files inside the archive" : "Checking each PDF & DOCX",
+                      },
                     ] as const
                   ).map((s, i) => {
                     const done = uploadStep > i + 1;
@@ -399,7 +424,7 @@ export default function ScreeningDetail() {
                           {active && <div className="h-4 w-4 rounded-full border-2 border-[#C85A17] border-t-transparent animate-spin" />}
                           {!done && !active && <div className="h-2 w-2 rounded-full bg-[#D4D4D4] mx-auto" />}
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <p className={`text-sm font-medium ${active ? "text-[#0F0F0F]" : done ? "text-green-700" : "text-[#A0A0A0]"}`}>{s.label}</p>
                           {active && <p className="text-xs text-[#737373] mt-0.5 truncate max-w-xs">{s.detail}</p>}
                         </div>
@@ -407,37 +432,53 @@ export default function ScreeningDetail() {
                     );
                   })}
                 </div>
-              ) : zipFile ? (
-                /* File selected — ready to upload */
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border border-[#D4D4D4] rounded-2xl p-6 cursor-pointer hover:border-[#A0A0A0] hover:bg-[#FAFAF8] transition-all"
-                >
-                  <input ref={fileInputRef} type="file" accept=".zip" className="hidden"
-                    onChange={(e) => setZipFile(e.target.files?.[0] ?? null)} />
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-[#F0EDE8] border border-[#D4D4D4] flex items-center justify-center shrink-0">
-                      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#404040" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4 19h14M4 3h9l5 5v11"/><path d="M13 3v6h6"/>
-                        <path d="M9 12h4M9 15h4M9 9h2"/>
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#0F0F0F] truncate">{zipFile.name}</p>
-                      <p className="text-xs text-[#737373] mt-0.5">
-                        {zipFile.size > 1024 * 1024
-                          ? `${(zipFile.size / 1024 / 1024).toFixed(1)} MB`
-                          : `${(zipFile.size / 1024).toFixed(0)} KB`} · ZIP archive
-                      </p>
-                      <p className="text-xs text-[#A0A0A0] mt-1">Click to change file</p>
-                    </div>
+              ) : draftFiles.length > 0 ? (
+                /* File(s) selected — ready to upload */
+                <div className="border border-[#D4D4D4] rounded-2xl p-4 bg-[#FAFAF8]">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-semibold text-[#404040] uppercase tracking-wide">
+                      {isZipDraft ? "ZIP archive selected" : `${draftFiles.length} file${draftFiles.length === 1 ? "" : "s"} selected`}
+                    </p>
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setZipFile(null); }}
-                      className="h-7 w-7 rounded-lg text-[#A0A0A0] hover:text-red-600 hover:bg-red-50 flex items-center justify-center shrink-0 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-xs font-medium text-[#C85A17] hover:underline"
                     >
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+                      {isZipDraft ? "Change file" : "Add more"}
                     </button>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-auto">
+                    {draftFiles.map((f, idx) => {
+                      const ext = f.name.toLowerCase().endsWith(".zip")
+                        ? "ZIP"
+                        : f.name.toLowerCase().endsWith(".docx")
+                        ? "DOCX"
+                        : "PDF";
+                      return (
+                        <div key={`${f.name}_${f.size}_${idx}`} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white border border-[#E8E5DF]">
+                          <div className="h-8 w-8 rounded-lg bg-[#F0EDE8] border border-[#D4D4D4] flex items-center justify-center shrink-0">
+                            <svg width="14" height="14" viewBox="0 0 22 22" fill="none" stroke="#404040" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M4 19h14M4 3h9l5 5v11"/><path d="M13 3v6h6"/>
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-[#0F0F0F] truncate">{f.name}</p>
+                            <p className="text-xs text-[#737373] mt-0.5">
+                              {f.size > 1024 * 1024
+                                ? `${(f.size / 1024 / 1024).toFixed(1)} MB`
+                                : `${(f.size / 1024).toFixed(0)} KB`} · {ext}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setDraftFiles((prev) => prev.filter((_, i) => i !== idx))}
+                            className="h-7 w-7 rounded-lg text-[#A0A0A0] hover:text-red-600 hover:bg-red-50 flex items-center justify-center shrink-0 transition-colors"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : (
@@ -451,27 +492,26 @@ export default function ScreeningDetail() {
                     dragActive ? "border-[#C85A17] bg-[#C85A1708]" : "border-[#D4D4D4] hover:border-[#A0A0A0] hover:bg-[#F5F3EE]"
                   }`}
                 >
-                  <input ref={fileInputRef} type="file" accept=".zip" className="hidden"
-                    onChange={(e) => setZipFile(e.target.files?.[0] ?? null)} />
                   <div className="h-12 w-12 rounded-full bg-[#F5F3EE] border border-[#D4D4D4] flex items-center justify-center mx-auto mb-3">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
                   </div>
-                  <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop your ZIP file here</p>
-                  <p className="text-xs text-[#737373]">or click to browse</p>
-                  <p className="text-xs font-semibold text-[#A0A0A0] mt-3 uppercase tracking-wide">ZIP format · contains PDF &amp; DOCX resumes</p>
+                  <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop a ZIP, PDF, or DOCX here</p>
+                  <p className="text-xs text-[#737373]">or click to browse — multiple PDF/DOCX files allowed</p>
+                  <p className="text-xs font-semibold text-[#A0A0A0] mt-3 uppercase tracking-wide">ZIP · PDF · DOCX</p>
                 </div>
               )}
 
               <button
                 onClick={handleUploadAndStart}
-                disabled={!zipFile || uploading}
+                disabled={draftFiles.length === 0 || uploading}
                 className="mt-6 w-full h-11 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {uploading && <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
                 {uploading ? "Processing…" : "Start screening"}
               </button>
             </div>
-          )}
+            );
+          })()}
 
           {/* Add more resumes panel (non-draft screenings) */}
           {!isDraft && showUploadMore && (
