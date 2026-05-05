@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { createClient } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/PasswordInput";
 import { passwordStrength } from "@/lib/passwordValidation";
+import { getURL } from "@/lib/utils";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -37,7 +38,7 @@ export default function SignupPage() {
       const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding` },
+        options: { emailRedirectTo: `${getURL()}/auth/callback?next=/onboarding` },
       });
       if (authError) throw authError;
 
@@ -60,7 +61,7 @@ export default function SignupPage() {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/onboarding` },
+      options: { redirectTo: `${getURL()}/auth/callback?next=/onboarding` },
     });
   }
 

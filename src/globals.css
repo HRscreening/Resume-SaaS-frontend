@@ -209,3 +209,31 @@ body {
 .weight-slider:focus-visible::-webkit-slider-thumb {
   box-shadow: 0 0 0 3px rgba(200,90,23,0.25);
 }
+
+@keyframes quote-in {
+  0% {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-quote-in {
+  animation: quote-in 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes quote-out {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+}
+.animate-quote-out {
+  animation: quote-out 450ms cubic-bezier(0.55, 0, 0.67, 0.18) both;
+}
