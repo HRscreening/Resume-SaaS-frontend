@@ -3,9 +3,18 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/api";
 import { PasswordInput } from "@/components/PasswordInput";
+import { GuestGuard } from "@/components/GuestGuard";
 import { getURL } from "@/lib/utils";
 
 export default function LoginPage() {
+  return (
+    <GuestGuard>
+      <LoginForm />
+    </GuestGuard>
+  );
+}
+
+function LoginForm() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

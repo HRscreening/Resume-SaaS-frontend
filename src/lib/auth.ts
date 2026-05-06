@@ -11,6 +11,7 @@
  * This is the same approach used by Auth0, Firebase, and Clerk SDKs.
  */
 import { createClient } from "@/lib/supabase/client";
+import { setSessionHint, clearSessionHint } from "@/lib/sessionHint";
 import type { Session, User } from "@supabase/supabase-js";
 
 const TOKEN_REFRESH_MARGIN_S = 60; // refresh 60s before expiry
@@ -32,9 +33,19 @@ export function initAuth(): Promise<void> {
     _cachedSession = session;
     _initialLoadDone = true;
 
+    // Refresh hint cookie if we already have a session on first load
+    if (session) {
+      setSessionHint(session.access_token);
+    }
+
     // Keep cache in sync with auth state changes (login, logout, token refresh)
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
       _cachedSession = session;
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        if (session) setSessionHint(session.access_token);
+      } else if (event === "SIGNED_OUT") {
+        clearSessionHint();
+      }
     });
   })();
 
@@ -102,4 +113,5 @@ export function isAuthenticated(): boolean {
  */
 export function clearAuthCache(): void {
   _cachedSession = null;
+  clearSessionHint();
 }

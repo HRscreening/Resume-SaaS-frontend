@@ -2,10 +2,19 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { createClient } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/PasswordInput";
+import { GuestGuard } from "@/components/GuestGuard";
 import { passwordStrength } from "@/lib/passwordValidation";
 import { getURL } from "@/lib/utils";
 
 export default function SignupPage() {
+  return (
+    <GuestGuard>
+      <SignupForm />
+    </GuestGuard>
+  );
+}
+
+function SignupForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

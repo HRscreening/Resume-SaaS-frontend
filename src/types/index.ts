@@ -1,6 +1,8 @@
 // ─── Auth / Profile ──────────────────────────────────────────────────────────
 
+// ! NEED to fix this plan 
 export type SubscriptionPlan = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE";
+export type PlanType = 'FREE' | 'PLUS' | 'PRO' | 'ENTERPRISE';
 
 export interface Profile {
   id: string;
