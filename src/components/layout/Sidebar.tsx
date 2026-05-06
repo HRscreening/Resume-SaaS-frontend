@@ -167,9 +167,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="h-14 flex items-center px-5 border-b border-[#E8E5DF]">
         <div className="flex items-center gap-2.5">
-          <div className="h-7 w-7 bg-[#0F0F0F] rounded-md flex items-center justify-center shrink-0">
-            <span className="text-white text-xs font-bold leading-none">HS</span>
-          </div>
+            <img src="/logo.png" alt="HireSort logo" className="h-6 w-auto" />
           <span className="font-semibold text-[#0F0F0F] text-sm">HireSort</span>
         </div>
       </div>
