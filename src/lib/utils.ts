@@ -5,6 +5,28 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+
+
+/**
+ * Get the base URL for the application.
+ * Priority:
+ * 1. Environment variable if set (optional)
+ * 2. Current window origin (local dev, vercel previews)
+ * 3. Default production URL
+ */
+export function getURL() {
+  let url =
+    import.meta.env.VITE_SITE_URL ?? // Custom env var
+    window.location.origin ?? // Current domain
+    'https://app.hiresort.ai'; // Default fallback
+
+  // Make sure to include `https://` when not localhost.
+  url = url.includes('http') ? url : `https://${url}`;
+  // Make sure to remove trailing `/`.
+  url = url.charAt(url.length - 1) === '/' ? url.slice(0, -1) : url;
+  return url;
+}
+
 export function scoreColor(score: number): string {
   if (score >= 75) return "text-green-700";
   if (score >= 50) return "text-amber-600";

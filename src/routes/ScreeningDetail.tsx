@@ -6,27 +6,12 @@ import {
   uploadResumesToJob, addResumesToJob,
 } from "@/lib/api";
 import { formatDate, truncate } from "@/lib/utils";
-import type { RankedCandidate, BatchProgress, FileProgress, RubricCategory } from "@/types";
-
-// ─── Tier config ─────────────────────────────────────────────────────────────
-
-const TIERS = [
-  { id: "strong",    label: "Strong Match", min: 75, dot: "#22C55E" },
-  { id: "potential", label: "Potential",    min: 55, dot: "#EAB308" },
-  { id: "risky",     label: "Risky",        min: 35, dot: "#F97316" },
-  { id: "poor",      label: "Poor Fit",     min: 0,  dot: "#EF4444" },
-];
-
-type TierId = "strong" | "potential" | "risky" | "poor";
-
-function getTier(score: number) {
-  if (score >= 75) return TIERS[0];
-  if (score >= 55) return TIERS[1];
-  if (score >= 35) return TIERS[2];
-  return TIERS[3];
-}
-
-// ─── Main component ───────────────────────────────────────────────────────────
+import type { RankedCandidate, RubricCategory } from "@/types";
+import { TIERS, getTier, TierSection, type TierId } from "@/components/screening/TierSection";
+import { ProcessingAccordion } from "@/components/screening/ProcessingAccordion";
+import { RubricModal } from "@/components/screening/RubricModal";
+import { FailedView } from "@/components/screening/FailedView";
+import { Pagination } from "@/components/screening/Pagination";
 
 export default function ScreeningDetail() {
   const { id } = useParams({ strict: false }) as { id: string };
@@ -48,6 +33,8 @@ export default function ScreeningDetail() {
   const uploadMoreFileInputRef = useRef<HTMLInputElement>(null);
   const [uploadMoreFiles, setUploadMoreFiles] = useState<File[]>([]);
   const [uploadMoreDragActive, setUploadMoreDragActive] = useState(false);
+  // Bumped on each successful upload — tells the accordion to auto-expand briefly.
+  const [uploadNonce, setUploadNonce] = useState(0);
 
   const { data: screening, isLoading, error } = useQuery({
     queryKey: ["screening", id],
@@ -59,8 +46,6 @@ export default function ScreeningDetail() {
     },
   });
 
-  // Fetch batch-progress and results in parallel with screening (no waterfall).
-  // Both gracefully handle 404 when the screening is still in draft.
   const { data: progress } = useQuery({
     queryKey: ["batch-progress", id],
     queryFn: () => getBatchProgress(id),
@@ -78,15 +63,12 @@ export default function ScreeningDetail() {
     queryKey: ["results", id],
     queryFn: () => getResults(id),
     enabled: !!screening && screening.status !== "draft",
-    // Keep polling until the batch is fully done — stop only then so all
-    // results (not just the first few that arrived) are fetched.
     refetchInterval: () => {
       if (batchDone) return false;
       return 4000;
     },
   });
 
-  // Instant results fetch when batch completes — no waiting for next poll cycle
   useEffect(() => {
     if (batchDone) {
       queryClient.invalidateQueries({ queryKey: ["results", id] });
@@ -140,11 +122,10 @@ export default function ScreeningDetail() {
           old ? { ...old, status: "processing" as const, total_resumes: result.total_files } : old,
       );
 
-      // Background-refresh for accurate progress data — don't await; the
-      // optimistic update above already flipped the UI to the processing view.
       queryClient.invalidateQueries({ queryKey: ["screening", id] });
       queryClient.invalidateQueries({ queryKey: ["batch-progress", id] });
       queryClient.invalidateQueries({ queryKey: ["screenings"] });
+      setUploadNonce((n) => n + 1);
     } catch (err) {
       clearTimeout(t);
       setUploadError(err instanceof Error ? err.message : "Upload failed");
@@ -176,6 +157,7 @@ export default function ScreeningDetail() {
       queryClient.invalidateQueries({ queryKey: ["batch-progress", id] });
       queryClient.invalidateQueries({ queryKey: ["results", id] });
       queryClient.invalidateQueries({ queryKey: ["screenings"] });
+      setUploadNonce((n) => n + 1);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally { setUploading(false); }
@@ -616,8 +598,14 @@ export default function ScreeningDetail() {
             </div>
           )}
 
-          {/* Processing banner */}
-          {isProcessing && <ProcessingBanner progress={progress ?? null} totalFiles={screening.total_resumes} />}
+          {/* Processing accordion — combined banner + per-file drill-down */}
+          {isProcessing && (
+            <ProcessingAccordion
+              progress={progress ?? null}
+              totalFiles={screening.total_resumes}
+              uploadNonce={uploadNonce}
+            />
+          )}
 
           {/* Partial failures */}
           {!isProcessing && progress && (progress.failed_count ?? 0) > 0 && (
@@ -663,449 +651,11 @@ export default function ScreeningDetail() {
             />
           )}
 
-          {/* In-flight files during processing */}
-          {isProcessing && progress && <PendingFilesSection progress={progress} />}
-
           {/* Rubric modal */}
           {showRubric && (
             <RubricModal categories={rubricCategories} onClose={() => setShowRubric(false)} />
           )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-
-// ─── Tier Section ─────────────────────────────────────────────────────────────
-
-interface TierSectionProps {
-  tier: typeof TIERS[number];
-  candidates: RankedCandidate[];
-  collapsed: boolean;
-  onToggle: () => void;
-  categories: RubricCategory[];
-  onSelect: (c: RankedCandidate) => void;
-}
-
-function TierSection({ tier, candidates, collapsed, onToggle, categories, onSelect }: TierSectionProps) {
-  return (
-    <div className="rounded-2xl border border-[#E8E5DF] bg-white overflow-hidden">
-      <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3 bg-[#F5F3EE] hover:bg-[#EFEAE0] transition-colors">
-        <div className="flex items-center gap-2.5">
-          <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: tier.dot }} />
-          <span className="text-sm font-semibold text-[#0F0F0F]">{tier.label}</span>
-          <span className="text-xs text-[#737373]">· {candidates.length} candidate{candidates.length !== 1 ? "s" : ""}</span>
-        </div>
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-          className={`text-[#A0A0A0] transition-transform ${collapsed ? "" : "rotate-180"}`}><path d="M3 5l4 4 4-4" /></svg>
-      </button>
-
-      {!collapsed && (
-        <div className="border-t border-[#E8E5DF] overflow-x-auto">
-          <table className="w-full text-sm">
-            <colgroup>
-              <col style={{ minWidth: "200px" }} />
-              <col style={{ width: "140px" }} />
-              <col style={{ width: "72px" }} />
-              {categories.map((cat) => (
-                <col key={cat.name} style={{ width: "130px" }} />
-              ))}
-            </colgroup>
-            <thead>
-              <tr className="border-b border-[#E8E5DF]">
-                <th className="px-5 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Candidate</th>
-                <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Current Role</th>
-                <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide">Score</th>
-                {categories.map((cat) => (
-                  <th key={cat.name} className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide">
-                    <span className="block">{cat.name}</span>
-                    <span className="font-normal text-[#A0A0A0] normal-case tracking-normal">{cat.weight}%</span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E8E5DF]">
-              {candidates.map((c) => (
-                <CandidateRow key={c.resume_id} candidate={c} categories={categories} onSelect={() => onSelect(c)} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CandidateRow({ candidate, categories, onSelect }: {
-  candidate: RankedCandidate; categories: RubricCategory[]; onSelect: () => void;
-}) {
-  // Compute category-level score = weighted avg of subcategory scores
-  function getCategoryScore(cat: RubricCategory): number | null {
-    const subs = cat.subcategories;
-    if (subs.length === 0) return null;
-    let weighted = 0, totalW = 0;
-    for (const sub of subs) {
-      const match = candidate.top_criteria.find(
-        (tc) => tc.criterion.toLowerCase().trim() === sub.name.toLowerCase().trim()
-      );
-      if (match) {
-        weighted += match.score * sub.weight;
-        totalW += sub.weight;
-      }
-    }
-    return totalW > 0 ? weighted / totalW : null;
-  }
-
-  // Find non-negotiable criteria that this candidate failed (score < 4)
-  const failedNonNegotiables = categories
-    .flatMap((cat) => cat.subcategories)
-    .filter((sub) => sub.is_non_negotiable)
-    .map((sub) => {
-      const match = candidate.top_criteria.find(
-        (tc) => tc.criterion.toLowerCase().trim() === sub.name.toLowerCase().trim()
-      );
-      return match && match.score < 4 ? sub.name : null;
-    })
-    .filter(Boolean) as string[];
-
-  return (
-    <tr onClick={onSelect} className={`cursor-pointer transition-colors hover:bg-[#FAFAF8] ${failedNonNegotiables.length > 0 ? "bg-red-50/40" : ""}`}>
-      <td className="px-5 py-3.5">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-[#FBF1E7] flex items-center justify-center shrink-0">
-            <span className="text-xs font-semibold text-[#C85A17]">{(candidate.candidate_name ?? candidate.filename).slice(0, 2).toUpperCase()}</span>
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-[#0F0F0F] truncate">{candidate.candidate_name ?? candidate.filename}</p>
-            {candidate.candidate_email && (
-              <p className="text-xs text-[#737373] truncate">{candidate.candidate_email}</p>
-            )}
-            {candidate.candidate_phone && (
-              <p className="text-xs text-[#737373] truncate">{candidate.candidate_phone}</p>
-            )}
-            {failedNonNegotiables.length > 0 && (
-              <div className="flex items-center gap-1 mt-0.5">
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="#DC2626">
-                  <path d="M6 1L1 10h10L6 1z" />
-                  <rect x="5.5" y="5" width="1" height="3" fill="white" rx="0.5" />
-                  <circle cx="6" cy="9" r="0.6" fill="white" />
-                </svg>
-                <p className="text-xs text-red-600 font-medium">
-                  Failed: {failedNonNegotiables.join(", ")}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </td>
-      <td className="px-3 py-3.5 align-middle">
-        <p className="text-xs text-[#404040] line-clamp-2">{candidate.candidate_current_job ?? <span className="text-[#D4D4D4]">—</span>}</p>
-      </td>
-      <td className="px-3 py-3.5 text-center align-middle">
-        <div className="flex flex-col items-center gap-1.5">
-          <span className="text-lg font-bold text-[#0F0F0F] leading-none">{Math.round(candidate.overall_score)}</span>
-          <div className="w-12 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden">
-            <div className="h-full rounded-full bg-[#C85A17]" style={{ width: `${candidate.overall_score}%` }} />
-          </div>
-        </div>
-      </td>
-      {categories.map((cat) => {
-        const catScore = getCategoryScore(cat);
-        return (
-          <td key={cat.name} className="px-3 py-3.5 text-center align-middle">
-            {catScore !== null ? (
-              <div className="flex flex-col items-center gap-1.5">
-                <span className="text-xs font-bold text-[#0F0F0F]">{catScore.toFixed(1)}</span>
-                <div className="w-12 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-[#C85A17]" style={{ width: `${catScore * 10}%` }} />
-                </div>
-              </div>
-            ) : (
-              <span className="text-xs text-[#D4D4D4]">--</span>
-            )}
-          </td>
-        );
-      })}
-    </tr>
-  );
-}
-
-
-// ─── Rubric Modal ─────────────────────────────────────────────────────────────
-
-function RubricModal({ categories, onClose }: { categories: RubricCategory[]; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
-      <div className="bg-white rounded-2xl border border-[#E8E5DF] max-w-2xl w-full max-h-[80vh] overflow-y-auto m-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white px-6 py-4 border-b border-[#E8E5DF] flex items-center justify-between z-10">
-          <h2 className="text-base font-semibold text-[#0F0F0F]">Scoring Rubric</h2>
-          <button onClick={onClose} className="h-7 w-7 rounded-lg hover:bg-[#F5F3EE] flex items-center justify-center text-[#737373]">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8" /></svg>
-          </button>
-        </div>
-        <div className="p-6 space-y-4">
-          {categories.map((cat) => (
-            <div key={cat.name} className="border border-[#E8E5DF] rounded-xl overflow-hidden">
-              <div className="px-4 py-3 bg-[#F5F3EE] flex items-center justify-between">
-                <span className="text-sm font-semibold text-[#0F0F0F]">{cat.name}</span>
-                <span className="text-xs font-bold text-[#404040]">{cat.weight}%</span>
-              </div>
-              {cat.subcategories.length > 0 && (
-                <div className="divide-y divide-[#E8E5DF]">
-                  {cat.subcategories.map((sub) => (
-                    <div key={sub.name} className="px-4 py-2.5 flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-medium text-[#0F0F0F]">{sub.name}</p>
-                          {sub.is_non_negotiable && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-red-100 text-red-700">Must Have</span>
-                          )}
-                          {sub.is_external_context && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-blue-100 text-blue-700">External Signal</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-[#737373] mt-0.5">{sub.description}</p>
-                      </div>
-                      <div className="shrink-0 flex flex-col items-end gap-1">
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((lvl) => (
-                            <div
-                              key={lvl}
-                              title={["Low", "Moderate", "Standard", "Important", "Critical"][lvl - 1]}
-                              className={`h-5 w-5 rounded-md text-[10px] font-bold flex items-center justify-center ${
-                                lvl <= sub.weight
-                                  ? "bg-[#0F0F0F] text-white"
-                                  : "bg-[#F0EDE8] text-[#A0A0A0]"
-                              }`}
-                            >
-                              {lvl}
-                            </div>
-                          ))}
-                        </div>
-                        <span className="text-[10px] text-[#A0A0A0] font-medium">
-                          {["Low", "Moderate", "Standard", "Important", "Critical"][sub.weight - 1] ?? ""}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-// ─── Processing Banner ────────────────────────────────────────────────────────
-
-function ProcessingBanner({ progress, totalFiles }: { progress: BatchProgress | null; totalFiles: number }) {
-  const pct = progress?.percentage ?? 0;
-  const scored = progress?.scored_count ?? 0;
-  const failed = progress?.failed_count ?? 0;
-  const total = progress?.total_files ?? totalFiles;
-
-  return (
-    <div className="bg-white rounded-2xl border border-[#E8E5DF] p-4 flex items-center gap-4">
-      <div className="h-8 w-8 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin shrink-0" />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1.5">
-          <p className="text-sm font-semibold text-[#0F0F0F]">
-            {scored + failed} of {total} processed
-            {failed > 0 && <span className="text-red-600 font-normal"> · {failed} failed</span>}
-          </p>
-          <span className="text-sm font-bold text-[#0F0F0F] shrink-0 ml-4">{pct}%</span>
-        </div>
-        <div className="h-1.5 w-full bg-[#E8E5DF] rounded-full overflow-hidden">
-          <div className="h-full bg-[#0F0F0F] rounded-full transition-all duration-700 ease-out" style={{ width: `${pct}%` }} />
-        </div>
-        <p className="text-xs text-[#A0A0A0] mt-1.5">Scored candidates appear below · Ranking finalizes when all complete</p>
-      </div>
-    </div>
-  );
-}
-
-
-// ─── Pending Files Section ────────────────────────────────────────────────────
-
-const STAGE_CONFIG: Record<string, { label: string; color: string; icon: "spin" | "check" | "error" | "wait" }> = {
-  queued:  { label: "Waiting",  color: "text-[#A0A0A0]", icon: "wait"  },
-  parsing: { label: "Parsing",  color: "text-blue-600",  icon: "spin"  },
-  parsed:  { label: "Parsed",   color: "text-blue-600",  icon: "spin"  },
-  scoring: { label: "Scoring",  color: "text-amber-600", icon: "spin"  },
-  scored:  { label: "Done",     color: "text-green-700", icon: "check" },
-  error:   { label: "Failed",   color: "text-red-600",   icon: "error" },
-};
-
-function PendingFilesSection({ progress }: { progress: BatchProgress }) {
-  const pending = progress.per_file_results.filter(
-    (f) => f.stage !== "scored" && f.stage !== "error",
-  );
-  if (pending.length === 0) return null;
-
-  return (
-    <div className="rounded-2xl border-2 border-[#E8E5DF] overflow-hidden">
-      <div className="flex items-center gap-2 px-5 py-3.5 bg-[#F5F3EE]">
-        <div className="h-2.5 w-2.5 rounded-full bg-[#A0A0A0]" />
-        <span className="text-sm font-semibold text-[#737373]">Processing</span>
-        <span className="text-xs text-[#737373] opacity-70">{pending.length} resume{pending.length !== 1 ? "s" : ""}</span>
-        <div className="h-3.5 w-3.5 rounded-full border-2 border-[#A0A0A0] border-t-transparent animate-spin ml-auto" />
-      </div>
-      <div className="bg-white divide-y divide-[#E8E5DF]">
-        {pending.map((f) => <PendingResumeRow key={f.resume_id} file={f} />)}
-      </div>
-    </div>
-  );
-}
-
-function PendingResumeRow({ file }: { file: FileProgress }) {
-  const config = STAGE_CONFIG[file.stage] ?? STAGE_CONFIG.queued;
-  return (
-    <div className="flex items-center gap-3 px-5 py-3.5">
-      <div className="h-8 w-8 rounded-full bg-[#F0EDE8] flex items-center justify-center shrink-0">
-        {config.icon === "spin" && <div className="h-3.5 w-3.5 rounded-full border-2 border-[#A0A0A0] border-t-transparent animate-spin" />}
-        {config.icon === "wait" && <div className="h-2 w-2 rounded-full bg-[#D4D4D4]" />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-[#737373] truncate">{file.filename}</p>
-        <div className="h-2 bg-[#E8E5DF] rounded-full animate-pulse w-1/3 mt-1.5" />
-      </div>
-      <span className={`text-xs font-medium ${config.color} shrink-0`}>{config.label}</span>
-      {(file.stage === "parsing" || file.stage === "scoring") && (
-        <span className="flex gap-0.5 shrink-0 ml-1">
-          {[0, 200, 400].map((d) => (
-            <span key={d} className="h-1 w-1 rounded-full bg-[#A0A0A0] animate-pulse" style={{ animationDelay: `${d}ms` }} />
-          ))}
-        </span>
-      )}
-    </div>
-  );
-}
-
-
-// ─── Failed View ──────────────────────────────────────────────────────────────
-
-function FailedView({ progress, hasResults }: { progress: BatchProgress | null; hasResults: boolean }) {
-  const failedFiles = progress?.per_file_results.filter((f) => f.stage === "error") ?? [];
-  const scored = progress?.scored_count ?? 0;
-  const failed = progress?.failed_count ?? 0;
-  const total = progress?.total_files ?? 0;
-
-  return (
-    <div className="bg-amber-50 rounded-2xl border border-amber-200 p-6">
-      <div className="flex items-start gap-3 mb-4">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="mt-0.5 shrink-0">
-          <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM10 6v4M10 13h.01" stroke="#D97706" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-        <div>
-          <p className="text-sm font-semibold text-amber-800">{scored > 0 ? "Completed with some errors" : "Processing failed"}</p>
-          <p className="text-xs text-amber-700 mt-1">
-            {scored} of {total} resumes scored successfully.
-            {failed > 0 && ` ${failed} could not be processed.`}
-            {hasResults && " Results below are from the successful resumes."}
-          </p>
-        </div>
-      </div>
-      {failedFiles.length > 0 && (
-        <details className="mt-3">
-          <summary className="text-xs font-semibold text-amber-700 uppercase tracking-wide cursor-pointer hover:text-amber-900">
-            Show {failedFiles.length} failed resume{failedFiles.length !== 1 ? "s" : ""}
-          </summary>
-          <div className="mt-2 space-y-2">
-            {failedFiles.map((f) => (
-              <div key={f.resume_id} className="flex items-start gap-2 bg-amber-100/50 rounded-lg px-3 py-2">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="mt-0.5 shrink-0 text-amber-600">
-                  <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-amber-800 truncate">{f.filename}</p>
-                  {f.error && <p className="text-xs text-amber-600 mt-0.5">{f.error}</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-    </div>
-  );
-}
-
-
-// ─── Pagination ───────────────────────────────────────────────────────────────
-
-interface PaginationProps {
-  currentPage: number;
-  totalPages: number;
-  total: number;
-  pageSize: number;
-  onChange: (page: number) => void;
-}
-
-function Pagination({ currentPage, totalPages, total, pageSize, onChange }: PaginationProps) {
-  const start = (currentPage - 1) * pageSize + 1;
-  const end = Math.min(currentPage * pageSize, total);
-
-  // Build a compact page list: 1 … (cur-1) cur (cur+1) … last
-  const pages: (number | "…")[] = [];
-  const push = (p: number | "…") => pages.push(p);
-  const window = new Set<number>([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
-  let last: number | null = null;
-  for (let i = 1; i <= totalPages; i++) {
-    if (window.has(i) && i >= 1 && i <= totalPages) {
-      if (last !== null && i - last > 1) push("…");
-      push(i);
-      last = i;
-    }
-  }
-
-  const btnBase =
-    "h-9 min-w-9 px-3 rounded-xl border text-sm font-medium transition-colors flex items-center justify-center";
-  const btnIdle =
-    "border-[#E8E5DF] bg-white text-[#404040] hover:bg-[#F5F3EE]";
-  const btnActive =
-    "border-[#0F0F0F] bg-[#0F0F0F] text-white";
-  const btnDisabled =
-    "border-[#E8E5DF] bg-white text-[#D4D4D4] cursor-not-allowed";
-
-  return (
-    <div className="flex items-center justify-between px-1 pt-1">
-      <p className="text-xs text-[#737373]">
-        Showing <span className="font-semibold text-[#404040]">{start}</span>–<span className="font-semibold text-[#404040]">{end}</span> of <span className="font-semibold text-[#404040]">{total}</span>
-      </p>
-      <div className="flex items-center gap-1.5">
-        <button
-          onClick={() => onChange(currentPage - 1)}
-          disabled={currentPage <= 1}
-          className={`${btnBase} ${currentPage <= 1 ? btnDisabled : btnIdle}`}
-          aria-label="Previous page"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7.5 2.5L4 6l3.5 3.5"/></svg>
-        </button>
-        {pages.map((p, idx) =>
-          p === "…" ? (
-            <span key={`gap-${idx}`} className="px-1 text-xs text-[#A0A0A0]">…</span>
-          ) : (
-            <button
-              key={p}
-              onClick={() => onChange(p)}
-              className={`${btnBase} ${p === currentPage ? btnActive : btnIdle}`}
-              aria-current={p === currentPage ? "page" : undefined}
-            >
-              {p}
-            </button>
-          ),
-        )}
-        <button
-          onClick={() => onChange(currentPage + 1)}
-          disabled={currentPage >= totalPages}
-          className={`${btnBase} ${currentPage >= totalPages ? btnDisabled : btnIdle}`}
-          aria-label="Next page"
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 2.5L8 6l-3.5 3.5"/></svg>
-        </button>
       </div>
     </div>
   );

@@ -7,7 +7,32 @@ let _client: ReturnType<typeof createSupabaseClient> | null = null;
 
 export function createClient() {
   if (!_client) {
-    _client = createSupabaseClient(supabaseUrl, supabaseAnonKey);
+    _client = createSupabaseClient(supabaseUrl, supabaseAnonKey
+    );
   }
   return _client;
 }
+
+// export function createClient() {
+//   if (!_client) {
+//     _client = createSupabaseClient(supabaseUrl, supabaseAnonKey,
+//       {
+//         auth: {
+//           storage: {
+//             getItem: (key) => {
+//               // Implementation to read from cookies
+//             },
+//             setItem: (key, value) => {
+//               // Implementation to set cookie on domain: '.hiresort.ai'
+//             },
+//             removeItem: (key) => {
+//               // Implementation to remove cookie
+//             },
+//           },
+//           flowType: 'pkce',
+//         }
+//       }
+//     );
+//   }
+//   return _client;
+// }

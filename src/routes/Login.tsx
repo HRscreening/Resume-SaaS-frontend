@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/api";
 import { PasswordInput } from "@/components/PasswordInput";
+import { getURL } from "@/lib/utils";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ export default function LoginPage() {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/dashboard` },
+      options: { redirectTo: `${getURL()}/auth/callback?next=/dashboard` },
     });
   }
 

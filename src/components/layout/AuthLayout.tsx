@@ -1,8 +1,38 @@
 import { Link, Outlet } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
 const home_page_url = import.meta.env.VITE_HOME_PAGE_URL || "http://localhost:8000";
 
+const quotes = [
+  "Find the right candidates faster without manual screening, and focus your time on making the best hiring decisions.",
+  "Spend less time filtering through applications and more time connecting with the candidates who truly matter.",
+  "Smart matching powered by data helps you make faster, more confident hiring decisions every time.",
+  "Turn hours of manual screening into minutes with a streamlined and intelligent hiring workflow.",
+  "Great teams start with better discovery—identify top talent early and build stronger teams with ease.",
+];
+
 export function AuthLayout() {
+  const [index, setIndex] = useState(0);
+  const [displayed, setDisplayed] = useState(0);
+  const [phase, setPhase] = useState<"in" | "out">("in");
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % quotes.length);
+    }, 4500);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (index === displayed) return;
+    setPhase("out");
+    const t = setTimeout(() => {
+      setDisplayed(index);
+      setPhase("in");
+    }, 450);
+    return () => clearTimeout(t);
+  }, [index, displayed]);
+
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "#F5F3EE" }}>
       {/* Left panel */}
@@ -13,17 +43,31 @@ export function AuthLayout() {
         </Link>
 
         <div>
-          <blockquote className="text-white/80 text-lg leading-relaxed mb-6">
-            &ldquo;We went from spending 3 hours screening to under 15 minutes. HireSort surfaces the right candidates every time.&rdquo;
-          </blockquote>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center">
-              <span className="text-white text-sm font-medium">AK</span>
-            </div>
-            <div>
-              <p className="text-white text-sm font-medium">Alex Kim</p>
-              <p className="text-white/50 text-xs">Head of Talent, Fintech startup</p>
-            </div>
+          <div className="relative h-40 overflow-hidden">
+            {phase === "in" ? (
+              <blockquote
+                key={displayed}
+                className="absolute inset-0 text-white/85 text-lg leading-relaxed animate-quote-in"
+              >
+                &ldquo;{quotes[displayed]}&rdquo;
+              </blockquote>
+            ) : (
+              <blockquote
+                className="absolute inset-0 text-white/85 text-lg leading-relaxed animate-quote-out"
+              >
+                &ldquo;{quotes[displayed]}&rdquo;
+              </blockquote>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-6">
+            {quotes.map((_, i) => (
+              <span
+                key={i}
+                className={`h-1.5 rounded-full transition-all duration-500 ease-out ${
+                  i === index ? "w-6 bg-white/80" : "w-1.5 bg-white/25"
+                }`}
+              />
+            ))}
           </div>
         </div>
 
