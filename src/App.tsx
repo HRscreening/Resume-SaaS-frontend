@@ -30,17 +30,22 @@ import NotFound from "@/routes/NotFound";
 import ScreeningDetail from "@/routes/ScreeningDetail";
 import ResumeDetail from "@/routes/ResumeDetail";
 
+
+
+// 
+import UgradePlan from "@/routes/ugradePlan";
+
 // ─── Layouts ────────────────────────────────────────────────
 
 function RootLayout() {
   return <Outlet />;
 }
 
-function AppLayout() {
+function AppLayout({isSidebarRequired = true}: {isSidebarRequired?: boolean}) {
   return (
     <AuthGuard>
       <div className="flex min-h-screen">
-        <Sidebar />
+        {isSidebarRequired && <Sidebar />}
         <main className="flex-1 min-w-0" style={{ backgroundColor: "#F5F3EE" }}>
           <Outlet />
         </main>
@@ -126,6 +131,12 @@ const appLayoutRoute = createRoute({
   component: AppLayout,
 });
 
+const appLayoutNoSidebarRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: "app-layout-no-sidebar",
+  component: (props) => <AppLayout {...props} isSidebarRequired={false} />,
+});
+
 const dashboardRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/dashboard",
@@ -168,6 +179,14 @@ const changePasswordRoute = createRoute({
   component: ChangePassword,
 });
 
+
+
+const upgradePlanRoute = createRoute({
+  getParentRoute: () => appLayoutNoSidebarRoute,
+  path: "/upgrade",
+  component: UgradePlan,
+});
+
 // ─── Build router ───────────────────────────────────────────
 
 const routeTree = rootRoute.addChildren([
@@ -177,6 +196,8 @@ const routeTree = rootRoute.addChildren([
   onboardingRoute,
   termsRoute,
   privacyRoute,
+  appLayoutNoSidebarRoute.addChildren([
+  upgradePlanRoute]),
   appLayoutRoute.addChildren([
     dashboardRoute,
     screeningsRoute,
