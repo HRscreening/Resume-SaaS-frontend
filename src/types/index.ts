@@ -134,7 +134,6 @@ export interface Score {
   overall_summary: string;
   strengths: string[] | null;
   missing_elements: string[] | null;
-  ai_model: string;
   processing_time_ms: number;
   created_at: string;
 }

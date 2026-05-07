@@ -329,7 +329,7 @@ export default function ResumeDetail() {
               </div>
 
               <p className="text-xs text-[#A0A0A0] pb-2">
-                Scored {formatDate(score.created_at)} · {score.ai_model}
+                Scored {formatDate(score.created_at)}
               </p>
             </div>
           </div>
