@@ -8,7 +8,6 @@ import type { Resume, Score } from "@/types";
 interface ResumeDetailData extends Resume {
   parsed_text: string | null;
   parsed_data: Record<string, unknown> | null;
-  extraction_method: string | null;
   error_message: string | null;
   page_count: number | null;
   char_count: number | null;

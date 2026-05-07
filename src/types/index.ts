@@ -38,7 +38,6 @@ export interface PlanSpec {
   max_batch_size: number;
   max_screenings: number;
   data_retention_days: number;
-  scoring_models: string[];
   export_formats: string[];
   api_access: boolean;
 }
