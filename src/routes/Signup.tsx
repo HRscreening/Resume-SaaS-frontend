@@ -1,11 +1,23 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { createClient } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/PasswordInput";
+import { GuestGuard } from "@/components/GuestGuard";
 import { passwordStrength } from "@/lib/passwordValidation";
-import { getURL } from "@/lib/utils";
+import { getURL, safeNext } from "@/lib/utils";
 
 export default function SignupPage() {
+  return (
+    <GuestGuard>
+      <SignupForm />
+    </GuestGuard>
+  );
+}
+
+function SignupForm() {
+  const search = useSearch({ strict: false }) as { next?: string };
+  const next = safeNext(search.next);
+  const callbackTarget = encodeURIComponent(next ?? "/onboarding");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -38,7 +50,7 @@ export default function SignupPage() {
       const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${getURL()}/auth/callback?next=/onboarding` },
+        options: { emailRedirectTo: `${getURL()}/auth/callback?next=${callbackTarget}` },
       });
       if (authError) throw authError;
 
@@ -61,7 +73,7 @@ export default function SignupPage() {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${getURL()}/auth/callback?next=/onboarding` },
+      options: { redirectTo: `${getURL()}/auth/callback?next=${callbackTarget}` },
     });
   }
 
@@ -81,6 +93,7 @@ export default function SignupPage() {
         <div className="flex flex-col gap-2">
           <Link
             to="/login"
+            search={next ? { next } : undefined}
             className="w-full h-11 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors flex items-center justify-center"
           >
             Sign in instead
@@ -117,7 +130,11 @@ export default function SignupPage() {
       <h1 className="text-2xl font-bold text-[#0F0F0F] mb-1">Create your account</h1>
       <p className="text-sm text-[#737373] mb-8">
         Already have one?{" "}
-        <Link to="/login" className="text-[#0F0F0F] font-medium underline underline-offset-2">
+        <Link
+          to="/login"
+          search={next ? { next } : undefined}
+          className="text-[#0F0F0F] font-medium underline underline-offset-2"
+        >
           Sign in
         </Link>
       </p>

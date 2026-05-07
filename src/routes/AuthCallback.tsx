@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { createClient } from "@/lib/supabase/client";
 import { initAuth, isAuthenticated } from "@/lib/auth";
 import { getProfile } from "@/lib/api";
+import { safeNext } from "@/lib/utils";
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -15,8 +16,22 @@ export default function AuthCallbackPage() {
     const supabase = createClient();
 
     const params = new URLSearchParams(window.location.search);
-    const next = params.get("next") ?? "/dashboard";
-    const isPasswordReset = next === "/reset-password";
+    const rawNext = params.get("next") ?? "/dashboard";
+    const isPasswordReset = rawNext === "/reset-password";
+    // An explicit, non-default `next` (e.g. /checkout/...) means the user
+    // came from a specific protected page — honor it directly and skip the
+    // onboarding gate. Plain logins (next = /dashboard) keep the gate.
+    const explicitNext =
+      rawNext !== "/dashboard" && rawNext !== "/onboarding"
+        ? safeNext(rawNext)
+        : null;
+
+    function goTo(target: string) {
+      // `target` may include a query string (e.g. /checkout/pro?cycle=yearly)
+      // which TanStack's navigate({to}) doesn't parse — use a full redirect.
+      if (target.includes("?")) window.location.replace(target);
+      else navigate({ to: target });
+    }
 
     async function redirectAfterAuth() {
       // Re-hydrate auth cache so AuthGuard picks up session instantly
@@ -27,11 +42,15 @@ export default function AuthCallbackPage() {
         navigate({ to: "/reset-password" });
         return;
       }
+      if (explicitNext) {
+        goTo(explicitNext);
+        return;
+      }
       try {
         const profile = await getProfile();
-        navigate({ to: profile.onboarding_completed ? next : "/onboarding" });
+        navigate({ to: profile.onboarding_completed ? "/dashboard" : "/onboarding" });
       } catch {
-        navigate({ to: next });
+        navigate({ to: "/dashboard" });
       }
     }
 

@@ -1,60 +1,52 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { getProfile, updateProfile, getUsage, getPlans, deleteAccount, createRazorpayOrder, verifyRazorpayPayment, cancelSubscription } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getProfile, updateProfile, getUsage, getPlans, deleteAccount, cancelSubscription } from "@/lib/api";
 import { clearAuthCache } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
-import type { Profile, UsageResponse, PlanSpec, SubscriptionPlan } from "@/types";
-
-type UpgradeSlug = "pro" | "business" | "enterprise";
-
-function planKeyToSlug(key: SubscriptionPlan): UpgradeSlug | null {
-  if (key === "PRO") return "pro";
-  if (key === "BUSINESS") return "business";
-  if (key === "ENTERPRISE") return "enterprise";
-  return null;
-}
+import type { SubscriptionPlan } from "@/types";
 
 export default function Settings() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [usage, setUsage] = useState<UsageResponse | null>(null);
-  const [plans, setPlans] = useState<PlanSpec[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const profileQuery = useQuery({ queryKey: ["profile"], queryFn: getProfile, staleTime: 60_000 });
+  const usageQuery = useQuery({ queryKey: ["usage"], queryFn: getUsage, staleTime: 30_000 });
+  const plansQuery = useQuery({ queryKey: ["plans"], queryFn: getPlans, staleTime: Infinity });
+
+  const profile = profileQuery.data;
+  const usage = usageQuery.data;
+  const plans = plansQuery.data ?? [];
+  const loading = profileQuery.isLoading || usageQuery.isLoading || plansQuery.isLoading;
+  const loadError =
+    profileQuery.error instanceof Error ? profileQuery.error.message :
+    usageQuery.error instanceof Error ? usageQuery.error.message :
+    plansQuery.error instanceof Error ? plansQuery.error.message :
+    null;
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [paymentLoading, setPaymentLoading] = useState<string | null>(null);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
 
-  // Editable fields
+  // Editable fields — synced from cached profile on first load.
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
+  const [fieldsHydrated, setFieldsHydrated] = useState(false);
+
+  useEffect(() => {
+    if (profile && !fieldsHydrated) {
+      setName(profile.full_name ?? "");
+      setCompany(profile.company_name ?? "");
+      setFieldsHydrated(true);
+    }
+  }, [profile, fieldsHydrated]);
 
   // Cancel subscription state
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
-
-  useEffect(() => {
-    Promise.all([getProfile(), getUsage(), getPlans()])
-      .then(([p, u, planList]) => {
-        setProfile(p);
-        setUsage(u);
-        setPlans(planList);
-        setName(p.full_name ?? "");
-        setCompany(p.company_name ?? "");
-      })
-      .catch((err) => {
-        setLoadError(err instanceof Error ? err.message : "Failed to load profile. Please refresh.");
-      })
-      .finally(() => setLoading(false));
-  }, []);
 
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -66,7 +58,7 @@ export default function Settings() {
         full_name: name.trim() || undefined,
         company_name: company.trim() || undefined,
       });
-      setProfile(updated);
+      queryClient.setQueryData(["profile"], updated);
       setName(updated.full_name ?? "");
       setCompany(updated.company_name ?? "");
       setSaved(true);
@@ -83,11 +75,8 @@ export default function Settings() {
     setCancelError(null);
     try {
       await cancelSubscription();
-      // Refresh local profile + usage so the UI reflects FREE immediately.
-      const [freshProfile, freshUsage] = await Promise.all([getProfile(), getUsage()]);
-      setProfile(freshProfile);
-      setUsage(freshUsage);
-      queryClient.invalidateQueries({ queryKey: ["usage"] });
+      await queryClient.invalidateQueries({ queryKey: ["profile"] });
+      await queryClient.invalidateQueries({ queryKey: ["usage"] });
       setShowCancelConfirm(false);
     } catch (err) {
       setCancelError(err instanceof Error ? err.message : "Could not cancel subscription. Please try again.");
@@ -109,109 +98,6 @@ export default function Settings() {
       setSaveError(err instanceof Error ? err.message : "Delete failed. Please try again.");
       setDeleting(false);
       setShowDeleteConfirm(false);
-    }
-  }
-
-  async function refreshAfterUpgrade(plan: "pro" | "business" | "enterprise") {
-    const [updatedProfile, freshUsage] = await Promise.all([getProfile(), getUsage()]);
-    setProfile(updatedProfile);
-    setUsage(freshUsage);
-    // Invalidate everywhere so Dashboard / Sidebar etc. show the new limit too.
-    queryClient.invalidateQueries({ queryKey: ["usage"] });
-    queryClient.invalidateQueries({ queryKey: ["profile"] });
-    const upgradedName = plans.find(p => planKeyToSlug(p.key) === plan)?.display_name ?? plan;
-    setPaymentSuccess(`You're now on the ${upgradedName} plan!`);
-    setTimeout(() => setPaymentSuccess(null), 6000);
-  }
-
-  async function handleRazorpayCheckout(plan: "pro" | "business" | "enterprise") {
-    setPaymentLoading(plan);
-    setPaymentError(null);
-    const previousPlan = profile?.plan;
-
-    try {
-      const order = await createRazorpayOrder(plan);
-
-      // Load checkout.js once
-      if (!document.querySelector('script[src*="checkout.razorpay"]')) {
-        await new Promise<void>((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = "https://checkout.razorpay.com/v1/checkout.js";
-          script.onload = () => resolve();
-          script.onerror = () => reject(new Error("Failed to load Razorpay"));
-          document.body.appendChild(script);
-        });
-      }
-
-      await new Promise<void>((resolve, reject) => {
-        let handlerFired = false;
-
-        const onSuccess = async (paymentId: string, orderId: string, signature: string) => {
-          handlerFired = true;
-          try {
-            await verifyRazorpayPayment({
-              razorpay_order_id: orderId,
-              razorpay_payment_id: paymentId,
-              razorpay_signature: signature,
-              plan,
-            });
-            await refreshAfterUpgrade(plan);
-            resolve();
-          } catch {
-            reject(new Error("Payment verification failed. Contact support."));
-          }
-        };
-
-        // UPI async: poll profile for up to 20s after popup closes
-        const pollAfterDismiss = async () => {
-          if (handlerFired) return;
-          setPaymentSuccess("Checking payment status…");
-          for (let i = 0; i < 10; i++) {
-            await new Promise((r) => setTimeout(r, 2000));
-            try {
-              const updated = await getProfile();
-              if (updated.plan !== previousPlan) {
-                await refreshAfterUpgrade(plan);
-                resolve();
-                return;
-              }
-            } catch { /* ignore */ }
-          }
-          setPaymentSuccess(null);
-          reject(new Error("cancelled"));
-        };
-
-        const options = {
-          key: order.key_id,
-          amount: order.amount,
-          currency: order.currency,
-          name: "HireSort",
-          description: `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan`,
-          order_id: order.order_id,
-          prefill: {
-            email: profile?.email ?? "",
-            name: profile?.full_name ?? "",
-          },
-          theme: { color: "#0F0F0F" },
-          handler: (response: {
-            razorpay_payment_id: string;
-            razorpay_order_id: string;
-            razorpay_signature: string;
-          }) => {
-            onSuccess(response.razorpay_payment_id, response.razorpay_order_id, response.razorpay_signature);
-          },
-          modal: { ondismiss: pollAfterDismiss },
-        };
-
-        // @ts-expect-error — Razorpay loaded via script tag
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Payment failed";
-      if (msg !== "cancelled") setPaymentError(msg);
-    } finally {
-      setPaymentLoading(null);
     }
   }
 
@@ -317,7 +203,7 @@ export default function Settings() {
               {saving && (
                 <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"/>
               )}
-              {saving ? "Saving\u2026" : "Save changes"}
+              {saving ? "Saving…" : "Save changes"}
             </button>
             {saved && (
               <span className="flex items-center gap-1.5 text-sm text-green-700 font-medium">
@@ -335,23 +221,13 @@ export default function Settings() {
       <div id="billing" className="bg-white rounded-2xl border border-[#E8E5DF] p-6 mb-5 scroll-mt-20">
         <h2 className="text-base font-semibold text-[#0F0F0F] mb-5">Plan & billing</h2>
 
-        {/* Success banner */}
-        {paymentSuccess && (
-          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-5">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M3 8.5l3 3 7-7" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <p className="text-sm text-green-800 font-medium">{paymentSuccess}</p>
-          </div>
-        )}
-
         {/* Current plan hero */}
         <div className="bg-[#F5F3EE] rounded-xl p-4 mb-5 flex items-center justify-between">
           <div>
             <p className="text-xs text-[#737373] mb-0.5">Current plan</p>
             <p className="text-lg font-bold text-[#0F0F0F]">{planInfo?.display_name ?? planKey}</p>
             <p className="text-sm text-[#737373]">
-              {planInfo?.price_label ?? "—"} · {planInfo ? planInfo.max_resumes_per_month.toLocaleString() : "—"} resumes/month
+              {planInfo ? `$${planInfo.price_monthly_usd}/mo` : "—"} · {planInfo ? planInfo.max_resumes_per_month.toLocaleString() : "—"} resumes/month
             </p>
             {profile?.plan !== "FREE" && !showCancelConfirm && (
               <button
@@ -407,49 +283,16 @@ export default function Settings() {
           </div>
         )}
 
-        {/* All plan cards — fully driven by /api/billing/plans */}
-        <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-3">Available plans</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {plans.map((plan) => {
-            const isCurrent = profile?.plan === plan.key;
-            const planOrder: SubscriptionPlan[] = ["FREE", "PRO", "BUSINESS", "ENTERPRISE"];
-            const isDowngrade = planOrder.indexOf(profile?.plan ?? "FREE") > planOrder.indexOf(plan.key);
-            const slug = planKeyToSlug(plan.key);
-            const showUpgrade = !isCurrent && !isDowngrade && slug !== null;
-            return (
-              <div
-                key={plan.key}
-                className={`rounded-xl border p-4 flex flex-col gap-2 ${isCurrent ? "border-[#0F0F0F] bg-[#F5F3EE]" : "border-[#E8E5DF]"}`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-[#0F0F0F]">{plan.display_name}</span>
-                  {isCurrent && <span className="text-xs px-1.5 py-0.5 bg-[#0F0F0F] text-white rounded-full">Active</span>}
-                </div>
-                <p className="text-lg font-bold text-[#0F0F0F]">
-                  ₹{plan.price_monthly_inr}
-                  <span className="text-xs font-normal text-[#737373]">/mo</span>
-                </p>
-                <p className="text-xs text-[#737373]">{plan.max_resumes_per_month} resumes</p>
-                {showUpgrade && slug && (
-                  <button
-                    onClick={() => handleRazorpayCheckout(slug)}
-                    disabled={paymentLoading !== null}
-                    className="mt-1 h-7 px-2 bg-[#0F0F0F] text-white text-xs font-medium rounded-lg hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    {paymentLoading === slug
-                      ? <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                      : null}
-                    {paymentLoading === slug ? "Processing…" : "Upgrade"}
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {paymentError && (
-          <p className="text-xs text-red-600 mt-3">{paymentError}</p>
-        )}
+        {/* Upgrade entry point — actual plan selection lives on /upgrade */}
+        <Link
+          to="/upgrade"
+          className="inline-flex items-center gap-1.5 h-10 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors"
+        >
+          {profile?.plan === "FREE" ? "Upgrade plan" : "Change plan"}
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 3l4 4-4 4"/>
+          </svg>
+        </Link>
       </div>
 
       {/* Password */}
@@ -499,7 +342,7 @@ export default function Settings() {
                 {deleting && (
                   <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin"/>
                 )}
-                {deleting ? "Deleting\u2026" : "Yes, delete my account"}
+                {deleting ? "Deleting…" : "Yes, delete my account"}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}

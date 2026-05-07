@@ -1,4 +1,5 @@
 import { getAccessToken } from "@/lib/auth";
+import { clearSessionHint } from "@/lib/sessionHint";
 import { createClient } from "@/lib/supabase/client";
 import type {
   Profile,
@@ -49,6 +50,7 @@ async function request<T>(
   });
 
   if (!res.ok) {
+    if (res.status === 401) clearSessionHint();
     const body = await res.json().catch(() => ({}));
     throw new Error(parseErrorDetail(body, res.status));
   }
@@ -241,13 +243,28 @@ export async function getPlans(): Promise<import("@/types").PlanSpec[]> {
   return res.plans;
 }
 
-export async function createRazorpayOrder(plan: string): Promise<{
+export interface FxRate {
+  base: string;
+  currency: string;
+  rate: number;
+  fallback: boolean;
+}
+
+export async function getFxRate(): Promise<FxRate> {
+  return request<FxRate>("/api/billing/fx-rate");
+}
+
+
+export async function createRazorpayOrder({plan,cycle}:{
+  plan: string;
+  cycle: "monthly" | "yearly"
+}): Promise<{
   order_id: string;
   amount: number;
   currency: string;
   key_id: string;
 }> {
-  return request(`/api/billing/razorpay/order?plan=${plan}`, { method: "POST" });
+  return request(`/api/billing/razorpay/order?plan=${plan}&cycle=${cycle}`, { method: "POST", });
 }
 
 export async function verifyRazorpayPayment(data: {
