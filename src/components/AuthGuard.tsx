@@ -1,5 +1,6 @@
 import { Navigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
+import { safeNext } from "@/lib/utils";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -17,7 +18,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    const here = window.location.pathname + window.location.search;
+    const next = safeNext(here);
+    return <Navigate to="/login" search={next ? { next } : undefined} replace />;
   }
 
   return <>{children}</>;

@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { createClient } from "@/lib/supabase/client";
 import { getProfile } from "@/lib/api";
 import { PasswordInput } from "@/components/PasswordInput";
 import { GuestGuard } from "@/components/GuestGuard";
-import { getURL } from "@/lib/utils";
+import { getURL, safeNext } from "@/lib/utils";
 
 export default function LoginPage() {
   return (
@@ -16,6 +16,8 @@ export default function LoginPage() {
 
 function LoginForm() {
   const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as { next?: string };
+  const next = safeNext(search.next);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,12 +32,19 @@ function LoginForm() {
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError) throw authError;
 
-      // Check onboarding status and redirect accordingly
+      // If the user came here from a protected page (?next=...), send them
+      // back there directly — bypassing the onboarding gate. They can finish
+      // onboarding after the original action (e.g. checkout) completes.
+      if (next) {
+        window.location.replace(next);
+        return;
+      }
+
+      // No `next`: fall back to onboarding gate.
       try {
         const profile = await getProfile();
         navigate({ to: profile.onboarding_completed ? "/dashboard" : "/onboarding" });
       } catch {
-        // If profile fetch fails, fall back to dashboard
         navigate({ to: "/dashboard" });
       }
     } catch (err) {
@@ -47,9 +56,10 @@ function LoginForm() {
 
   async function handleGoogle() {
     const supabase = createClient();
+    const target = next ?? "/dashboard";
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${getURL()}/auth/callback?next=/dashboard` },
+      options: { redirectTo: `${getURL()}/auth/callback?next=${encodeURIComponent(target)}` },
     });
   }
 
@@ -58,7 +68,11 @@ function LoginForm() {
       <h1 className="text-2xl font-bold text-[#0F0F0F] mb-1">Welcome back</h1>
       <p className="text-sm text-[#737373] mb-8">
         Don&apos;t have an account?{" "}
-        <Link to="/signup" className="text-[#0F0F0F] font-medium underline underline-offset-2">
+        <Link
+          to="/signup"
+          search={next ? { next } : undefined}
+          className="text-[#0F0F0F] font-medium underline underline-offset-2"
+        >
           Sign up free
         </Link>
       </p>

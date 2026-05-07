@@ -1,8 +1,8 @@
 // ─── Auth / Profile ──────────────────────────────────────────────────────────
 
 // ! NEED to fix this plan 
-export type SubscriptionPlan = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE";
-export type PlanType = 'FREE' | 'PLUS' | 'PRO' | 'ENTERPRISE';
+export type SubscriptionPlan = "FREE" | "PRO" | "PLUS" | "ENTERPRISE";
+export type PlanType = SubscriptionPlan;
 
 export interface Profile {
   id: string;
@@ -33,8 +33,8 @@ export interface UsageResponse {
 export interface PlanSpec {
   key: SubscriptionPlan;
   display_name: string;
-  price_monthly_inr: number;
-  price_label: string;
+  price_monthly_usd: number;
+  yearly_price_monthly_usd: number;
   razorpay_amount_paise: number;
   max_resumes_per_month: number;
   max_batch_size: number;
@@ -43,6 +43,7 @@ export interface PlanSpec {
   scoring_models: string[];
   export_formats: string[];
   api_access: boolean;
+  display_features: string[];
 }
 
 // ─── Rubric ──────────────────────────────────────────────────────────────────

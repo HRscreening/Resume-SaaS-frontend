@@ -61,7 +61,7 @@ export default function OnboardingPage() {
   if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#F5F3EE" }}>
-        <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin"/>
+        <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
       </div>
     );
   }
@@ -70,11 +70,11 @@ export default function OnboardingPage() {
     <div className="min-h-screen flex items-center justify-center px-6 py-12" style={{ backgroundColor: "#F5F3EE" }}>
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 mb-10">
-          <div className="h-8 w-8 bg-[#0F0F0F] rounded-lg flex items-center justify-center">
-            <span className="text-white text-xs font-bold">HS</span>
+        <div className="h-14 flex items-center px-5 border-b border-[#E8E5DF]">
+          <div className="flex items-center gap-2.5">
+            <img src="/logo.png" alt="HireSort logo" className="h-6 w-auto" />
+            <span className="font-semibold text-[#0F0F0F] text-sm">HireSort</span>
           </div>
-          <span className="font-semibold text-[#0F0F0F]">HireSort</span>
         </div>
 
         <div className="bg-white rounded-2xl border border-[#E8E5DF] p-8">
@@ -129,11 +129,10 @@ export default function OnboardingPage() {
                     key={opt}
                     type="button"
                     onClick={() => setRole(role === opt ? "" : opt)}
-                    className={`h-10 px-3 rounded-lg border text-sm font-medium transition-colors ${
-                      role === opt
+                    className={`h-10 px-3 rounded-lg border text-sm font-medium transition-colors ${role === opt
                         ? "bg-[#0F0F0F] border-[#0F0F0F] text-white"
                         : "bg-white border-[#D4D4D4] text-[#404040] hover:border-[#404040]"
-                    }`}
+                      }`}
                   >
                     {opt}
                   </button>
@@ -147,7 +146,7 @@ export default function OnboardingPage() {
               className="w-full h-11 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 mt-2"
             >
               {loading && (
-                <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"/>
+                <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
               )}
               Continue to dashboard
             </button>

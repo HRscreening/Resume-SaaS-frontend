@@ -8,7 +8,7 @@ type BadgeVariant =
   | "info"
   | "plan-free"
   | "plan-pro"
-  | "plan-business"
+  | "plan-plus"
   | "plan-enterprise";
 
 interface BadgeProps {
@@ -25,7 +25,7 @@ const variantClasses: Record<BadgeVariant, string> = {
   info: "bg-blue-50 text-blue-700 border border-blue-200",
   "plan-free": "bg-[#F5F3EE] text-[#404040] border border-[#D4D4D4]",
   "plan-pro": "bg-blue-50 text-blue-700 border border-blue-200",
-  "plan-business": "bg-purple-50 text-purple-700 border border-purple-200",
+  "plan-plus": "bg-purple-50 text-purple-700 border border-purple-200",
   "plan-enterprise":
     "bg-[#C85A1710] text-[#C85A17] border border-[#C85A1740]",
 };

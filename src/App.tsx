@@ -33,7 +33,8 @@ import ResumeDetail from "@/routes/ResumeDetail";
 
 
 // 
-import UgradePlan from "@/routes/ugradePlan";
+import UgradePlan from "@/routes/pricing/ugradePlan";
+import Checkout from "@/routes/pricing/Checkout";
 
 // ─── Layouts ────────────────────────────────────────────────
 
@@ -187,6 +188,16 @@ const upgradePlanRoute = createRoute({
   component: UgradePlan,
 });
 
+const checkoutRoute = createRoute({
+  getParentRoute: () => appLayoutNoSidebarRoute,
+  path: "/checkout/$plan",
+  component: Checkout,
+  validateSearch: (search: Record<string, unknown>) => ({
+    cycle: search.cycle === "yearly" ? "yearly" : "monthly",
+    from: typeof search.from === "string" ? search.from : undefined,
+  }),
+});
+
 // ─── Build router ───────────────────────────────────────────
 
 const routeTree = rootRoute.addChildren([
@@ -197,7 +208,9 @@ const routeTree = rootRoute.addChildren([
   termsRoute,
   privacyRoute,
   appLayoutNoSidebarRoute.addChildren([
-  upgradePlanRoute]),
+    upgradePlanRoute,
+    checkoutRoute,
+  ]),
   appLayoutRoute.addChildren([
     dashboardRoute,
     screeningsRoute,

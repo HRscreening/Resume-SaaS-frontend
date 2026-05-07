@@ -84,7 +84,7 @@ export function planLimits(plan: string): number {
   const limits: Record<string, number> = {
     FREE: 50,
     PRO: 500,
-    BUSINESS: 2000,
+    PLUS: 2000,
     ENTERPRISE: Infinity,
   };
   return limits[plan] ?? 50;
@@ -93,4 +93,17 @@ export function planLimits(plan: string): number {
 export function truncate(str: string, maxLen: number): string {
   if (str.length <= maxLen) return str;
   return str.slice(0, maxLen - 1) + "…";
+}
+
+/**
+ * Validates a post-auth `next` redirect target. Returns the value only if it
+ * is a same-origin relative path. Blocks open-redirect attacks (//evil.com,
+ * https://evil.com) and bounce-loops back into the auth pages.
+ */
+export function safeNext(value: unknown): string | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  if (!value.startsWith("/")) return null;
+  if (value.startsWith("//")) return null;
+  if (value.startsWith("/login") || value.startsWith("/signup")) return null;
+  return value;
 }

@@ -81,7 +81,7 @@ const navItems: NavItem[] = [
 const PLAN_LABEL: Record<SubscriptionPlan, string> = {
   FREE: "Free",
   PRO: "Starter",
-  BUSINESS: "Growth",
+  PLUS: "Plus",
   ENTERPRISE: "Scale",
 };
 
