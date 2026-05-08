@@ -125,6 +125,7 @@ export default function ScreeningDetail() {
       queryClient.invalidateQueries({ queryKey: ["screening", id] });
       queryClient.invalidateQueries({ queryKey: ["batch-progress", id] });
       queryClient.invalidateQueries({ queryKey: ["screenings"] });
+      queryClient.invalidateQueries({ queryKey: ["usage"] });
       setUploadNonce((n) => n + 1);
     } catch (err) {
       clearTimeout(t);
@@ -157,6 +158,7 @@ export default function ScreeningDetail() {
       queryClient.invalidateQueries({ queryKey: ["batch-progress", id] });
       queryClient.invalidateQueries({ queryKey: ["results", id] });
       queryClient.invalidateQueries({ queryKey: ["screenings"] });
+      queryClient.invalidateQueries({ queryKey: ["usage"] });
       setUploadNonce((n) => n + 1);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
