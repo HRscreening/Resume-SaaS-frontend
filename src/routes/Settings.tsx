@@ -11,7 +11,7 @@ export default function Settings() {
   const queryClient = useQueryClient();
 
   const profileQuery = useQuery({ queryKey: ["profile"], queryFn: getProfile, staleTime: 60_000 });
-  const usageQuery = useQuery({ queryKey: ["usage"], queryFn: getUsage, staleTime: 30_000 });
+  const usageQuery = useQuery({ queryKey: ["usage"], queryFn: getUsage, staleTime: 0, refetchOnWindowFocus: true });
   const plansQuery = useQuery({ queryKey: ["plans"], queryFn: getPlans, staleTime: Infinity });
 
   const profile = profileQuery.data;

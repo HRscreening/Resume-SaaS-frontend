@@ -110,7 +110,11 @@ export function Sidebar() {
   const { data: usage } = useQuery({
     queryKey: ["usage"],
     queryFn: getUsage,
-    staleTime: 60_000,
+    // Treat usage as always-stale so any invalidation OR mount triggers a fresh
+    // fetch. The endpoint is small; the cost of an extra request is negligible
+    // and prevents the counter from lagging the actual quota state.
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
@@ -229,7 +233,7 @@ export function Sidebar() {
             {usage && limit > 0 && (
               <div className="px-4 pb-3">
                 <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="text-[#737373]">Resumes this month</span>
+                  <span className="text-[#737373]">{isFree ? "Resumes used" : "Resumes this month"}</span>
                   <span className="font-semibold text-[#0F0F0F] tabular-nums">{used} / {limit}</span>
                 </div>
                 <div className="h-1.5 w-full bg-[#F0EDE8] rounded-full overflow-hidden">

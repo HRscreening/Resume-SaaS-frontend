@@ -73,6 +73,11 @@ export default function ScreeningDetail() {
     if (batchDone) {
       queryClient.invalidateQueries({ queryKey: ["results", id] });
       queryClient.invalidateQueries({ queryKey: ["screening", id] });
+      // Belt-and-suspenders: the upload mutation also invalidates ["usage"],
+      // but if the user navigates away mid-processing and comes back, that
+      // handler is gone. Batch completion is the stable trigger to make sure
+      // the sidebar counter ends up correct.
+      queryClient.invalidateQueries({ queryKey: ["usage"] });
     }
   }, [batchDone, id, queryClient]);
 

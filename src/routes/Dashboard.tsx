@@ -39,7 +39,10 @@ export default function Dashboard() {
   const { data: usage } = useQuery({
     queryKey: ["usage"],
     queryFn: getUsage,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
+  const isFree = usage?.plan === "FREE";
 
   // Only block on screenings — usage loads in the background
   if (screeningsLoading) {
@@ -79,7 +82,7 @@ export default function Dashboard() {
           { label: "Completed", value: completed },
           { label: "Resumes screened", value: totalResumes },
           {
-            label: "Monthly usage",
+            label: isFree ? "Trial usage" : "Monthly usage",
             value: usage ? `${usage.resumes_processed} / ${usage.quota_limit}` : "\u2014",
           },
         ].map((stat) => (
@@ -100,10 +103,13 @@ export default function Dashboard() {
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-red-900">You've hit your monthly limit</p>
+            <p className="text-sm font-semibold text-red-900">
+              {isFree ? "You've used your free trial" : "You've hit your monthly limit"}
+            </p>
             <p className="text-xs text-red-800/80 mt-0.5">
-              You've processed all {usage.quota_limit} resumes included in your {usage.plan} plan this month.
-              Upgrade to keep screening, or wait for your quota to refresh on the 1st.
+              {isFree
+                ? `You've processed all ${usage.quota_limit} resumes included in your free trial. Upgrade to keep screening.`
+                : `You've processed all ${usage.quota_limit} resumes included in your ${usage.plan} plan this month. Upgrade to keep screening, or wait for your quota to refresh on the 1st.`}
             </p>
           </div>
           <Link
@@ -121,7 +127,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl border border-[#E8E5DF] p-5 mb-8">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-sm font-medium text-[#0F0F0F]">Monthly quota</p>
+              <p className="text-sm font-medium text-[#0F0F0F]">{isFree ? "Trial quota" : "Monthly quota"}</p>
               <p className="text-xs text-[#737373] mt-0.5">
                 {usage.resumes_processed} of {usage.quota_limit} resumes used
               </p>
@@ -146,7 +152,7 @@ export default function Dashboard() {
             && usage.resumes_processed / usage.quota_limit >= 0.8
             && usage.resumes_processed < usage.quota_limit && (
               <p className="mt-3 text-xs text-[#C85A17]">
-                Running low — {Math.max(0, usage.quota_limit - usage.resumes_processed)} resumes left this month.{" "}
+                Running low — {Math.max(0, usage.quota_limit - usage.resumes_processed)} resumes left{isFree ? " in your trial" : " this month"}.{" "}
                 {usage.plan !== "ENTERPRISE" ? (
                   <>
                     <Link to="/settings" hash="billing" className="underline font-medium">Upgrade your plan</Link>{" "}
