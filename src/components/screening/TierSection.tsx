@@ -105,7 +105,7 @@ function CandidateRow({ candidate, categories, onSelect }: {
     .filter(Boolean) as string[];
 
   return (
-    <tr onClick={onSelect} className={`cursor-pointer transition-colors hover:bg-[#FAFAF8] ${failedNonNegotiables.length > 0 ? "bg-red-50/40" : ""}`}>
+    <tr onClick={onSelect} className="cursor-pointer transition-colors hover:bg-[#FAFAF8]">
       <td className="px-5 py-3.5">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-[#FBF1E7] flex items-center justify-center shrink-0">
@@ -120,16 +120,10 @@ function CandidateRow({ candidate, categories, onSelect }: {
               <p className="text-xs text-[#737373] truncate">{candidate.candidate_phone}</p>
             )}
             {failedNonNegotiables.length > 0 && (
-              <div className="flex items-center gap-1 mt-0.5">
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="#DC2626">
-                  <path d="M6 1L1 10h10L6 1z" />
-                  <rect x="5.5" y="5" width="1" height="3" fill="white" rx="0.5" />
-                  <circle cx="6" cy="9" r="0.6" fill="white" />
-                </svg>
-                <p className="text-xs text-red-600 font-medium">
-                  Failed: {failedNonNegotiables.join(", ")}
-                </p>
-              </div>
+              <p className="text-xs text-[#737373] mt-1 truncate">
+                <span className="text-[#A0A0A0]">Missing must-haves:</span>{" "}
+                <span className="text-[#525252]">{failedNonNegotiables.join(", ")}</span>
+              </p>
             )}
           </div>
         </div>
