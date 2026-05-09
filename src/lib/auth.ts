@@ -102,6 +102,15 @@ export function getCachedUser(): User | null {
 }
 
 /**
+ * Whether `initAuth()` has finished hydrating from local storage.
+ * Used by `useAuth` to skip the loading state on layout mounts that happen
+ * AFTER `main.tsx` has already awaited `initAuth()`.
+ */
+export function isInitialized(): boolean {
+  return _initialLoadDone;
+}
+
+/**
  * Check if there's an active session. No network call.
  */
 export function isAuthenticated(): boolean {

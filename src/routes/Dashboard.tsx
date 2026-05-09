@@ -44,14 +44,8 @@ export default function Dashboard() {
   });
   const isFree = usage?.plan === "FREE";
 
-  // Only block on screenings — usage loads in the background
-  if (screeningsLoading) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-96">
-        <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
-      </div>
-    );
-  }
+  // Don't block the whole page on data loads — render the shell immediately.
+  // Stat cards and the recent-screenings list show their own loading affordances.
 
   const recent = screenings.slice(0, 5);
   const completed = screenings.filter((s: ScreeningListItem) => s.status === "completed").length;
@@ -78,9 +72,9 @@ export default function Dashboard() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: "Total screenings", value: screenings.length },
-          { label: "Completed", value: completed },
-          { label: "Resumes screened", value: totalResumes },
+          { label: "Total screenings", value: screeningsLoading ? "\u2014" : screenings.length },
+          { label: "Completed", value: screeningsLoading ? "\u2014" : completed },
+          { label: "Resumes screened", value: screeningsLoading ? "\u2014" : totalResumes },
           {
             label: isFree ? "Trial usage" : "Monthly usage",
             value: usage ? `${usage.resumes_processed} / ${usage.quota_limit}` : "\u2014",

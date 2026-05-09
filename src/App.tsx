@@ -222,7 +222,16 @@ const routeTree = rootRoute.addChildren([
   ]),
 ]);
 
-const router = createRouter({ routeTree, defaultNotFoundComponent: NotFound });
+const router = createRouter({
+  routeTree,
+  defaultNotFoundComponent: NotFound,
+  // Begin route prep on link hover/touch-start so click → render is instant.
+  // Components are eagerly imported, so this primarily warms router state and
+  // any beforeLoad resolves; component-level useQuery still runs on mount, but
+  // by then the route is mounted earlier.
+  defaultPreload: "intent",
+  defaultPreloadStaleTime: 0,
+});
 
 declare module "@tanstack/react-router" {
   interface Register {

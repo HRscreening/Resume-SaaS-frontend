@@ -17,7 +17,9 @@ export default function Settings() {
   const profile = profileQuery.data;
   const usage = usageQuery.data;
   const plans = plansQuery.data ?? [];
-  const loading = profileQuery.isLoading || usageQuery.isLoading || plansQuery.isLoading;
+  // Only block on profile — it drives the form fields. Usage and plans render
+  // their own progressive loading state, so they shouldn't gate the whole page.
+  const loading = profileQuery.isLoading;
   const loadError =
     profileQuery.error instanceof Error ? profileQuery.error.message :
     usageQuery.error instanceof Error ? usageQuery.error.message :

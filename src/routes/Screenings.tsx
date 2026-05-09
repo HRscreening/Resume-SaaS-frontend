@@ -40,14 +40,10 @@ export default function Screenings() {
     queryFn: listScreenings,
   });
 
-  if (isLoading) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-96">
-        <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
+  // Render the page shell immediately. While the screenings query is in
+  // flight, show skeleton rows in place of the empty-state — otherwise a
+  // user with screenings would see "No screenings yet" briefly on first
+  // load, which is misleading.
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-8">
@@ -63,7 +59,20 @@ export default function Screenings() {
         </Link>
       </div>
 
-      {screenings.length === 0 ? (
+      {isLoading ? (
+        <div className="bg-white rounded-2xl border border-[#E8E5DF] overflow-hidden">
+          <div className="divide-y divide-[#E8E5DF]">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="px-6 py-5 flex items-center gap-4 animate-pulse">
+                <div className="h-3 w-48 bg-[#E8E5DF] rounded" />
+                <div className="h-3 w-12 bg-[#E8E5DF] rounded ml-auto" />
+                <div className="h-3 w-16 bg-[#E8E5DF] rounded" />
+                <div className="h-5 w-20 bg-[#E8E5DF] rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : screenings.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#E8E5DF] py-24 text-center">
           <div className="h-14 w-14 rounded-full bg-[#F5F3EE] flex items-center justify-center mx-auto mb-4">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A0A0A0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

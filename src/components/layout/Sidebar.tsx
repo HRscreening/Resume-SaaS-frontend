@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { clearAuthCache } from "@/lib/auth";
-import { getUsage } from "@/lib/api";
+import { getUsage, listScreenings } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { SubscriptionPlan } from "@/types";
+import type { ScreeningListItem, SubscriptionPlan } from "@/types";
 
 interface NavItem {
   href: string;
@@ -107,6 +107,8 @@ export function Sidebar() {
 
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const queryClient = useQueryClient();
+
   const { data: usage } = useQuery({
     queryKey: ["usage"],
     queryFn: getUsage,
@@ -115,7 +117,26 @@ export function Sidebar() {
     // and prevents the counter from lagging the actual quota state.
     staleTime: 0,
     refetchOnWindowFocus: true,
+    // Belt-and-suspenders: while ANY screening is mid-flight, poll usage every
+    // 5s. This catches the case where an upload's invalidation is dropped (FE
+    // navigation race, multi-tab, server hiccup) — the counter still ends up
+    // correct without the user ever needing to refresh.
+    refetchInterval: () => {
+      const screenings = queryClient.getQueryData<ScreeningListItem[]>(["screenings"]);
+      const anyInFlight = screenings?.some(
+        (s) => s.status === "processing" || s.status === "pending",
+      );
+      return anyInFlight ? 5000 : false;
+    },
   });
+
+  // Prefetch the screenings list on hover of any nav item that depends on it.
+  // The query is shared across Sidebar usage polling, Dashboard, and the
+  // Screenings page — so warming it up costs one HTTP roundtrip and benefits
+  // every consumer.
+  function prefetchScreenings() {
+    queryClient.prefetchQuery({ queryKey: ["screenings"], queryFn: listScreenings });
+  }
 
   useEffect(() => {
     const supabase = createClient();
@@ -180,10 +201,16 @@ export function Sidebar() {
       <nav className="flex-1 p-3 space-y-0.5" aria-label="Sidebar navigation">
         {navItems.map((item) => {
           const active = isActive(item);
+          // Dashboard and /screenings both consume the screenings list;
+          // /screenings/new doesn't strictly need it but prefetching is cheap
+          // and the user often goes new → list.
+          const wantsScreenings = item.href === "/dashboard" || item.href.startsWith("/screenings");
           return (
             <Link
               key={item.href}
               to={item.href}
+              onMouseEnter={wantsScreenings ? prefetchScreenings : undefined}
+              onFocus={wantsScreenings ? prefetchScreenings : undefined}
               className={cn(
                 "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150",
                 active
