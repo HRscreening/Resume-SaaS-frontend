@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { RankedCandidate, RubricCategory } from "@/types";
 
 // Module-level so we don't reconstruct it on every CandidateRow render.
@@ -43,9 +44,13 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
 
       {!collapsed && (
         <div className="border-t border-[#E8E5DF] overflow-x-auto">
-          <table className="w-full text-sm">
+          {/* table-fixed so the candidate cell can't bully the score and
+              criterion columns rightwards when a long must-haves line lands.
+              The candidate <col> has no width, so it absorbs whatever space
+              the other (fixed) columns leave behind. */}
+          <table className="w-full table-fixed text-sm">
             <colgroup>
-              <col style={{ minWidth: "200px" }} />
+              <col />
               <col style={{ width: "140px" }} />
               <col style={{ width: "72px" }} />
               {categories.map((cat) => (
@@ -110,6 +115,7 @@ function CandidateRow({ candidate, categories, onSelect }: {
   // "A and B" / "A, B, and C" — reads as a sentence, not a CSV.
   const failedList = LIST_FORMATTER.format(failedNonNegotiables);
   const isDisqualified = failedNonNegotiables.length > 0;
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <tr onClick={onSelect} className="cursor-pointer transition-colors hover:bg-[#FAFAF8]">
@@ -120,11 +126,11 @@ function CandidateRow({ candidate, categories, onSelect }: {
           isDisqualified ? "border-[#C85A17]" : "border-transparent"
         }`}
       >
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-[#FBF1E7] flex items-center justify-center shrink-0">
+        <div className="flex items-start gap-3">
+          <div className="h-8 w-8 rounded-full bg-[#FBF1E7] flex items-center justify-center shrink-0 mt-0.5">
             <span className="text-xs font-semibold text-[#C85A17]">{(candidate.candidate_name ?? candidate.filename).slice(0, 2).toUpperCase()}</span>
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-[#0F0F0F] truncate">{candidate.candidate_name ?? candidate.filename}</p>
             {candidate.candidate_email && (
               <p className="text-xs text-[#737373] truncate">{candidate.candidate_email}</p>
@@ -133,7 +139,14 @@ function CandidateRow({ candidate, categories, onSelect }: {
               <p className="text-xs text-[#737373] truncate">{candidate.candidate_phone}</p>
             )}
             {isDisqualified && (
-              <p className="text-xs mt-1 truncate">
+              <p
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpanded((v) => !v);
+                }}
+                title={expanded ? "Click to collapse" : "Click to expand"}
+                className={`text-xs mt-1 cursor-pointer hover:opacity-80 transition-opacity break-words ${expanded ? "" : "line-clamp-2"}`}
+              >
                 <span className="text-[#737373]">Missing must-haves:</span>{" "}
                 <span className="font-medium text-[#C85A17]">{failedList}</span>
               </p>
