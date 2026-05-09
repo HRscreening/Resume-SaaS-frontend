@@ -1,5 +1,8 @@
 import type { RankedCandidate, RubricCategory } from "@/types";
 
+// Module-level so we don't reconstruct it on every CandidateRow render.
+const LIST_FORMATTER = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
+
 export const TIERS = [
   { id: "strong",    label: "Strong Match", min: 75, dot: "#22C55E" },
   { id: "potential", label: "Potential",    min: 55, dot: "#EAB308" },
@@ -104,9 +107,19 @@ function CandidateRow({ candidate, categories, onSelect }: {
     })
     .filter(Boolean) as string[];
 
+  // "A and B" / "A, B, and C" — reads as a sentence, not a CSV.
+  const failedList = LIST_FORMATTER.format(failedNonNegotiables);
+  const isDisqualified = failedNonNegotiables.length > 0;
+
   return (
     <tr onClick={onSelect} className="cursor-pointer transition-colors hover:bg-[#FAFAF8]">
-      <td className="px-5 py-3.5">
+      {/* Left accent bar — flags the whole row as disqualified when must-haves
+          are missing. Always 4px wide so rows align; transparent when clean. */}
+      <td
+        className={`px-5 py-3.5 border-l-4 ${
+          isDisqualified ? "border-[#C85A17]" : "border-transparent"
+        }`}
+      >
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-[#FBF1E7] flex items-center justify-center shrink-0">
             <span className="text-xs font-semibold text-[#C85A17]">{(candidate.candidate_name ?? candidate.filename).slice(0, 2).toUpperCase()}</span>
@@ -119,10 +132,10 @@ function CandidateRow({ candidate, categories, onSelect }: {
             {candidate.candidate_phone && (
               <p className="text-xs text-[#737373] truncate">{candidate.candidate_phone}</p>
             )}
-            {failedNonNegotiables.length > 0 && (
-              <p className="text-xs text-[#737373] mt-1 truncate">
-                <span className="text-[#A0A0A0]">Missing must-haves:</span>{" "}
-                <span className="text-[#525252]">{failedNonNegotiables.join(", ")}</span>
+            {isDisqualified && (
+              <p className="text-xs mt-1 truncate">
+                <span className="text-[#737373]">Missing must-haves:</span>{" "}
+                <span className="font-medium text-[#C85A17]">{failedList}</span>
               </p>
             )}
           </div>
