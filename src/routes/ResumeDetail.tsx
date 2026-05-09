@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { getResumeDetail, getResumePdfUrl, getScreening } from "@/lib/api";
+import { getResumeFull, getScreening } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { Resume, Score } from "@/types";
 
@@ -68,16 +68,26 @@ export default function ResumeDetail() {
     document.addEventListener("mouseup", onUp);
   }, []);
 
-  // Data queries
-  const { data, isLoading } = useQuery({
-    queryKey: ["resume-detail", id, resumeId],
-    queryFn: () => getResumeDetail(id, resumeId) as Promise<ResumeDetailData>,
+  // Single combined fetch: resume detail + signed PDF URL in one round-trip.
+  // The router loader prefetches this same key on hover (defaultPreload:
+  // "intent"), so on warm cache the click → render is instant.
+  const { data: full, isLoading } = useQuery({
+    queryKey: ["resume-full", id, resumeId],
+    queryFn: () => getResumeFull(id, resumeId),
+    staleTime: 5 * 60 * 1000,
   });
+  const data = full?.detail as ResumeDetailData | undefined;
+  const pdfData = full
+    ? { url: full.pdf_url ?? "", filename: full.pdf_filename ?? "" }
+    : undefined;
 
+  // Screening fetch is independent and usually a cache-hit (the user came
+  // from /screenings/$id where it was already loaded). Kept gated so we
+  // don't block first paint on its absence — it's only used to compute
+  // the non-negotiable set, which is fine to populate after first paint.
   const { data: screening } = useQuery({
     queryKey: ["screening", id],
     queryFn: () => getScreening(id),
-    enabled: !!data,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -91,13 +101,6 @@ export default function ResumeDetail() {
     );
     return set;
   }, [screening]);
-
-  const { data: pdfData } = useQuery({
-    queryKey: ["resume-pdf", id, resumeId],
-    queryFn: () => getResumePdfUrl(id, resumeId),
-    enabled: !!data,
-    staleTime: 50 * 60 * 1000,
-  });
 
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);

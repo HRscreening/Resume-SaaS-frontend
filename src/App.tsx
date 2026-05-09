@@ -8,6 +8,10 @@ import {
 } from "@tanstack/react-router";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { queryClient } from "@/lib/queryClient";
+import {
+  getScreening, getResults, getBatchProgress, getResumeFull,
+} from "@/lib/api";
 
 // ─── Eager imports (small pages — no spinner flash) ─────────
 import Landing from "@/routes/Landing";
@@ -160,12 +164,33 @@ const screeningDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/screenings/$id",
   component: ScreeningDetail,
+  // Fire-and-forget prefetch on Link hover (defaultPreload: "intent").
+  // All three queries fire in parallel and populate React Query's cache,
+  // so by the time the user clicks, the page renders from warm cache.
+  loader: ({ params }) => {
+    const { id } = params;
+    queryClient.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
+    queryClient.prefetchQuery({ queryKey: ["results", id], queryFn: () => getResults(id) });
+    queryClient.prefetchQuery({ queryKey: ["batch-progress", id], queryFn: () => getBatchProgress(id) });
+  },
 });
 
 const resumeDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/screenings/$id/$resumeId",
   component: ResumeDetail,
+  // Two-pronged prefetch: the combined `resume-full` endpoint covers
+  // detail + signed PDF URL in one HTTP round-trip; the screening query
+  // is usually a cache-hit (came from /screenings/$id) but we prefetch
+  // it too in case the user landed here via direct URL paste.
+  loader: ({ params }) => {
+    const { id, resumeId } = params;
+    queryClient.prefetchQuery({
+      queryKey: ["resume-full", id, resumeId],
+      queryFn: () => getResumeFull(id, resumeId),
+    });
+    queryClient.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
+  },
 });
 
 const settingsRoute = createRoute({

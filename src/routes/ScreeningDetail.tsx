@@ -4,7 +4,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getScreening, getResults, getBatchProgress, exportResults,
   uploadResumesToJob, addResumesToJob,
+  getResumeDetail, getResumePdfUrl,
 } from "@/lib/api";
+import type { ScreeningListItem } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";
 import type { RankedCandidate, RubricCategory } from "@/types";
 import { TIERS, getTier, TierSection, type TierId } from "@/components/screening/TierSection";
@@ -36,6 +38,16 @@ export default function ScreeningDetail() {
   // Bumped on each successful upload — tells the accordion to auto-expand briefly.
   const [uploadNonce, setUploadNonce] = useState(0);
 
+  // Synchronous status hint from the screenings-list cache. Used to gate the
+  // batch-progress query on cold cache so we don't fire a request that 404s
+  // for a draft screening (no batch row exists yet). On warm cache the hint
+  // is reliable; on direct URL paste it's `undefined` and we let the query
+  // fire — a 404 for draft is a rare cost.
+  const cachedListItem = queryClient
+    .getQueryData<ScreeningListItem[]>(["screenings"])
+    ?.find((s) => s.id === id);
+  const knownIsDraft = cachedListItem?.status === "draft";
+
   const { data: screening, isLoading, error } = useQuery({
     queryKey: ["screening", id],
     queryFn: () => getScreening(id),
@@ -46,10 +58,15 @@ export default function ScreeningDetail() {
     },
   });
 
+  // Fire in PARALLEL with the screening query when we have a non-draft hint
+  // (or no hint at all). The previous `enabled: !!screening` gate forced a
+  // sequential waterfall — first paint waited for two roundtrips instead of
+  // one. The 404-on-draft case is handled by React Query's retry:1 default
+  // and the empty render path below.
   const { data: progress } = useQuery({
     queryKey: ["batch-progress", id],
     queryFn: () => getBatchProgress(id),
-    enabled: !!screening && screening.status !== "draft",
+    enabled: !knownIsDraft && (!screening || screening.status !== "draft"),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       if (status === "completed" || status === "failed") return false;
@@ -59,10 +76,12 @@ export default function ScreeningDetail() {
 
   const batchDone = progress?.status === "completed" || progress?.status === "failed";
 
+  // Results endpoint returns [] for draft / no-scored-yet — safe to fire
+  // unconditionally. Removing the gate fires this in parallel with the
+  // screening query for the common (non-draft) path.
   const { data: candidates = [] } = useQuery({
     queryKey: ["results", id],
     queryFn: () => getResults(id),
-    enabled: !!screening && screening.status !== "draft",
     refetchInterval: () => {
       if (batchDone) return false;
       return 4000;
@@ -234,10 +253,37 @@ export default function ScreeningDetail() {
     navigate({ to: "/screenings/$id/$resumeId", params: { id, resumeId: c.resume_id } });
   }
 
-  if (isLoading) {
+  // Hover-prefetch the resume detail + signed PDF URL so click → navigation
+  // is on warm cache. Mirrors the screening-row prefetch on the Screenings
+  // list page. Idempotent: prefetchQuery is a no-op if data is fresh.
+  function prefetchCandidate(c: RankedCandidate) {
+    queryClient.prefetchQuery({
+      queryKey: ["resume-detail", id, c.resume_id],
+      queryFn: () => getResumeDetail(id, c.resume_id),
+    });
+    queryClient.prefetchQuery({
+      queryKey: ["resume-pdf", id, c.resume_id],
+      queryFn: () => getResumePdfUrl(id, c.resume_id),
+    });
+  }
+
+  // Cold-cache first paint: render a lightweight skeleton instead of a
+  // full-page spinner. The same screening fetch is in flight in the
+  // background — when it lands, the full UI swaps in.
+  if (isLoading && !screening) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-96">
-        <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
+      <div className="px-8 pt-8 max-w-5xl mx-auto">
+        <div className="h-7 w-64 bg-[#E8E5DF] rounded animate-pulse mb-3" />
+        <div className="h-4 w-32 bg-[#E8E5DF] rounded animate-pulse mb-6" />
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-[#E8E5DF] p-5">
+              <div className="h-4 w-40 bg-[#E8E5DF] rounded animate-pulse mb-3" />
+              <div className="h-3 w-full bg-[#F5F3EE] rounded animate-pulse mb-2" />
+              <div className="h-3 w-3/4 bg-[#F5F3EE] rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -640,6 +686,7 @@ export default function ScreeningDetail() {
                 onToggle={() => toggleTier(tier.id as TierId)}
                 categories={rubricCategories}
                 onSelect={openCandidate}
+                onPrefetch={prefetchCandidate}
               />
             );
           })}

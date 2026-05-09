@@ -218,6 +218,26 @@ export async function getResumePdfUrl(
   );
 }
 
+/**
+ * Combined resume detail + signed PDF URL in a single round-trip. Used by
+ * the resume-detail route loader to avoid the dependent-fetch waterfall the
+ * component would otherwise create (detail → screening → pdf-url).
+ */
+export async function getResumeFull(
+  screeningId: string,
+  resumeId: string
+): Promise<{
+  detail: Resume & { score: Score | null };
+  pdf_url: string | null;
+  pdf_filename: string | null;
+}> {
+  return request<{
+    detail: Resume & { score: Score | null };
+    pdf_url: string | null;
+    pdf_filename: string | null;
+  }>(`/api/screenings/${screeningId}/results/${resumeId}/full`);
+}
+
 export async function getBatchProgress(screeningId: string): Promise<BatchProgress> {
   return request<BatchProgress>(`/api/screenings/${screeningId}/batch-progress`);
 }

@@ -27,9 +27,15 @@ interface TierSectionProps {
   onToggle: () => void;
   categories: RubricCategory[];
   onSelect: (c: RankedCandidate) => void;
+  /**
+   * Fired when the user hovers/focuses a candidate row. The parent uses this
+   * to prefetch the resume-detail and resume-pdf queries so navigating to the
+   * candidate page is warm-cache fast. Optional — if omitted, no prefetching.
+   */
+  onPrefetch?: (c: RankedCandidate) => void;
 }
 
-export function TierSection({ tier, candidates, collapsed, onToggle, categories, onSelect }: TierSectionProps) {
+export function TierSection({ tier, candidates, collapsed, onToggle, categories, onSelect, onPrefetch }: TierSectionProps) {
   return (
     <div className="rounded-2xl border border-[#E8E5DF] bg-white overflow-hidden">
       <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3 bg-[#F5F3EE] hover:bg-[#EFEAE0] transition-colors">
@@ -72,7 +78,13 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
             </thead>
             <tbody className="divide-y divide-[#E8E5DF]">
               {candidates.map((c) => (
-                <CandidateRow key={c.resume_id} candidate={c} categories={categories} onSelect={() => onSelect(c)} />
+                <CandidateRow
+                  key={c.resume_id}
+                  candidate={c}
+                  categories={categories}
+                  onSelect={() => onSelect(c)}
+                  onPrefetch={onPrefetch ? () => onPrefetch(c) : undefined}
+                />
               ))}
             </tbody>
           </table>
@@ -82,8 +94,11 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
   );
 }
 
-function CandidateRow({ candidate, categories, onSelect }: {
-  candidate: RankedCandidate; categories: RubricCategory[]; onSelect: () => void;
+function CandidateRow({ candidate, categories, onSelect, onPrefetch }: {
+  candidate: RankedCandidate;
+  categories: RubricCategory[];
+  onSelect: () => void;
+  onPrefetch?: () => void;
 }) {
   function getCategoryScore(cat: RubricCategory): number | null {
     const subs = cat.subcategories;
@@ -118,7 +133,12 @@ function CandidateRow({ candidate, categories, onSelect }: {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <tr onClick={onSelect} className="cursor-pointer transition-colors hover:bg-[#FAFAF8]">
+    <tr
+      onClick={onSelect}
+      onMouseEnter={onPrefetch}
+      onFocus={onPrefetch}
+      className="cursor-pointer transition-colors hover:bg-[#FAFAF8]"
+    >
       {/* Left accent bar — flags the whole row as disqualified when must-haves
           are missing. Always 4px wide so rows align; transparent when clean. */}
       <td
