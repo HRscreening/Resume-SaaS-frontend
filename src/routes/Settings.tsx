@@ -4,14 +4,16 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getProfile, updateProfile, getUsage, getPlans, deleteAccount, cancelSubscription } from "@/lib/api";
 import { clearAuthCache } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
+import { useUserKey } from "@/lib/userKey";
 import type { SubscriptionPlan } from "@/types";
 
 export default function Settings() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const profileQuery = useQuery({ queryKey: ["profile"], queryFn: getProfile, staleTime: 60_000 });
-  const usageQuery = useQuery({ queryKey: ["usage"], queryFn: getUsage, staleTime: 0, refetchOnWindowFocus: true });
+  const profileQuery = useQuery({ queryKey: useUserKey("profile"), queryFn: getProfile, staleTime: 60_000 });
+  const usageQuery = useQuery({ queryKey: useUserKey("usage"), queryFn: getUsage, staleTime: 0, refetchOnWindowFocus: true });
+  // Plans are public catalog data — not user-scoped. Keep the global key.
   const plansQuery = useQuery({ queryKey: ["plans"], queryFn: getPlans, staleTime: Infinity });
 
   const profile = profileQuery.data;

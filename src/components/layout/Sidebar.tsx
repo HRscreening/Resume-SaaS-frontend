@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { clearAuthCache } from "@/lib/auth";
 import { getUsage, listScreenings } from "@/lib/api";
+import { useUserKey, userKey } from "@/lib/userKey";
 import { cn } from "@/lib/utils";
 import type { ScreeningListItem, SubscriptionPlan } from "@/types";
 
@@ -110,7 +111,7 @@ export function Sidebar() {
   const queryClient = useQueryClient();
 
   const { data: usage } = useQuery({
-    queryKey: ["usage"],
+    queryKey: useUserKey("usage"),
     queryFn: getUsage,
     // Treat usage as always-stale so any invalidation OR mount triggers a fresh
     // fetch. The endpoint is small; the cost of an extra request is negligible
@@ -122,7 +123,7 @@ export function Sidebar() {
     // navigation race, multi-tab, server hiccup) — the counter still ends up
     // correct without the user ever needing to refresh.
     refetchInterval: () => {
-      const screenings = queryClient.getQueryData<ScreeningListItem[]>(["screenings"]);
+      const screenings = queryClient.getQueryData<ScreeningListItem[]>(userKey("screenings"));
       const anyInFlight = screenings?.some(
         (s) => s.status === "processing" || s.status === "pending",
       );
@@ -135,7 +136,7 @@ export function Sidebar() {
   // Screenings page — so warming it up costs one HTTP roundtrip and benefits
   // every consumer.
   function prefetchScreenings() {
-    queryClient.prefetchQuery({ queryKey: ["screenings"], queryFn: listScreenings });
+    queryClient.prefetchQuery({ queryKey: userKey("screenings"), queryFn: listScreenings });
   }
 
   useEffect(() => {

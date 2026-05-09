@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getProfile, getPlans, getFxRate } from "@/lib/api";
 import { openRazorpayCheckout, type UpgradePlanSlug } from "@/lib/razorpay";
+import { useUserKey } from "@/lib/userKey";
 import type { PlanSpec, SubscriptionPlan } from "@/types";
 
 const VALID_PLANS: UpgradePlanSlug[] = ["pro", "plus", "enterprise"];
@@ -33,7 +34,7 @@ export default function Checkout() {
   }, [planSlug, navigate]);
 
   const profileQuery = useQuery({
-    queryKey: ["profile"],
+    queryKey: useUserKey("profile"),
     queryFn: getProfile,
     staleTime: 60_000,
   });

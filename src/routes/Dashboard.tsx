@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listScreenings, getUsage, getScreening, getResults } from "@/lib/api";
+import { useUserKey } from "@/lib/userKey";
 import { formatRelativeDate } from "@/lib/utils";
 import type { ScreeningListItem } from "@/types";
 
@@ -33,11 +34,11 @@ export default function Dashboard() {
     qc.prefetchQuery({ queryKey: ["results", id], queryFn: () => getResults(id) });
   }
   const { data: screenings = [], isLoading: screeningsLoading } = useQuery({
-    queryKey: ["screenings"],
+    queryKey: useUserKey("screenings"),
     queryFn: listScreenings,
   });
   const { data: usage, isLoading: usageLoading } = useQuery({
-    queryKey: ["usage"],
+    queryKey: useUserKey("usage"),
     queryFn: getUsage,
     staleTime: 0,
     refetchOnWindowFocus: true,

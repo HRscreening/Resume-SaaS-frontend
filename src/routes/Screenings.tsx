@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listScreenings, getScreening, getResults } from "@/lib/api";
+import { useUserKey } from "@/lib/userKey";
 import { formatRelativeDate } from "@/lib/utils";
 import type { ScreeningListItem } from "@/types";
 
@@ -36,7 +37,7 @@ export default function Screenings() {
   }
 
   const { data: screenings = [], isLoading } = useQuery({
-    queryKey: ["screenings"],
+    queryKey: useUserKey("screenings"),
     queryFn: listScreenings,
   });
 
