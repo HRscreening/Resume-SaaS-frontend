@@ -125,12 +125,16 @@ export default function ScreeningDetail() {
       draftFiles.length === 1 &&
       draftFiles[0].name.toLowerCase().endsWith(".zip");
     const payload: File | File[] = isZipBatch ? draftFiles[0] : draftFiles;
+    // One key per user-click. Network retries / proxy duplications carry the
+    // same key on the wire, so the server replays the cached response instead
+    // of double-charging quota or creating two batches.
+    const idempotencyKey = crypto.randomUUID();
     setUploading(true);
     setUploadStep(1);
     setUploadError(null);
     const t = setTimeout(() => setUploadStep(2), 1800);
     try {
-      const result = await uploadResumesToJob(id, payload);
+      const result = await uploadResumesToJob(id, payload, idempotencyKey);
       clearTimeout(t);
       setDraftFiles([]);
 
@@ -163,10 +167,11 @@ export default function ScreeningDetail() {
       uploadMoreFiles.length === 1 &&
       uploadMoreFiles[0].name.toLowerCase().endsWith(".zip");
     const payload: File | File[] = isZipBatch ? uploadMoreFiles[0] : uploadMoreFiles;
+    const idempotencyKey = crypto.randomUUID();
     setUploading(true);
     setUploadError(null);
     try {
-      const result = await addResumesToJob(id, payload);
+      const result = await addResumesToJob(id, payload, idempotencyKey);
       setUploadMoreFiles([]);
       setShowUploadMore(false);
 

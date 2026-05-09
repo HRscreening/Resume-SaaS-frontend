@@ -105,9 +105,32 @@ export async function createJob(data: {
   });
 }
 
+function buildUploadHeaders(
+  authHeaders: Record<string, string>,
+  idempotencyKey: string | undefined,
+): Record<string, string> {
+  const headers: Record<string, string> = { ...authHeaders };
+  if (idempotencyKey) {
+    headers["Idempotency-Key"] = idempotencyKey;
+  }
+  return headers;
+}
+
+async function handleUploadResponse<T>(res: Response): Promise<T> {
+  if (res.ok) return res.json() as Promise<T>;
+  const body = await res.json().catch(() => ({}));
+  if (res.status === 409 && (body as { detail?: string })?.detail === "request_in_flight") {
+    throw new Error(
+      "Your previous upload is still being processed. Please wait a moment before retrying.",
+    );
+  }
+  throw new Error(parseErrorDetail(body, res.status));
+}
+
 export async function uploadResumesToJob(
   screeningId: string,
   input: File | File[],
+  idempotencyKey?: string,
 ): Promise<{ screening_id: string; batch_id: string; total_files: number; skipped: number }> {
   const authHeaders = await getAuthHeader();
   const formData = new FormData();
@@ -126,21 +149,16 @@ export async function uploadResumesToJob(
 
   const res = await fetch(`${API_BASE}/api/screenings/${screeningId}/upload`, {
     method: "POST",
-    headers: authHeaders,
+    headers: buildUploadHeaders(authHeaders, idempotencyKey),
     body: formData,
   });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(parseErrorDetail(body, res.status));
-  }
-
-  return res.json();
+  return handleUploadResponse(res);
 }
 
 export async function addResumesToJob(
   screeningId: string,
   input: File | File[],
+  idempotencyKey?: string,
 ): Promise<{ screening_id: string; batch_id: string; new_files: number; total_resumes: number; skipped: number }> {
   const authHeaders = await getAuthHeader();
   const formData = new FormData();
@@ -155,14 +173,10 @@ export async function addResumesToJob(
   }
   const res = await fetch(`${API_BASE}/api/screenings/${screeningId}/add-resumes`, {
     method: "POST",
-    headers: authHeaders,
+    headers: buildUploadHeaders(authHeaders, idempotencyKey),
     body: formData,
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(parseErrorDetail(body, res.status));
-  }
-  return res.json();
+  return handleUploadResponse(res);
 }
 
 export async function parseJDFile(file: File): Promise<{ text: string; char_count: number }> {
