@@ -36,7 +36,7 @@ export default function Dashboard() {
     queryKey: ["screenings"],
     queryFn: listScreenings,
   });
-  const { data: usage } = useQuery({
+  const { data: usage, isLoading: usageLoading } = useQuery({
     queryKey: ["usage"],
     queryFn: getUsage,
     staleTime: 0,
@@ -116,7 +116,19 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Usage bar */}
+      {/* Usage bar — skeleton while loading so the card doesn't pop in */}
+      {usageLoading && !usage && (
+        <div className="bg-white rounded-xl border border-[#E8E5DF] p-5 mb-8 animate-pulse">
+          <div className="flex items-center justify-between mb-3">
+            <div className="space-y-2">
+              <div className="h-3.5 w-28 bg-[#E8E5DF] rounded" />
+              <div className="h-3 w-44 bg-[#E8E5DF] rounded" />
+            </div>
+            <div className="h-5 w-12 bg-[#E8E5DF] rounded-md" />
+          </div>
+          <div className="h-2 w-full bg-[#E8E5DF] rounded-full" />
+        </div>
+      )}
       {usage && (
         <div className="bg-white rounded-xl border border-[#E8E5DF] p-5 mb-8">
           <div className="flex items-center justify-between mb-3">
@@ -169,7 +181,22 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {recent.length === 0 ? (
+        {screeningsLoading ? (
+          <ul className="divide-y divide-[#E8E5DF]" aria-busy="true" aria-label="Loading recent screenings">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <li key={i} className="flex items-center justify-between px-6 py-4 animate-pulse">
+                <div className="space-y-1.5 min-w-0 flex-1">
+                  <div className="h-3.5 w-40 bg-[#E8E5DF] rounded" />
+                  <div className="h-3 w-32 bg-[#E8E5DF] rounded" />
+                </div>
+                <div className="flex items-center gap-4 ml-4 shrink-0">
+                  <div className="h-3.5 w-10 bg-[#E8E5DF] rounded" />
+                  <div className="h-5 w-16 bg-[#E8E5DF] rounded-md" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : recent.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <div className="h-12 w-12 rounded-full bg-[#F5F3EE] flex items-center justify-center mx-auto mb-4">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#A0A0A0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
