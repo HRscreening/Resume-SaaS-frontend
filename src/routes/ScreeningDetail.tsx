@@ -364,7 +364,7 @@ export default function ScreeningDetail() {
               onClick={() => { setShowUploadMore((v) => !v); setUploadMoreFiles([]); setUploadError(null); }}
               className={`h-9 px-4 border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5v8M4 7l4-4 4 4"/><path d="M1.5 11.5h11"/></svg>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v8M3.5 5.5l3.5-3.5 3.5 3.5"/><path d="M2 12h10"/></svg>
               Add resumes
             </button>
             <button
