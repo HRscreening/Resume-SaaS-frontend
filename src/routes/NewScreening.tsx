@@ -312,24 +312,6 @@ export default function NewScreening() {
             )}
           </div>
 
-          {/* Editability hint — persistent coral banner that makes it obvious
-              the rubric isn't read-only. Combined with pencil icons on the
-              text inputs below, the user gets two independent cues that
-              every name, description, and weight is customisable. */}
-          <div className="rounded-2xl border border-[#F5C9A8] bg-[#FFF7F0] p-4 flex items-start gap-3">
-            <div className="h-8 w-8 rounded-full bg-[#FBE2CC] flex items-center justify-center shrink-0 mt-0.5">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#C85A17" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 1.5L14.5 5 5 14.5 1.5 14.5 1.5 11z"/>
-                <path d="M9 3.5L12.5 7"/>
-              </svg>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-[#7A3A0E]">Tap any field to edit</p>
-              <p className="text-xs text-[#9C5824] mt-0.5">
-                Names, descriptions, importance, must-haves — all editable. Importance is normalised during scoring, so you never need to hit 100%.
-              </p>
-            </div>
-          </div>
 
           {/* 3 Category cards */}
           {rubric.categories.map((cat, catIdx) => {
@@ -413,7 +395,7 @@ export default function NewScreening() {
                               className="w-full text-sm font-medium text-[#0F0F0F] bg-[#FAFAF8] border border-[#D4D4D4] rounded-md pl-2.5 pr-7 py-1.5 hover:border-[#737373] hover:bg-white focus:border-[#C85A17] focus:bg-white focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-[#F5F4F1]"
                             />
                             {!sub.is_external_context && (
-                              <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#A0A0A0] group-hover:text-[#737373] group-focus-within:text-[#C85A17] transition-colors" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                              <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#0F0F0F] group-hover:text-[#0F0F0F] group-focus-within:text-[#C85A17] transition-colors" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M11 1.5L14.5 5 5 14.5 1.5 14.5 1.5 11z"/>
                                 <path d="M9 3.5L12.5 7"/>
                               </svg>
@@ -427,7 +409,7 @@ export default function NewScreening() {
                               placeholder="Brief description of what to evaluate..."
                               className="w-full text-xs text-[#737373] bg-[#FAFAF8] border border-[#D4D4D4] rounded-md pl-2.5 pr-7 py-1.5 hover:border-[#737373] hover:bg-white focus:border-[#C85A17] focus:bg-white focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors"
                             />
-                            <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#A0A0A0] group-hover:text-[#737373] group-focus-within:text-[#C85A17] transition-colors" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                            <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#0F0F0F] group-hover:text-[#0F0F0F] group-focus-within:text-[#C85A17] transition-colors" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M11 1.5L14.5 5 5 14.5 1.5 14.5 1.5 11z"/>
                               <path d="M9 3.5L12.5 7"/>
                             </svg>
