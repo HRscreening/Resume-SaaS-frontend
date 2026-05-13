@@ -12,6 +12,25 @@ const CATEGORY_COLORS = [
   { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", dot: "#8B5CF6",  label: "Qualifications & Role Fit" },
 ];
 
+// Category importance pills. Stored weights map to a pill bucket; clicking a
+// pill snaps the weight to the bucket's representative value. The ranker
+// normalises whatever values we send (weighted avg) so users never need to
+// make these sum to 100 — that constraint is intentionally dropped from the UI.
+const CATEGORY_PILLS = [
+  { key: "Low",      value: 10 },
+  { key: "Medium",   value: 25 },
+  { key: "High",     value: 50 },
+  { key: "Critical", value: 80 },
+] as const;
+type CategoryPill = (typeof CATEGORY_PILLS)[number]["key"];
+
+function weightToCategoryPill(weight: number): CategoryPill {
+  if (weight <= 15) return "Low";
+  if (weight <= 35) return "Medium";
+  if (weight <= 65) return "High";
+  return "Critical";
+}
+
 export default function NewScreening() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -278,15 +297,8 @@ export default function NewScreening() {
         <div className="space-y-4">
           {/* Meta header */}
           <div className="bg-white rounded-2xl border border-[#E8E5DF] p-5">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-lg font-semibold text-[#0F0F0F]">Review rubric</h2>
-              <span className={`text-xs font-medium px-2 py-1 rounded-md ${
-                totalWeight === 100 ? "text-green-700 bg-green-50" : "text-red-700 bg-red-50"
-              }`}>
-                {totalWeight === 100 ? "Weights sum to 100%" : `Weights sum to ${totalWeight}% (must be 100)`}
-              </span>
-            </div>
-            <p className="text-sm text-[#737373]">AI-generated from your JD. Adjust weights and subcategories as needed.</p>
+            <h2 className="text-lg font-semibold text-[#0F0F0F] mb-1">Review rubric</h2>
+            <p className="text-sm text-[#737373]">AI-generated from your JD. Adjust anything below — we'll handle the math.</p>
             {rubric.domain && (
               <div className="flex items-center gap-3 mt-3 p-2.5 bg-[#F5F3EE] rounded-lg">
                 <span className="text-xs text-[#737373]">Domain: <strong className="text-[#0F0F0F]">{rubric.domain}</strong></span>
@@ -300,27 +312,64 @@ export default function NewScreening() {
             )}
           </div>
 
+          {/* Editability hint — persistent coral banner that makes it obvious
+              the rubric isn't read-only. Combined with pencil icons on the
+              text inputs below, the user gets two independent cues that
+              every name, description, and weight is customisable. */}
+          <div className="rounded-2xl border border-[#F5C9A8] bg-[#FFF7F0] p-4 flex items-start gap-3">
+            <div className="h-8 w-8 rounded-full bg-[#FBE2CC] flex items-center justify-center shrink-0 mt-0.5">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#C85A17" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 1.5L14.5 5 5 14.5 1.5 14.5 1.5 11z"/>
+                <path d="M9 3.5L12.5 7"/>
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-[#7A3A0E]">Tap any field to edit</p>
+              <p className="text-xs text-[#9C5824] mt-0.5">
+                Names, descriptions, importance, must-haves — all editable. Importance is normalised during scoring, so you never need to hit 100%.
+              </p>
+            </div>
+          </div>
+
           {/* 3 Category cards */}
           {rubric.categories.map((cat, catIdx) => {
             const color = CATEGORY_COLORS[catIdx] ?? CATEGORY_COLORS[0];
             return (
               <div key={cat.name} className={`rounded-2xl border-2 overflow-hidden ${color.border}`}>
                 {/* Category header */}
-                <div className={`px-5 py-4 ${color.bg} flex items-center justify-between`}>
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color.dot }} />
-                    <h3 className={`text-sm font-bold ${color.text}`}>{cat.name}</h3>
+                <div className={`px-5 py-4 ${color.bg} flex flex-wrap items-center justify-between gap-3`}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: color.dot }} />
+                    <h3 className={`text-sm font-bold ${color.text} truncate`}>{cat.name}</h3>
                   </div>
-                  <div className="flex items-center gap-2.5 min-w-[180px]">
-                    <input
-                      type="range"
-                      min={0} max={100} step={5}
-                      value={cat.weight}
-                      onChange={(e) => updateCategoryWeight(catIdx, Number(e.target.value))}
-                      className="weight-slider flex-1"
-                      style={{ background: `linear-gradient(to right, #0F0F0F ${cat.weight}%, #E8E5DF ${cat.weight}%)` }}
-                    />
-                    <span className="text-sm font-bold text-[#0F0F0F] w-10 text-right">{cat.weight}%</span>
+                  {/* Category importance pills — replaces the 0-100 slider.
+                      The 4 buckets map to stored weights {10, 25, 50, 80};
+                      the ranker normalises whatever values we send, so users
+                      pick semantically without doing math. */}
+                  <div
+                    className="flex items-center gap-1 p-0.5 rounded-full bg-white/70 border border-[#E8E5DF]"
+                    role="radiogroup"
+                    aria-label={`${cat.name} importance`}
+                  >
+                    {CATEGORY_PILLS.map((pill) => {
+                      const active = weightToCategoryPill(cat.weight) === pill.key;
+                      return (
+                        <button
+                          key={pill.key}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => updateCategoryWeight(catIdx, pill.value)}
+                          className={`px-3 h-7 rounded-full text-xs font-semibold transition-colors ${
+                            active
+                              ? "bg-[#0F0F0F] text-white"
+                              : "text-[#737373] hover:text-[#0F0F0F] hover:bg-white"
+                          }`}
+                        >
+                          {pill.key}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -351,21 +400,38 @@ export default function NewScreening() {
                       )}
                       <div className="flex items-start gap-3">
                         <div className="flex-1 min-w-0 space-y-2">
-                          <input
-                            type="text"
-                            value={sub.name}
-                            onChange={(e) => updateSubcategory(catIdx, subIdx, { name: e.target.value })}
-                            placeholder="Subcategory name"
-                            disabled={sub.is_external_context}
-                            className="w-full text-sm font-medium text-[#0F0F0F] bg-white border border-[#E8E5DF] rounded-md px-2.5 py-1.5 hover:border-[#A0A0A0] focus:border-[#C85A17] focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-[#F5F4F1]"
-                          />
-                          <input
-                            type="text"
-                            value={sub.description}
-                            onChange={(e) => updateSubcategory(catIdx, subIdx, { description: e.target.value })}
-                            placeholder="Brief description of what to evaluate..."
-                            className="w-full text-xs text-[#737373] bg-white border border-[#E8E5DF] rounded-md px-2.5 py-1.5 hover:border-[#A0A0A0] focus:border-[#C85A17] focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors"
-                          />
+                          {/* Name input — pencil icon + bolder border makes
+                              it obvious this is a clickable field, not a
+                              static label. */}
+                          <div className="relative group">
+                            <input
+                              type="text"
+                              value={sub.name}
+                              onChange={(e) => updateSubcategory(catIdx, subIdx, { name: e.target.value })}
+                              placeholder="Subcategory name"
+                              disabled={sub.is_external_context}
+                              className="w-full text-sm font-medium text-[#0F0F0F] bg-[#FAFAF8] border border-[#D4D4D4] rounded-md pl-2.5 pr-7 py-1.5 hover:border-[#737373] hover:bg-white focus:border-[#C85A17] focus:bg-white focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-[#F5F4F1]"
+                            />
+                            {!sub.is_external_context && (
+                              <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#A0A0A0] group-hover:text-[#737373] group-focus-within:text-[#C85A17] transition-colors" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 1.5L14.5 5 5 14.5 1.5 14.5 1.5 11z"/>
+                                <path d="M9 3.5L12.5 7"/>
+                              </svg>
+                            )}
+                          </div>
+                          <div className="relative group">
+                            <input
+                              type="text"
+                              value={sub.description}
+                              onChange={(e) => updateSubcategory(catIdx, subIdx, { description: e.target.value })}
+                              placeholder="Brief description of what to evaluate..."
+                              className="w-full text-xs text-[#737373] bg-[#FAFAF8] border border-[#D4D4D4] rounded-md pl-2.5 pr-7 py-1.5 hover:border-[#737373] hover:bg-white focus:border-[#C85A17] focus:bg-white focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors"
+                            />
+                            <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#A0A0A0] group-hover:text-[#737373] group-focus-within:text-[#C85A17] transition-colors" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 1.5L14.5 5 5 14.5 1.5 14.5 1.5 11z"/>
+                              <path d="M9 3.5L12.5 7"/>
+                            </svg>
+                          </div>
                         </div>
                         {/* Importance 1–5 picker */}
                         <div className="flex items-center gap-2 shrink-0">
@@ -428,7 +494,7 @@ export default function NewScreening() {
               &larr; Back
             </button>
             <button onClick={handleSaveJob}
-              disabled={totalWeight !== 100 || saving}
+              disabled={saving}
               className="flex-1 h-10 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
               {saving && <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
               {saving ? "Saving job..." : "Save job"}
