@@ -44,22 +44,33 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
             <colgroup>
               <col style={{ minWidth: "200px" }} />
               <col style={{ width: "140px" }} />
-              <col style={{ width: "72px" }} />
+              <col style={{ width: "100px" }} />
               {categories.map((cat) => (
-                <col key={cat.name} style={{ width: "130px" }} />
+                <col key={cat.name} style={{ width: "0px" }} />
               ))}
+              <col style={{ width: "100px" }} />
             </colgroup>
             <thead>
               <tr className="border-b border-[#E8E5DF]">
-                <th className="px-5 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Candidate</th>
-                <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Current Role</th>
-                <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide">Score</th>
+                <th className="px-5 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide align-top">Candidate</th>
+                <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide align-top">Current Role</th>
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide align-top">
+                  <div className="flex flex-col">
+                    <span>Score</span>
+                    <span className="font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">(out of 100)</span>
+                    <span className="font-normal text-[#A0A0A0] normal-case tracking-normal">&nbsp;</span>
+                  </div>
+                </th>
                 {categories.map((cat) => (
-                  <th key={cat.name} className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide">
-                    <span className="block">{cat.name}</span>
-                    <span className="font-normal text-[#A0A0A0] normal-case tracking-normal">{cat.weight}%</span>
+                  <th key={cat.name} className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide align-top">
+                    <div className="flex flex-col">
+                      <span className="whitespace-nowrap">{cat.name}</span>
+                      <span className="font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">(out of 10)</span>
+                      <span className="font-normal text-[#A0A0A0] normal-case tracking-normal">{cat.weight}%</span>
+                    </div>
                   </th>
                 ))}
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide align-top"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8E5DF]">
@@ -162,6 +173,13 @@ function CandidateRow({ candidate, categories, onSelect }: {
           </td>
         );
       })}
+      <td className="px-3 py-3.5 text-center align-middle">
+        <span className="inline-flex items-center justify-center text-[#C85A17] hover:text-[#A04612]">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 4l4 4-4 4" />
+          </svg>
+        </span>
+      </td>
     </tr>
   );
 }

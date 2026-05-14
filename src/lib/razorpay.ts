@@ -109,6 +109,11 @@ export async function openRazorpayCheckout({
 
     // @ts-expect-error — Razorpay loaded via script tag
     const rzp = new window.Razorpay(options);
+    rzp.on("payment.failed", () => {
+      handlerFired = true;
+      onStatusChange?.(null);
+      reject(new Error("cancelled"));
+    });
     rzp.open();
   });
 }

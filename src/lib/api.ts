@@ -1,6 +1,7 @@
 import { getAccessToken } from "@/lib/auth";
 import { clearSessionHint } from "@/lib/sessionHint";
 import { createClient } from "@/lib/supabase/client";
+import { detectCurrency } from "@/lib/currency";
 import type {
   Profile,
   UsageResponse,
@@ -251,7 +252,9 @@ export interface FxRate {
 }
 
 export async function getFxRate(): Promise<FxRate> {
-  return request<FxRate>("/api/billing/fx-rate");
+  const currency = detectCurrency();
+  console.log(`Creating Razorpay order with currency: ${currency}`);
+  return request<FxRate>(`/api/billing/fx-rate?currency=${encodeURIComponent(currency)}`);
 }
 
 
@@ -264,7 +267,12 @@ export async function createRazorpayOrder({plan,cycle}:{
   currency: string;
   key_id: string;
 }> {
-  return request(`/api/billing/razorpay/order?plan=${plan}&cycle=${cycle}`, { method: "POST", });
+  const currency = detectCurrency();
+  console.log(`Creating Razorpay order with currency: ${currency}`);
+  return request(
+    `/api/billing/razorpay/order?plan=${plan}&cycle=${cycle}&currency=${encodeURIComponent(currency)}`,
+    { method: "POST" },
+  );
 }
 
 export async function verifyRazorpayPayment(data: {
