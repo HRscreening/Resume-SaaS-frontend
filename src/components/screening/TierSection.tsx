@@ -1,5 +1,5 @@
 import type { RankedCandidate, RubricCategory } from "@/types";
-
+import { useAnalysisSheetOpen, setOpenAnalysisSheet } from "@/components/screening/AnalysisSheet";
 export const TIERS = [
   { id: "strong",    label: "Strong Match", min: 75, dot: "#22C55E" },
   { id: "potential", label: "Potential",    min: 55, dot: "#EAB308" },
@@ -8,6 +8,8 @@ export const TIERS = [
 ];
 
 export type TierId = "strong" | "potential" | "risky" | "poor";
+
+import AnalysisSheet from "@/components/screening/AnalysisSheet";
 
 export function getTier(score: number) {
   if (score >= 75) return TIERS[0];
@@ -26,6 +28,7 @@ interface TierSectionProps {
 }
 
 export function TierSection({ tier, candidates, collapsed, onToggle, categories, onSelect }: TierSectionProps) {
+  const compact = useAnalysisSheetOpen();
   return (
     <div className="rounded-2xl border border-[#E8E5DF] bg-white overflow-hidden">
       <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3 bg-[#F5F3EE] hover:bg-[#EFEAE0] transition-colors">
@@ -43,9 +46,9 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
           <table className="w-full text-sm">
             <colgroup>
               <col style={{ minWidth: "200px" }} />
-              <col style={{ width: "140px" }} />
+              {!compact && <col style={{ width: "140px" }} />}
               <col style={{ width: "100px" }} />
-              {categories.map((cat) => (
+              {!compact && categories.map((cat) => (
                 <col key={cat.name} style={{ width: "0px" }} />
               ))}
               <col style={{ width: "100px" }} />
@@ -53,7 +56,9 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
             <thead>
               <tr className="border-b border-[#E8E5DF]">
                 <th className="px-5 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide align-top">Candidate</th>
-                <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide align-top">Current Role</th>
+                {!compact && (
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide align-top">Current Role</th>
+                )}
                 <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide align-top">
                   <div className="flex flex-col">
                     <span>Score</span>
@@ -61,7 +66,7 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
                     <span className="font-normal text-[#A0A0A0] normal-case tracking-normal">&nbsp;</span>
                   </div>
                 </th>
-                {categories.map((cat) => (
+                {!compact && categories.map((cat) => (
                   <th key={cat.name} className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide align-top">
                     <div className="flex flex-col">
                       <span className="whitespace-nowrap">{cat.name}</span>
@@ -75,7 +80,7 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
             </thead>
             <tbody className="divide-y divide-[#E8E5DF]">
               {candidates.map((c) => (
-                <CandidateRow key={c.resume_id} candidate={c} categories={categories} onSelect={() => onSelect(c)} />
+                <CandidateRow key={c.resume_id} candidate={c} categories={categories} onSelect={() => onSelect(c)} resume_id={c.resume_id} compact={compact} />
               ))}
             </tbody>
           </table>
@@ -85,8 +90,72 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
   );
 }
 
-function CandidateRow({ candidate, categories, onSelect }: {
+function CompactCandidateRow({ candidate, categories }: {
   candidate: RankedCandidate; categories: RubricCategory[]; onSelect: () => void;
+}) {
+  const failedNonNegotiables = categories
+    .flatMap((cat) => cat.subcategories)
+    .filter((sub) => sub.is_non_negotiable)
+    .map((sub) => {
+      const match = candidate.top_criteria.find(
+        (tc) => tc.criterion.toLowerCase().trim() === sub.name.toLowerCase().trim()
+      );
+      return match && match.score < 4 ? sub.name : null;
+    })
+    .filter(Boolean) as string[];
+
+  const failed = failedNonNegotiables.length > 0;
+
+  return (
+    <li>
+      <div
+        className={`w-full flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[#FAFAF8] ${failed ? "bg-red-50/40" : ""}`}
+      >
+        <div className="h-9 w-9 rounded-full bg-[#FBF1E7] flex items-center justify-center shrink-0">
+          <span className="text-xs font-semibold text-[#C85A17]">
+            {(candidate.candidate_name ?? candidate.filename).slice(0, 2).toUpperCase()}
+          </span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-[#0F0F0F] truncate">
+            {candidate.candidate_name ?? candidate.filename}
+          </p>
+          <p className="text-xs text-[#737373] truncate">
+            {candidate.candidate_current_job ?? candidate.candidate_email ?? "—"}
+          </p>
+          {failed && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="#DC2626">
+                <path d="M6 1L1 10h10L6 1z" />
+                <rect x="5.5" y="5" width="1" height="3" fill="white" rx="0.5" />
+                <circle cx="6" cy="9" r="0.6" fill="white" />
+              </svg>
+              <p className="text-xs text-red-600 font-medium truncate">
+                Failed: {failedNonNegotiables.join(", ")}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className="text-base font-bold text-[#0F0F0F] leading-none">
+            {Math.round(candidate.overall_score)}
+            <span className="text-xs text-[#A0A0A0] font-normal">/100</span>
+          </span>
+          <div className="w-16 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-[#C85A17]" style={{ width: `${candidate.overall_score}%` }} />
+          </div>
+        </div>
+
+        <AnalysisSheet resume_id={candidate.resume_id} />
+      </div>
+    </li>
+  );
+}
+
+function CandidateRow({ candidate, categories, resume_id, compact = false }: {
+  candidate: RankedCandidate; categories: RubricCategory[]; onSelect: () => void; resume_id: string; compact?: boolean;
 }) {
   function getCategoryScore(cat: RubricCategory): number | null {
     const subs = cat.subcategories;
@@ -116,7 +185,9 @@ function CandidateRow({ candidate, categories, onSelect }: {
     .filter(Boolean) as string[];
 
   return (
-    <tr onClick={onSelect} className={`cursor-pointer transition-colors hover:bg-[#FAFAF8] ${failedNonNegotiables.length > 0 ? "bg-red-50/40" : ""}`}>
+    <tr
+      onClick={() => setOpenAnalysisSheet(resume_id)}
+      className={`cursor-pointer transition-colors hover:bg-[#FAFAF8] ${failedNonNegotiables.length > 0 ? "bg-red-50/40" : ""}`}>
       <td className="px-5 py-3.5">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-[#FBF1E7] flex items-center justify-center shrink-0">
@@ -145,9 +216,11 @@ function CandidateRow({ candidate, categories, onSelect }: {
           </div>
         </div>
       </td>
-      <td className="px-3 py-3.5 align-middle">
-        <p className="text-xs text-[#404040] line-clamp-2">{candidate.candidate_current_job ?? <span className="text-[#D4D4D4]">—</span>}</p>
-      </td>
+      {!compact && (
+        <td className="px-3 py-3.5 align-middle">
+          <p className="text-xs text-[#404040] line-clamp-2">{candidate.candidate_current_job ?? <span className="text-[#D4D4D4]">—</span>}</p>
+        </td>
+      )}
       <td className="px-3 py-3.5 text-center align-middle">
         <div className="flex flex-col items-center gap-1.5">
           <span className="text-lg font-bold text-[#0F0F0F] leading-none">{Math.round(candidate.overall_score)}</span>
@@ -156,7 +229,7 @@ function CandidateRow({ candidate, categories, onSelect }: {
           </div>
         </div>
       </td>
-      {categories.map((cat) => {
+      {!compact && categories.map((cat) => {
         const catScore = getCategoryScore(cat);
         return (
           <td key={cat.name} className="px-3 py-3.5 text-center align-middle">
@@ -174,11 +247,13 @@ function CandidateRow({ candidate, categories, onSelect }: {
         );
       })}
       <td className="px-3 py-3.5 text-center align-middle">
-        <span className="inline-flex items-center justify-center text-[#C85A17] hover:text-[#A04612]">
+        {/* <span className="inline-flex items-center justify-center text-[#C85A17] hover:text-[#A04612]">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 4l4 4-4 4" />
           </svg>
-        </span>
+        </span> */}
+        {/* <Eye className="text-[#A0A0A0] hover:text-[#C85A17]" size={16} /> */}
+        <AnalysisSheet resume_id={resume_id}/>
       </td>
     </tr>
   );

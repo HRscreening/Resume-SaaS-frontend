@@ -207,8 +207,7 @@ export function Sidebar() {
           <div className="absolute bottom-full left-2 right-2 mb-1.5 bg-white rounded-2xl border border-[#E8E5DF] shadow-lg overflow-hidden z-50">
             {/* Identity card — clickable, navigates to profile */}
             <Link
-              to="/settings"
-              hash="profile"
+              to="/profile"
               className="flex items-center gap-3 px-4 py-3.5 hover:bg-[#F5F3EE] transition-colors"
             >
               <div className="h-9 w-9 rounded-full bg-[#0F0F0F] flex items-center justify-center shrink-0">
@@ -267,8 +266,7 @@ export function Sidebar() {
                 )}
               </Link>
               <Link
-                to="/settings"
-                hash="profile"
+                to="/profile"
                 className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
               >
                 <UserIcon />

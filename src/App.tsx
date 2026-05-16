@@ -22,6 +22,7 @@ import Privacy from "@/routes/Privacy";
 import Dashboard from "@/routes/Dashboard";
 import Screenings from "@/routes/Screenings";
 import Settings from "@/routes/Settings";
+import Profile from "@/routes/Profile";
 import ChangePassword from "@/routes/ChangePassword";
 import NewScreening from "@/routes/NewScreening";
 import NotFound from "@/routes/NotFound";
@@ -29,6 +30,7 @@ import NotFound from "@/routes/NotFound";
 // ─── Eager imports — these are the most-visited pages, no lazy delay ──
 import ScreeningDetail from "@/routes/ScreeningDetail";
 import ResumeDetail from "@/routes/ResumeDetail";
+import EditRubric from "@/routes/EditRubric";
 
 
 
@@ -51,6 +53,14 @@ function AppLayout({isSidebarRequired = true}: {isSidebarRequired?: boolean}) {
           <Outlet />
         </main>
       </div>
+    </AuthGuard>
+  );
+}
+
+function AuthOnlyLayout() {
+  return (
+    <AuthGuard>
+      <Outlet />
     </AuthGuard>
   );
 }
@@ -138,6 +148,12 @@ const appLayoutNoSidebarRoute = createRoute({
   component: (props) => <AppLayout {...props} isSidebarRequired={false} />,
 });
 
+const authOnlyLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: "auth-only-layout",
+  component: AuthOnlyLayout,
+});
+
 const dashboardRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/dashboard",
@@ -158,12 +174,25 @@ const newScreeningRoute = createRoute({
 
 const screeningDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
+  
   path: "/screenings/$id",
   component: ScreeningDetail,
+  validateSearch: (search: Record<string, unknown>): { rescore?: 1 } => {
+    // When set, the screening page will kick off a rescore on mount.
+    // Used after the EditRubric page saves a new rubric.
+    if (search.rescore === 1 || search.rescore === "1") return { rescore: 1 };
+    return {};
+  },
+});
+
+const editRubricRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings/$id/rubric",
+  component: EditRubric,
 });
 
 const resumeDetailRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
+  getParentRoute: () => authOnlyLayoutRoute,
   path: "/screenings/$id/$resumeId",
   component: ResumeDetail,
 });
@@ -172,6 +201,12 @@ const settingsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/settings",
   component: Settings,
+});
+
+const profileRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/profile",
+  component: Profile,
 });
 
 const changePasswordRoute = createRoute({
@@ -211,13 +246,17 @@ const routeTree = rootRoute.addChildren([
     upgradePlanRoute,
     checkoutRoute,
   ]),
+  authOnlyLayoutRoute.addChildren([
+    resumeDetailRoute,
+  ]),
   appLayoutRoute.addChildren([
     dashboardRoute,
     screeningsRoute,
     newScreeningRoute,
     screeningDetailRoute,
-    resumeDetailRoute,
+    editRubricRoute,
     settingsRoute,
+    profileRoute,
     changePasswordRoute,
   ]),
 ]);

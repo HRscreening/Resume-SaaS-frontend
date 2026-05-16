@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useParams, useNavigate } from "@tanstack/react-router";
+import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getScreening, getResults, getBatchProgress, exportResults,
-  uploadResumesToJob, addResumesToJob,
+  uploadResumesToJob, addResumesToJob, rescoreScreening,
 } from "@/lib/api";
 import { formatDate, truncate } from "@/lib/utils";
 import type { RankedCandidate, RubricCategory } from "@/types";
 import { TIERS, getTier, TierSection, type TierId } from "@/components/screening/TierSection";
+import { useAnalysisSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/components/screening/AnalysisSheet";
 import { ProcessingAccordion } from "@/components/screening/ProcessingAccordion";
 import { RubricModal } from "@/components/screening/RubricModal";
 import { FailedView } from "@/components/screening/FailedView";
@@ -15,13 +16,17 @@ import { Pagination } from "@/components/screening/Pagination";
 
 export default function ScreeningDetail() {
   const { id } = useParams({ strict: false }) as { id: string };
+  const search = useSearch({ strict: false }) as { rescore?: number };
   const queryClient = useQueryClient();
 
   const navigate = useNavigate();
+  const [rescoring, setRescoring] = useState(false);
+  const [rescoreError, setRescoreError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [collapsedTiers, setCollapsedTiers] = useState<Set<TierId>>(new Set(["poor"]));
   const [showRubric, setShowRubric] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const analysisOpen = useAnalysisSheetOpen();
 
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
@@ -75,6 +80,45 @@ export default function ScreeningDetail() {
       queryClient.invalidateQueries({ queryKey: ["screening", id] });
     }
   }, [batchDone, id, queryClient]);
+
+  // Trigger rescore when navigated here from EditRubric (?rescore=1).
+  // Runs once per arrival — we strip the search param immediately so a refresh
+  // won't re-fire it, and the local `rescoring` guard prevents double-fire
+  // during the same mount.
+  useEffect(() => {
+    if (search.rescore !== 1 || rescoring) return;
+    setRescoring(true);
+    setRescoreError(null);
+
+    // Optimistically flip status so ProcessingAccordion renders immediately,
+    // before the rescore POST resolves.
+    queryClient.setQueryData(
+      ["screening", id],
+      (old: typeof screening) =>
+        old ? { ...old, status: "processing" as const, scored_resumes: 0 } : old,
+    );
+    queryClient.removeQueries({ queryKey: ["batch-progress", id] });
+
+    navigate({
+      to: "/screenings/$id",
+      params: { id },
+      search: { rescore: undefined },
+      replace: true,
+    });
+
+    rescoreScreening(id)
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["batch-progress", id] });
+        queryClient.invalidateQueries({ queryKey: ["results", id] });
+        queryClient.invalidateQueries({ queryKey: ["screening", id] });
+        queryClient.invalidateQueries({ queryKey: ["screenings"] });
+      })
+      .catch((err) => {
+        setRescoreError(err instanceof Error ? err.message : "Failed to start rescore");
+        queryClient.invalidateQueries({ queryKey: ["screening", id] });
+      })
+      .finally(() => setRescoring(false));
+  }, [search.rescore, id, queryClient, navigate, rescoring]);
 
   async function handleExport() {
     setExporting(true);
@@ -272,7 +316,10 @@ export default function ScreeningDetail() {
   }));
 
   return (
-    <div className="flex flex-col">
+    <div
+      className="flex flex-col transition-[margin] duration-200 ease-out"
+      style={{ marginRight: analysisOpen ? ANALYSIS_SHEET_WIDTH : 0 }}
+    >
       {/* Header */}
       <div className="px-8 pt-8 pb-4 shrink-0">
         <div className="flex items-start justify-between mb-1">
@@ -653,7 +700,18 @@ export default function ScreeningDetail() {
 
           {/* Rubric modal */}
           {showRubric && (
-            <RubricModal categories={rubricCategories} onClose={() => setShowRubric(false)} />
+            <RubricModal
+              categories={rubricCategories}
+              onClose={() => setShowRubric(false)}
+              onEdit={
+                !isProcessing && candidates.length > 0
+                  ? () => {
+                      setShowRubric(false);
+                      navigate({ to: "/screenings/$id/rubric", params: { id } });
+                    }
+                  : undefined
+              }
+            />
           )}
         </div>
       </div>
