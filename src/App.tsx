@@ -10,8 +10,9 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { queryClient } from "@/lib/queryClient";
 import {
-  getScreening, getResults, getBatchProgress, getResumeFull,
+  getScreening, getResults, getBatchProgress, getResumeDetailFull,
 } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
 
 // ─── Eager imports (small pages — no spinner flash) ─────────
 import Landing from "@/routes/Landing";
@@ -26,6 +27,7 @@ import Privacy from "@/routes/Privacy";
 import Dashboard from "@/routes/Dashboard";
 import Screenings from "@/routes/Screenings";
 import Settings from "@/routes/Settings";
+import Profile from "@/routes/Profile";
 import ChangePassword from "@/routes/ChangePassword";
 import NewScreening from "@/routes/NewScreening";
 import NotFound from "@/routes/NotFound";
@@ -33,6 +35,7 @@ import NotFound from "@/routes/NotFound";
 // ─── Eager imports — these are the most-visited pages, no lazy delay ──
 import ScreeningDetail from "@/routes/ScreeningDetail";
 import ResumeDetail from "@/routes/ResumeDetail";
+import EditRubric from "@/routes/EditRubric";
 
 
 
@@ -55,6 +58,14 @@ function AppLayout({isSidebarRequired = true}: {isSidebarRequired?: boolean}) {
           <Outlet />
         </main>
       </div>
+    </AuthGuard>
+  );
+}
+
+function AuthOnlyLayout() {
+  return (
+    <AuthGuard>
+      <Outlet />
     </AuthGuard>
   );
 }
@@ -142,6 +153,12 @@ const appLayoutNoSidebarRoute = createRoute({
   component: (props) => <AppLayout {...props} isSidebarRequired={false} />,
 });
 
+const authOnlyLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: "auth-only-layout",
+  component: AuthOnlyLayout,
+});
+
 const dashboardRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/dashboard",
@@ -162,6 +179,7 @@ const newScreeningRoute = createRoute({
 
 const screeningDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
+  
   path: "/screenings/$id",
   component: ScreeningDetail,
   // Fire-and-forget prefetch on Link hover (defaultPreload: "intent").
@@ -173,10 +191,22 @@ const screeningDetailRoute = createRoute({
     queryClient.prefetchQuery({ queryKey: ["results", id], queryFn: () => getResults(id) });
     queryClient.prefetchQuery({ queryKey: ["batch-progress", id], queryFn: () => getBatchProgress(id) });
   },
+  validateSearch: (search: Record<string, unknown>): { rescore?: 1 } => {
+    // When set, the screening page will kick off a rescore on mount.
+    // Used after the EditRubric page saves a new rubric.
+    if (search.rescore === 1 || search.rescore === "1") return { rescore: 1 };
+    return {};
+  },
+});
+
+const editRubricRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings/$id/rubric",
+  component: EditRubric,
 });
 
 const resumeDetailRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
+  getParentRoute: () => authOnlyLayoutRoute,
   path: "/screenings/$id/$resumeId",
   component: ResumeDetail,
   // Two-pronged prefetch: the combined `resume-full` endpoint covers
@@ -186,8 +216,8 @@ const resumeDetailRoute = createRoute({
   loader: ({ params }) => {
     const { id, resumeId } = params;
     queryClient.prefetchQuery({
-      queryKey: ["resume-full", id, resumeId],
-      queryFn: () => getResumeFull(id, resumeId),
+      queryKey: queryKeys.screening(id, resumeId),
+      queryFn: () => getResumeDetailFull(id, resumeId),
     });
     queryClient.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
   },
@@ -197,6 +227,12 @@ const settingsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/settings",
   component: Settings,
+});
+
+const profileRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/profile",
+  component: Profile,
 });
 
 const changePasswordRoute = createRoute({
@@ -236,13 +272,17 @@ const routeTree = rootRoute.addChildren([
     upgradePlanRoute,
     checkoutRoute,
   ]),
+  authOnlyLayoutRoute.addChildren([
+    resumeDetailRoute,
+  ]),
   appLayoutRoute.addChildren([
     dashboardRoute,
     screeningsRoute,
     newScreeningRoute,
     screeningDetailRoute,
-    resumeDetailRoute,
+    editRubricRoute,
     settingsRoute,
+    profileRoute,
     changePasswordRoute,
   ]),
 ]);

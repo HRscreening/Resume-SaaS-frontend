@@ -168,10 +168,9 @@ export default function Checkout() {
       maximumFractionDigits: 2,
     }).format(n);
 
-  const monthlyLocal = fx ? monthlyAmount * fx.rate : monthlyAmount;
   const totalLocal = fx ? totalUsd * fx.rate : totalUsd;
 
-  const monthlyLabel = showLocal ? fmtLocal(monthlyLocal) : `$${monthlyAmount}`;
+  const monthlyLabel = `$${monthlyAmount}`;
   const subtotalLabel = showLocal ? fmtLocal(totalLocal) : `$${totalUsd.toFixed(2)}`;
   const totalLabel = subtotalLabel;
 

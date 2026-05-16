@@ -4,12 +4,12 @@ export const STAGE_CONFIG: Record<
   string,
   { label: string; color: string; icon: "spin" | "check" | "error" | "wait" }
 > = {
-  queued:  { label: "Waiting",  color: "text-[#A0A0A0]", icon: "wait"  },
-  parsing: { label: "Parsing",  color: "text-blue-600",  icon: "spin"  },
-  parsed:  { label: "Parsed",   color: "text-blue-600",  icon: "spin"  },
-  scoring: { label: "Scoring",  color: "text-amber-600", icon: "spin"  },
-  scored:  { label: "Done",     color: "text-green-700", icon: "check" },
-  error:   { label: "Failed",   color: "text-red-600",   icon: "error" },
+  queued:  { label: "Waiting",       color: "text-[#A0A0A0]", icon: "wait"  },
+  parsing: { label: "Reading resume", color: "text-blue-600",  icon: "spin"  },
+  parsed:  { label: "Resume read",    color: "text-blue-600",  icon: "spin"  },
+  scoring: { label: "Scoring",      color: "text-amber-600", icon: "spin"  },
+  scored:  { label: "Done",           color: "text-green-700", icon: "check" },
+  error:   { label: "Failed",         color: "text-red-600",   icon: "error" },
 };
 
 export function PendingResumeRow({ file }: { file: FileProgress }) {

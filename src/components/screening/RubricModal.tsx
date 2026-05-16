@@ -1,14 +1,33 @@
 import type { RubricCategory } from "@/types";
 
-export function RubricModal({ categories, onClose }: { categories: RubricCategory[]; onClose: () => void }) {
+interface RubricModalProps {
+  categories: RubricCategory[];
+  onClose: () => void;
+  onEdit?: () => void;
+}
+
+export function RubricModal({ categories, onClose, onEdit }: RubricModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
       <div className="bg-white rounded-2xl border border-[#E8E5DF] max-w-2xl w-full max-h-[80vh] overflow-y-auto m-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white px-6 py-4 border-b border-[#E8E5DF] flex items-center justify-between z-10">
           <h2 className="text-base font-semibold text-[#0F0F0F]">Scoring Rubric</h2>
-          <button onClick={onClose} className="h-7 w-7 rounded-lg hover:bg-[#F5F3EE] flex items-center justify-center text-[#737373]">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8" /></svg>
-          </button>
+          <div className="flex items-center gap-2">
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                className="h-8 px-3 text-xs font-medium border border-[#D4D4D4] rounded-lg text-[#404040] hover:bg-[#F5F3EE] flex items-center gap-1.5"
+              >
+                <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1.5 12.5h11M9 2l3 3-7.5 7.5H1.5V9.5L9 2z" />
+                </svg>
+                Edit
+              </button>
+            )}
+            <button onClick={onClose} className="h-7 w-7 rounded-lg hover:bg-[#F5F3EE] flex items-center justify-center text-[#737373]">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8" /></svg>
+            </button>
+          </div>
         </div>
         <div className="p-6 space-y-4">
           {categories.map((cat) => (

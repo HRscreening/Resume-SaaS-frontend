@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { RankedCandidate, RubricCategory } from "@/types";
+import AnalysisSheet, { useAnalysisSheetOpen, setOpenAnalysisSheet } from "@/components/screening/AnalysisSheet";
 
 // Module-level so we don't reconstruct it on every CandidateRow render.
 const LIST_FORMATTER = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
@@ -35,7 +36,10 @@ interface TierSectionProps {
   onPrefetch?: (c: RankedCandidate) => void;
 }
 
-export function TierSection({ tier, candidates, collapsed, onToggle, categories, onSelect, onPrefetch }: TierSectionProps) {
+export function TierSection({ tier, candidates, collapsed, onToggle, categories, onPrefetch }: TierSectionProps) {
+  // When the AnalysisSheet is open, the table collapses to a narrow form so the
+  // sheet has room — current job + per-criterion columns get hidden.
+  const compact = useAnalysisSheetOpen();
   return (
     <div className="rounded-2xl border border-[#E8E5DF] bg-white overflow-hidden">
       <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3 bg-[#F5F3EE] hover:bg-[#EFEAE0] transition-colors">
@@ -50,30 +54,39 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
 
       {!collapsed && (
         <div className="border-t border-[#E8E5DF] overflow-x-auto">
-          {/* table-fixed so the candidate cell can't bully the score and
-              criterion columns rightwards when a long must-haves line lands.
-              The candidate <col> has no width, so it absorbs whatever space
-              the other (fixed) columns leave behind. */}
-          <table className="w-full table-fixed text-sm">
+          <table className="w-full text-sm">
             <colgroup>
-              <col />
-              <col style={{ width: "140px" }} />
-              <col style={{ width: "72px" }} />
-              {categories.map((cat) => (
-                <col key={cat.name} style={{ width: "130px" }} />
+              <col style={{ minWidth: "240px" }} />
+              {!compact && <col style={{ width: "140px" }} />}
+              <col style={{ width: "90px" }} />
+              {!compact && categories.map((cat) => (
+                <col key={cat.name} style={{ width: "150px" }} />
               ))}
+              <col style={{ width: "60px" }} />
             </colgroup>
             <thead>
               <tr className="border-b border-[#E8E5DF]">
                 <th className="px-5 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Candidate</th>
-                <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Current Role</th>
-                <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide">Score</th>
-                {categories.map((cat) => (
-                  <th key={cat.name} className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide">
-                    <span className="block">{cat.name}</span>
-                    <span className="font-normal text-[#A0A0A0] normal-case tracking-normal">{cat.weight}%</span>
+                {!compact && (
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#737373] uppercase tracking-wide">Current Role</th>
+                )}
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide align-top">
+                  <div className="flex flex-col">
+                    <span>Score</span>
+                    <span className="font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">(out of 100)</span>
+                    <span className="font-normal text-[#A0A0A0] normal-case tracking-normal">&nbsp;</span>
+                  </div>
+                </th>
+                {!compact && categories.map((cat) => (
+                  <th key={cat.name} className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide align-top">
+                    <div className="flex flex-col">
+                      <span className="whitespace-nowrap">{cat.name}</span>
+                      <span className="font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">(out of 10)</span>
+                      <span className="font-normal text-[#A0A0A0] normal-case tracking-normal">{cat.weight}%</span>
+                    </div>
                   </th>
                 ))}
+                <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8E5DF]">
@@ -82,7 +95,7 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
                   key={c.resume_id}
                   candidate={c}
                   categories={categories}
-                  onSelect={() => onSelect(c)}
+                  compact={compact}
                   onPrefetch={onPrefetch ? () => onPrefetch(c) : undefined}
                 />
               ))}
@@ -94,10 +107,10 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
   );
 }
 
-function CandidateRow({ candidate, categories, onSelect, onPrefetch }: {
+function CandidateRow({ candidate, categories, compact, onPrefetch }: {
   candidate: RankedCandidate;
   categories: RubricCategory[];
-  onSelect: () => void;
+  compact: boolean;
   onPrefetch?: () => void;
 }) {
   function getCategoryScore(cat: RubricCategory): number | null {
@@ -134,7 +147,7 @@ function CandidateRow({ candidate, categories, onSelect, onPrefetch }: {
 
   return (
     <tr
-      onClick={onSelect}
+      onClick={() => setOpenAnalysisSheet(candidate.resume_id)}
       onMouseEnter={onPrefetch}
       onFocus={onPrefetch}
       className="cursor-pointer transition-colors hover:bg-[#FAFAF8]"
@@ -174,9 +187,11 @@ function CandidateRow({ candidate, categories, onSelect, onPrefetch }: {
           </div>
         </div>
       </td>
-      <td className="px-3 py-3.5 align-middle">
-        <p className="text-xs text-[#404040] line-clamp-2">{candidate.candidate_current_job ?? <span className="text-[#D4D4D4]">—</span>}</p>
-      </td>
+      {!compact && (
+        <td className="px-3 py-3.5 align-middle">
+          <p className="text-xs text-[#404040] line-clamp-2">{candidate.candidate_current_job ?? <span className="text-[#D4D4D4]">—</span>}</p>
+        </td>
+      )}
       <td className="px-3 py-3.5 text-center align-middle">
         <div className="flex flex-col items-center gap-1.5">
           <span className="text-lg font-bold text-[#0F0F0F] leading-none">{Math.round(candidate.overall_score)}</span>
@@ -185,7 +200,7 @@ function CandidateRow({ candidate, categories, onSelect, onPrefetch }: {
           </div>
         </div>
       </td>
-      {categories.map((cat) => {
+      {!compact && categories.map((cat) => {
         const catScore = getCategoryScore(cat);
         return (
           <td key={cat.name} className="px-3 py-3.5 text-center align-middle">
@@ -202,6 +217,12 @@ function CandidateRow({ candidate, categories, onSelect, onPrefetch }: {
           </td>
         );
       })}
+      <td
+        className="px-3 py-3.5 text-center align-middle"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <AnalysisSheet resume_id={candidate.resume_id} />
+      </td>
     </tr>
   );
 }

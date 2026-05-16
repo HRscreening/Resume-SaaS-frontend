@@ -1,18 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link, useParams } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { getResumeFull, getScreening } from "@/lib/api";
+import { useCandidateScreeningDetail } from "@/controllers/screening/getCandidateScreeningDetail";
+import { useScreening } from "@/controllers/screening/getScreening";
 import { formatDate } from "@/lib/utils";
-import type { Resume, Score } from "@/types";
-
-interface ResumeDetailData extends Resume {
-  parsed_text: string | null;
-  parsed_data: Record<string, unknown> | null;
-  error_message: string | null;
-  page_count: number | null;
-  char_count: number | null;
-  score: Score | null;
-}
 
 function getTierLabel(score: number) {
   if (score >= 75) return { label: "Strong Match", color: "text-green-700", bg: "bg-green-50", border: "border-green-200", dot: "#22C55E" };
@@ -68,30 +58,13 @@ export default function ResumeDetail() {
     document.addEventListener("mouseup", onUp);
   }, []);
 
-  // Single combined fetch: resume detail + signed PDF URL in one round-trip.
-  // The router loader prefetches this same key on hover (defaultPreload:
-  // "intent"), so on warm cache the click → render is instant.
-  const { data: full, isLoading } = useQuery({
-    queryKey: ["resume-full", id, resumeId],
-    queryFn: () => getResumeFull(id, resumeId),
-    staleTime: 5 * 60 * 1000,
-  });
-  const data = full?.detail as ResumeDetailData | undefined;
-  const pdfData = full
-    ? { url: full.pdf_url ?? "", filename: full.pdf_filename ?? "" }
-    : undefined;
+  // Single fetch — /full bundles the resume, score, and signed pdf_url so we
+  // skip the extra pdf-url round-trip. The router loader prefetches this same
+  // key on hover (defaultPreload: "intent"), so on warm cache the click →
+  // render is instant.
+  const { data, isLoading } = useCandidateScreeningDetail(id, resumeId);
+  const { data: screening } = useScreening(id, { enabled: !!data });
 
-  // Screening fetch is independent and usually a cache-hit (the user came
-  // from /screenings/$id where it was already loaded). Kept gated so we
-  // don't block first paint on its absence — it's only used to compute
-  // the non-negotiable set, which is fine to populate after first paint.
-  const { data: screening } = useQuery({
-    queryKey: ["screening", id],
-    queryFn: () => getScreening(id),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Build set of non-negotiable criterion names from rubric
   const nonNegotiableSet = useMemo(() => {
     const set = new Set<string>();
     screening?.rubric?.categories?.forEach((cat) =>
@@ -102,14 +75,15 @@ export default function ResumeDetail() {
     return set;
   }, [screening]);
 
+  const pdfUrl = data?.pdf_url ?? null;
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
 
   useEffect(() => {
-    if (!pdfData?.url) return;
+    if (!pdfUrl) return;
     let objectUrl: string | null = null;
     setPdfLoading(true);
-    fetch(pdfData.url)
+    fetch(pdfUrl)
       .then((r) => r.blob())
       .then((blob) => {
         objectUrl = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
@@ -118,7 +92,7 @@ export default function ResumeDetail() {
       .catch(() => {})
       .finally(() => setPdfLoading(false));
     return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [pdfData?.url]);
+  }, [pdfUrl]);
 
   if (isLoading) {
     return (
@@ -359,8 +333,8 @@ export default function ResumeDetail() {
                 {resume.original_filename}
               </span>
               <div className="flex items-center gap-2">
-                {pdfData?.url && (
-                  <a href={pdfData.url} target="_blank" rel="noopener noreferrer"
+                {pdfUrl && (
+                  <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
                     className="text-xs text-[#737373] hover:text-[#0F0F0F] flex items-center gap-1">
                     <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M5 2H2a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V8M8 1h3v3M11 1 6 6" />
@@ -390,14 +364,14 @@ export default function ResumeDetail() {
               {pdfBlobUrl && isPdf && (
                 <iframe src={pdfBlobUrl} className="w-full h-full border-0" title="Resume PDF" />
               )}
-              {pdfData?.url && !isPdf && !pdfLoading && (
+              {pdfUrl && !isPdf && !pdfLoading && (
                 <div className="flex flex-col items-center justify-center h-full gap-3 text-[#737373]">
                   <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M23 4H10a2 2 0 0 0-2 2v28a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2V13z"/>
                     <path d="M23 4v9h9M14 22h12M14 28h8"/>
                   </svg>
                   <p className="text-sm font-medium text-[#404040]">DOCX — cannot preview</p>
-                  <a href={pdfData.url} target="_blank" rel="noopener noreferrer"
+                  <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
                     className="text-sm text-[#0F0F0F] underline">Download to view</a>
                 </div>
               )}

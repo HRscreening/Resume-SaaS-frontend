@@ -64,7 +64,7 @@ export interface RubricCategory {
 export interface Rubric {
   categories: RubricCategory[];
   threshold_score: number;
-  source: "AI" | "manual";
+  source: "AI" | "MANUAL" | "COMBINED";
   domain?: string;
   seniority_level?: string;
 }

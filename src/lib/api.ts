@@ -1,6 +1,7 @@
 import { getAccessToken } from "@/lib/auth";
 import { clearSessionHint } from "@/lib/sessionHint";
 import { createClient } from "@/lib/supabase/client";
+import { detectCurrency } from "@/lib/currency";
 import type {
   Profile,
   UsageResponse,
@@ -223,6 +224,42 @@ export async function getResumeDetail(
   );
 }
 
+export type ResumeDetailFull = Resume & {
+  score: Score | null;
+  parsed_text: string | null;
+  parsed_data: Record<string, unknown> | null;
+  page_count: number | null;
+  char_count: number | null;
+  pdf_url: string | null;
+  pdf_filename: string | null;
+};
+
+// /full returns { detail: Resume + score + parsed_*, pdf_url, pdf_filename }.
+// Flattened here so callers consume a single object and avoid a second
+// pdf-url round-trip.
+export async function getResumeDetailFull(
+  screeningId: string,
+  resumeId: string
+): Promise<ResumeDetailFull> {
+  const res = await request<{
+    detail: Resume & {
+      score: Score | null;
+      parsed_text: string | null;
+      parsed_data: Record<string, unknown> | null;
+      page_count: number | null;
+      char_count: number | null;
+    };
+    pdf_url: string | null;
+    pdf_filename: string | null;
+  }>(`/api/screenings/${screeningId}/results/${resumeId}/full`);
+
+  return {
+    ...res.detail,
+    pdf_url: res.pdf_url,
+    pdf_filename: res.pdf_filename,
+  };
+}
+
 export async function getResumePdfUrl(
   screeningId: string,
   resumeId: string
@@ -270,6 +307,31 @@ export async function deleteScreening(id: string): Promise<void> {
   return request<void>(`/api/screenings/${id}`, { method: "DELETE" });
 }
 
+// Update a screening's rubric. Backend endpoint TBD — assumes PATCH /rubric
+// accepting the same shape as createJob.rubric. Does not trigger rescoring on
+// its own; pair with rescoreScreening() below.
+export async function updateRubric(
+  screeningId: string,
+  rubric: Rubric,
+): Promise<Screening> {
+  return request<Screening>(`/api/screenings/${screeningId}/rubric`, {
+    method: "PATCH",
+    body: JSON.stringify({ rubric }),
+  });
+}
+
+// Re-score every resume in the screening against the current rubric.
+// Backend endpoint TBD — assumes POST /rescore which kicks off a new batch
+// and returns the new batch_id. The UI then polls batch-progress as usual.
+export async function rescoreScreening(
+  screeningId: string,
+): Promise<{ screening_id: string; batch_id: string; total_resumes: number }> {
+  return request<{ screening_id: string; batch_id: string; total_resumes: number }>(
+    `/api/screenings/${screeningId}/rescore`,
+    { method: "POST" },
+  );
+}
+
 // ─── Billing ─────────────────────────────────────────────────────────────────
 
 export async function getPlans(): Promise<import("@/types").PlanSpec[]> {
@@ -285,7 +347,9 @@ export interface FxRate {
 }
 
 export async function getFxRate(): Promise<FxRate> {
-  return request<FxRate>("/api/billing/fx-rate");
+  const currency = detectCurrency();
+  console.log(`Creating Razorpay order with currency: ${currency}`);
+  return request<FxRate>(`/api/billing/fx-rate?currency=${encodeURIComponent(currency)}`);
 }
 
 
@@ -298,7 +362,12 @@ export async function createRazorpayOrder({plan,cycle}:{
   currency: string;
   key_id: string;
 }> {
-  return request(`/api/billing/razorpay/order?plan=${plan}&cycle=${cycle}`, { method: "POST", });
+  const currency = detectCurrency();
+  console.log(`Creating Razorpay order with currency: ${currency}`);
+  return request(
+    `/api/billing/razorpay/order?plan=${plan}&cycle=${cycle}&currency=${encodeURIComponent(currency)}`,
+    { method: "POST" },
+  );
 }
 
 export async function verifyRazorpayPayment(data: {

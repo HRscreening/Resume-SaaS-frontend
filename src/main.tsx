@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { initAuth } from "@/lib/auth";
 import { App } from "@/App";
 import "@/globals.css";
@@ -19,6 +20,7 @@ initAuth().finally(() => {
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <App />
+        {import.meta.env.VITE_ENVIROMENT === "Development" && true && (<ReactQueryDevtools initialIsOpen={false} />)}
       </QueryClientProvider>
     </StrictMode>
   );
