@@ -15,6 +15,7 @@ import { ProcessingAccordion } from "@/components/screening/ProcessingAccordion"
 import { RubricModal } from "@/components/screening/RubricModal";
 import { FailedView } from "@/components/screening/FailedView";
 import { Pagination } from "@/components/screening/Pagination";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function ScreeningDetail() {
   const { id } = useParams({ strict: false }) as { id: string };
@@ -400,31 +401,46 @@ export default function ScreeningDetail() {
           </div>
           {candidates.length > 0 && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowRubric(true)}
-              className="h-9 px-4 border border-[#D4D4D4] text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2"
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5"/><path d="M4.5 5h5M4.5 7.5h3"/></svg>
-              Rubric
-            </button>
-            <button
-              onClick={() => { setShowUploadMore((v) => !v); setUploadMoreFiles([]); setUploadError(null); }}
-              className={`h-9 px-4 border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v8M3.5 5.5l3.5-3.5 3.5 3.5"/><path d="M2 12h10"/></svg>
-              Add resumes
-            </button>
-            <button
-              onClick={handleExport}
-              disabled={exporting}
-              className="h-9 px-4 border border-[#D4D4D4] text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 disabled:opacity-60"
-            >
-              {exporting
-                ? <span className="h-3.5 w-3.5 rounded-full border-2 border-[#404040] border-t-transparent animate-spin" />
-                : <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5v8M4 7l3 3 3-3" /><path d="M1.5 10.5v1.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-1.5" /></svg>
-              }
-              Export CSV
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowRubric(true)}
+                  className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2`}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5"/><path d="M4.5 5h5M4.5 7.5h3"/></svg>
+                  {!analysisOpen && "Rubric"}
+                </button>
+              </TooltipTrigger>
+              {analysisOpen && <TooltipContent><p className="text-xs">Rubric</p></TooltipContent>}
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => { setShowUploadMore((v) => !v); setUploadMoreFiles([]); setUploadError(null); }}
+                  className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v8M3.5 5.5l3.5-3.5 3.5 3.5"/><path d="M2 12h10"/></svg>
+                  {!analysisOpen && "Add resumes"}
+                </button>
+              </TooltipTrigger>
+              {analysisOpen && <TooltipContent><p className="text-xs">Add resumes</p></TooltipContent>}
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleExport}
+                  disabled={exporting}
+                  className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 disabled:opacity-60`}
+                >
+                  {exporting
+                    ? <span className="h-3.5 w-3.5 rounded-full border-2 border-[#404040] border-t-transparent animate-spin" />
+                    : <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5v8M4 7l3 3 3-3" /><path d="M1.5 10.5v1.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-1.5" /></svg>
+                  }
+                  {!analysisOpen && "Export CSV"}
+                </button>
+              </TooltipTrigger>
+              {analysisOpen && <TooltipContent><p className="text-xs">Export CSV</p></TooltipContent>}
+            </Tooltip>
           </div>
           )}
         </div>

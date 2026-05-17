@@ -1,6 +1,6 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useParams } from "@tanstack/react-router";
-import { Eye, EyeOff, ExternalLink } from "lucide-react";
+import { Eye, ExternalLink, Expand, } from "lucide-react";
 import {
   Sheet,
   SheetTrigger,
@@ -11,6 +11,11 @@ import {
 import { useCandidateScreeningDetail } from "@/controllers/screening/getCandidateScreeningDetail";
 import { useScreening } from "@/controllers/screening/getScreening";
 import { formatDate } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 const sheetListeners = new Set<() => void>();
 let openResumeId: string | null = null;
@@ -54,9 +59,9 @@ type BreakdownItem = {
 
 function getTierLabel(score: number) {
   if (score >= 75) return { label: "Strong Match", color: "text-green-700", bg: "bg-green-50", border: "border-green-200", dot: "#22C55E" };
-  if (score >= 55) return { label: "Potential",    color: "text-yellow-700", bg: "bg-yellow-50", border: "border-yellow-200", dot: "#EAB308" };
-  if (score >= 35) return { label: "Risky",        color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200", dot: "#F97316" };
-  return             { label: "Poor Fit",   color: "text-red-700",   bg: "bg-red-50",    border: "border-red-200",    dot: "#EF4444" };
+  if (score >= 55) return { label: "Potential", color: "text-yellow-700", bg: "bg-yellow-50", border: "border-yellow-200", dot: "#EAB308" };
+  if (score >= 35) return { label: "Risky", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200", dot: "#F97316" };
+  return { label: "Poor Fit", color: "text-red-700", bg: "bg-red-50", border: "border-red-200", dot: "#EF4444" };
 }
 
 function criterionBarColor(score: number) {
@@ -126,9 +131,9 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
   const tier = score ? getTierLabel(score.overall_score) : null;
 
 
-  
+
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange} modal={false}>
+    <Sheet  open={open} onOpenChange={handleOpenChange} modal={false}>
       <SheetTrigger asChild>
         <button
           type="button"
@@ -136,14 +141,11 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
             e.stopPropagation();
             handleOpenChange(!open);
           }}
-          className="inline-flex items-center justify-center"
-          aria-label={open ? "Hide analysis" : "View analysis"}
+          className={`inline-flex items-center justify-center ${open ? "invisible pointer-events-none" : ""}`}
+          aria-label="View analysis"
+          aria-hidden={open}
         >
-          {open ? (
-            <EyeOff className="text-[#C85A17]" size={16} />
-          ) : (
-            <Eye className="text-[#A0A0A0] hover:text-[#C85A17]" size={16} />
-          )}
+          <Eye className="text-[#A0A0A0] hover:text-[#C85A17]" size={16} />
         </button>
       </SheetTrigger>
 
@@ -152,7 +154,8 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
         onClick={(e) => e.stopPropagation()}
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
-        className="!max-w-[600px] overflow-y-auto p-0"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        className="!max-w-[600px] overflow-y-auto p-0 !z-40"
       >
         <SheetHeader className="px-6 pt-6 pb-3 border-b border-[#E8E5DF]">
           <div className="flex items-center justify-between gap-3 mt-4">
@@ -236,17 +239,46 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                   )}
                 </div>
               </div>
+
               {screening_id && resume_id && (
-                <a
-                  href={`/screenings/${screening_id}/${resume_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
-                  title="Open full page in new tab"
-                >
-                  <ExternalLink size={12} />
-                  View Resume
-                </a>
+                <div className="flex flex-row items-center gap-1">
+                  <Tooltip>
+                    <TooltipTrigger className="shrink-0">
+
+                  <a
+                    href={`/screenings/${screening_id}/${resume_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+                    
+                    >
+                    <Expand size={12} />
+                    Expand
+                  </a>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">Open Expanded view</p>
+                  </TooltipContent>
+                  </Tooltip>
+
+                  {resume.pdf_url && (
+                    <Tooltip>
+                      <TooltipTrigger className="shrink-0">
+                      <a
+                        href={resume.pdf_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+                        >
+                        <ExternalLink size={12} />
+                      </a>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">View Resume</p>
+                        </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
               )}
             </div>
 
@@ -383,8 +415,8 @@ function CriterionCard({
   const borderClass = failed
     ? "border-red-400 bg-red-50"
     : isNonNegotiable
-    ? "border-amber-300 bg-amber-50/30"
-    : "border-[#E8E5DF] bg-white";
+      ? "border-amber-300 bg-amber-50/30"
+      : "border-[#E8E5DF] bg-white";
 
   return (
     <div className={`border rounded-xl overflow-hidden ${borderClass}`}>
@@ -410,9 +442,8 @@ function CriterionCard({
             <span className="text-sm font-medium text-[#0F0F0F] truncate">{cs.criterion}</span>
             {isNonNegotiable && (
               <span
-                className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-semibold ${
-                  failed ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
-                }`}
+                className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-semibold ${failed ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                  }`}
               >
                 <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
                   <path d="M6 1L1 10h10L6 1z" />

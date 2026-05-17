@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { RankedCandidate, RubricCategory } from "@/types";
-import AnalysisSheet, { useAnalysisSheetOpen, setOpenAnalysisSheet } from "@/components/screening/AnalysisSheet";
+import AnalysisSheet, { useAnalysisSheetOpen, useAnalysisSheetOpenId, setOpenAnalysisSheet } from "@/components/screening/AnalysisSheet";
 
 // Module-level so we don't reconstruct it on every CandidateRow render.
 const LIST_FORMATTER = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
@@ -40,6 +40,15 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
   // When the AnalysisSheet is open, the table collapses to a narrow form so the
   // sheet has room — current job + per-criterion columns get hidden.
   const compact = useAnalysisSheetOpen();
+  const openId = useAnalysisSheetOpenId();
+
+  // If this tier is collapsed while a candidate inside it has its sheet open,
+  // close the sheet — the user can't see what's selected anymore.
+  useEffect(() => {
+    if (collapsed && openId && candidates.some((c) => c.resume_id === openId)) {
+      setOpenAnalysisSheet(null);
+    }
+  }, [collapsed, openId, candidates]);
   return (
     <div className="rounded-2xl border border-[#E8E5DF] bg-white overflow-hidden">
       <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3 bg-[#F5F3EE] hover:bg-[#EFEAE0] transition-colors">
@@ -62,7 +71,7 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
               {!compact && categories.map((cat) => (
                 <col key={cat.name} style={{ width: "150px" }} />
               ))}
-              <col style={{ width: "60px" }} />
+              {!compact && <col style={{ width: "60px" }} />}
             </colgroup>
             <thead>
               <tr className="border-b border-[#E8E5DF]">
@@ -86,7 +95,7 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
                     </div>
                   </th>
                 ))}
-                <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide"></th>
+                {!compact && <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#737373] uppercase tracking-wide"></th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8E5DF]">
@@ -144,23 +153,25 @@ function CandidateRow({ candidate, categories, compact, onPrefetch }: {
   const failedList = LIST_FORMATTER.format(failedNonNegotiables);
   const isDisqualified = failedNonNegotiables.length > 0;
   const [expanded, setExpanded] = useState(false);
+  const openId = useAnalysisSheetOpenId();
+  const isOpen = openId === candidate.resume_id;
 
   return (
     <tr
-      onClick={() => setOpenAnalysisSheet(candidate.resume_id)}
+      onClick={() => setOpenAnalysisSheet(isOpen ? null : candidate.resume_id)}
       onMouseEnter={onPrefetch}
       onFocus={onPrefetch}
-      className="cursor-pointer transition-colors hover:bg-[#FAFAF8]"
+      className={`cursor-pointer transition-colors ${isOpen ? "bg-[#FBF1E7]" : "hover:bg-[#FAFAF8]"}`}
     >
       {/* Left accent bar — flags the whole row as disqualified when must-haves
           are missing. Always 4px wide so rows align; transparent when clean. */}
       <td
         className={`px-5 py-3.5 border-l-4 ${
-          isDisqualified ? "border-[#C85A17]" : "border-transparent"
+          isDisqualified ? "border-[#C85A17]" : isOpen ? "border-[#FBF1E7]" : "border-transparent"
         }`}
       >
-        <div className="flex items-start gap-3">
-          <div className="h-8 w-8 rounded-full bg-[#FBF1E7] flex items-center justify-center shrink-0 mt-0.5">
+        <div className={`flex gap-3 ${candidate.candidate_email || candidate.candidate_phone || isDisqualified ? "items-start" : "items-center"}`}>
+          <div className={`h-8 w-8 rounded-full bg-[#FBF1E7] flex items-center justify-center shrink-0 ${candidate.candidate_email || candidate.candidate_phone || isDisqualified ? "mt-0.5" : ""}`}>
             <span className="text-xs font-semibold text-[#C85A17]">{(candidate.candidate_name ?? candidate.filename).slice(0, 2).toUpperCase()}</span>
           </div>
           <div className="min-w-0 flex-1">
@@ -217,12 +228,19 @@ function CandidateRow({ candidate, categories, compact, onPrefetch }: {
           </td>
         );
       })}
-      <td
-        className="px-3 py-3.5 text-center align-middle"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <AnalysisSheet resume_id={candidate.resume_id} />
-      </td>
+      {!compact && (
+        <td
+          className="px-3 py-3.5 text-center align-middle"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <AnalysisSheet resume_id={candidate.resume_id} />
+        </td>
+      )}
+      {compact && isOpen && (
+        <td className="hidden" onClick={(e) => e.stopPropagation()}>
+          <AnalysisSheet resume_id={candidate.resume_id} />
+        </td>
+      )}
     </tr>
   );
 }
