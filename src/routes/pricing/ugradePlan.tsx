@@ -79,11 +79,19 @@ function formatPrice(plan: PlanSpec, isYearly: boolean): string {
 }
 
 const Pricing = () => {
+    // All hooks must run on every render in the same order. Previously
+    // useState(isYearly) was below the isError early-return, so on the render
+    // where queries resolved with an error the hook count dropped from 3 to 2,
+    // tripping React's hooks-order check and surfacing as the minified
+    // "too many re-renders" error (#300) once the parent re-rendered.
     const profileQuery = useQuery({ queryKey: ['profile'], queryFn: getProfile, staleTime: 60_000 });
     const plansQuery = useQuery({ queryKey: ['plans'], queryFn: getPlans, staleTime: 1000 * 60 * 60 * 24 });
+    const [isYearly, setIsYearly] = useState(false);
 
     const profile = profileQuery.data;
     const plansData = plansQuery.data ?? [];
+    const isLoggedIn = !!profile;
+    const currentPlan: SubscriptionPlan = profile?.plan ?? 'FREE';
 
     if (profileQuery.isError || plansQuery.isError) {
         return (
@@ -93,10 +101,13 @@ const Pricing = () => {
         )
     }
 
-    const isLoggedIn = !!profile;
-    const currentPlan: SubscriptionPlan = profile?.plan ?? 'FREE';
-
-    const [isYearly, setIsYearly] = useState(false);
+    if (plansQuery.isLoading || profileQuery.isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="h-6 w-6 rounded-full border-2 border-[#2c2c2c] border-t-transparent animate-spin" />
+            </div>
+        );
+    }
 
     const isDowngrade = (plan: SubscriptionPlan) =>
         isLoggedIn && plan !== currentPlan && PLAN_ORDER.indexOf(plan) < PLAN_ORDER.indexOf(currentPlan);
@@ -110,20 +121,12 @@ const Pricing = () => {
         return plan.key === 'FREE' ? 'Get started' : 'Upgrade Now';
     }
 
-    if (plansQuery.isLoading || profileQuery.isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="h-6 w-6 rounded-full border-2 border-[#2c2c2c] border-t-transparent animate-spin" />
-            </div>
-        );
-    }
-
     const orderedPlans = PLAN_ORDER
         .map((k) => plansData.find((p) => p.key === k))
         .filter((p): p is PlanSpec => !!p);
 
     return (
-        <section id="pricing" className="mx-auto max-w-315 px-6 py-16">
+        <section id="pricing" className="mx-auto max-w-315 px-4 py-8 sm:px-6 sm:py-12 md:py-16">
             <Link
                 to="/dashboard"
                 className="inline-flex items-center gap-1.5 text-sm text-[#737373] hover:text-[#0F0F0F] mb-6"

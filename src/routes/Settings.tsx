@@ -256,12 +256,18 @@ function BillingPanel() {
       <h2 className="text-xl font-bold text-[#0F0F0F] mb-6">Plan & billing</h2>
 
       <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6">
-        <div className="bg-[#F5F3EE] rounded-xl p-4 mb-5 flex items-center justify-between">
+        {/* Plan summary row — stacks vertically on mobile so the quota line on
+            the left isn't squeezed out by the usage block on the right. The
+            FREE plan now has a lifetime (one-time) quota, so we suppress the
+            "/mo" price and the "/month" suffix for that tier. */}
+        <div className="bg-[#F5F3EE] rounded-xl p-4 mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs text-[#737373] mb-0.5">Current plan</p>
             <p className="text-lg font-bold text-[#0F0F0F]">{planInfo?.display_name ?? planKey}</p>
             <p className="text-sm text-[#737373]">
-              {planInfo ? `$${planInfo.price_monthly_usd}/mo` : "—"} · {planInfo ? planInfo.max_resumes_per_month.toLocaleString() : "—"} resumes/month
+              {planKey === "FREE"
+                ? `Free · ${planInfo ? planInfo.max_resumes_per_month.toLocaleString() : "—"} resumes`
+                : `${planInfo ? `$${planInfo.price_monthly_usd}/mo` : "—"} · ${planInfo ? planInfo.max_resumes_per_month.toLocaleString() : "—"} resumes/month`}
             </p>
             {profile?.plan !== "FREE" && !showCancelConfirm && (
               <button
@@ -273,12 +279,14 @@ function BillingPanel() {
             )}
           </div>
           {usage && (
-            <div className="text-right min-w-[100px]">
-              <p className="text-xs text-[#737373] mb-1">This month</p>
+            <div className="sm:text-right sm:min-w-[100px]">
+              <p className="text-xs text-[#737373] mb-1">
+                {planKey === "FREE" ? "Free quota used" : "This month"}
+              </p>
               <p className="text-sm font-semibold text-[#0F0F0F]">
                 {usage.resumes_processed} <span className="font-normal text-[#737373]">/ {usage.quota_limit}</span>
               </p>
-              <div className="h-1.5 w-24 bg-[#E8E5DF] rounded-full overflow-hidden mt-1.5 ml-auto">
+              <div className="h-1.5 w-24 bg-[#E8E5DF] rounded-full overflow-hidden mt-1.5 sm:ml-auto">
                 <div
                   className={`h-full rounded-full ${usage.quota_limit > 0 && usage.resumes_processed / usage.quota_limit >= 0.9 ? "bg-red-500" : "bg-[#0F0F0F]"}`}
                   style={{ width: `${usage.quota_limit > 0 ? Math.min(100, Math.round((usage.resumes_processed / usage.quota_limit) * 100)) : 0}%` }}
