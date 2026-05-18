@@ -67,7 +67,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-12" style={{ backgroundColor: "#F5F3EE" }}>
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 sm:px-6 sm:py-12" style={{ backgroundColor: "#F5F3EE" }}>
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="h-14 flex items-center px-5 border-b border-[#E8E5DF]">
@@ -77,8 +77,8 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#E8E5DF] p-8">
-          <h1 className="text-2xl font-bold text-[#0F0F0F] mb-1">Set up your account</h1>
+        <div className="bg-white rounded-2xl border border-[#E8E5DF] p-5 sm:p-8">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F] mb-1">Set up your account</h1>
           <p className="text-sm text-[#737373] mb-8">Tell us a bit about yourself — takes 30 seconds.</p>
 
           {error && (

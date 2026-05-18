@@ -23,21 +23,23 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabKey>("account");
 
   return (
-    <div className="px-8 py-10 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold text-[#0F0F0F] mb-10">Settings</h1>
+    <div className="px-4 py-6 sm:px-6 sm:py-8 md:px-8 md:py-10 max-w-5xl mx-auto">
+      <h1 className="text-2xl sm:text-3xl font-bold text-[#0F0F0F] mb-6 md:mb-10">Settings</h1>
 
-      <div className="flex gap-12">
-        {/* Left sub-nav */}
-        <nav className="w-48 shrink-0">
-          <ul className="space-y-1">
+      <div className="flex flex-col md:flex-row gap-6 md:gap-12">
+        {/* Sub-nav: horizontal pill row on mobile (scrolls if labels overflow);
+            vertical list at md+. Same buttons, same handlers — only the
+            wrapper layout changes per viewport. */}
+        <nav className="md:w-48 md:shrink-0 -mx-4 md:mx-0">
+          <ul className="flex md:flex-col gap-1 md:gap-0 md:space-y-1 overflow-x-auto px-4 md:px-0 pb-1 md:pb-0">
             {TABS.map((tab) => {
               const active = activeTab === tab.key;
               return (
-                <li key={tab.key}>
+                <li key={tab.key} className="shrink-0 md:shrink">
                   <button
                     onClick={() => setActiveTab(tab.key)}
                     className={cn(
-                      "w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                      "text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap md:w-full",
                       active
                         ? "bg-[#0F0F0F] text-white"
                         : "text-[#404040] hover:bg-[#EDEAE3]"
@@ -69,7 +71,7 @@ function ComingSoon({ title }: { title: string }) {
   return (
     <div>
       <h2 className="text-xl font-bold text-[#0F0F0F] mb-6">{title}</h2>
-      <div className="bg-white rounded-2xl border border-[#E8E5DF] p-10 flex flex-col items-center text-center">
+      <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6 sm:p-8 md:p-10 flex flex-col items-center text-center">
         <div className="h-12 w-12 rounded-full bg-[#F5F3EE] flex items-center justify-center mb-4">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="9" />
