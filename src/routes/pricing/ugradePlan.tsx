@@ -79,11 +79,10 @@ function formatPrice(plan: PlanSpec, isYearly: boolean): string {
 }
 
 const Pricing = () => {
-    // All hooks must run on every render in the same order. Previously
-    // useState(isYearly) was below the isError early-return, so on the render
-    // where queries resolved with an error the hook count dropped from 3 to 2,
-    // tripping React's hooks-order check and surfacing as the minified
-    // "too many re-renders" error (#300) once the parent re-rendered.
+    // All hooks must run on every render in the same order. Hooks are above
+    // any conditional return; do not move them. (Earlier version had useState
+    // below an isError early-return, dropping the hook count and surfacing as
+    // minified React error #300 once the parent re-rendered.)
     const profileQuery = useQuery({ queryKey: ['profile'], queryFn: getProfile, staleTime: 60_000 });
     const plansQuery = useQuery({ queryKey: ['plans'], queryFn: getPlans, staleTime: 1000 * 60 * 60 * 24 });
     const [isYearly, setIsYearly] = useState(false);
@@ -93,20 +92,32 @@ const Pricing = () => {
     const isLoggedIn = !!profile;
     const currentPlan: SubscriptionPlan = profile?.plan ?? 'FREE';
 
-    if (profileQuery.isError || plansQuery.isError) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <p className="text-red-500">Failed to load data. Please refresh the page.</p>
-            </div>
-        )
-    }
-
-    if (plansQuery.isLoading || profileQuery.isLoading) {
+    // Show the spinner only on the FIRST load (no data yet). React Query
+    // surfaces isLoading=true exclusively for that case; background refetches
+    // do not flip it true again.
+    if (plansQuery.isLoading && plansData.length === 0) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="h-6 w-6 rounded-full border-2 border-[#2c2c2c] border-t-transparent animate-spin" />
             </div>
         );
+    }
+
+    // Bail to full-page error only when we genuinely cannot render any cards
+    // (plans never loaded). A profile fetch failing is non-fatal — the page
+    // already treats `!profile` as anonymous via `isLoggedIn`.
+    if (plansQuery.isError && plansData.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen gap-3 px-4 text-center">
+                <p className="text-red-500">Couldn't load pricing. Please try again.</p>
+                <button
+                    onClick={() => plansQuery.refetch()}
+                    className="h-10 px-4 rounded-xl bg-[#0F0F0F] text-white text-sm font-medium hover:bg-[#1C1C1C] transition-colors"
+                >
+                    Retry
+                </button>
+            </div>
+        )
     }
 
     const isDowngrade = (plan: SubscriptionPlan) =>

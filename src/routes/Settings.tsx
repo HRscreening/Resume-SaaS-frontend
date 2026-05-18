@@ -266,8 +266,8 @@ function BillingPanel() {
             <p className="text-lg font-bold text-[#0F0F0F]">{planInfo?.display_name ?? planKey}</p>
             <p className="text-sm text-[#737373]">
               {planKey === "FREE"
-                ? `Free · ${planInfo ? planInfo.max_resumes_per_month.toLocaleString() : "—"} resumes`
-                : `${planInfo ? `$${planInfo.price_monthly_usd}/mo` : "—"} · ${planInfo ? planInfo.max_resumes_per_month.toLocaleString() : "—"} resumes/month`}
+                ? `Free · ${(usage?.quota_limit ?? planInfo?.max_resumes_per_month ?? 50).toLocaleString()} resumes`
+                : `${planInfo ? `$${planInfo.price_monthly_usd}/mo` : "—"} · ${(usage?.quota_limit ?? planInfo?.max_resumes_per_month ?? 0).toLocaleString()} resumes/month`}
             </p>
             {profile?.plan !== "FREE" && !showCancelConfirm && (
               <button
