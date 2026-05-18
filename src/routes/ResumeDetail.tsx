@@ -121,7 +121,7 @@ export default function ResumeDetail() {
     <div className="flex flex-col h-screen overflow-hidden bg-white">
 
       {/* ─── Top bar ───────────────────────────────────────────── */}
-      <header className="h-12 shrink-0 border-b border-[#E8E5DF] flex items-center gap-3 px-5 bg-white">
+      <header className="h-12 shrink-0 border-b border-[#E8E5DF] flex items-center gap-2 sm:gap-3 px-3 sm:px-5 bg-white">
         <Link
           to="/screenings/$id" params={{ id }}
           className="flex items-center gap-1.5 text-sm text-[#737373] hover:text-[#0F0F0F] transition-colors shrink-0"
@@ -153,8 +153,8 @@ export default function ResumeDetail() {
           {score.rank && <span className="text-xs font-normal text-[#737373] ml-1">#{score.rank}</span>}
         </div>
 
-        {/* Panel toggles */}
-        <div className="flex items-center gap-1 shrink-0 ml-1">
+        {/* Panel toggles — desktop only; on mobile the layout stacks and these don't apply. */}
+        <div className="hidden md:flex items-center gap-1 shrink-0 ml-1">
           <button
             onClick={() => { setPdfCollapsed(false); setInfoCollapsed(false); setLeftWidth(42); }}
             title="Reset layout"
@@ -180,7 +180,16 @@ export default function ResumeDetail() {
       </header>
 
       {/* ─── Body ──────────────────────────────────────────────── */}
-      <div ref={containerRef} className="flex flex-1 min-h-0 overflow-hidden select-none">
+      {/* Mobile (<md) stacks the panels and forces the analysis pane to 100% width
+          via a global CSS rule keyed off data-resume-pane (see globals.css). The PDF
+          embed is hidden on mobile because iOS Safari renders <iframe> PDFs poorly;
+          users can still download via the in-card link below. Desktop layout (md+)
+          uses the existing percent-width split + drag-resize divider. */}
+      <div
+        ref={containerRef}
+        className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden select-none"
+        data-resume-body
+      >
 
         {/* Collapsed analysis restore strip — LEFT edge */}
         {infoCollapsed && !pdfCollapsed && (
@@ -201,6 +210,7 @@ export default function ResumeDetail() {
           <div
             className="flex flex-col border-r border-[#E8E5DF] overflow-y-auto"
             style={{ width: pdfCollapsed ? "100%" : `${leftWidth}%` }}
+            data-resume-pane="analysis"
           >
             <div className="max-w-xl mx-auto px-6 py-6 space-y-5 w-full">
 
@@ -311,11 +321,12 @@ export default function ResumeDetail() {
           </div>
         )}
 
-        {/* Drag divider */}
+        {/* Drag divider — desktop only (no horizontal split on mobile). */}
         {!pdfCollapsed && !infoCollapsed && (
           <div
             onMouseDown={startDrag}
-            className="w-1.5 shrink-0 bg-[#E8E5DF] hover:bg-[#C85A17] cursor-col-resize transition-colors flex items-center justify-center group"
+            data-resume-divider
+            className="hidden md:flex w-1.5 shrink-0 bg-[#E8E5DF] hover:bg-[#C85A17] cursor-col-resize transition-colors items-center justify-center group"
             title="Drag to resize"
           >
             <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -324,9 +335,15 @@ export default function ResumeDetail() {
           </div>
         )}
 
-        {/* Right: PDF panel */}
+        {/* Right: PDF panel — hidden on mobile; iOS Safari renders iframe PDFs
+            poorly. The "Open" link inside the panel header still works on
+            mobile because the link is duplicated inside the analysis pane on
+            desktop too (and a future PR can expose it on mobile). */}
         {!pdfCollapsed && (
-          <div className="flex flex-col bg-[#F5F3EE] overflow-hidden flex-1 min-w-0">
+          <div
+            className="hidden md:flex flex-col bg-[#F5F3EE] overflow-hidden flex-1 min-w-0"
+            data-resume-pane="pdf"
+          >
             {/* PDF panel header */}
             <div className="h-9 shrink-0 border-b border-[#E8E5DF] bg-white px-4 flex items-center justify-between">
               <span className="text-xs text-[#737373] font-medium truncate max-w-[70%]">

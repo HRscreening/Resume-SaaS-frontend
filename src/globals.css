@@ -152,6 +152,16 @@ body {
   textarea {
     font-size: 16px;
   }
+
+  /* ResumeDetail: the analysis pane carries an inline `width: <leftWidth>%`
+     style for desktop's drag-resize split layout. On mobile we stack the
+     panels (PDF pane is hidden via `hidden md:flex`) and the analysis pane
+     should fill the column. Inline styles outrank class-based widths, so
+     we use a targeted !important override here rather than threading view
+     state into the React component. */
+  [data-resume-pane="analysis"] {
+    width: 100% !important;
+  }
 }
 
 /* Scrollbar */

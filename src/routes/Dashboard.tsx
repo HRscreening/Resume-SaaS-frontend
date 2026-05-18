@@ -53,20 +53,21 @@ export default function Dashboard() {
   const totalResumes = screenings.reduce((sum: number, s: ScreeningListItem) => sum + s.total_resumes, 0);
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6 md:mb-8 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#0F0F0F]">Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">Dashboard</h1>
         </div>
         <Link
           to="/screenings/new"
-          className="h-10 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center gap-2"
+          className="h-10 px-3 sm:px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center gap-2 shrink-0"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
             <path d="M7 1.5v11M1.5 7h11"/>
           </svg>
-          New screening
+          <span className="hidden sm:inline">New screening</span>
+          <span className="sm:hidden">New</span>
         </Link>
       </div>
 
@@ -90,7 +91,7 @@ export default function Dashboard() {
 
       {/* Quota-exhausted banner — shown when usage has reached or passed the limit */}
       {usage && usage.quota_limit > 0 && usage.resumes_processed >= usage.quota_limit && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 flex items-start gap-3">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 flex flex-col sm:flex-row sm:items-start gap-3">
           <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#DC2626" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M8 1.5L1 14h14L8 1.5z" />
@@ -110,7 +111,7 @@ export default function Dashboard() {
           <Link
             to="/settings"
             hash="billing"
-            className="shrink-0 h-8 px-3 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center"
+            className="shrink-0 self-start h-8 px-3 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center"
           >
             Upgrade plan
           </Link>
