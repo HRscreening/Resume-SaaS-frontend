@@ -8,6 +8,8 @@ import {
 } from "@tanstack/react-router";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { MobileNav } from "@/components/layout/MobileNav";
+import { cn } from "@/lib/utils";
 import { queryClient } from "@/lib/queryClient";
 import {
   getScreening, getResults, getBatchProgress, getResumeDetailFull,
@@ -53,8 +55,28 @@ function AppLayout({isSidebarRequired = true}: {isSidebarRequired?: boolean}) {
   return (
     <AuthGuard>
       <div className="flex min-h-screen">
-        {isSidebarRequired && <Sidebar />}
-        <main className="flex-1 min-w-0" style={{ backgroundColor: "#F5F3EE" }}>
+        {/*
+          Sidebar (desktop, ≥md) is sticky in the flex row; MobileNav (<md)
+          is fixed-position above the main column. Both share state-bearing
+          SidebarInner so nav/usage/menu logic isn't duplicated.
+        */}
+        {isSidebarRequired && (
+          <>
+            <Sidebar />
+            <MobileNav />
+          </>
+        )}
+        {/*
+          pt-14 reserves space for the fixed mobile top bar; md:pt-0 reclaims
+          it on desktop where the sidebar is inline.
+        */}
+        <main
+          className={cn(
+            "flex-1 min-w-0",
+            isSidebarRequired && "pt-14 md:pt-0",
+          )}
+          style={{ backgroundColor: "#F5F3EE" }}
+        >
           <Outlet />
         </main>
       </div>
