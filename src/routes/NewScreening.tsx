@@ -154,10 +154,10 @@ export default function NewScreening() {
   const totalWeight = rubric?.categories.reduce((s, c) => s + c.weight, 0) ?? 0;
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#0F0F0F] mb-4">New Job</h1>
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F] mb-4">New Job</h1>
         <div className="flex items-center gap-0">
           {(["Job description", "Review rubric"] as const).map((label, i) => {
             const s = (i + 1) as Step;
@@ -184,7 +184,7 @@ export default function NewScreening() {
 
       {/* Step 1: JD */}
       {step === 1 && (
-        <div className="bg-white rounded-2xl border border-[#E8E5DF] p-8">
+        <div className="bg-white rounded-2xl border border-[#E8E5DF] p-5 sm:p-6 md:p-8">
           <h2 className="text-lg font-semibold text-[#0F0F0F] mb-1">Job description</h2>
           <p className="text-sm text-[#737373] mb-6">We'll auto-generate a 3-category scoring rubric from your JD.</p>
           <div className="space-y-5">
@@ -274,8 +274,14 @@ export default function NewScreening() {
                     <div className="h-10 w-10 rounded-full bg-[#F5F3EE] border border-[#D4D4D4] flex items-center justify-center mx-auto mb-3">
                       <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
                     </div>
-                    <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop your JD file here</p>
-                    <p className="text-xs text-[#737373]">or click to browse</p>
+                    <p className="text-sm font-medium text-[#0F0F0F] mb-1">
+                      <span className="hidden md:inline">Drop your JD file here</span>
+                      <span className="md:hidden">Tap to choose a JD file</span>
+                    </p>
+                    <p className="text-xs text-[#737373]">
+                      <span className="hidden md:inline">or click to browse</span>
+                      <span className="md:hidden">from your phone's files</span>
+                    </p>
                     <p className="text-xs font-semibold text-[#A0A0A0] mt-2 uppercase tracking-wide">PDF or DOCX · single file</p>
                   </div>
                 )
