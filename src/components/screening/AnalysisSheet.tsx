@@ -155,7 +155,9 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        className="!max-w-[600px] overflow-y-auto p-0 !z-40"
+        // Mobile: full-width overlay (the underlying SheetContent default is
+        // w-3/4 — too narrow at 320–430 px to be useful). sm+: cap at 600 px.
+        className="!w-full sm:!max-w-[600px] overflow-y-auto p-0 !z-40"
       >
         <SheetHeader className="px-6 pt-6 pb-3 border-b border-[#E8E5DF]">
           <div className="flex items-center justify-between gap-3 mt-4">

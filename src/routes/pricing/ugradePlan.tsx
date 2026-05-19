@@ -30,7 +30,7 @@ const Check = () => (
 );
 
 const cardBaseClass =
-    'flex h-full flex-col rounded-xl border border-[#ebe8e2] bg-white p-7 transition-all hover:shadow-lg';
+    'flex h-full flex-col rounded-xl border border-[#ebe8e2] bg-white p-6 sm:p-7 transition-all hover:shadow-lg';
 const cardFeaturedClass =
     'relative shadow-[0_8px_40px_rgba(0,0,0,0.10)] !border-[#2c2c2c]';
 const featuredBadgeAfter =
@@ -51,7 +51,7 @@ const PriceAmount = ({ amount }: { amount: string }) => (
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.3, ease }}
-            className="inline-block text-[40px] font-extrabold tracking-[-1.5px] text-[#2c2c2c]"
+            className="inline-block text-[34px] sm:text-[40px] font-extrabold tracking-[-1.5px] text-[#2c2c2c]"
         >
             {amount}
         </motion.span>
@@ -210,7 +210,11 @@ const Pricing = () => {
                 whileInView="show"
                 viewport={{ once: true, amount: 0.2 }}
                 variants={gridVariants}
-                className="mx-auto mt-14 grid max-w-105 grid-cols-1 gap-4 md:max-w-none md:grid-cols-4"
+                // Mobile gap-6 leaves room for the featured card's "Most
+                // Popular" pseudo-badge ('after:-top-3') to overhang
+                // cleanly when cards stack. md+ tightens to gap-4 to keep
+                // the comparison row visually unified.
+                className="mx-auto mt-10 sm:mt-14 grid max-w-105 grid-cols-1 gap-6 md:max-w-none md:grid-cols-4 md:gap-4"
             >
                 {orderedPlans.map((plan, planIdx) => {
                     const isFeatured = plan.key === 'PLUS' && (!isLoggedIn || currentPlan === 'FREE');

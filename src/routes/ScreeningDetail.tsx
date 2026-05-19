@@ -10,7 +10,7 @@ import type { ScreeningListItem } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";
 import type { RankedCandidate, RubricCategory } from "@/types";
 import { TIERS, getTier, TierSection, type TierId } from "@/components/screening/TierSection";
-import { useAnalysisSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/components/screening/AnalysisSheet";
+import { useAnalysisSheetOpen } from "@/components/screening/AnalysisSheet";
 import { ProcessingAccordion } from "@/components/screening/ProcessingAccordion";
 import { RubricModal } from "@/components/screening/RubricModal";
 import { FailedView } from "@/components/screening/FailedView";
@@ -376,8 +376,11 @@ export default function ScreeningDetail() {
 
   return (
     <div
-      className="flex flex-col transition-[margin] duration-200 ease-out"
-      style={{ marginRight: analysisOpen ? ANALYSIS_SHEET_WIDTH : 0 }}
+      // On md+, push the page content left to make room for the open
+      // analysis sheet (600 px). On mobile the sheet overlays full-screen
+      // (see AnalysisSheet) so no shift is needed — pushing 600 px on a
+      // 320 px viewport would hide the page entirely.
+      className={`flex flex-col transition-[margin] duration-200 ease-out ${analysisOpen ? "md:mr-[600px]" : ""}`}
     >
       {/* Header */}
       <div className="px-4 pt-6 pb-4 sm:px-6 sm:pt-8 md:px-8 shrink-0">
