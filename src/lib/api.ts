@@ -8,10 +8,12 @@ import type {
   Rubric,
   Screening,
   ScreeningListItem,
-  RankedCandidate,
+  PaginatedResults,
   BatchProgress,
   Resume,
   Score,
+  StagesMap,
+  HiringStage,
 } from "@/types";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
@@ -211,8 +213,17 @@ export async function getScreening(id: string): Promise<Screening> {
   return request<Screening>(`/api/screenings/${id}`);
 }
 
-export async function getResults(screeningId: string): Promise<RankedCandidate[]> {
-  return request<RankedCandidate[]>(`/api/screenings/${screeningId}/results`);
+// New paginated results endpoint. Backend no longer returns per-criterion
+// breakdowns in the list payload — instead each candidate carries pre-aggregated
+// `category_scores`. Detailed criterion data is fetched on demand via
+// getResumeDetail when the analysis sheet opens.
+export async function getResults(
+  screeningId: string,
+  page = 1,
+  pageSize = 20,
+): Promise<PaginatedResults> {
+  const qs = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  return request<PaginatedResults>(`/api/v1/screenings/${screeningId}/results?${qs.toString()}`);
 }
 
 export async function getResumeDetail(
@@ -320,14 +331,47 @@ export async function updateRubric(
   });
 }
 
-// Re-score every resume in the screening against the current rubric.
+// Re-score resumes in the screening against the current rubric.
 // Backend endpoint TBD — assumes POST /rescore which kicks off a new batch
 // and returns the new batch_id. The UI then polls batch-progress as usual.
+// Pass `resume_ids` to rescore a subset; omit/empty to rescore all.
 export async function rescoreScreening(
   screeningId: string,
+  body?: { resume_ids?: string[] },
 ): Promise<{ screening_id: string; batch_id: string; total_resumes: number }> {
   return request<{ screening_id: string; batch_id: string; total_resumes: number }>(
     `/api/screenings/${screeningId}/rescore`,
+    {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+    },
+  );
+}
+
+// Persist the full stages configuration for a screening. Backend contract:
+// POST /api/screenings/:id/save-stages with the StagesMap as the raw body
+// (not wrapped). Always send the complete current map — the endpoint
+// replaces, not merges.
+export async function saveScreeningStages(
+  screeningId: string,
+  stages: StagesMap,
+): Promise<string> {
+  return request<string>(`/api/v1/screenings/${screeningId}/save-stages`, {
+    method: "POST",
+    body: JSON.stringify(stages),
+  });
+}
+
+// Update a single candidate's current stage. Backend contract:
+// POST /api/v1/scores/:scoreId/update-stage?new_stage=<stage>. Returns a
+// plain string body.
+export async function updateCandidateStage(
+  scoreId: string,
+  stage: HiringStage,
+): Promise<string> {
+  const qs = new URLSearchParams({ new_stage: stage });
+  return request<string>(
+    `/api/v1/scores/${scoreId}/update-stage?${qs.toString()}`,
     { method: "POST" },
   );
 }

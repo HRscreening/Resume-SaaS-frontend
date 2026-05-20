@@ -4,9 +4,12 @@ interface PaginationProps {
   total: number;
   pageSize: number;
   onChange: (page: number) => void;
+  // Hover-prefetch hook — parent fires its results query for `page` so the
+  // click lands on warm cache. No-op if omitted.
+  onPrefetchPage?: (page: number) => void;
 }
 
-export function Pagination({ currentPage, totalPages, total, pageSize, onChange }: PaginationProps) {
+export function Pagination({ currentPage, totalPages, total, pageSize, onChange, onPrefetchPage }: PaginationProps) {
   const start = (currentPage - 1) * pageSize + 1;
   const end = Math.min(currentPage * pageSize, total);
 
@@ -32,13 +35,15 @@ export function Pagination({ currentPage, totalPages, total, pageSize, onChange 
     "border-[#E8E5DF] bg-white text-[#D4D4D4] cursor-not-allowed";
 
   return (
-    <div className="flex items-center justify-between px-1 pt-1">
+    <div className="flex items-center justify-between w-full px-1 pt-1">
       <p className="text-xs text-[#737373]">
         Showing <span className="font-semibold text-[#404040]">{start}</span>–<span className="font-semibold text-[#404040]">{end}</span> of <span className="font-semibold text-[#404040]">{total}</span>
       </p>
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => onChange(currentPage - 1)}
+          onMouseEnter={() => currentPage > 1 && onPrefetchPage?.(currentPage - 1)}
+          onFocus={() => currentPage > 1 && onPrefetchPage?.(currentPage - 1)}
           disabled={currentPage <= 1}
           className={`${btnBase} ${currentPage <= 1 ? btnDisabled : btnIdle}`}
           aria-label="Previous page"
@@ -52,6 +57,8 @@ export function Pagination({ currentPage, totalPages, total, pageSize, onChange 
             <button
               key={p}
               onClick={() => onChange(p)}
+              onMouseEnter={() => p !== currentPage && onPrefetchPage?.(p)}
+              onFocus={() => p !== currentPage && onPrefetchPage?.(p)}
               className={`${btnBase} ${p === currentPage ? btnActive : btnIdle}`}
               aria-current={p === currentPage ? "page" : undefined}
             >
@@ -61,6 +68,8 @@ export function Pagination({ currentPage, totalPages, total, pageSize, onChange 
         )}
         <button
           onClick={() => onChange(currentPage + 1)}
+          onMouseEnter={() => currentPage < totalPages && onPrefetchPage?.(currentPage + 1)}
+          onFocus={() => currentPage < totalPages && onPrefetchPage?.(currentPage + 1)}
           disabled={currentPage >= totalPages}
           className={`${btnBase} ${currentPage >= totalPages ? btnDisabled : btnIdle}`}
           aria-label="Next page"

@@ -23,11 +23,15 @@ export default function EditRubric() {
     queryFn: () => getScreening(id),
   });
 
-  const { data: candidates = [] } = useQuery({
-    queryKey: ["results", id],
-    queryFn: () => getResults(id),
+  // Only need the candidate count here, not the rows themselves — pull the
+  // first page and rely on the server's `total` for the "re-score N candidates"
+  // copy. Cheaper than fetching the whole list.
+  const { data: resultsPage } = useQuery({
+    queryKey: ["results", id, 1, 1],
+    queryFn: () => getResults(id, 1, 1),
     enabled: !!screening,
   });
+  const candidatesCount = resultsPage?.total ?? 0;
 
   const initialCategories = useMemo<RubricCategory[]>(
     () => ((screening?.rubric as Rubric | null)?.categories ?? []),
@@ -111,8 +115,8 @@ export default function EditRubric() {
       await updateRubric(id, nextRubric);
 
       // Update the cached screening with the new rubric so the screening page
-      // doesn't briefly show stale categories. Status flip + rescore happens
-      // on the screening page itself (via the `rescore=1` search param).
+      // doesn't briefly show stale categories. Rescore is now an explicit
+      // action the user takes from the screening page via the Rescore button.
       queryClient.setQueryData(
         ["screening", id],
         (old: Screening | undefined) =>
@@ -122,7 +126,7 @@ export default function EditRubric() {
       navigate({
         to: "/screenings/$id",
         params: { id },
-        search: { rescore: 1 },
+        search: { saved: 1 },
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save rubric");
@@ -157,7 +161,7 @@ export default function EditRubric() {
           <div>
             <h1 className="text-2xl font-bold text-[#0F0F0F]">Edit scoring rubric</h1>
             <p className="text-sm text-[#737373] mt-1">
-              Saving will re-score all <strong>{candidates.length}</strong> candidates with the new rubric. Existing scores will be replaced.
+              Save your changes, then choose which of the <strong>{candidatesCount}</strong> candidates to re-score from the screening page.
             </p>
           </div>
           <span
@@ -314,7 +318,7 @@ export default function EditRubric() {
         {confirmOpen ? (
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-sm text-[#404040]">
-              Re-score all <strong>{candidates.length}</strong> candidates with the new rubric? Existing scores will be replaced.
+              Save the updated rubric? Existing scores stay until you re-score from the screening page.
             </p>
             <div className="flex gap-2 shrink-0">
               <button
@@ -330,7 +334,7 @@ export default function EditRubric() {
                 className="h-10 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 flex items-center gap-2"
               >
                 {saving && <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
-                {saving ? "Re-scoring…" : "Confirm & re-score"}
+                {saving ? "Saving…" : "Save rubric"}
               </button>
             </div>
           </div>
@@ -342,7 +346,7 @@ export default function EditRubric() {
                 : totalWeight !== 100
                 ? `Category weights must total 100% (currently ${totalWeight}%).`
                 : dirty
-                ? "Ready to save and re-score."
+                ? "Ready to save."
                 : "No changes yet."}
             </p>
             <div className="flex gap-2 shrink-0">
@@ -358,7 +362,7 @@ export default function EditRubric() {
                 disabled={!canSave}
                 className="h-10 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Save & re-score
+                Save rubric
               </button>
             </div>
           </div>

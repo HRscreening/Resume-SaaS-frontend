@@ -261,23 +261,6 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                   </TooltipContent>
                   </Tooltip>
 
-                  {resume.pdf_url && (
-                    <Tooltip>
-                      <TooltipTrigger className="shrink-0">
-                      <a
-                        href={resume.pdf_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
-                        >
-                        <ExternalLink size={12} />
-                      </a>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">View Resume</p>
-                        </TooltipContent>
-                    </Tooltip>
-                  )}
                 </div>
               )}
             </div>

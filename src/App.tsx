@@ -191,10 +191,9 @@ const screeningDetailRoute = createRoute({
     queryClient.prefetchQuery({ queryKey: ["results", id], queryFn: () => getResults(id) });
     queryClient.prefetchQuery({ queryKey: ["batch-progress", id], queryFn: () => getBatchProgress(id) });
   },
-  validateSearch: (search: Record<string, unknown>): { rescore?: 1 } => {
-    // When set, the screening page will kick off a rescore on mount.
-    // Used after the EditRubric page saves a new rubric.
-    if (search.rescore === 1 || search.rescore === "1") return { rescore: 1 };
+  validateSearch: (search: Record<string, unknown>): { saved?: 1 } => {
+    // When set, the screening page will show a "Rubric saved" toast.
+    if (search.saved === 1 || search.saved === "1") return { saved: 1 };
     return {};
   },
 });

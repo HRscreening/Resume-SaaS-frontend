@@ -82,6 +82,13 @@ export interface RubricCriterion {
 
 export type ScreeningStatus = "draft" | "pending" | "processing" | "completed" | "failed";
 
+export interface StageConfig {
+  color: string;
+  index: number;
+}
+
+export type StagesMap = Record<string, StageConfig>;
+
 export interface Screening {
   id: string;
   user_id: string;
@@ -92,6 +99,7 @@ export interface Screening {
   total_resumes: number;
   scored_resumes: number;
   avg_score: number | null;
+  stages?: StagesMap;
   created_at: string;
   updated_at: string;
 }
@@ -153,17 +161,38 @@ export interface Resume {
   created_at: string;
 }
 
+export interface CategoryScore {
+  category: string;
+  avg_score: number;     // 0–10
+  criteria_count: number;
+}
+
+// Hiring pipeline stage. Backend sends a free-form label (e.g. "Applied",
+// "Shortlisted"); we keep it as a string and pin a known set of options in
+// the UI for the dropdown. New stages added server-side surface automatically
+// — they just won't appear as preset options until added to STAGES.
+export type HiringStage = string;
+
 export interface RankedCandidate {
   rank: number;
   resume_id: string;
+  score_id: string;
   filename: string;
   candidate_name: string | null;
   candidate_email: string | null;
   candidate_phone: string | null;
   candidate_current_job: string | null;
   overall_score: number;
-  top_criteria: CriterionScore[];
+  category_scores: CategoryScore[];
   overall_summary: string;
+  stage?: HiringStage;
+}
+
+export interface PaginatedResults {
+  items: RankedCandidate[];
+  page: number;
+  page_size: number;
+  total: number;
 }
 
 // ─── Batch Progress ──────────────────────────────────────────────────────────
