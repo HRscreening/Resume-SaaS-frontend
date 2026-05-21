@@ -386,7 +386,11 @@ export default function NewScreening() {
                           )}
                         </div>
                       )}
-                      <div className="flex items-start gap-3">
+                      {/* Mobile: stack inputs on top, weight+delete controls
+                          below (so the name input gets the full row width
+                          instead of being squeezed to ~90 px by the right-
+                          side cluster). sm+ keeps the original side-by-side. */}
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-3">
                         <div className="flex-1 min-w-0 space-y-2">
                           {/* Name input — pencil icon + bolder border makes
                               it obvious this is a clickable field, not a
@@ -421,9 +425,11 @@ export default function NewScreening() {
                             </svg>
                           </div>
                         </div>
-                        {/* Importance 1–5 picker */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="flex flex-col items-end gap-1">
+                        {/* Importance 1-5 picker + delete. Mobile: full-width
+                            row below the inputs, weights left, X far right.
+                            sm+: original right-cluster layout. */}
+                        <div className="flex items-center justify-between gap-2 sm:justify-end sm:shrink-0">
+                          <div className="flex flex-col items-start sm:items-end gap-1">
                             <div className="flex items-center gap-1">
                               {([1, 2, 3, 4, 5] as const).map((lvl) => (
                                 <button
@@ -431,7 +437,7 @@ export default function NewScreening() {
                                   type="button"
                                   onClick={() => updateSubcategory(catIdx, subIdx, { weight: lvl })}
                                   title={["Low", "Moderate", "Standard", "Important", "Critical"][lvl - 1]}
-                                  className={`h-6 w-6 rounded-md text-xs font-bold transition-colors ${
+                                  className={`h-7 w-7 sm:h-6 sm:w-6 rounded-md text-xs font-bold transition-colors ${
                                     lvl <= sub.weight
                                       ? "bg-[#0F0F0F] text-white"
                                       : "bg-[#F0EDE8] text-[#A0A0A0] hover:bg-[#E8E5DF]"
@@ -448,9 +454,9 @@ export default function NewScreening() {
                           <button
                             onClick={() => removeSubcategory(catIdx, subIdx)}
                             title="Delete subcategory"
-                            className="h-7 w-7 rounded-lg border border-[#E8E5DF] text-[#737373] hover:text-red-600 hover:border-red-300 hover:bg-red-50 flex items-center justify-center transition-colors"
+                            className="h-9 w-9 sm:h-7 sm:w-7 rounded-lg border border-[#E8E5DF] text-[#737373] hover:text-red-600 hover:border-red-300 hover:bg-red-50 flex items-center justify-center transition-colors shrink-0"
                           >
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8" /></svg>
+                            <svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="sm:w-3 sm:h-3"><path d="M2 2l8 8M10 2l-8 8" /></svg>
                           </button>
                         </div>
                       </div>

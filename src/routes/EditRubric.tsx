@@ -141,7 +141,7 @@ export default function EditRubric() {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2 text-xs">
@@ -153,15 +153,15 @@ export default function EditRubric() {
           <span className="text-[#D4D4D4]">/</span>
           <span className="text-[#404040]">Edit rubric</span>
         </div>
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#0F0F0F]">Edit scoring rubric</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">Edit scoring rubric</h1>
             <p className="text-sm text-[#737373] mt-1">
               Saving will re-score all <strong>{candidates.length}</strong> candidates with the new rubric. Existing scores will be replaced.
             </p>
           </div>
           <span
-            className={`text-xs font-medium px-2.5 py-1 rounded-md shrink-0 ${
+            className={`text-xs font-medium px-2.5 py-1 rounded-md self-start sm:shrink-0 ${
               totalWeight === 100 ? "text-green-700 bg-green-50" : "text-red-700 bg-red-50"
             }`}
           >
@@ -180,12 +180,12 @@ export default function EditRubric() {
           const color = CATEGORY_COLORS[catIdx] ?? CATEGORY_COLORS[0];
           return (
             <div key={`${cat.name}-${catIdx}`} className={`rounded-2xl border-2 overflow-hidden ${color.border}`}>
-              <div className={`px-5 py-4 ${color.bg} flex items-center justify-between`}>
-                <div className="flex items-center gap-2.5">
-                  <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color.dot }} />
-                  <h3 className={`text-sm font-bold ${color.text}`}>{cat.name}</h3>
+              <div className={`px-4 sm:px-5 py-4 ${color.bg} flex flex-wrap items-center justify-between gap-3`}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: color.dot }} />
+                  <h3 className={`text-sm font-bold ${color.text} truncate`}>{cat.name}</h3>
                 </div>
-                <div className="flex items-center gap-2.5 min-w-[180px]">
+                <div className="flex items-center gap-2.5 min-w-[180px] w-full sm:w-auto">
                   <input
                     type="range"
                     min={0}
@@ -234,7 +234,10 @@ export default function EditRubric() {
                         External Signal
                       </button>
                     </div>
-                    <div className="flex items-start gap-3">
+                    {/* Mobile: stack inputs / controls vertically so the name
+                        input gets full row width. sm+ keeps the side-by-side
+                        layout. */}
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-3">
                       <div className="flex-1 min-w-0 space-y-2">
                         <input
                           type="text"
@@ -252,8 +255,8 @@ export default function EditRubric() {
                           className="w-full text-xs text-[#737373] bg-white border border-[#E8E5DF] rounded-md px-2.5 py-1.5 hover:border-[#A0A0A0] focus:border-[#C85A17] focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors"
                         />
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-center justify-between gap-2 sm:justify-end sm:shrink-0">
+                        <div className="flex flex-col items-start sm:items-end gap-1">
                           <div className="flex items-center gap-1">
                             {([1, 2, 3, 4, 5] as const).map((lvl) => (
                               <button
@@ -261,7 +264,7 @@ export default function EditRubric() {
                                 type="button"
                                 onClick={() => updateSub(catIdx, subIdx, { weight: lvl })}
                                 title={IMPORTANCE_LABELS[lvl - 1]}
-                                className={`h-6 w-6 rounded-md text-xs font-bold transition-colors ${
+                                className={`h-7 w-7 sm:h-6 sm:w-6 rounded-md text-xs font-bold transition-colors ${
                                   lvl <= sub.weight
                                     ? "bg-[#0F0F0F] text-white"
                                     : "bg-[#F0EDE8] text-[#A0A0A0] hover:bg-[#E8E5DF]"
@@ -278,9 +281,9 @@ export default function EditRubric() {
                         <button
                           onClick={() => removeSub(catIdx, subIdx)}
                           title="Delete subcategory"
-                          className="h-7 w-7 rounded-lg border border-[#E8E5DF] text-[#737373] hover:text-red-600 hover:border-red-300 hover:bg-red-50 flex items-center justify-center transition-colors"
+                          className="h-9 w-9 sm:h-7 sm:w-7 rounded-lg border border-[#E8E5DF] text-[#737373] hover:text-red-600 hover:border-red-300 hover:bg-red-50 flex items-center justify-center transition-colors shrink-0"
                         >
-                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                          <svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="sm:w-3 sm:h-3">
                             <path d="M2 2l8 8M10 2l-8 8" />
                           </svg>
                         </button>
