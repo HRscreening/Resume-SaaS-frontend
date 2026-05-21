@@ -411,15 +411,21 @@ export default function NewScreening() {
                               </svg>
                             )}
                           </div>
+                          {/* Description is a <textarea> not <input> so long
+                              text wraps to multiple lines on narrow viewports
+                              instead of being clipped after the visible width
+                              (~30-40 chars on a 320 px phone). rows=2 shows
+                              about a sentence; longer descriptions scroll
+                              internally. */}
                           <div className="relative group">
-                            <input
-                              type="text"
+                            <textarea
                               value={sub.description}
                               onChange={(e) => updateSubcategory(catIdx, subIdx, { description: e.target.value })}
                               placeholder="Brief description of what to evaluate..."
-                              className="w-full text-xs text-[#737373] bg-[#FAFAF8] border border-[#D4D4D4] rounded-md pl-2.5 pr-7 py-1.5 hover:border-[#737373] hover:bg-white focus:border-[#C85A17] focus:bg-white focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors"
+                              rows={2}
+                              className="w-full text-xs text-[#737373] bg-[#FAFAF8] border border-[#D4D4D4] rounded-md pl-2.5 pr-7 py-1.5 hover:border-[#737373] hover:bg-white focus:border-[#C85A17] focus:bg-white focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors resize-none"
                             />
-                            <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#0F0F0F] group-hover:text-[#0F0F0F] group-focus-within:text-[#C85A17] transition-colors" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-2 text-[#0F0F0F] group-hover:text-[#0F0F0F] group-focus-within:text-[#C85A17] transition-colors" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M11 1.5L14.5 5 5 14.5 1.5 14.5 1.5 11z"/>
                               <path d="M9 3.5L12.5 7"/>
                             </svg>

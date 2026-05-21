@@ -247,12 +247,16 @@ export default function EditRubric() {
                           disabled={sub.is_external_context}
                           className="w-full text-sm font-medium text-[#0F0F0F] bg-white border border-[#E8E5DF] rounded-md px-2.5 py-1.5 hover:border-[#A0A0A0] focus:border-[#C85A17] focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-[#F5F4F1]"
                         />
-                        <input
-                          type="text"
+                        {/* Multi-line so long descriptions wrap rather than
+                            being clipped on narrow viewports — single-line
+                            <input> truncated values like 'Hands-on experience
+                            with Docker, K…' on a 320 px screen. */}
+                        <textarea
                           value={sub.description}
                           onChange={(e) => updateSub(catIdx, subIdx, { description: e.target.value })}
                           placeholder="Brief description of what to evaluate..."
-                          className="w-full text-xs text-[#737373] bg-white border border-[#E8E5DF] rounded-md px-2.5 py-1.5 hover:border-[#A0A0A0] focus:border-[#C85A17] focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors"
+                          rows={2}
+                          className="w-full text-xs text-[#737373] bg-white border border-[#E8E5DF] rounded-md px-2.5 py-1.5 hover:border-[#A0A0A0] focus:border-[#C85A17] focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors resize-none"
                         />
                       </div>
                       <div className="flex items-center justify-between gap-2 sm:justify-end sm:shrink-0">
