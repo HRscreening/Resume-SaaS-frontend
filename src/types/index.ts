@@ -195,6 +195,39 @@ export interface PaginatedResults {
   total: number;
 }
 
+// ─── Candidate Query (filter / sort / search) ────────────────────────────────
+
+export interface RangeFilter {
+  min?: number;
+  max?: number;
+}
+
+// Sort fields are either fixed columns ("overall_score", "candidate_name",
+// "stage") or a per-rubric-category score prefixed with "cat:". Backend is
+// expected to parse the prefix and resolve the category by name.
+export type SortField = "overall_score" | "candidate_name" | "stage" | `cat:${string}`;
+
+export interface SortRule {
+  field: SortField;
+  direction: "asc" | "desc";
+}
+
+// Match tier filter values mirror src/lib/tier.ts TIERS so the chip in the
+// table column and the filter dropdown stay in sync.
+export type MatchTierId = "strong" | "potential" | "risky" | "poor";
+
+export interface CandidateQueryState {
+  page: number;
+  page_size: number;
+  search: string;
+  stage: string[];
+  match: MatchTierId[];
+  overall_score?: RangeFilter;
+  // Keyed by rubric category name. Stored exactly as it appears in the rubric.
+  category_scores: Record<string, RangeFilter>;
+  sort: SortRule[];
+}
+
 // ─── Batch Progress ──────────────────────────────────────────────────────────
 
 export interface SkippedFile {

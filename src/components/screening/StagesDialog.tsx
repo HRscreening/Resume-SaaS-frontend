@@ -177,6 +177,16 @@ export function StagesDialog({ open, onClose, stages, onSave }: StagesDialogProp
         </div>
 
         <div className="px-3 py-3 max-h-[60vh] overflow-y-auto">
+          <div className="mx-1.5 mb-2.5 flex items-start gap-2 rounded-lg border border-[#F0DCC4] bg-[#FBF1E7] px-2.5 py-2 text-[11px] leading-snug text-[#7A4A1F]">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
+              <circle cx="6" cy="6" r="5" /><path d="M6 5.5v3M6 3.5v.01" />
+            </svg>
+            <span>
+              <span className="font-semibold">Order = pipeline progression.</span>{" "}
+              Stages flow top → bottom, so candidates can only advance forward.
+              For example, <span className="font-medium">Applied → Shortlisted → Interviewed → Hired</span> means a candidate in <em>Interviewed</em> can move to <em>Hired</em> but not back to <em>Applied</em>.
+            </span>
+          </div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={ids} strategy={verticalListSortingStrategy}>
               <ul className="space-y-1">

@@ -28,7 +28,7 @@ export default function EditRubric() {
   // copy. Cheaper than fetching the whole list.
   const { data: resultsPage } = useQuery({
     queryKey: ["results", id, 1, 1],
-    queryFn: () => getResults(id, 1, 1),
+    queryFn: () => getResults(id, { page: 1, page_size: 1 }),
     enabled: !!screening,
   });
   const candidatesCount = resultsPage?.total ?? 0;

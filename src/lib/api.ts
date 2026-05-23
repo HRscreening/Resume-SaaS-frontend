@@ -14,7 +14,9 @@ import type {
   Score,
   StagesMap,
   HiringStage,
+  CandidateQueryState,
 } from "@/types";
+import { toRequestParams } from "@/components/screening/filters/queryEncoding";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
@@ -217,12 +219,21 @@ export async function getScreening(id: string): Promise<Screening> {
 // breakdowns in the list payload — instead each candidate carries pre-aggregated
 // `category_scores`. Detailed criterion data is fetched on demand via
 // getResumeDetail when the analysis sheet opens.
+// Accepts either a full CandidateQueryState (preferred) or a plain
+// { page, page_size } object for callers that don't filter/sort. Unknown
+// params on the backend are tolerated by FastAPI, so it is safe to send
+// filter/sort keys ahead of the backend honoring them.
 export async function getResults(
   screeningId: string,
-  page = 1,
-  pageSize = 20,
+  params: CandidateQueryState | { page?: number; page_size?: number } = {},
 ): Promise<PaginatedResults> {
-  const qs = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+  const qs =
+    "search" in params || "stage" in params || "sort" in params
+      ? toRequestParams(params as CandidateQueryState)
+      : new URLSearchParams({
+          page: String((params as { page?: number }).page ?? 1),
+          page_size: String((params as { page_size?: number }).page_size ?? 20),
+        });
   return request<PaginatedResults>(`/api/v1/screenings/${screeningId}/results?${qs.toString()}`);
 }
 

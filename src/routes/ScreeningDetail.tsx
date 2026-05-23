@@ -2,10 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getScreening, getResults, getBatchProgress, exportResults,
+  getScreening, getBatchProgress, exportResults,
   uploadResumesToJob, addResumesToJob, rescoreScreening,
   saveScreeningStages, updateCandidateStage,
 } from "@/lib/api";
+import { useCandidateQuery } from "@/controllers/screening/useCandidateQuery";
 import type { ScreeningListItem, StagesMap, HiringStage, PaginatedResults } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";
 import type { RankedCandidate, RubricCategory } from "@/types";
@@ -17,12 +18,13 @@ import { RubricModal } from "@/components/screening/RubricModal";
 import { FailedView } from "@/components/screening/FailedView";
 import { CandidatesTable } from "@/components/screening/CandidatesTable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 const PAGE_SIZE = 10;
 
 export default function ScreeningDetail() {
   const { id } = useParams({ strict: false }) as { id: string };
-  const search = useSearch({ strict: false }) as { saved?: number };
+  const search = useSearch({ strict: false }) as { saved?: number } & Record<string, unknown>;
   const queryClient = useQueryClient();
 
   const navigate = useNavigate();
@@ -31,7 +33,6 @@ export default function ScreeningDetail() {
   const [exporting, setExporting] = useState(false);
   const [showRubric, setShowRubric] = useState(false);
   const [showStages, setShowStages] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const analysisOpen = useAnalysisSheetOpen();
 
   // Rescore selection mode — flipped on by the Rescore button in the action
@@ -45,7 +46,6 @@ export default function ScreeningDetail() {
   const [selectedDetails, setSelectedDetails] = useState<Record<string, RankedCandidate>>({});
   const [lastClickedId, setLastClickedId] = useState<string | null>(null);
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
-  const [savedToast, setSavedToast] = useState(false);
 
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
@@ -98,17 +98,32 @@ export default function ScreeningDetail() {
 
   const batchDone = progress?.status === "completed" || progress?.status === "failed";
 
-  // Results endpoint returns an empty page for draft / no-scored-yet — safe
-  // to fire unconditionally. Page is part of the key so each page is cached
-  // individually.
-  const { data: resultsPage, isFetching: resultsFetching, isPlaceholderData: resultsPlaceholder } = useQuery({
-    queryKey: ["results", id, currentPage, PAGE_SIZE],
-    queryFn: () => getResults(id, currentPage, PAGE_SIZE),
-    refetchInterval: () => {
-      if (batchDone) return false;
-      return 4000;
-    },
+  // Backend-driven query state (filters, sort, search, pagination) lives in
+  // the URL via useCandidateQuery. The hook also owns the results query,
+  // so we don't run a separate useQuery here.
+  const candidateQuery = useCandidateQuery(id, {
+    pageSize: PAGE_SIZE,
+    pollWhileProcessing: true,
+    batchDone,
   });
+  const {
+    state: queryState,
+    searchInput,
+    setSearch,
+    setStage,
+    setMatch,
+    setSort,
+    setOverallRange,
+    setCategoryRange,
+    setPage: setQueryPage,
+    clearAll,
+    prefetchPage,
+    query: resultsQuery,
+  } = candidateQuery;
+  const resultsPage = resultsQuery.data;
+  const resultsFetching = resultsQuery.isFetching;
+  const resultsPlaceholder = resultsQuery.isPlaceholderData;
+  const currentPage = queryState.page;
   const candidates = resultsPage?.items ?? [];
   const serverTotal = resultsPage?.total ?? 0;
   // Only show the in-table skeleton on a cold page-switch — `isFetching` is
@@ -129,20 +144,21 @@ export default function ScreeningDetail() {
   }, [batchDone, id, queryClient]);
 
   // Show a "Rubric saved" toast after returning from EditRubric (?saved=1).
-  // Auto-dismiss after a few seconds; strip the search param so a refresh
-  // won't re-fire it.
+  // Auto-dismiss after a few seconds; strip the saved=1 search param so a
+  // refresh won't re-fire it. Preserves any filter/sort state already in
+  // the URL.
   useEffect(() => {
     if (search.saved !== 1) return;
-    setSavedToast(true);
+    toast.success("Rubric saved", { duration: 3500 });
+    setRescoreMode(true);
+    const { saved: _saved, ...rest } = search as Record<string, unknown>;
     navigate({
       to: "/screenings/$id",
       params: { id },
-      search: {},
+      search: rest as never,
       replace: true,
     });
-    const t = setTimeout(() => setSavedToast(false), 3500);
-    return () => clearTimeout(t);
-  }, [search.saved, id, navigate]);
+  }, [search, id, navigate]);
 
   async function submitRescore() {
     if (selectedIds.size === 0 || rescoring) return;
@@ -882,16 +898,11 @@ export default function ScreeningDetail() {
                 total={tableTotal}
                 onPageChange={(p) => {
                   setOpenAnalysisSheet(null);
-                  setCurrentPage(p);
+                  setQueryPage(p);
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
                 loading={!showSelectedOnly && pageLoading}
-                onPrefetchPage={(p) => {
-                  queryClient.prefetchQuery({
-                    queryKey: ["results", id, p, PAGE_SIZE],
-                    queryFn: () => getResults(id, p, PAGE_SIZE),
-                  });
-                }}
+                onPrefetchPage={prefetchPage}
                 selectable={rescoreMode}
                 selectedIds={selectedIds}
                 onToggle={toggleSelection}
@@ -899,6 +910,24 @@ export default function ScreeningDetail() {
                 stages={stagesMap}
                 onCandidateStageChange={handleCandidateStageChange}
                 onManageStages={() => setShowStages(true)}
+                // Filter/sort/search are disabled in the "show selected
+                // only" view — those rows come from cross-page memory and
+                // sorting/filtering them server-side would be a category
+                // error. Toolbar reappears as soon as the user toggles
+                // back to the full list.
+                {...(showSelectedOnly
+                  ? {}
+                  : {
+                      queryState,
+                      searchInput,
+                      onSearchChange: setSearch,
+                      onStageFilterChange: setStage,
+                      onMatchFilterChange: setMatch,
+                      onSortChange: setSort,
+                      onOverallRangeChange: setOverallRange,
+                      onCategoryRangeChange: setCategoryRange,
+                      onClearAllFilters: clearAll,
+                    })}
               />
             );
           })()}
@@ -935,16 +964,6 @@ export default function ScreeningDetail() {
           )}
         </div>
       </div>
-
-      {/* Saved-rubric toast */}
-      {savedToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 px-4 py-2.5 rounded-xl bg-[#0F0F0F] text-white text-sm font-medium shadow-lg flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 7l3 3 5-6" />
-          </svg>
-          Rubric saved
-        </div>
-      )}
 
       {/* Rescore action bar — sticky bottom, only in rescore mode */}
       {rescoreMode && (() => {

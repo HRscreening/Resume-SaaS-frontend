@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { Toaster } from "@/components/ui/sonner";
 import { queryClient } from "@/lib/queryClient";
 import {
   getScreening, getResults, getBatchProgress, getResumeDetailFull,
@@ -15,7 +16,7 @@ import {
 import { queryKeys } from "@/lib/queryKeys";
 
 // ─── Eager imports (small pages — no spinner flash) ─────────
-import Landing from "@/routes/Landing";
+// import Landing from "@/routes/Landing";
 import Login from "@/routes/Login";
 import Signup from "@/routes/Signup";
 import ForgotPassword from "@/routes/ForgotPassword";
@@ -306,5 +307,10 @@ declare module "@tanstack/react-router" {
 // ─── App ────────────────────────────────────────────────────
 
 export function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster />
+    </>
+  );
 }

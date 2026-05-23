@@ -1,12 +1,14 @@
-import { useMemo, useState } from "react";
-import type { RankedCandidate, RubricCategory, HiringStage, StagesMap } from "@/types";
+import type { CandidateQueryState, HiringStage, MatchTierId, RangeFilter, RankedCandidate, RubricCategory, SortRule, StagesMap } from "@/types";
 import { getTier } from "@/lib/tier";
 import AnalysisSheet, { useAnalysisSheetOpen, useAnalysisSheetOpenId, setOpenAnalysisSheet } from "@/components/screening/AnalysisSheet";
 import { Pagination } from "@/components/screening/Pagination";
-import { FilterDialog } from "@/components/screening/FilterDialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { StageSelect } from "@/components/screening/StageSelect";
 import { sortedStages } from "@/lib/stages";
+import { CandidatesToolbar } from "@/components/screening/filters/CandidatesToolbar";
+import { ActiveFilterChips } from "@/components/screening/filters/ActiveFilterChips";
+import { SortableHeader } from "@/components/screening/filters/SortableHeader";
+import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
 
 interface CandidatesTableProps {
   candidates: RankedCandidate[];
@@ -32,6 +34,18 @@ interface CandidatesTableProps {
   stages: StagesMap;
   onCandidateStageChange: (resumeId: string, scoreId: string, next: HiringStage) => void;
   onManageStages: () => void;
+  // Filter / sort / search state. When provided, the toolbar + chips render
+  // and column headers become sortable. Optional so callers in selection
+  // ("show selected only") views can still render the table without filters.
+  queryState?: CandidateQueryState;
+  searchInput?: string;
+  onSearchChange?: (s: string) => void;
+  onStageFilterChange?: (next: string[]) => void;
+  onMatchFilterChange?: (next: MatchTierId[]) => void;
+  onSortChange?: (next: SortRule[]) => void;
+  onOverallRangeChange?: (range: RangeFilter | undefined) => void;
+  onCategoryRangeChange?: (name: string, range: RangeFilter | undefined) => void;
+  onClearAllFilters?: () => void;
 }
 
 export function CandidatesTable({
@@ -50,78 +64,71 @@ export function CandidatesTable({
   stages,
   onCandidateStageChange,
   onManageStages,
+  queryState,
+  searchInput,
+  onSearchChange,
+  onStageFilterChange,
+  onMatchFilterChange,
+  onSortChange,
+  onOverallRangeChange,
+  onCategoryRangeChange,
+  onClearAllFilters,
 }: CandidatesTableProps) {
   const compact = useAnalysisSheetOpen();
-  const [search, setSearch] = useState("");
-  const [filterOpen, setFilterOpen] = useState(false);
 
   // Default landing stage for a candidate that has no stage yet — the first
   // stage in the configured order (e.g. "Applied"). Falls back to "Applied"
   // string when the stages map is empty so the chip still renders.
   const defaultStage = sortedStages(stages)[0]?.name ?? "Applied";
 
-  // Client-side search across the current page. The new backend endpoint is
-  // paginated server-side, so this filters only what's already loaded — fine
-  // for a recruiter scrubbing a visible page; a future commit can lift this
-  // into the query string when the backend grows a search param.
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return candidates;
-    return candidates.filter((c) => {
-      const haystack = [
-        c.candidate_name,
-        c.candidate_email,
-        c.candidate_current_job,
-        c.filename,
-      ].filter(Boolean).join(" ").toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [candidates, search]);
-
+  // Filtering, searching, and sorting are now backend-driven (see
+  // useCandidateQuery). The page renders exactly what the API returned —
+  // no client-side narrowing here. The `searchInput` debounced through
+  // useCandidateQuery only echoes back into the toolbar text field.
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   // Header checkbox tri-state — reflects the current page's visible rows.
-  const visibleIds = filtered.map((c) => c.resume_id);
+  const visibleIds = candidates.map((c) => c.resume_id);
   const visibleSelectedCount = selectable && selectedIds
     ? visibleIds.filter((id) => selectedIds.has(id)).length
     : 0;
   const allVisibleSelected = visibleIds.length > 0 && visibleSelectedCount === visibleIds.length;
   const someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
 
+  // Render the toolbar + chips only when the parent wires the full query
+  // state (i.e. the live results view). The selection-only / "show selected"
+  // view leaves these props undefined and renders just the table.
+  const showToolbar = !!queryState && !!onStageFilterChange && !!onSortChange;
+
+  const sortRules: SortRule[] = queryState?.sort ?? [];
+
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <svg
-            width="14" height="14" viewBox="0 0 14 14" fill="none"
-            stroke="#A0A0A0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-          >
-            <circle cx="6" cy="6" r="4.5" /><path d="M9.5 9.5L12 12" />
-          </svg>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search candidates"
-            className="w-full h-9 pl-9 pr-3 rounded-xl border border-[#E8E5DF] bg-white text-sm text-[#0F0F0F] placeholder:text-[#A0A0A0] focus:outline-none focus:border-[#A0A0A0]"
+      {showToolbar && queryState && (
+        <>
+          <CandidatesToolbar
+            state={queryState}
+            searchInput={searchInput ?? ""}
+            stages={stages}
+            categories={categories}
+            onSearchChange={onSearchChange!}
+            onStageChange={onStageFilterChange!}
+            onMatchChange={onMatchFilterChange!}
+            onOverallChange={onOverallRangeChange!}
+            onCategoryChange={onCategoryRangeChange!}
           />
-        </div>
-        <button
-          onClick={() => setFilterOpen((v) => !v)}
-          className={`h-9 px-4 border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 ${
-            filterOpen
-              ? "border-[#0F0F0F] bg-[#0F0F0F] text-white"
-              : "border-[#D4D4D4] text-[#404040] bg-white hover:bg-[#F5F3EE]"
-          }`}
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 3h10M3.5 7h7M5 11h4" />
-          </svg>
-          Filter
-        </button>
-      </div>
+          {hasActiveFilters(queryState) && (
+            <ActiveFilterChips
+              state={queryState}
+              onRemoveStage={(s) => onStageFilterChange!(queryState.stage.filter((x) => x !== s))}
+              onRemoveMatch={(m) => onMatchFilterChange!(queryState.match.filter((x) => x !== m))}
+              onClearOverall={() => onOverallRangeChange!(undefined)}
+              onClearCategory={(name) => onCategoryRangeChange!(name, undefined)}
+              onClearAll={() => onClearAllFilters?.()}
+            />
+          )}
+        </>
+      )}
 
       {/* Table.
           Width strategy: use `table-fixed` with percentage-style flexible
@@ -159,36 +166,88 @@ export function CandidatesTable({
                     />
                   </th>
                 )}
-                <th className="pl-3 pr-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide sticky left-0 z-10 bg-[#F5F3EE]">Candidate</th>
+                {showToolbar ? (
+                  <SortableHeader
+                    field="candidate_name"
+                    sort={sortRules}
+                    onChange={onSortChange!}
+                    className="pl-3 pr-2 py-2.5 sticky left-0 z-10 bg-[#F5F3EE]"
+                  >
+                    Candidate
+                  </SortableHeader>
+                ) : (
+                  <th className="pl-3 pr-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide sticky left-0 z-10 bg-[#F5F3EE]">Candidate</th>
+                )}
                 {!compact && (
                   <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide">Role</th>
                 )}
-                <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
-                  <span className="block">Score</span>
-                  <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">/ 100</span>
-                </th>
-                {!compact && categories.map((cat) => (
-                  <th
-                    key={cat.name}
-                    className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide"
+                {showToolbar ? (
+                  <SortableHeader
+                    field="overall_score"
+                    sort={sortRules}
+                    onChange={onSortChange!}
+                    align="center"
+                    className="px-2 py-2.5"
+                    subtitle="/ 100"
                   >
+                    Score
+                  </SortableHeader>
+                ) : (
+                  <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
+                    <span className="block">Score</span>
+                    <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">/ 100</span>
+                  </th>
+                )}
+                {!compact && categories.map((cat) => {
+                  const subtitle = `/ 10 · ${cat.weight}%`;
+                  const tooltipLabel = (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        {/* Wrap in a span so the trigger is a real element with
-                            cursor-help — the full category name + weight + scale
-                            renders in the tooltip, while the header itself stays
-                            truncated to fit the column. */}
-                        <span className="block truncate cursor-help">{cat.name}</span>
+                        <span className="cursor-help">{cat.name}</span>
                       </TooltipTrigger>
                       <TooltipContent side="top">
                         <p className="text-xs font-medium">{cat.name}</p>
                         <p className="text-[10px] opacity-80">Weight {cat.weight}% · scored out of 10</p>
                       </TooltipContent>
                     </Tooltip>
-                    <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">/ 10 · {cat.weight}%</span>
-                  </th>
-                ))}
-                <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide">Stage</th>
+                  );
+                  return showToolbar ? (
+                    <SortableHeader
+                      key={cat.name}
+                      field={`cat:${cat.name}`}
+                      sort={sortRules}
+                      onChange={onSortChange!}
+                      align="center"
+                      // max-w-0 forces the cell to obey its colgroup width
+                      // instead of expanding to fit the (long) category
+                      // name, which is what makes truncate actually clip.
+                      className="px-2 py-2.5 max-w-0"
+                      subtitle={subtitle}
+                    >
+                      {tooltipLabel}
+                    </SortableHeader>
+                  ) : (
+                    <th
+                      key={cat.name}
+                      className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide max-w-0"
+                    >
+                      <span className="block truncate">{tooltipLabel}</span>
+                      <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">{subtitle}</span>
+                    </th>
+                  );
+                })}
+                {showToolbar ? (
+                  <SortableHeader
+                    field="stage"
+                    sort={sortRules}
+                    onChange={onSortChange!}
+                    className="px-2 py-2.5"
+                  >
+                    Stage
+                  </SortableHeader>
+                ) : (
+                  <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide">Stage</th>
+                )}
                 <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide">Match</th>
                 {!compact && <th className="px-2 py-2.5"></th>}
               </tr>
@@ -203,13 +262,15 @@ export function CandidatesTable({
                     selectable={selectable}
                   />
                 ))
-              ) : filtered.length === 0 ? (
+              ) : candidates.length === 0 ? (
                 <tr>
                   <td colSpan={3 + (compact ? 0 : categories.length + 3) + (selectable ? 1 : 0)} className="px-5 py-10 text-center text-sm text-[#737373]">
-                    No candidates match “{search}”.
+                    {queryState && hasActiveFilters(queryState)
+                      ? "No candidates match the current filters."
+                      : "No candidates yet."}
                   </td>
                 </tr>
-              ) : filtered.map((c) => (
+              ) : candidates.map((c) => (
                 <CandidateRow
                   key={c.resume_id}
                   candidate={c}
@@ -244,7 +305,6 @@ export function CandidatesTable({
         </div>
       )}
 
-      <FilterDialog open={filterOpen} onClose={() => setFilterOpen(false)} />
     </div>
   );
 }
