@@ -55,11 +55,11 @@ function RootLayout() {
 function AppLayout({isSidebarRequired = true}: {isSidebarRequired?: boolean}) {
   return (
     <AuthGuard>
-      <div className="flex min-h-screen">
+      <div className="flex h-screen overflow-hidden">
         {/*
-          Sidebar (desktop, ≥md) is sticky in the flex row; MobileNav (<md)
-          is fixed-position above the main column. Both share state-bearing
-          SidebarInner so nav/usage/menu logic isn't duplicated.
+          Sidebar (desktop, ≥md) sits inline at full viewport height;
+          MobileNav (<md) is fixed-position above the main column. Both
+          share state-bearing SidebarInner so logic isn't duplicated.
         */}
         {isSidebarRequired && (
           <>
@@ -68,12 +68,14 @@ function AppLayout({isSidebarRequired = true}: {isSidebarRequired?: boolean}) {
           </>
         )}
         {/*
-          pt-14 reserves space for the fixed mobile top bar; md:pt-0 reclaims
-          it on desktop where the sidebar is inline.
+          Main is the scroll container — page-level scrolling happens here,
+          not on the window, so the sidebar stays put at full height.
+          pt-14 reserves space for the fixed mobile top bar; md:pt-0
+          reclaims it on desktop where the sidebar is inline.
         */}
         <main
           className={cn(
-            "flex-1 min-w-0",
+            "flex-1 min-w-0 h-screen overflow-y-auto",
             isSidebarRequired && "pt-14 md:pt-0",
           )}
           style={{ backgroundColor: "#F5F3EE" }}

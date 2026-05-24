@@ -380,7 +380,7 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
  */
 export function Sidebar() {
   return (
-    <aside className="w-55 h-screen sticky top-0 hidden md:flex flex-col bg-white border-r border-[#E8E5DF] shrink-0">
+    <aside className="w-55 h-screen hidden md:flex flex-col bg-white border-r border-[#E8E5DF] shrink-0">
       <SidebarInner />
     </aside>
   );
