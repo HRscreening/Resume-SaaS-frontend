@@ -391,3 +391,17 @@ export async function cancelSubscription(): Promise<{
 }> {
   return request("/api/billing/cancel", { method: "POST" });
 }
+
+
+
+
+export async function sumbitContactUsForm(
+  data: { company_name: string; query: string },
+  isEnterprise: boolean,
+): Promise<void> {
+  return request(`/api/contact/authenticated?isEnterprise=${isEnterprise}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}

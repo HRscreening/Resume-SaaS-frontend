@@ -44,6 +44,7 @@ import EditRubric from "@/routes/EditRubric";
 // 
 import UgradePlan from "@/routes/pricing/ugradePlan";
 import Checkout from "@/routes/pricing/Checkout";
+import ContactUs from "@/routes/ContactUs";
 
 // ─── Layouts ────────────────────────────────────────────────
 
@@ -271,6 +272,12 @@ const upgradePlanRoute = createRoute({
   component: UgradePlan,
 });
 
+const contactUsRoute = createRoute({
+  getParentRoute: () => appLayoutNoSidebarRoute,
+  path: "/contact",
+  component: ContactUs,
+});
+
 const checkoutRoute = createRoute({
   getParentRoute: () => appLayoutNoSidebarRoute,
   path: "/checkout/$plan",
@@ -292,6 +299,7 @@ const routeTree = rootRoute.addChildren([
   privacyRoute,
   appLayoutNoSidebarRoute.addChildren([
     upgradePlanRoute,
+    contactUsRoute,
     checkoutRoute,
   ]),
   authOnlyLayoutRoute.addChildren([

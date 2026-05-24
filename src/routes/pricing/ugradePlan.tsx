@@ -272,9 +272,16 @@ const Pricing = () => {
                                 </span>
                             ) : isEnterprise ? (
                                 <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }} className="mt-auto">
-                                    <a href={home_page_url + '/contact'} className={ctaSecondary}>
+                                    {/* <a href={home_page_url + '/contact'} className={ctaSecondary}>
                                         {handleBtnTitle(plan)}
-                                    </a>
+                                    </a> */}
+                                    <Link
+                                        to="/contact"
+                                        search={{ from: 'upgradePlan' } as any}
+                                        className={ctaSecondary}
+                                    >
+                                        {handleBtnTitle(plan)}
+                                    </Link>
                                 </motion.div>
                             ) : isFree ? (
                                 <Link to="/dashboard">

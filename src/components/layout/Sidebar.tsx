@@ -81,9 +81,9 @@ const navItems: NavItem[] = [
 
 const PLAN_LABEL: Record<SubscriptionPlan, string> = {
   FREE: "Free",
-  PRO: "Starter",
+  PRO: "Pro",
   PLUS: "Plus",
-  ENTERPRISE: "Scale",
+  ENTERPRISE: "Enterprise",
 };
 
 function getInitials(name: string | null | undefined, email: string | null | undefined): string {
@@ -328,15 +328,13 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
             <div className="h-px bg-[#E8E5DF]" />
 
             <div className="py-1.5">
-              <a
-                href="https://hiresort.ai"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to="/contact"
                 className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
               >
                 <HelpIcon />
                 Help
-              </a>
+              </Link>
               <button
                 onClick={handleLogout}
                 disabled={loggingOut}
