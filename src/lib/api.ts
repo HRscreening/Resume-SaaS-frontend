@@ -351,7 +351,7 @@ export async function rescoreScreening(
   body?: { resume_ids?: string[] },
 ): Promise<{ screening_id: string; batch_id: string; total_resumes: number }> {
   return request<{ screening_id: string; batch_id: string; total_resumes: number }>(
-    `/api/screenings/${screeningId}/rescore`,
+    `/api/v1/scores/${screeningId}/rescore`,
     {
       method: "POST",
       body: JSON.stringify(body ?? {}),
