@@ -154,10 +154,10 @@ export default function NewScreening() {
   const totalWeight = rubric?.categories.reduce((s, c) => s + c.weight, 0) ?? 0;
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#0F0F0F] mb-4">New Job</h1>
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F] mb-4">New Job</h1>
         <div className="flex items-center gap-0">
           {(["Job description", "Review rubric"] as const).map((label, i) => {
             const s = (i + 1) as Step;
@@ -184,7 +184,7 @@ export default function NewScreening() {
 
       {/* Step 1: JD */}
       {step === 1 && (
-        <div className="bg-white rounded-2xl border border-[#E8E5DF] p-8">
+        <div className="bg-white rounded-2xl border border-[#E8E5DF] p-5 sm:p-6 md:p-8">
           <h2 className="text-lg font-semibold text-[#0F0F0F] mb-1">Job description</h2>
           <p className="text-sm text-[#737373] mb-6">We'll auto-generate a 3-category scoring rubric from your JD.</p>
           <div className="space-y-5">
@@ -274,8 +274,14 @@ export default function NewScreening() {
                     <div className="h-10 w-10 rounded-full bg-[#F5F3EE] border border-[#D4D4D4] flex items-center justify-center mx-auto mb-3">
                       <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
                     </div>
-                    <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop your JD file here</p>
-                    <p className="text-xs text-[#737373]">or click to browse</p>
+                    <p className="text-sm font-medium text-[#0F0F0F] mb-1">
+                      <span className="hidden md:inline">Drop your JD file here</span>
+                      <span className="md:hidden">Tap to choose a JD file</span>
+                    </p>
+                    <p className="text-xs text-[#737373]">
+                      <span className="hidden md:inline">or click to browse</span>
+                      <span className="md:hidden">from your phone's files</span>
+                    </p>
                     <p className="text-xs font-semibold text-[#A0A0A0] mt-2 uppercase tracking-wide">PDF or DOCX · single file</p>
                   </div>
                 )
@@ -380,7 +386,11 @@ export default function NewScreening() {
                           )}
                         </div>
                       )}
-                      <div className="flex items-start gap-3">
+                      {/* Mobile: stack inputs on top, weight+delete controls
+                          below (so the name input gets the full row width
+                          instead of being squeezed to ~90 px by the right-
+                          side cluster). sm+ keeps the original side-by-side. */}
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-3">
                         <div className="flex-1 min-w-0 space-y-2">
                           {/* Name input — pencil icon + bolder border makes
                               it obvious this is a clickable field, not a
@@ -401,23 +411,31 @@ export default function NewScreening() {
                               </svg>
                             )}
                           </div>
+                          {/* Description is a <textarea> not <input> so long
+                              text wraps to multiple lines on narrow viewports
+                              instead of being clipped after the visible width
+                              (~30-40 chars on a 320 px phone). rows=2 shows
+                              about a sentence; longer descriptions scroll
+                              internally. */}
                           <div className="relative group">
-                            <input
-                              type="text"
+                            <textarea
                               value={sub.description}
                               onChange={(e) => updateSubcategory(catIdx, subIdx, { description: e.target.value })}
                               placeholder="Brief description of what to evaluate..."
-                              className="w-full text-xs text-[#737373] bg-[#FAFAF8] border border-[#D4D4D4] rounded-md pl-2.5 pr-7 py-1.5 hover:border-[#737373] hover:bg-white focus:border-[#C85A17] focus:bg-white focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors"
+                              rows={2}
+                              className="w-full text-xs text-[#737373] bg-[#FAFAF8] border border-[#D4D4D4] rounded-md pl-2.5 pr-7 py-1.5 hover:border-[#737373] hover:bg-white focus:border-[#C85A17] focus:bg-white focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors resize-none"
                             />
-                            <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#0F0F0F] group-hover:text-[#0F0F0F] group-focus-within:text-[#C85A17] transition-colors" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-2 text-[#0F0F0F] group-hover:text-[#0F0F0F] group-focus-within:text-[#C85A17] transition-colors" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M11 1.5L14.5 5 5 14.5 1.5 14.5 1.5 11z"/>
                               <path d="M9 3.5L12.5 7"/>
                             </svg>
                           </div>
                         </div>
-                        {/* Importance 1–5 picker */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="flex flex-col items-end gap-1">
+                        {/* Importance 1-5 picker + delete. Mobile: full-width
+                            row below the inputs, weights left, X far right.
+                            sm+: original right-cluster layout. */}
+                        <div className="flex items-center justify-between gap-2 sm:justify-end sm:shrink-0">
+                          <div className="flex flex-col items-start sm:items-end gap-1">
                             <div className="flex items-center gap-1">
                               {([1, 2, 3, 4, 5] as const).map((lvl) => (
                                 <button
@@ -425,7 +443,7 @@ export default function NewScreening() {
                                   type="button"
                                   onClick={() => updateSubcategory(catIdx, subIdx, { weight: lvl })}
                                   title={["Low", "Moderate", "Standard", "Important", "Critical"][lvl - 1]}
-                                  className={`h-6 w-6 rounded-md text-xs font-bold transition-colors ${
+                                  className={`h-7 w-7 sm:h-6 sm:w-6 rounded-md text-xs font-bold transition-colors ${
                                     lvl <= sub.weight
                                       ? "bg-[#0F0F0F] text-white"
                                       : "bg-[#F0EDE8] text-[#A0A0A0] hover:bg-[#E8E5DF]"
@@ -442,9 +460,9 @@ export default function NewScreening() {
                           <button
                             onClick={() => removeSubcategory(catIdx, subIdx)}
                             title="Delete subcategory"
-                            className="h-7 w-7 rounded-lg border border-[#E8E5DF] text-[#737373] hover:text-red-600 hover:border-red-300 hover:bg-red-50 flex items-center justify-center transition-colors"
+                            className="h-9 w-9 sm:h-7 sm:w-7 rounded-lg border border-[#E8E5DF] text-[#737373] hover:text-red-600 hover:border-red-300 hover:bg-red-50 flex items-center justify-center transition-colors shrink-0"
                           >
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8" /></svg>
+                            <svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="sm:w-3 sm:h-3"><path d="M2 2l8 8M10 2l-8 8" /></svg>
                           </button>
                         </div>
                       </div>

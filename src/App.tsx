@@ -8,6 +8,8 @@ import {
 } from "@tanstack/react-router";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { MobileNav } from "@/components/layout/MobileNav";
+import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { queryClient } from "@/lib/queryClient";
 import {
@@ -43,6 +45,7 @@ import EditRubric from "@/routes/EditRubric";
 // 
 import UgradePlan from "@/routes/pricing/ugradePlan";
 import Checkout from "@/routes/pricing/Checkout";
+import ContactUs from "@/routes/ContactUs";
 
 // ─── Layouts ────────────────────────────────────────────────
 
@@ -53,9 +56,31 @@ function RootLayout() {
 function AppLayout({isSidebarRequired = true}: {isSidebarRequired?: boolean}) {
   return (
     <AuthGuard>
-      <div className="flex min-h-screen">
-        {isSidebarRequired && <Sidebar />}
-        <main className="flex-1 min-w-0" style={{ backgroundColor: "#F5F3EE" }}>
+      <div className="flex h-screen overflow-hidden">
+        {/*
+          Sidebar (desktop, ≥md) sits inline at full viewport height;
+          MobileNav (<md) is fixed-position above the main column. Both
+          share state-bearing SidebarInner so logic isn't duplicated.
+        */}
+        {isSidebarRequired && (
+          <>
+            <Sidebar />
+            <MobileNav />
+          </>
+        )}
+        {/*
+          Main is the scroll container — page-level scrolling happens here,
+          not on the window, so the sidebar stays put at full height.
+          pt-14 reserves space for the fixed mobile top bar; md:pt-0
+          reclaims it on desktop where the sidebar is inline.
+        */}
+        <main
+          className={cn(
+            "flex-1 min-w-0 h-screen overflow-y-auto",
+            isSidebarRequired && "pt-14 md:pt-0",
+          )}
+          style={{ backgroundColor: "#F5F3EE" }}
+        >
           <Outlet />
         </main>
       </div>
@@ -249,6 +274,12 @@ const upgradePlanRoute = createRoute({
   component: UgradePlan,
 });
 
+const contactUsRoute = createRoute({
+  getParentRoute: () => appLayoutNoSidebarRoute,
+  path: "/contact",
+  component: ContactUs,
+});
+
 const checkoutRoute = createRoute({
   getParentRoute: () => appLayoutNoSidebarRoute,
   path: "/checkout/$plan",
@@ -270,6 +301,7 @@ const routeTree = rootRoute.addChildren([
   privacyRoute,
   appLayoutNoSidebarRoute.addChildren([
     upgradePlanRoute,
+    contactUsRoute,
     checkoutRoute,
   ]),
   authOnlyLayoutRoute.addChildren([

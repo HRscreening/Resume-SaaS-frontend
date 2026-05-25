@@ -81,9 +81,9 @@ const navItems: NavItem[] = [
 
 const PLAN_LABEL: Record<SubscriptionPlan, string> = {
   FREE: "Free",
-  PRO: "Starter",
+  PRO: "Pro",
   PLUS: "Plus",
-  ENTERPRISE: "Scale",
+  ENTERPRISE: "Enterprise",
 };
 
 function getInitials(name: string | null | undefined, email: string | null | undefined): string {
@@ -96,7 +96,13 @@ function getInitials(name: string | null | undefined, email: string | null | und
   return "?";
 }
 
-export function Sidebar() {
+/**
+ * Stateful inner content — logo + nav items + user menu — shared between
+ * the desktop sticky aside (`Sidebar`) and the mobile drawer (`MobileNav`).
+ * `onNavigate` fires whenever a Link is clicked, so the mobile drawer can
+ * close itself on route change without duplicating state.
+ */
+export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
   const location = useLocation();
   const pathname = location.pathname;
   const navigate = useNavigate();
@@ -189,12 +195,13 @@ export function Sidebar() {
   const isFree = usage?.plan === "FREE";
 
   return (
-    <aside className="w-55 h-screen sticky top-0 flex flex-col bg-white border-r border-[#E8E5DF] shrink-0">
-      {/* Logo */}
+    <div className="flex flex-col h-full">
+      {/* Logo — clickable, returns to marketing site. */}
       <a
         href={import.meta.env.VITE_HOME_PAGE_URL || "https://hiresort.ai"}
-        rel="noopener noreferrer">
-        <div className="h-14 flex items-center px-5 border-b border-[#E8E5DF]">
+        rel="noopener noreferrer"
+      >
+        <div className="h-14 flex items-center px-5 border-b border-[#E8E5DF] shrink-0">
           <div className="flex items-center gap-2.5">
             <img src="/logo.png" alt="HireSort logo" className="h-6 w-auto" />
             <span className="font-semibold text-[#0F0F0F] text-sm">HireSort</span>
@@ -216,8 +223,9 @@ export function Sidebar() {
               to={item.href}
               onMouseEnter={wantsScreenings ? prefetchScreenings : undefined}
               onFocus={wantsScreenings ? prefetchScreenings : undefined}
+              onClick={onNavigate}
               className={cn(
-                "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150",
+                "flex items-center gap-2.5 px-3 py-2.5 md:py-2 rounded-lg text-sm font-medium transition-colors duration-150",
                 active
                   ? "bg-[#0F0F0F] text-white"
                   : "text-[#404040] hover:bg-[#F5F3EE] hover:text-[#0F0F0F]",
@@ -232,7 +240,7 @@ export function Sidebar() {
       </nav>
 
       {/* User trigger + popup */}
-      <div ref={menuRef} className="relative border-t border-[#E8E5DF] p-2">
+      <div ref={menuRef} className="relative border-t border-[#E8E5DF] p-2 shrink-0">
 
         {/* Popup menu — opens upward, anchored to the trigger */}
         {menuOpen && (
@@ -240,6 +248,7 @@ export function Sidebar() {
             {/* Identity card — clickable, navigates to profile */}
             <Link
               to="/profile"
+              onClick={onNavigate}
               className="flex items-center gap-3 px-4 py-3.5 hover:bg-[#F5F3EE] transition-colors"
             >
               <div className="h-9 w-9 rounded-full bg-[#0F0F0F] flex items-center justify-center shrink-0">
@@ -284,6 +293,7 @@ export function Sidebar() {
             <div className="py-1.5">
               <Link
                 to="/upgrade"
+                onClick={onNavigate}
                 // hash="billing"
                 className="flex items-center justify-between gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
               >
@@ -299,6 +309,7 @@ export function Sidebar() {
               </Link>
               <Link
                 to="/profile"
+                onClick={onNavigate}
                 className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
               >
                 <UserIcon />
@@ -306,6 +317,7 @@ export function Sidebar() {
               </Link>
               <Link
                 to="/settings"
+                onClick={onNavigate}
                 className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
               >
                 <GearIcon />
@@ -316,15 +328,13 @@ export function Sidebar() {
             <div className="h-px bg-[#E8E5DF]" />
 
             <div className="py-1.5">
-              <a
-                href="https://hiresort.ai"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to="/contact"
                 className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
               >
                 <HelpIcon />
                 Help
-              </a>
+              </Link>
               <button
                 onClick={handleLogout}
                 disabled={loggingOut}
@@ -360,6 +370,18 @@ export function Sidebar() {
           </div>
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Desktop sticky sidebar. Hidden below `md` — the mobile drawer
+ * (see `MobileNav`) renders `SidebarInner` instead.
+ */
+export function Sidebar() {
+  return (
+    <aside className="w-55 h-screen hidden md:flex flex-col bg-white border-r border-[#E8E5DF] shrink-0">
+      <SidebarInner />
     </aside>
   );
 }

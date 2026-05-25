@@ -47,15 +47,15 @@ export default function Profile() {
 
   if (profileQuery.isLoading) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-96">
+      <div className="p-4 sm:p-6 md:p-8 flex items-center justify-center min-h-96">
         <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-[#0F0F0F] mb-8">Profile</h1>
+    <div className="p-4 sm:p-6 md:p-8 max-w-2xl mx-auto">
+      <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F] mb-6 sm:mb-8">Profile</h1>
 
       {saveError && (
         <div className="mb-6 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">

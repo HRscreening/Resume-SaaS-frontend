@@ -80,14 +80,14 @@ export default function ChangePassword() {
 
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-96">
+      <div className="p-4 sm:p-6 md:p-8 flex items-center justify-center min-h-96">
         <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin"/>
       </div>
     );
   }
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
+    <div className="p-4 sm:p-6 md:p-8 max-w-2xl mx-auto">
       <Link
         to="/settings"
         className="inline-flex items-center gap-1.5 text-sm text-[#737373] hover:text-[#0F0F0F] transition-colors mb-4"

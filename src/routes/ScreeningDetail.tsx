@@ -13,6 +13,8 @@ import type { RankedCandidate, RubricCategory } from "@/types";
 import { DEFAULT_STAGES } from "@/lib/stages";
 import { StagesDialog } from "@/components/screening/StagesDialog";
 import { useAnalysisSheetOpen, setOpenAnalysisSheet, ANALYSIS_SHEET_WIDTH } from "@/components/screening/AnalysisSheet";
+import { TIERS, getTier, TierSection, type TierId } from "@/components/screening/TierSection";
+
 import { ProcessingAccordion } from "@/components/screening/ProcessingAccordion";
 import { RubricModal } from "@/components/screening/RubricModal";
 import { FailedView } from "@/components/screening/FailedView";
@@ -459,7 +461,7 @@ export default function ScreeningDetail() {
   // background — when it lands, the full UI swaps in.
   if (isLoading && !screening) {
     return (
-      <div className="px-8 pt-8 max-w-5xl mx-auto">
+      <div className="px-4 pt-6 sm:px-6 sm:pt-8 md:px-8 max-w-5xl mx-auto">
         <div className="h-7 w-64 bg-[#E8E5DF] rounded animate-pulse mb-3" />
         <div className="h-4 w-32 bg-[#E8E5DF] rounded animate-pulse mb-6" />
         <div className="space-y-3">
@@ -477,7 +479,7 @@ export default function ScreeningDetail() {
 
   if (!screening) {
     return (
-      <div className="p-8 text-center">
+      <div className="p-4 sm:p-6 md:p-8 text-center">
         <p className="text-sm text-[#737373]">
           {error instanceof Error ? error.message : "Screening not found."}
         </p>
@@ -521,19 +523,22 @@ export default function ScreeningDetail() {
 
   return (
     <div
-      className="flex flex-col transition-[margin] duration-200 ease-out"
-      style={{ marginRight: analysisOpen ? ANALYSIS_SHEET_WIDTH : 0 }}
+      // On md+, push the page content left to make room for the open
+      // analysis sheet (600 px). On mobile the sheet overlays full-screen
+      // (see AnalysisSheet) so no shift is needed — pushing 600 px on a
+      // 320 px viewport would hide the page entirely.
+      className={`flex flex-col transition-[margin] duration-200 ease-out ${analysisOpen ? "md:mr-[600px]" : ""}`}
     >
       {/* Header */}
-      <div className="px-8 pt-8 pb-4 shrink-0">
-        <div className="flex items-start justify-between mb-1">
+      <div className="px-4 pt-6 pb-4 sm:px-6 sm:pt-8 md:px-8 shrink-0">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4 mb-1">
           <div>
             <div className="flex items-center gap-2 mb-2 text-xs">
               <Link to="/screenings" className="text-[#737373] hover:text-[#0F0F0F]">Screenings</Link>
               <span className="text-[#D4D4D4]">/</span>
               <span className="text-[#404040]">{truncate(screening.title, 40)}</span>
             </div>
-            <h1 className="text-2xl font-bold text-[#0F0F0F]">{screening.title}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">{screening.title}</h1>
             <p className="text-sm text-[#737373] mt-0.5">
               {isProcessing && totalCandidates > 0
                 ? `${screening.scored_resumes} scored so far · Ranking finalizes when all complete`
@@ -543,12 +548,12 @@ export default function ScreeningDetail() {
             </p>
           </div>
           {candidates.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => setShowRubric(true)}
-                  className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2`}
+                  className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5"/><path d="M4.5 5h5M4.5 7.5h3"/></svg>
                   {!analysisOpen && "Rubric"}
@@ -560,7 +565,7 @@ export default function ScreeningDetail() {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => { setShowUploadMore((v) => !v); setUploadMoreFiles([]); setUploadError(null); }}
-                  className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
+                  className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 whitespace-nowrap ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v8M3.5 5.5l3.5-3.5 3.5 3.5"/><path d="M2 12h10"/></svg>
                   {!analysisOpen && "Add resumes"}
@@ -588,7 +593,7 @@ export default function ScreeningDetail() {
                 <button
                   onClick={handleExport}
                   disabled={exporting}
-                  className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 disabled:opacity-60`}
+                  className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-60`}
                 >
                   {exporting
                     ? <span className="h-3.5 w-3.5 rounded-full border-2 border-[#404040] border-t-transparent animate-spin" />
@@ -606,7 +611,7 @@ export default function ScreeningDetail() {
       </div>
 
       {/* Content area */}
-      <div className="flex-1 min-h-0 flex flex-col px-8 pb-8 gap-4">
+      <div className="flex-1 min-h-0 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
         <div className="w-full space-y-4">
           {/* Draft upload */}
           {isDraft && (() => {
@@ -614,7 +619,7 @@ export default function ScreeningDetail() {
               draftFiles.length === 1 &&
               draftFiles[0].name.toLowerCase().endsWith(".zip");
             return (
-            <div className="bg-white rounded-2xl border border-[#E8E5DF] p-8">
+            <div className="bg-white rounded-2xl border border-[#E8E5DF] p-5 sm:p-6 md:p-8">
               <div className="flex items-center gap-3 mb-1">
                 <h2 className="text-lg font-semibold text-[#0F0F0F]">Upload resumes</h2>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F0EDE8] border border-[#D4D4D4] text-xs font-semibold text-[#404040] tracking-wide">.ZIP · .PDF · .DOCX</span>
@@ -722,23 +727,48 @@ export default function ScreeningDetail() {
                   </div>
                 </div>
               ) : (
-                /* Empty drop zone */
-                <div
-                  onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-                  onDragLeave={() => setDragActive(false)}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
-                    dragActive ? "border-[#C85A17] bg-[#C85A1708]" : "border-[#D4D4D4] hover:border-[#A0A0A0] hover:bg-[#F5F3EE]"
-                  }`}
-                >
-                  <div className="h-12 w-12 rounded-full bg-[#F5F3EE] border border-[#D4D4D4] flex items-center justify-center mx-auto mb-3">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
+                <>
+                  {/* Desktop: drag-drop zone with ZIP/multi-file affordance. */}
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                    onDragLeave={() => setDragActive(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`hidden md:block border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
+                      dragActive ? "border-[#C85A17] bg-[#C85A1708]" : "border-[#D4D4D4] hover:border-[#A0A0A0] hover:bg-[#F5F3EE]"
+                    }`}
+                  >
+                    <div className="h-12 w-12 rounded-full bg-[#F5F3EE] border border-[#D4D4D4] flex items-center justify-center mx-auto mb-3">
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
+                    </div>
+                    <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop a ZIP, PDF, or DOCX here</p>
+                    <p className="text-xs text-[#737373]">or click to browse — multiple PDF/DOCX files allowed</p>
+                    <p className="text-xs font-semibold text-[#A0A0A0] mt-3 uppercase tracking-wide">ZIP · PDF · DOCX</p>
                   </div>
-                  <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop a ZIP, PDF, or DOCX here</p>
-                  <p className="text-xs text-[#737373]">or click to browse — multiple PDF/DOCX files allowed</p>
-                  <p className="text-xs font-semibold text-[#A0A0A0] mt-3 uppercase tracking-wide">ZIP · PDF · DOCX</p>
-                </div>
+
+                  {/* Mobile: clean tap-to-pick CTA. Same fileInputRef — the
+                      native iOS/Android picker handles file selection. Users
+                      can still pick a ZIP from their device if they want,
+                      and pickResumeFiles handles it; the helper text below
+                      points heavy bulk-upload users to desktop where the
+                      drag-drop UX is far better. */}
+                  <div className="md:hidden">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full flex flex-col items-center gap-2 p-6 rounded-2xl border-2 border-dashed border-[#D4D4D4] bg-white hover:bg-[#F5F3EE] active:bg-[#EAE7DF] transition-colors"
+                    >
+                      <div className="h-10 w-10 rounded-full bg-[#F5F3EE] border border-[#D4D4D4] flex items-center justify-center">
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
+                      </div>
+                      <span className="text-sm font-semibold text-[#0F0F0F]">Choose a resume</span>
+                      <span className="text-xs text-[#737373]">PDF or DOCX</span>
+                    </button>
+                    <p className="mt-3 text-xs text-[#737373] text-center">
+                      Uploading many resumes or a ZIP archive? Open this screen on a desktop browser for the full drag-and-drop flow.
+                    </p>
+                  </div>
+                </>
               )}
 
               <button
@@ -823,26 +853,47 @@ export default function ScreeningDetail() {
                     </div>
                   </div>
                 ) : (
-                  <div
-                    onDragOver={(e) => { e.preventDefault(); setUploadMoreDragActive(true); }}
-                    onDragLeave={() => setUploadMoreDragActive(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setUploadMoreDragActive(false);
-                      acceptUploadMoreFiles(e.dataTransfer.files);
-                    }}
-                    onClick={() => uploadMoreFileInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
-                      uploadMoreDragActive ? "border-[#C85A17] bg-[#C85A1708]" : "border-[#D4D4D4] hover:border-[#A0A0A0] hover:bg-[#F5F3EE]"
-                    }`}
-                  >
-                    <div className="h-10 w-10 rounded-full bg-[#F5F3EE] border border-[#D4D4D4] flex items-center justify-center mx-auto mb-3">
-                      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
+                  <>
+                    {/* Desktop dropzone. */}
+                    <div
+                      onDragOver={(e) => { e.preventDefault(); setUploadMoreDragActive(true); }}
+                      onDragLeave={() => setUploadMoreDragActive(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setUploadMoreDragActive(false);
+                        acceptUploadMoreFiles(e.dataTransfer.files);
+                      }}
+                      onClick={() => uploadMoreFileInputRef.current?.click()}
+                      className={`hidden md:block border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
+                        uploadMoreDragActive ? "border-[#C85A17] bg-[#C85A1708]" : "border-[#D4D4D4] hover:border-[#A0A0A0] hover:bg-[#F5F3EE]"
+                      }`}
+                    >
+                      <div className="h-10 w-10 rounded-full bg-[#F5F3EE] border border-[#D4D4D4] flex items-center justify-center mx-auto mb-3">
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
+                      </div>
+                      <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop files here</p>
+                      <p className="text-xs text-[#737373]">or click to browse</p>
+                      <p className="text-xs font-semibold text-[#A0A0A0] mt-2 uppercase tracking-wide">ZIP archive · or one-or-more PDF/DOCX</p>
                     </div>
-                    <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop files here</p>
-                    <p className="text-xs text-[#737373]">or click to browse</p>
-                    <p className="text-xs font-semibold text-[#A0A0A0] mt-2 uppercase tracking-wide">ZIP archive · or one-or-more PDF/DOCX</p>
-                  </div>
+
+                    {/* Mobile tap-to-pick. Same uploadMoreFileInputRef. */}
+                    <div className="md:hidden">
+                      <button
+                        type="button"
+                        onClick={() => uploadMoreFileInputRef.current?.click()}
+                        className="w-full flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-dashed border-[#D4D4D4] bg-white hover:bg-[#F5F3EE] active:bg-[#EAE7DF] transition-colors"
+                      >
+                        <div className="h-9 w-9 rounded-full bg-[#F5F3EE] border border-[#D4D4D4] flex items-center justify-center">
+                          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#737373" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M3 15h14"/></svg>
+                        </div>
+                        <span className="text-sm font-semibold text-[#0F0F0F]">Add a resume</span>
+                        <span className="text-xs text-[#737373]">PDF or DOCX</span>
+                      </button>
+                      <p className="mt-2 text-xs text-[#737373] text-center">
+                        Bulk upload (ZIP, many files) works best on a desktop browser.
+                      </p>
+                    </div>
+                  </>
                 )}
               </div>
               <button

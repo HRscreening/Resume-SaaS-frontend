@@ -125,6 +125,9 @@
 html {
   height: 100%;
   scroll-behavior: smooth;
+  /* Prevent horizontal scroll on narrow viewports caused by stray overflow
+     in descendants. Each page is responsible for its own vertical scroll. */
+  overflow-x: hidden;
 }
 
 body {
@@ -134,8 +137,31 @@ body {
   font-size: 16px;
   line-height: 1.6;
   min-height: 100%;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* iOS Safari otherwise flashes a translucent gray box on tap. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS Safari zooms <input> when font-size is < 16px; keep mobile form
+   controls at the threshold so taps don't trigger a jarring zoom. */
+@media (max-width: 767.98px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* ResumeDetail: the analysis pane carries an inline `width: <leftWidth>%`
+     style for desktop's drag-resize split layout. On mobile we stack the
+     panels (PDF pane is hidden via `hidden md:flex`) and the analysis pane
+     should fill the column. Inline styles outrank class-based widths, so
+     we use a targeted !important override here rather than threading view
+     state into the React component. */
+  [data-resume-pane="analysis"] {
+    width: 100% !important;
+  }
 }
 
 /* Scrollbar */

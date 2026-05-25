@@ -46,17 +46,18 @@ export default function Screenings() {
   // user with screenings would see "No screenings yet" briefly on first
   // load, which is misleading.
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-[#0F0F0F]">Screenings</h1>
+    <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-6 md:mb-8 gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">Screenings</h1>
         <Link
           to="/screenings/new"
-          className="h-10 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center gap-2"
+          className="h-10 px-3 sm:px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center gap-2 shrink-0"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
             <path d="M7 1.5v11M1.5 7h11"/>
           </svg>
-          New screening
+          <span className="hidden sm:inline">New screening</span>
+          <span className="sm:hidden">New</span>
         </Link>
       </div>
 
