@@ -123,31 +123,16 @@ function CandidateRow({ candidate, categories, compact, onPrefetch }: {
   onPrefetch?: () => void;
 }) {
   function getCategoryScore(cat: RubricCategory): number | null {
-    const subs = cat.subcategories;
-    if (subs.length === 0) return null;
-    let weighted = 0, totalW = 0;
-    for (const sub of subs) {
-      const match = candidate.top_criteria.find(
-        (tc) => tc.criterion.toLowerCase().trim() === sub.name.toLowerCase().trim()
-      );
-      if (match) {
-        weighted += match.score * sub.weight;
-        totalW += sub.weight;
-      }
-    }
-    return totalW > 0 ? weighted / totalW : null;
+    const key = cat.name.toLowerCase().trim();
+    const match = candidate.category_scores.find(
+      (cs) => cs.category.toLowerCase().trim() === key,
+    );
+    return match ? match.avg_score : null;
   }
 
-  const failedNonNegotiables = categories
-    .flatMap((cat) => cat.subcategories)
-    .filter((sub) => sub.is_non_negotiable)
-    .map((sub) => {
-      const match = candidate.top_criteria.find(
-        (tc) => tc.criterion.toLowerCase().trim() === sub.name.toLowerCase().trim()
-      );
-      return match && match.score < 4 ? sub.name : null;
-    })
-    .filter(Boolean) as string[];
+  // Per-subcategory scores aren't part of the lean RankedCandidate payload, so
+  // non-negotiable disqualification can't be computed in the tier table.
+  const failedNonNegotiables: string[] = [];
 
   // "A and B" / "A, B, and C" — reads as a sentence, not a CSV.
   const failedList = LIST_FORMATTER.format(failedNonNegotiables);
