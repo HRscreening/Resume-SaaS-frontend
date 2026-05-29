@@ -207,6 +207,52 @@ export async function analyzeJD(jdText: string): Promise<Rubric> {
   });
 }
 
+// Generate (or refine) a job description with AI, streamed token-by-token.
+// Pass the current JD back as `current_Jd` to reprompt an existing draft; send
+// "" for the first pass. `onChunk` fires with the full accumulated text so far
+// (not the delta) so callers can bind it straight to a textarea.
+//
+// Returns the remaining reprompt count from the `X-Attempts-Left` response
+// header — null if the backend didn't send it (or, cross-origin, didn't expose
+// it via Access-Control-Expose-Headers).
+//
+// Note: `current_Jd` casing is intentional — it matches the backend contract.
+export async function generateJDStream(
+  body: { job_title: string; user_input: string; current_Jd: string },
+  onChunk: (fullText: string) => void,
+): Promise<{ attemptsLeft: number | null }> {
+  const authHeaders = await getAuthHeader();
+  const res = await fetch(`${API_BASE}/api/v1/screenings/generate-jd/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok || !res.body) {
+    if (res.status === 401) clearSessionHint();
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(parseErrorDetail(errBody, res.status));
+  }
+
+  const attemptsHeader = res.headers.get("X-Attempts-Left");
+  const attemptsLeft = attemptsHeader != null ? Number(attemptsHeader) : null;
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    text += decoder.decode(value, { stream: true });
+    onChunk(text);
+  }
+  // Flush any trailing multi-byte character left in the decoder.
+  text += decoder.decode();
+  onChunk(text);
+
+  return { attemptsLeft };
+}
+
 export async function listScreenings(): Promise<ScreeningListItem[]> {
   return request<ScreeningListItem[]>("/api/screenings");
 }
