@@ -61,6 +61,7 @@ const PriceAmount = ({ amount }: { amount: string }) => (
 const PLAN_DESCRIPTIONS: Record<SubscriptionPlan, string> = {
     FREE: 'Perfect for individuals and small teams getting started with AI-powered resume screening.',
     PLUS: 'Built for teams that hire regularly and need faster, higher-volume screening.',
+    BUSINESS: 'Built for teams that hire regularly and need faster, higher-volume screening.',
     PRO: 'Designed for high-volume hiring teams that need scale, flexibility, and greater control over screening workflows.',
     ENTERPRISE: 'Built for large organizations that need advanced security, customization, and dedicated support at scale.',
 };
