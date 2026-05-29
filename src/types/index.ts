@@ -1,7 +1,9 @@
 // ─── Auth / Profile ──────────────────────────────────────────────────────────
 
-// ! NEED to fix this plan 
-export type SubscriptionPlan = "FREE" | "PRO" | "PLUS" | "ENTERPRISE";
+// BUSINESS is a legacy label retained in the DB enum so older rows
+// written before the BUSINESS → PLUS rename still deserialize cleanly.
+// New writes use PLUS.
+export type SubscriptionPlan = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE" | "PLUS";
 export type PlanType = SubscriptionPlan;
 
 export interface Profile {
