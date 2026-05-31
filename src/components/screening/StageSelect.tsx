@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { StagesMap, HiringStage } from "@/types";
 import {
   REJECTED_STAGE,
@@ -24,6 +25,7 @@ interface StageSelectProps {
 // plus a sticky "Reject" action at the bottom.
 export function StageSelect({ value, stages, onChange, onManage }: StageSelectProps) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -53,6 +55,24 @@ export function StageSelect({ value, stages, onChange, onManage }: StageSelectPr
     return () => {
       document.removeEventListener("mousedown", onDocClick);
       document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  // Anchor the portalled menu to the trigger using viewport coordinates.
+  // Recomputed on open and whenever the page scrolls/resizes so the menu
+  // stays glued to the pill without being clipped by the table's overflow.
+  useLayoutEffect(() => {
+    if (!open) return;
+    function place() {
+      const r = triggerRef.current?.getBoundingClientRect();
+      if (r) setPos({ top: r.bottom + 4, left: r.left });
+    }
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
     };
   }, [open]);
 
@@ -90,12 +110,13 @@ export function StageSelect({ value, stages, onChange, onManage }: StageSelectPr
         </button>
       )}
 
-      {open && (
+      {open && pos && createPortal(
         <div
           ref={menuRef}
           role="listbox"
           onClick={(e) => e.stopPropagation()}
-          className="absolute z-40 top-full left-0 mt-1 min-w-[180px] rounded-xl border border-[#E8E5DF] bg-white shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+          style={{ position: "fixed", top: pos.top, left: pos.left }}
+          className="z-50 min-w-[180px] rounded-xl border border-[#E8E5DF] bg-white shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-100"
         >
           <div className="px-2.5 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-[#A0A0A0]">
             Move to
@@ -152,7 +173,8 @@ export function StageSelect({ value, stages, onChange, onManage }: StageSelectPr
               </button>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

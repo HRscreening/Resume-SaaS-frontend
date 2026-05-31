@@ -30,7 +30,8 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
 
   const outOfAttempts = attemptsLeft !== null && attemptsLeft <= 0;
   const canGenerate =
-    Boolean(jobTitle.trim()) && Boolean(prompt.trim()) && !generating && !outOfAttempts;
+    Boolean(jobTitle.trim())  && !generating && !outOfAttempts;
+    // Boolean(jobTitle.trim()) && Boolean(prompt.trim()) && !generating && !outOfAttempts;
 
   // Reveals streamed text at a steady typewriter pace rather than in the big
   // bursts the backend sends, so it reads like a chat response being typed out.
@@ -83,7 +84,57 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
 
   return (
     <div className="space-y-3">
+
+       {/* Prompt input + generate */}
+      <div>
+        <label htmlFor="jd-ai-prompt" className="block text-xs font-medium text-[#404040] mb-1.5">
+          {hasGenerated ? "Refine the job description" : "Describe the role you want to hire for"}
+          <span className="ml-1.5 font-normal text-[#A0A0A0]">(optional)</span>
+        </label>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+          <input
+            id="jd-ai-prompt"
+            type="text"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleGenerate(); } }}
+            disabled={generating || outOfAttempts}
+            placeholder={
+              hasGenerated
+                ? "Optional — e.g. add a section on team leadership"
+                : "Optional — e.g. 2 yrs experience, scalable systems, strong communication"
+            }
+            className="flex-1 h-11 px-3.5 rounded-xl border border-[#D4D4D4] bg-[#F5F3EE] text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] transition-shadow disabled:opacity-60 disabled:cursor-not-allowed"
+          />
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={!canGenerate}
+            className="h-11 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shrink-0"
+          >
+            {generating ? (
+              <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path d="M8 0l1.6 4.4L14 6l-4.4 1.6L8 12l-1.6-4.4L2 6l4.4-1.6L8 0z" />
+                <path d="M13 10l.7 1.8L15.5 12.5l-1.8.7L13 15l-.7-1.8L10.5 12.5l1.8-.7L13 10z" />
+              </svg>
+            )}
+            {generating ? "Generating…" : "Generate"}
+          </button>
+        </div>
+        {!jobTitle.trim() ? (
+          <p className="mt-1.5 text-xs text-[#a70c0c]">Enter a job title above to start generating.</p>
+        ) : (
+          !hasGenerated && (
+            <p className="mt-1.5 text-xs text-[#A0A0A0]">
+              Leave this blank to generate from just the job title, or add details to guide the AI.
+            </p>
+          )
+        )}
+      </div>
       {/* Generated JD — editable */}
+
       <div className="relative">
         <textarea
           ref={textareaRef}
@@ -115,47 +166,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
         </div>
       )}
 
-      {/* Prompt input + generate */}
-      <div>
-        <label htmlFor="jd-ai-prompt" className="block text-xs font-medium text-[#404040] mb-1.5">
-          {hasGenerated ? "Refine the job description" : "Tell the AI what to build"}
-        </label>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-          <input
-            id="jd-ai-prompt"
-            type="text"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleGenerate(); } }}
-            disabled={generating || outOfAttempts}
-            placeholder={
-              hasGenerated
-                ? "e.g. add a section on team leadership"
-                : "e.g. 2 yrs experience, scalable systems, strong communication"
-            }
-            className="flex-1 h-11 px-3.5 rounded-xl border border-[#D4D4D4] bg-[#F5F3EE] text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] transition-shadow disabled:opacity-60 disabled:cursor-not-allowed"
-          />
-          <button
-            type="button"
-            onClick={handleGenerate}
-            disabled={!canGenerate}
-            className="h-11 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shrink-0"
-          >
-            {generating ? (
-              <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                <path d="M8 0l1.6 4.4L14 6l-4.4 1.6L8 12l-1.6-4.4L2 6l4.4-1.6L8 0z" />
-                <path d="M13 10l.7 1.8L15.5 12.5l-1.8.7L13 15l-.7-1.8L10.5 12.5l1.8-.7L13 10z" />
-              </svg>
-            )}
-            {generating ? "Generating…" : hasGenerated ? "Regenerate" : "Generate"}
-          </button>
-        </div>
-        {!jobTitle.trim() && (
-          <p className="mt-1.5 text-xs text-[#a70c0c]">Enter a job title above to start generating.</p>
-        )}
-      </div>
+     
     </div>
   );
 }
