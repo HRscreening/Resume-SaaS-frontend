@@ -1,6 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import { generateJDStream } from "@/lib/api";
 import { useTypewriter } from "@/hooks/useTypewriter";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
+// Compact field styling for the details grid — smaller than the wizard's main
+// inputs so the seven fields don't dominate the step.
+const fieldClass =
+  "w-full h-9 px-3 rounded-lg border border-[#D4D4D4] bg-[#F5F3EE] text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] transition-shadow disabled:opacity-60 disabled:cursor-not-allowed";
+const labelClass = "block text-xs font-medium text-[#404040] mb-1";
+
+const WORK_ARRANGEMENTS = ["Remote", "Hybrid", "On-site"] as const;
+
+// The backend rejects a company_url without an http(s):// scheme, so accept a
+// bare domain in the UI and prepend https:// before sending.
+function normalizeUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
 
 interface JdAiBuilderProps {
   // Required before generating — sent as `job_title`.
@@ -19,6 +41,15 @@ interface JdAiBuilderProps {
 // JD back so the AI refines rather than starts over.
 export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiBuilderProps) {
   const [prompt, setPrompt] = useState("");
+  // Structured details that ground the generation (sent as `jd_details`). The
+  // first four are required by the backend; the rest are optional.
+  const [companyName, setCompanyName] = useState("");
+  const [companyUrl, setCompanyUrl] = useState("");
+  const [workArrangement, setWorkArrangement] = useState("");
+  const [location, setLocation] = useState("");
+  const [yrsExperience, setYrsExperience] = useState("");
+  const [salary, setSalary] = useState("");
+  const [skills, setSkills] = useState("");
   const [generating, setGenerating] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Set once the first stream completes. Tracked separately from attemptsLeft
@@ -27,11 +58,30 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
   const [hasGenerated, setHasGenerated] = useState(false);
   // Server-reported reprompts remaining; null when unknown.
   const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+  // Total reprompts allowed per window, for the "x / y" display; null when unknown.
+  const [maxAttempts, setMaxAttempts] = useState<number | null>(null);
+  // When the attempt window resets; null when unknown.
+  const [resetsAt, setResetsAt] = useState<Date | null>(null);
 
   const outOfAttempts = attemptsLeft !== null && attemptsLeft <= 0;
+  // e.g. "Jun 1, 3:45 PM" — compact, locale-aware, drops the year for brevity.
+  const resetLabel = resetsAt
+    ? resetsAt.toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : null;
+  // The backend requires these four; gate generation on them so we surface a
+  // clear hint instead of a 422.
+  const detailsComplete =
+    Boolean(companyName.trim()) &&
+    Boolean(companyUrl.trim()) &&
+    Boolean(workArrangement.trim()) &&
+    Boolean(location.trim());
   const canGenerate =
-    Boolean(jobTitle.trim())  && !generating && !outOfAttempts;
-    // Boolean(jobTitle.trim()) && Boolean(prompt.trim()) && !generating && !outOfAttempts;
+    Boolean(jobTitle.trim()) && detailsComplete && !generating && !outOfAttempts;
 
   // Reveals streamed text at a steady typewriter pace rather than in the big
   // bursts the backend sends, so it reads like a chat response being typed out.
@@ -59,9 +109,20 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
     typewriter.reset();
     onJdTextChange("");
     try {
-      const { attemptsLeft: remaining } = await generateJDStream(
+      const trimmedYrs = yrsExperience.trim();
+      const parsedYrs = trimmedYrs ? Number(trimmedYrs) : null;
+      const meta = await generateJDStream(
         {
-          job_title: jobTitle.trim(),
+          jd_details: {
+            job_title: jobTitle.trim(),
+            company_name: companyName.trim(),
+            company_url: normalizeUrl(companyUrl),
+            employment_type_work_arrangement: workArrangement.trim(),
+            location: location.trim(),
+            yrs_experience: parsedYrs !== null && !Number.isNaN(parsedYrs) ? parsedYrs : null,
+            salary_compensation_info: salary.trim() || null,
+            skills: skills.trim() || null,
+          },
           user_input: prompt.trim(),
           current_Jd: currentJd,
         },
@@ -69,7 +130,9 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
         (fullText) => typewriter.push(fullText),
       );
       setHasGenerated(true);
-      if (remaining !== null) setAttemptsLeft(remaining);
+      if (meta.attemptsLeft !== null) setAttemptsLeft(meta.attemptsLeft);
+      if (meta.maxAttempts !== null) setMaxAttempts(meta.maxAttempts);
+      if (meta.resetsAt !== null) setResetsAt(meta.resetsAt);
       // Let the typewriter finish revealing whatever is still buffered, then it
       // flips `generating` off via onDone.
       typewriter.finish();
@@ -84,6 +147,149 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
 
   return (
     <div className="space-y-3">
+
+      {/* Job details — structured fields that ground the generation. Open by
+          default so the user fills them in; collapsible once done. */}
+      <Accordion
+        type="single"
+        collapsible
+        defaultValue="details"
+        className="rounded-xl border border-[#D4D4D4] bg-white px-2.5"
+      >
+        <AccordionItem value="details" className="border-b-0">
+          <AccordionTrigger className="px-1 text-[#0F0F0F]">
+            <span className="flex items-center gap-2">
+              Job details
+              {!detailsComplete && (
+                <span className="rounded-full bg-[#FBE9E7] px-2 py-0.5 text-[10px] font-medium text-[#a70c0c]">
+                  Required
+                </span>
+              )}
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="px-1 pt-1">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2">
+              {/* Company name */}
+              <div>
+                <label htmlFor="jd-company-name" className={labelClass}>
+                  Company name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="jd-company-name"
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  disabled={generating}
+                  placeholder="e.g. Acme Inc."
+                  className={fieldClass}
+                />
+              </div>
+              {/* Company website */}
+              <div>
+                <label htmlFor="jd-company-url" className={labelClass}>
+                  Company website <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="jd-company-url"
+                  type="text"
+                  inputMode="url"
+                  value={companyUrl}
+                  onChange={(e) => setCompanyUrl(e.target.value)}
+                  disabled={generating}
+                  placeholder="e.g. acme.com"
+                  className={fieldClass}
+                />
+              </div>
+              {/* Work arrangement */}
+              <div>
+                <label htmlFor="jd-work-arrangement" className={labelClass}>
+                  Work arrangement <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="jd-work-arrangement"
+                  value={workArrangement}
+                  onChange={(e) => setWorkArrangement(e.target.value)}
+                  disabled={generating}
+                  className={`${fieldClass} ${workArrangement ? "" : "text-[#A0A0A0]"}`}
+                >
+                  <option value="" disabled>
+                    Select…
+                  </option>
+                  {WORK_ARRANGEMENTS.map((opt) => (
+                    <option key={opt} value={opt} className="text-[#0F0F0F]">
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {/* Location */}
+              <div>
+                <label htmlFor="jd-location" className={labelClass}>
+                  Location <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="jd-location"
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  disabled={generating}
+                  placeholder="e.g. Bengaluru, India"
+                  className={fieldClass}
+                />
+              </div>
+              {/* Years of experience */}
+              <div>
+                <label htmlFor="jd-yrs-experience" className={labelClass}>
+                  Years of experience
+                  <span className="ml-1.5 font-normal text-[#A0A0A0]">(optional)</span>
+                </label>
+                <input
+                  id="jd-yrs-experience"
+                  type="number"
+                  min={0}
+                  value={yrsExperience}
+                  onChange={(e) => setYrsExperience(e.target.value)}
+                  disabled={generating}
+                  placeholder="e.g. 3"
+                  className={fieldClass}
+                />
+              </div>
+              {/* Salary / compensation */}
+              <div>
+                <label htmlFor="jd-salary" className={labelClass}>
+                  Salary / compensation
+                  <span className="ml-1.5 font-normal text-[#A0A0A0]">(optional)</span>
+                </label>
+                <input
+                  id="jd-salary"
+                  type="text"
+                  value={salary}
+                  onChange={(e) => setSalary(e.target.value)}
+                  disabled={generating}
+                  placeholder="e.g. ₹18–24 LPA"
+                  className={fieldClass}
+                />
+              </div>
+              {/* Skills — full width */}
+              <div className="sm:col-span-2">
+                <label htmlFor="jd-skills" className={labelClass}>
+                  Required skills
+                  <span className="ml-1.5 font-normal text-[#A0A0A0]">(optional)</span>
+                </label>
+                <input
+                  id="jd-skills"
+                  type="text"
+                  value={skills}
+                  onChange={(e) => setSkills(e.target.value)}
+                  disabled={generating}
+                  placeholder="e.g. Python, FastAPI, PostgreSQL, AWS"
+                  className={fieldClass}
+                />
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
        {/* Prompt input + generate */}
       <div>
@@ -125,10 +331,14 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
         </div>
         {!jobTitle.trim() ? (
           <p className="mt-1.5 text-xs text-[#a70c0c]">Enter a job title above to start generating.</p>
+        ) : !detailsComplete ? (
+          <p className="mt-1.5 text-xs text-[#a70c0c]">
+            Fill in the required job details above to start generating.
+          </p>
         ) : (
           !hasGenerated && (
             <p className="mt-1.5 text-xs text-[#A0A0A0]">
-              Leave this blank to generate from just the job title, or add details to guide the AI.
+              Leave the prompt blank to generate from the details above, or add notes to guide the AI.
             </p>
           )
         )}
@@ -154,14 +364,23 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
       </div>
 
       {hasGenerated && (
-        <div className="flex items-center justify-between text-xs text-[#A0A0A0]">
+        <div className="flex items-center justify-between gap-3 text-xs text-[#A0A0A0]">
           <span>{jdText.length.toLocaleString()} characters</span>
           {attemptsLeft !== null && (
-            <span className={outOfAttempts ? "text-red-500 font-medium" : ""}>
-              {outOfAttempts
-                ? "No reprompts left"
-                : `${attemptsLeft} reprompt${attemptsLeft === 1 ? "" : "s"} left`}
-            </span>
+            <div className="flex items-center gap-2">
+              {/* Attempts pill: "3 / 8 left", or a muted "0 / 8" when spent. */}
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${
+                  outOfAttempts
+                    ? "bg-[#FBE9E7] text-[#a70c0c]"
+                    : "bg-[#EFEAE1] text-[#404040]"
+                }`}
+              >
+                {maxAttempts !== null ? `${attemptsLeft} / ${maxAttempts}` : attemptsLeft}
+                <span className="font-normal text-[#A0A0A0]">left</span>
+              </span>
+              {resetLabel && <span className="text-[#A0A0A0]">Resets {resetLabel}</span>}
+            </div>
           )}
         </div>
       )}
