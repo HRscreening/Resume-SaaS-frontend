@@ -1,7 +1,9 @@
 // ─── Auth / Profile ──────────────────────────────────────────────────────────
 
-// ! NEED to fix this plan 
-export type SubscriptionPlan = "FREE" | "PRO" | "PLUS" | "ENTERPRISE";
+// BUSINESS is a legacy label retained in the DB enum so older rows
+// written before the BUSINESS → PLUS rename still deserialize cleanly.
+// New writes use PLUS.
+export type SubscriptionPlan = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE" | "PLUS";
 export type PlanType = SubscriptionPlan;
 
 export interface Profile {
@@ -82,6 +84,13 @@ export interface RubricCriterion {
 
 export type ScreeningStatus = "draft" | "pending" | "processing" | "completed" | "failed";
 
+export interface StageConfig {
+  color: string;
+  index: number;
+}
+
+export type StagesMap = Record<string, StageConfig>;
+
 export interface Screening {
   id: string;
   user_id: string;
@@ -92,6 +101,7 @@ export interface Screening {
   total_resumes: number;
   scored_resumes: number;
   avg_score: number | null;
+  stages?: StagesMap;
   created_at: string;
   updated_at: string;
 }
@@ -153,17 +163,71 @@ export interface Resume {
   created_at: string;
 }
 
+export interface CategoryScore {
+  category: string;
+  avg_score: number;     // 0–10
+  criteria_count: number;
+}
+
+// Hiring pipeline stage. Backend sends a free-form label (e.g. "Applied",
+// "Shortlisted"); we keep it as a string and pin a known set of options in
+// the UI for the dropdown. New stages added server-side surface automatically
+// — they just won't appear as preset options until added to STAGES.
+export type HiringStage = string;
+
 export interface RankedCandidate {
   rank: number;
   resume_id: string;
+  score_id: string;
   filename: string;
   candidate_name: string | null;
   candidate_email: string | null;
   candidate_phone: string | null;
   candidate_current_job: string | null;
   overall_score: number;
-  top_criteria: CriterionScore[];
+  category_scores: CategoryScore[];
   overall_summary: string;
+  stage?: HiringStage;
+}
+
+export interface PaginatedResults {
+  items: RankedCandidate[];
+  page: number;
+  page_size: number;
+  total: number;
+}
+
+// ─── Candidate Query (filter / sort / search) ────────────────────────────────
+
+export interface RangeFilter {
+  min?: number;
+  max?: number;
+}
+
+// Sort fields are either fixed columns ("overall_score", "candidate_name",
+// "stage") or a per-rubric-category score prefixed with "cat:". Backend is
+// expected to parse the prefix and resolve the category by name.
+export type SortField = "overall_score" | "candidate_name" | "stage" | `cat:${string}`;
+
+export interface SortRule {
+  field: SortField;
+  direction: "asc" | "desc";
+}
+
+// Match tier filter values mirror src/lib/tier.ts TIERS so the chip in the
+// table column and the filter dropdown stay in sync.
+export type MatchTierId = "strong" | "potential" | "risky" | "poor";
+
+export interface CandidateQueryState {
+  page: number;
+  page_size: number;
+  search: string;
+  stage: string[];
+  match: MatchTierId[];
+  overall_score?: RangeFilter;
+  // Keyed by rubric category name. Stored exactly as it appears in the rubric.
+  category_scores: Record<string, RangeFilter>;
+  sort: SortRule[];
 }
 
 // ─── Batch Progress ──────────────────────────────────────────────────────────

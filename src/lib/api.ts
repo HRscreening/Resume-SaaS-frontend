@@ -8,11 +8,15 @@ import type {
   Rubric,
   Screening,
   ScreeningListItem,
-  RankedCandidate,
+  PaginatedResults,
   BatchProgress,
   Resume,
   Score,
+  StagesMap,
+  HiringStage,
+  CandidateQueryState,
 } from "@/types";
+import { toRequestParams } from "@/components/screening/filters/queryEncoding";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
@@ -203,6 +207,90 @@ export async function analyzeJD(jdText: string): Promise<Rubric> {
   });
 }
 
+// Quota/session metadata the JD stream returns via custom response headers.
+// Each field is null when the backend didn't send it (or, cross-origin, didn't
+// expose it via Access-Control-Expose-Headers).
+export interface JdGenerateMeta {
+  // Reprompts remaining in the current window.
+  attemptsLeft: number | null;
+  // Total reprompts allowed per window (for "x / y" displays).
+  maxAttempts: number | null;
+  // When the attempt window resets, as a Date; null if unknown.
+  resetsAt: Date | null;
+}
+
+// Structured job details the backend uses to ground JD generation. Mirrors the
+// backend's JdGenerateInput. The string fields are required (non-empty);
+// `yrs_experience`, `salary_compensation_info` and `skills` may be null but the
+// keys must still be present. `company_url` must include an http(s):// scheme —
+// callers normalize before sending (see JdAiBuilder).
+export interface JdGenerateInput {
+  job_title: string;
+  company_name: string;
+  company_url: string;
+  employment_type_work_arrangement: string;
+  location: string;
+  yrs_experience: number | null;
+  salary_compensation_info: string | null;
+  skills: string | null;
+}
+
+// Generate (or refine) a job description with AI, streamed token-by-token.
+// `jd_details` carries the structured fields the backend grounds on; pass the
+// current JD back as `current_Jd` to reprompt an existing draft (send "" for the
+// first pass). `onChunk` fires with the full accumulated text so far (not the
+// delta) so callers can bind it straight to a textarea.
+//
+// Returns quota/session metadata from the response headers (see JdGenerateMeta).
+// `credentials: "include"` is required so the backend's jd_session_id cookie is
+// sent back on reprompts, keeping the attempt window consistent across requests.
+//
+// Note: `current_Jd` casing is intentional — it matches the backend contract.
+export async function generateJDStream(
+  body: { jd_details: JdGenerateInput; user_input: string; current_Jd: string },
+  onChunk: (fullText: string) => void,
+): Promise<JdGenerateMeta> {
+  const authHeaders = await getAuthHeader();
+  const res = await fetch(`${API_BASE}/api/v1/screenings/generate-jd/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders },
+    body: JSON.stringify(body),
+    credentials: "include",
+  });
+
+  if (!res.ok || !res.body) {
+    if (res.status === 401) clearSessionHint();
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(parseErrorDetail(errBody, res.status));
+  }
+
+  const attemptsHeader = res.headers.get("X-Attempts-Left");
+  const maxHeader = res.headers.get("X-Max-Attempts");
+  const resetsHeader = res.headers.get("X-Jd-Generate-Session-Resets-At");
+  const resetsDate = resetsHeader ? new Date(resetsHeader) : null;
+  const meta: JdGenerateMeta = {
+    attemptsLeft: attemptsHeader != null ? Number(attemptsHeader) : null,
+    maxAttempts: maxHeader != null ? Number(maxHeader) : null,
+    // Guard against an unparseable / empty date string.
+    resetsAt: resetsDate && !Number.isNaN(resetsDate.getTime()) ? resetsDate : null,
+  };
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    text += decoder.decode(value, { stream: true });
+    onChunk(text);
+  }
+  // Flush any trailing multi-byte character left in the decoder.
+  text += decoder.decode();
+  onChunk(text);
+
+  return meta;
+}
+
 export async function listScreenings(): Promise<ScreeningListItem[]> {
   return request<ScreeningListItem[]>("/api/screenings");
 }
@@ -211,8 +299,26 @@ export async function getScreening(id: string): Promise<Screening> {
   return request<Screening>(`/api/screenings/${id}`);
 }
 
-export async function getResults(screeningId: string): Promise<RankedCandidate[]> {
-  return request<RankedCandidate[]>(`/api/screenings/${screeningId}/results`);
+// New paginated results endpoint. Backend no longer returns per-criterion
+// breakdowns in the list payload — instead each candidate carries pre-aggregated
+// `category_scores`. Detailed criterion data is fetched on demand via
+// getResumeDetail when the analysis sheet opens.
+// Accepts either a full CandidateQueryState (preferred) or a plain
+// { page, page_size } object for callers that don't filter/sort. Unknown
+// params on the backend are tolerated by FastAPI, so it is safe to send
+// filter/sort keys ahead of the backend honoring them.
+export async function getResults(
+  screeningId: string,
+  params: CandidateQueryState | { page?: number; page_size?: number } = {},
+): Promise<PaginatedResults> {
+  const qs =
+    "search" in params || "stage" in params || "sort" in params
+      ? toRequestParams(params as CandidateQueryState)
+      : new URLSearchParams({
+          page: String((params as { page?: number }).page ?? 1),
+          page_size: String((params as { page_size?: number }).page_size ?? 20),
+        });
+  return request<PaginatedResults>(`/api/v1/screenings/${screeningId}/results?${qs.toString()}`);
 }
 
 export async function getResumeDetail(
@@ -320,14 +426,47 @@ export async function updateRubric(
   });
 }
 
-// Re-score every resume in the screening against the current rubric.
+// Re-score resumes in the screening against the current rubric.
 // Backend endpoint TBD — assumes POST /rescore which kicks off a new batch
 // and returns the new batch_id. The UI then polls batch-progress as usual.
+// Pass `resume_ids` to rescore a subset; omit/empty to rescore all.
 export async function rescoreScreening(
   screeningId: string,
+  body?: { resume_ids?: string[] },
 ): Promise<{ screening_id: string; batch_id: string; total_resumes: number }> {
   return request<{ screening_id: string; batch_id: string; total_resumes: number }>(
-    `/api/screenings/${screeningId}/rescore`,
+    `/api/v1/scores/${screeningId}/rescore`,
+    {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+    },
+  );
+}
+
+// Persist the full stages configuration for a screening. Backend contract:
+// POST /api/screenings/:id/save-stages with the StagesMap as the raw body
+// (not wrapped). Always send the complete current map — the endpoint
+// replaces, not merges.
+export async function saveScreeningStages(
+  screeningId: string,
+  stages: StagesMap,
+): Promise<string> {
+  return request<string>(`/api/v1/screenings/${screeningId}/save-stages`, {
+    method: "POST",
+    body: JSON.stringify(stages),
+  });
+}
+
+// Update a single candidate's current stage. Backend contract:
+// POST /api/v1/scores/:scoreId/update-stage?new_stage=<stage>. Returns a
+// plain string body.
+export async function updateCandidateStage(
+  scoreId: string,
+  stage: HiringStage,
+): Promise<string> {
+  const qs = new URLSearchParams({ new_stage: stage });
+  return request<string>(
+    `/api/v1/scores/${scoreId}/update-stage?${qs.toString()}`,
     { method: "POST" },
   );
 }

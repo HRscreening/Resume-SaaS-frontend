@@ -1,35 +1,53 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getScreening, getResults, getBatchProgress, exportResults,
+  getScreening, getBatchProgress, exportResults,
   uploadResumesToJob, addResumesToJob, rescoreScreening,
-  getResumeDetail, getResumePdfUrl,
+  saveScreeningStages, updateCandidateStage,
 } from "@/lib/api";
-import type { ScreeningListItem } from "@/types";
+import { useCandidateQuery } from "@/controllers/screening/useCandidateQuery";
+import type { ScreeningListItem, StagesMap, HiringStage, PaginatedResults } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";
 import type { RankedCandidate, RubricCategory } from "@/types";
+import { DEFAULT_STAGES } from "@/lib/stages";
+import { StagesDialog } from "@/components/screening/StagesDialog";
+import { useAnalysisSheetOpen, setOpenAnalysisSheet, ANALYSIS_SHEET_WIDTH } from "@/components/screening/AnalysisSheet";
 import { TIERS, getTier, TierSection, type TierId } from "@/components/screening/TierSection";
-import { useAnalysisSheetOpen } from "@/components/screening/AnalysisSheet";
+
 import { ProcessingAccordion } from "@/components/screening/ProcessingAccordion";
 import { RubricModal } from "@/components/screening/RubricModal";
 import { FailedView } from "@/components/screening/FailedView";
-import { Pagination } from "@/components/screening/Pagination";
+import { CandidatesTable } from "@/components/screening/CandidatesTable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner";
+
+const PAGE_SIZE = 10;
 
 export default function ScreeningDetail() {
   const { id } = useParams({ strict: false }) as { id: string };
-  const search = useSearch({ strict: false }) as { rescore?: number };
+  const search = useSearch({ strict: false }) as { saved?: number } & Record<string, unknown>;
   const queryClient = useQueryClient();
 
   const navigate = useNavigate();
   const [rescoring, setRescoring] = useState(false);
   const [rescoreError, setRescoreError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [collapsedTiers, setCollapsedTiers] = useState<Set<TierId>>(new Set(["poor"]));
   const [showRubric, setShowRubric] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [showStages, setShowStages] = useState(false);
   const analysisOpen = useAnalysisSheetOpen();
+
+  // Rescore selection mode — flipped on by the Rescore button in the action
+  // row. `selectedIds` is the cross-page basket; pagination / search / filter
+  // changes only swap the visible rows, never the selection.
+  const [rescoreMode, setRescoreMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Candidate data cache for the "Show selected only" view — without this,
+  // toggling on the view would hide selections that came from other pages.
+  // Populated whenever we see a selected candidate in the current results page.
+  const [selectedDetails, setSelectedDetails] = useState<Record<string, RankedCandidate>>({});
+  const [lastClickedId, setLastClickedId] = useState<string | null>(null);
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
   const [draftFiles, setDraftFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
@@ -82,17 +100,38 @@ export default function ScreeningDetail() {
 
   const batchDone = progress?.status === "completed" || progress?.status === "failed";
 
-  // Results endpoint returns [] for draft / no-scored-yet — safe to fire
-  // unconditionally. Removing the gate fires this in parallel with the
-  // screening query for the common (non-draft) path.
-  const { data: candidates = [] } = useQuery({
-    queryKey: ["results", id],
-    queryFn: () => getResults(id),
-    refetchInterval: () => {
-      if (batchDone) return false;
-      return 4000;
-    },
+  // Backend-driven query state (filters, sort, search, pagination) lives in
+  // the URL via useCandidateQuery. The hook also owns the results query,
+  // so we don't run a separate useQuery here.
+  const candidateQuery = useCandidateQuery(id, {
+    pageSize: PAGE_SIZE,
+    pollWhileProcessing: true,
+    batchDone,
   });
+  const {
+    state: queryState,
+    searchInput,
+    setSearch,
+    setStage,
+    setMatch,
+    setSort,
+    setOverallRange,
+    setCategoryRange,
+    setPage: setQueryPage,
+    clearAll,
+    prefetchPage,
+    query: resultsQuery,
+  } = candidateQuery;
+  const resultsPage = resultsQuery.data;
+  const resultsFetching = resultsQuery.isFetching;
+  const resultsPlaceholder = resultsQuery.isPlaceholderData;
+  const currentPage = queryState.page;
+  const candidates = resultsPage?.items ?? [];
+  const serverTotal = resultsPage?.total ?? 0;
+  // Only show the in-table skeleton on a cold page-switch — `isFetching` is
+  // also true during the background poll while the previous page's data is
+  // already cached, and we don't want to wipe the UI then.
+  const pageLoading = resultsFetching && (!resultsPage || resultsPlaceholder);
 
   useEffect(() => {
     if (batchDone) {
@@ -106,17 +145,29 @@ export default function ScreeningDetail() {
     }
   }, [batchDone, id, queryClient]);
 
-  // Trigger rescore when navigated here from EditRubric (?rescore=1).
-  // Runs once per arrival — we strip the search param immediately so a refresh
-  // won't re-fire it, and the local `rescoring` guard prevents double-fire
-  // during the same mount.
+  // Show a "Rubric saved" toast after returning from EditRubric (?saved=1).
+  // Auto-dismiss after a few seconds; strip the saved=1 search param so a
+  // refresh won't re-fire it. Preserves any filter/sort state already in
+  // the URL.
   useEffect(() => {
-    if (search.rescore !== 1 || rescoring) return;
+    if (search.saved !== 1) return;
+    toast.success("Rubric saved", { duration: 3500 });
+    setRescoreMode(true);
+    const { saved: _saved, ...rest } = search as Record<string, unknown>;
+    navigate({
+      to: "/screenings/$id",
+      params: { id },
+      search: rest as never,
+      replace: true,
+    });
+  }, [search, id, navigate]);
+
+  async function submitRescore() {
+    if (selectedIds.size === 0 || rescoring) return;
     setRescoring(true);
     setRescoreError(null);
 
-    // Optimistically flip status so ProcessingAccordion renders immediately,
-    // before the rescore POST resolves.
+    // Optimistically flip status so ProcessingAccordion renders immediately.
     queryClient.setQueryData(
       ["screening", id],
       (old: typeof screening) =>
@@ -124,26 +175,114 @@ export default function ScreeningDetail() {
     );
     queryClient.removeQueries({ queryKey: ["batch-progress", id] });
 
-    navigate({
-      to: "/screenings/$id",
-      params: { id },
-      search: { rescore: undefined },
-      replace: true,
-    });
+    try {
+      await rescoreScreening(id, { resume_ids: [...selectedIds] });
+      queryClient.invalidateQueries({ queryKey: ["batch-progress", id] });
+      queryClient.invalidateQueries({ queryKey: ["results", id] });
+      queryClient.invalidateQueries({ queryKey: ["screening", id] });
+      queryClient.invalidateQueries({ queryKey: ["screenings"] });
+      exitRescoreMode();
+    } catch (err) {
+      setRescoreError(err instanceof Error ? err.message : "Failed to start rescore");
+      queryClient.invalidateQueries({ queryKey: ["screening", id] });
+    } finally {
+      setRescoring(false);
+    }
+  }
 
-    rescoreScreening(id)
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ["batch-progress", id] });
-        queryClient.invalidateQueries({ queryKey: ["results", id] });
-        queryClient.invalidateQueries({ queryKey: ["screening", id] });
-        queryClient.invalidateQueries({ queryKey: ["screenings"] });
-      })
-      .catch((err) => {
-        setRescoreError(err instanceof Error ? err.message : "Failed to start rescore");
-        queryClient.invalidateQueries({ queryKey: ["screening", id] });
-      })
-      .finally(() => setRescoring(false));
-  }, [search.rescore, id, queryClient, navigate, rescoring]);
+  function exitRescoreMode() {
+    setRescoreMode(false);
+    setSelectedIds(new Set());
+    setSelectedDetails({});
+    setLastClickedId(null);
+    setShowSelectedOnly(false);
+  }
+
+  function rememberDetails(ids: string[]) {
+    setSelectedDetails((prev) => {
+      const next = { ...prev };
+      for (const rid of ids) {
+        if (!next[rid]) {
+          const c = candidates.find((x) => x.resume_id === rid);
+          if (c) next[rid] = c;
+        }
+      }
+      return next;
+    });
+  }
+
+  function toggleSelection(rid: string, e: React.MouseEvent | React.ChangeEvent) {
+    const me = e as React.MouseEvent;
+    const visibleList = (showSelectedOnly
+      ? Object.values(selectedDetails).filter((c) => selectedIds.has(c.resume_id))
+      : candidates
+    ).map((c) => c.resume_id);
+
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const added: string[] = [];
+      if (me.shiftKey && lastClickedId && visibleList.includes(lastClickedId) && visibleList.includes(rid)) {
+        const a = visibleList.indexOf(lastClickedId);
+        const b = visibleList.indexOf(rid);
+        const [lo, hi] = a < b ? [a, b] : [b, a];
+        for (let i = lo; i <= hi; i++) {
+          if (!next.has(visibleList[i])) added.push(visibleList[i]);
+          next.add(visibleList[i]);
+        }
+      } else if (next.has(rid)) {
+        next.delete(rid);
+      } else {
+        next.add(rid);
+        added.push(rid);
+      }
+      if (added.length > 0) rememberDetails(added);
+      return next;
+    });
+    setLastClickedId(rid);
+  }
+
+  function togglePage(ids: string[], select: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const added: string[] = [];
+      for (const rid of ids) {
+        if (select) {
+          if (!next.has(rid)) added.push(rid);
+          next.add(rid);
+        } else {
+          next.delete(rid);
+        }
+      }
+      if (added.length > 0) rememberDetails(added);
+      return next;
+    });
+  }
+
+  // Keyboard shortcuts (only active in rescore mode).
+  useEffect(() => {
+    if (!rescoreMode) return;
+    function onKeyDown(e: KeyboardEvent) {
+      // Don't hijack typing in inputs.
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (showSelectedOnly) setShowSelectedOnly(false);
+        else exitRescoreMode();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) {
+        e.preventDefault();
+        const visible = (showSelectedOnly
+          ? Object.values(selectedDetails).filter((c) => selectedIds.has(c.resume_id))
+          : candidates
+        ).map((c) => c.resume_id);
+        togglePage(visible, true);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rescoreMode, showSelectedOnly, selectedIds, selectedDetails]);
 
   async function handleExport() {
     setExporting(true);
@@ -291,30 +430,30 @@ export default function ScreeningDetail() {
     pickResumeFiles(picked, uploadMoreFiles, setUploadMoreFiles);
   }
 
-  function toggleTier(tierId: TierId) {
-    setCollapsedTiers((prev) => {
-      const next = new Set(prev);
-      next.has(tierId) ? next.delete(tierId) : next.add(tierId);
-      return next;
-    });
-  }
+  // POST /api/screenings/:id/save-stages — body is the full StagesMap.
+  // Always send the latest map; the endpoint replaces server state outright.
+  // Must be declared before any early return so hook order stays stable.
+  const saveStagesMutation = useMutation({
+    mutationFn: (next: StagesMap) => saveScreeningStages(id, next),
+    onMutate: async (next) => {
+      await queryClient.cancelQueries({ queryKey: ["screening", id] });
+      const prev = queryClient.getQueryData<typeof screening>(["screening", id]);
+      queryClient.setQueryData(
+        ["screening", id],
+        (old: typeof screening) => (old ? { ...old, stages: next } : old),
+      );
+      return { prev };
+    },
+    onError: (_err, _next, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["screening", id], ctx.prev);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["screening", id] });
+    },
+  });
 
-  function openCandidate(c: RankedCandidate) {
-    navigate({ to: "/screenings/$id/$resumeId", params: { id, resumeId: c.resume_id } });
-  }
-
-  // Hover-prefetch the resume detail + signed PDF URL so click → navigation
-  // is on warm cache. Mirrors the screening-row prefetch on the Screenings
-  // list page. Idempotent: prefetchQuery is a no-op if data is fresh.
-  function prefetchCandidate(c: RankedCandidate) {
-    queryClient.prefetchQuery({
-      queryKey: ["resume-detail", id, c.resume_id],
-      queryFn: () => getResumeDetail(id, c.resume_id),
-    });
-    queryClient.prefetchQuery({
-      queryKey: ["resume-pdf", id, c.resume_id],
-      queryFn: () => getResumePdfUrl(id, c.resume_id),
-    });
+  async function handleSaveStages(next: StagesMap): Promise<void> {
+    await saveStagesMutation.mutateAsync(next);
   }
 
   // Cold-cache first paint: render a lightweight skeleton instead of a
@@ -354,25 +493,33 @@ export default function ScreeningDetail() {
   const isDraft = screening.status === "draft";
   const isProcessing = !isDraft && !["completed", "failed"].includes(screening.status);
   const rubricCategories: RubricCategory[] = (screening.rubric as any)?.categories ?? [];
+  const stagesMap: StagesMap = screening.stages ?? DEFAULT_STAGES;
 
-  const PAGE_SIZE = 100;
-  const totalPages = Math.max(1, Math.ceil(candidates.length / PAGE_SIZE));
-  const safePage = Math.min(currentPage, totalPages);
-  const pagedCandidates = candidates.length > PAGE_SIZE
-    ? candidates.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
-    : candidates;
-  const showPagination = candidates.length > PAGE_SIZE;
+  function handleCandidateStageChange(resumeId: string, scoreId: string, next: HiringStage) {
+    // Optimistic per-row update across every cached results page for this
+    // screening — the row may not be on `currentPage`.
+    queryClient.setQueriesData<PaginatedResults>(
+      { queryKey: ["results", id] },
+      (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((c) =>
+            c.resume_id === resumeId ? { ...c, stage: next } : c,
+          ),
+        };
+      },
+    );
+    updateCandidateStage(scoreId, next).catch(() => {
+      queryClient.invalidateQueries({ queryKey: ["results", id] });
+    });
+  }
 
-  // Tier counts use the full result set (so pill counts stay stable across pages);
-  // the rendered tier rows use the current page slice.
-  const tierGroupsAll = TIERS.map((tier) => ({
-    tier,
-    candidates: candidates.filter((c) => getTier(c.overall_score).id === tier.id),
-  }));
-  const tierGroups = TIERS.map((tier) => ({
-    tier,
-    candidates: pagedCandidates.filter((c) => getTier(c.overall_score).id === tier.id),
-  }));
+  // Backend's `total` is authoritative for pagination. Fall back to the
+  // screening's scored count while the first page is still loading, so the
+  // page UI doesn't flash empty before the response lands.
+  const totalCandidates = serverTotal || screening.scored_resumes || screening.total_resumes || candidates.length;
+  const hasAnyCandidates = candidates.length > 0 || totalCandidates > 0;
 
   return (
     <div
@@ -393,12 +540,10 @@ export default function ScreeningDetail() {
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">{screening.title}</h1>
             <p className="text-sm text-[#737373] mt-0.5">
-              {isProcessing && candidates.length > 0
-                ? `${candidates.length} scored so far · Ranking finalizes when all complete`
-                : candidates.length > 0
-                ? showPagination
-                  ? `Grouped by fit · ${candidates.length} candidates · Page ${safePage} of ${totalPages}`
-                  : `Grouped by fit · ${candidates.length} candidates`
+              {isProcessing && totalCandidates > 0
+                ? `${screening.scored_resumes} scored so far · Ranking finalizes when all complete`
+                : hasAnyCandidates
+                ? `${totalCandidates} candidate${totalCandidates === 1 ? "" : "s"} · Ranked by overall score`
                 : `${screening.total_resumes} resumes · Created ${formatDate(screening.created_at)}`}
             </p>
           </div>
@@ -431,6 +576,21 @@ export default function ScreeningDetail() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
+                  onClick={() => setRescoreMode(true)}
+                  disabled={isProcessing || rescoreMode}
+                  className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed`}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11.5 4.5A5 5 0 1 0 12 9" /><path d="M11.5 1.5v3h-3" />
+                  </svg>
+                  {!analysisOpen && "Rescore"}
+                </button>
+              </TooltipTrigger>
+              {analysisOpen && <TooltipContent><p className="text-xs">Rescore</p></TooltipContent>}
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
                   onClick={handleExport}
                   disabled={exporting}
                   className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-60`}
@@ -448,27 +608,6 @@ export default function ScreeningDetail() {
           )}
         </div>
 
-        {/* Tier pills */}
-        {candidates.length > 0 && (
-          <div className="flex items-center gap-2 mt-4 flex-wrap">
-            {tierGroupsAll.map(({ tier, candidates: tc }) => (
-              <button
-                key={tier.id}
-                onClick={() => toggleTier(tier.id as TierId)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl border bg-white border-[#E8E5DF] text-sm font-medium text-[#0F0F0F] hover:bg-[#F5F3EE] transition-colors ${tc.length === 0 ? "opacity-40 cursor-default" : ""}`}
-                disabled={tc.length === 0}
-              >
-                <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: tier.dot }} />
-                {tier.label}
-                <span className="text-[#737373] font-normal">{tc.length}</span>
-                <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-                  className={`text-[#A0A0A0] transition-transform ${collapsedTiers.has(tier.id as TierId) ? "" : "rotate-180"}`}>
-                  <path d="M2 4l3.5 3.5L9 4" />
-                </svg>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Content area */}
@@ -790,37 +929,74 @@ export default function ScreeningDetail() {
             </div>
           )}
 
-          {/* Tiered results — visible during processing too (no rank yet) */}
-          {candidates.length > 0 && tierGroups.map(({ tier, candidates: tc }) => {
-            if (tc.length === 0) return null;
-            const collapsed = collapsedTiers.has(tier.id as TierId);
+          {/* Flat results table with search, filter, stage & match columns,
+              and bottom-center pagination. Visible during processing too —
+              rows stream in as they're scored. In rescoreMode, the table
+              shows a checkbox column; selection is owned by ScreeningDetail
+              so it survives page/filter/search changes. */}
+          {(candidates.length > 0 || (pageLoading && totalCandidates > 0)) && (() => {
+            const selectedList = Object.values(selectedDetails)
+              .filter((c) => selectedIds.has(c.resume_id))
+              .sort((a, b) => a.rank - b.rank);
+            const tableCandidates = showSelectedOnly ? selectedList : candidates;
+            const tableTotal = showSelectedOnly ? selectedList.length : totalCandidates;
             return (
-              <TierSection
-                key={tier.id}
-                tier={tier}
-                candidates={tc}
-                collapsed={collapsed}
-                onToggle={() => toggleTier(tier.id as TierId)}
+              <CandidatesTable
+                candidates={tableCandidates}
                 categories={rubricCategories}
-                onSelect={openCandidate}
-                onPrefetch={prefetchCandidate}
+                page={showSelectedOnly ? 1 : currentPage}
+                pageSize={PAGE_SIZE}
+                total={tableTotal}
+                onPageChange={(p) => {
+                  setOpenAnalysisSheet(null);
+                  setQueryPage(p);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                loading={!showSelectedOnly && pageLoading}
+                onPrefetchPage={prefetchPage}
+                selectable={rescoreMode}
+                selectedIds={selectedIds}
+                onToggle={toggleSelection}
+                onTogglePage={togglePage}
+                stages={stagesMap}
+                onCandidateStageChange={handleCandidateStageChange}
+                onManageStages={() => setShowStages(true)}
+                // Filter/sort/search are disabled in the "show selected
+                // only" view — those rows come from cross-page memory and
+                // sorting/filtering them server-side would be a category
+                // error. Toolbar reappears as soon as the user toggles
+                // back to the full list.
+                {...(showSelectedOnly
+                  ? {}
+                  : {
+                      queryState,
+                      searchInput,
+                      onSearchChange: setSearch,
+                      onStageFilterChange: setStage,
+                      onMatchFilterChange: setMatch,
+                      onSortChange: setSort,
+                      onOverallRangeChange: setOverallRange,
+                      onCategoryRangeChange: setCategoryRange,
+                      onClearAllFilters: clearAll,
+                    })}
               />
             );
-          })}
+          })()}
 
-          {/* Pagination — appears when there are more than 100 candidates */}
-          {showPagination && (
-            <Pagination
-              currentPage={safePage}
-              totalPages={totalPages}
-              total={candidates.length}
-              pageSize={PAGE_SIZE}
-              onChange={(p) => {
-                setCurrentPage(p);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            />
+          {/* Rescore mode hint bar */}
+          {rescoreMode && candidates.length > 0 && (
+            <p className="text-[11px] text-[#737373] -mt-2">
+              <span className="font-medium text-[#404040]">Rescore mode</span> · Click rows or checkboxes to select · Shift+Click for range · Ctrl/Cmd+A selects current page · Esc to exit
+            </p>
           )}
+
+          {/* Stages management modal */}
+          <StagesDialog
+            open={showStages}
+            onClose={() => setShowStages(false)}
+            stages={stagesMap}
+            onSave={handleSaveStages}
+          />
 
           {/* Rubric modal */}
           {showRubric && (
@@ -839,6 +1015,66 @@ export default function ScreeningDetail() {
           )}
         </div>
       </div>
+
+      {/* Rescore action bar — sticky bottom, only in rescore mode */}
+      {rescoreMode && (() => {
+        const totalSelected = selectedIds.size;
+        const onPageCount = candidates.filter((c) => selectedIds.has(c.resume_id)).length;
+        return (
+          <div
+            className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#E8E5DF] bg-white/95 backdrop-blur px-6 py-3 flex items-center justify-between gap-4 transition-[padding] duration-200 ease-out"
+            style={{ paddingRight: analysisOpen ? ANALYSIS_SHEET_WIDTH + 24 : 24 }}
+          >
+            <div className="flex items-center gap-4 flex-wrap">
+              <span className="text-sm font-semibold text-[#0F0F0F]">
+                {totalSelected} selected
+                {!showSelectedOnly && totalSelected > 0 && (
+                  <span className="font-normal text-[#737373] ml-1.5">
+                    ({onPageCount} on this page)
+                  </span>
+                )}
+              </span>
+              <label className={`flex items-center gap-2 text-xs ${totalSelected === 0 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} text-[#404040]`}>
+                <input
+                  type="checkbox"
+                  checked={showSelectedOnly}
+                  disabled={totalSelected === 0}
+                  onChange={(e) => setShowSelectedOnly(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-[#C85A17]"
+                />
+                Show selected only
+              </label>
+              {rescoreError && (
+                <span className="text-xs text-red-600">{rescoreError}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={exitRescoreMode}
+                disabled={rescoring}
+                className="h-9 px-4 text-sm font-medium text-[#404040] border border-[#D4D4D4] rounded-xl hover:bg-[#F5F3EE] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                disabled={totalSelected === 0 || rescoring}
+                className="h-9 px-4 text-sm font-medium text-[#404040] border border-[#D4D4D4] rounded-xl hover:bg-[#F5F3EE] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Clear all
+              </button>
+              <button
+                onClick={submitRescore}
+                disabled={totalSelected === 0 || rescoring}
+                className="h-9 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {rescoring && <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+                {rescoring ? "Starting…" : `Rescore ${totalSelected} candidate${totalSelected === 1 ? "" : "s"}`}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

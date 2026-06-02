@@ -10,6 +10,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { cn } from "@/lib/utils";
+import { Toaster } from "@/components/ui/sonner";
 import { queryClient } from "@/lib/queryClient";
 import {
   getScreening, getResults, getBatchProgress, getResumeDetailFull,
@@ -17,7 +18,7 @@ import {
 import { queryKeys } from "@/lib/queryKeys";
 
 // ─── Eager imports (small pages — no spinner flash) ─────────
-import Landing from "@/routes/Landing";
+// import Landing from "@/routes/Landing";
 import Login from "@/routes/Login";
 import Signup from "@/routes/Signup";
 import ForgotPassword from "@/routes/ForgotPassword";
@@ -216,10 +217,9 @@ const screeningDetailRoute = createRoute({
     queryClient.prefetchQuery({ queryKey: ["results", id], queryFn: () => getResults(id) });
     queryClient.prefetchQuery({ queryKey: ["batch-progress", id], queryFn: () => getBatchProgress(id) });
   },
-  validateSearch: (search: Record<string, unknown>): { rescore?: 1 } => {
-    // When set, the screening page will kick off a rescore on mount.
-    // Used after the EditRubric page saves a new rubric.
-    if (search.rescore === 1 || search.rescore === "1") return { rescore: 1 };
+  validateSearch: (search: Record<string, unknown>): { saved?: 1 } => {
+    // When set, the screening page will show a "Rubric saved" toast.
+    if (search.saved === 1 || search.saved === "1") return { saved: 1 };
     return {};
   },
 });
@@ -339,5 +339,10 @@ declare module "@tanstack/react-router" {
 // ─── App ────────────────────────────────────────────────────
 
 export function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster />
+    </>
+  );
 }
