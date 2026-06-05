@@ -409,6 +409,27 @@ export async function exportResults(screeningId: string): Promise<Blob> {
   return res.blob();
 }
 
+// Download a single candidate's scorecard. Returns the file blob plus the
+// server-suggested filename (parsed from Content-Disposition; null when the
+// header is absent or unexposed cross-origin, so callers fall back).
+export async function downloadScorecard(
+  scoreId: string,
+): Promise<{ blob: Blob; filename: string | null }> {
+  const authHeaders = await getAuthHeader();
+  const res = await fetch(`${API_BASE}/api/v1/scores/${scoreId}/download-scorecard`, {
+    method: "GET",
+    headers: authHeaders,
+  });
+  if (!res.ok) {
+    if (res.status === 401) clearSessionHint();
+    throw new Error("Failed to download scorecard");
+  }
+  const disposition = res.headers.get("Content-Disposition");
+  const match = disposition?.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+  const filename = match ? decodeURIComponent(match[1].trim()) : null;
+  return { blob: await res.blob(), filename };
+}
+
 export async function deleteScreening(id: string): Promise<void> {
   return request<void>(`/api/screenings/${id}`, { method: "DELETE" });
 }

@@ -1,6 +1,7 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useParams } from "@tanstack/react-router";
-import { Eye, ExternalLink, Expand, } from "lucide-react";
+import { Eye, ExternalLink, Expand, Download, Loader2, } from "lucide-react";
+import { downloadScorecard } from "@/lib/api";
 import {
   Sheet,
   SheetTrigger,
@@ -130,6 +131,27 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
     : "—";
   const tier = score ? getTierLabel(score.overall_score) : null;
 
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadScorecard = async () => {
+    if (!score?.id || downloading) return;
+    setDownloading(true);
+    try {
+      const { blob, filename } = await downloadScorecard(score.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download =
+        filename ?? `${resume?.candidate_name ?? "scorecard"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      /* ignored */
+    } finally {
+      setDownloading(false);
+    }
+  };
+
 
 
   return (
@@ -244,6 +266,32 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
 
               {screening_id && resume_id && (
                 <div className="flex flex-row items-center gap-1">
+                  {score?.id && (
+                    <Tooltip>
+                      <TooltipTrigger asChild className="shrink-0">
+                        <button
+                          type="button"
+                          onClick={handleDownloadScorecard}
+                          className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+                        >
+                          {downloading ? (
+                            <>
+                              <Loader2 size={12} className="animate-spin" />
+                              Downloading
+                            </>
+                          ) : (
+                            <>
+                              <Download size={12} />
+                              Scorecard
+                            </>
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">Download scorecard</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                   <Tooltip>
                     <TooltipTrigger className="shrink-0">
 
@@ -252,7 +300,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
-                    
+
                     >
                     <Expand size={12} />
                     Expand
