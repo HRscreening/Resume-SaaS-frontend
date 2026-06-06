@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { analyzeJD, createJob, parseJDFile } from "@/lib/api";
 import type { Rubric, Subcategory } from "@/types";
 import { MAX_SUBCATEGORIES } from "@/lib/rubric";
@@ -32,12 +33,9 @@ export default function NewScreening() {
   const [rubric, setRubric] = useState<Rubric | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [error, setError] = useState<string | null>(null);
-
   function handleModeChange(mode: JdInputMode) {
     setJdInputMode(mode);
     setJdFile(null);
-    setError(null);
     // Start fresh when switching to paste or AI; upload keeps any extracted
     // text until a new file is chosen.
     if (mode === "paste" || mode === "ai") setJdText("");
@@ -47,12 +45,11 @@ export default function NewScreening() {
     setJdFile(file);
     setJdText("");
     setExtractingJD(true);
-    setError(null);
     try {
       const { text } = await parseJDFile(file);
       setJdText(text);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not extract text from file");
+      toast.error(err instanceof Error ? err.message : "Could not extract text from file");
       setJdFile(null);
     } finally {
       setExtractingJD(false);
@@ -66,7 +63,6 @@ export default function NewScreening() {
 
   async function handleAnalyzeJD() {
     if (!jdText.trim() || analyzingJD) return;
-    setError(null);
     setAnalyzingJD(true);
     try {
       const result = await analyzeJD(jdText);
@@ -85,7 +81,7 @@ export default function NewScreening() {
       setRubric(sorted);
       setStep(2);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to analyze JD");
+      toast.error(err instanceof Error ? err.message : "Failed to analyze JD");
     } finally {
       setAnalyzingJD(false);
     }
@@ -129,7 +125,6 @@ export default function NewScreening() {
   async function handleSaveJob() {
     if (!rubric || !title.trim()) return;
     setSaving(true);
-    setError(null);
     try {
       const { screening_id } = await createJob({
         title: title.trim(),
@@ -139,7 +134,7 @@ export default function NewScreening() {
       queryClient.invalidateQueries({ queryKey: ["screenings"] });
       navigate({ to: "/screenings/$id", params: { id: screening_id } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save job");
+      toast.error(err instanceof Error ? err.message : "Failed to save job");
     } finally {
       setSaving(false);
     }
@@ -152,10 +147,6 @@ export default function NewScreening() {
         <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F] mb-4">New Job</h1>
         <StepIndicator current={step} steps={STEPS} />
       </div>
-
-      {error && (
-        <div className="mb-6 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>
-      )}
 
       {step === 1 && (
         <JdInputStep
@@ -171,7 +162,6 @@ export default function NewScreening() {
           onRemoveFile={handleRemoveFile}
           analyzing={analyzingJD}
           onAnalyze={handleAnalyzeJD}
-          onError={setError}
         />
       )}
 

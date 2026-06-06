@@ -219,6 +219,23 @@ export interface JdGenerateMeta {
   resetsAt: Date | null;
 }
 
+// Both the JD stream and PDF download share the same jd_session_id window and
+// surface their remaining quota through the same custom response headers, so
+// parse them once here. Each field is null when the backend didn't send it (or,
+// cross-origin, didn't expose it via Access-Control-Expose-Headers).
+function parseJdGenerateMeta(res: Response): JdGenerateMeta {
+  const attemptsHeader = res.headers.get("X-Attempts-Left");
+  const maxHeader = res.headers.get("X-Max-Attempts");
+  const resetsHeader = res.headers.get("X-Jd-Generate-Session-Resets-At");
+  const resetsDate = resetsHeader ? new Date(resetsHeader) : null;
+  return {
+    attemptsLeft: attemptsHeader != null ? Number(attemptsHeader) : null,
+    maxAttempts: maxHeader != null ? Number(maxHeader) : null,
+    // Guard against an unparseable / empty date string.
+    resetsAt: resetsDate && !Number.isNaN(resetsDate.getTime()) ? resetsDate : null,
+  };
+}
+
 // Structured job details the backend uses to ground JD generation. Mirrors the
 // backend's JdGenerateInput. The string fields are required (non-empty);
 // `yrs_experience`, `salary_compensation_info` and `skills` may be null but the
@@ -264,16 +281,7 @@ export async function generateJDStream(
     throw new Error(parseErrorDetail(errBody, res.status));
   }
 
-  const attemptsHeader = res.headers.get("X-Attempts-Left");
-  const maxHeader = res.headers.get("X-Max-Attempts");
-  const resetsHeader = res.headers.get("X-Jd-Generate-Session-Resets-At");
-  const resetsDate = resetsHeader ? new Date(resetsHeader) : null;
-  const meta: JdGenerateMeta = {
-    attemptsLeft: attemptsHeader != null ? Number(attemptsHeader) : null,
-    maxAttempts: maxHeader != null ? Number(maxHeader) : null,
-    // Guard against an unparseable / empty date string.
-    resetsAt: resetsDate && !Number.isNaN(resetsDate.getTime()) ? resetsDate : null,
-  };
+  const meta = parseJdGenerateMeta(res);
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -289,6 +297,43 @@ export async function generateJDStream(
   onChunk(text);
 
   return meta;
+}
+
+// Render the current job description as a downloadable PDF. Takes the same
+// payload shape as generateJDStream (jd_details + user_input + current_Jd) so
+// the backend grounds the document on whatever the user currently has. Returns
+// the file blob plus the server-suggested filename (parsed from
+// Content-Disposition; null when absent or unexposed cross-origin, so callers
+// fall back).
+//
+// Downloads are rate-limited: a 429 carries a human-readable message in the
+// response body (detail/message). parseErrorDetail surfaces that exact text via
+// the thrown Error so the UI can show the backend's limit message rather than a
+// generic one. `credentials: "include"` mirrors the stream so the download
+// shares the same jd_session_id window.
+//
+// The download shares that window with generateJDStream and returns the same
+// quota headers, so `meta` is parsed and returned too — callers update the same
+// attempts/resets display they drive off the stream's meta.
+export async function downloadJDPdf(
+  body: { jd_details: JdGenerateInput; user_input: string; current_Jd: string },
+): Promise<{ blob: Blob; filename: string | null; meta: JdGenerateMeta }> {
+  const authHeaders = await getAuthHeader();
+  const res = await fetch(`${API_BASE}/api/v1/screenings/download-generate-jd`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders },
+    body: JSON.stringify(body),
+    credentials: "include",
+  });
+  if (!res.ok) {
+    if (res.status === 401) clearSessionHint();
+    const errBody = await res.json().catch(() => ({}));
+    throw new Error(parseErrorDetail(errBody, res.status));
+  }
+  const disposition = res.headers.get("Content-Disposition");
+  const match = disposition?.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+  const filename = match ? decodeURIComponent(match[1].trim()) : null;
+  return { blob: await res.blob(), filename, meta: parseJdGenerateMeta(res) };
 }
 
 export async function listScreenings(): Promise<ScreeningListItem[]> {

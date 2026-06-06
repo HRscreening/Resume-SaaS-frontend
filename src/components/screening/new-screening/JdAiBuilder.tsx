@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { generateJDStream } from "@/lib/api";
+import { Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { generateJDStream, downloadJDPdf } from "@/lib/api";
+import type { JdGenerateInput, JdGenerateMeta } from "@/lib/api";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import {
   Accordion,
@@ -31,15 +34,13 @@ interface JdAiBuilderProps {
   // on reprompts; generation writes its result back through onJdTextChange.
   jdText: string;
   onJdTextChange: (value: string) => void;
-  // Surfaces generation errors through the parent's error banner.
-  onError: (message: string | null) => void;
 }
 
 // "Build with AI" JD mode: a prompt input drives an AI-generated job
 // description into an editable textarea. After the first generation the user
 // can reprompt a limited number of times (attemptsLeft), passing the current
 // JD back so the AI refines rather than starts over.
-export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiBuilderProps) {
+export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderProps) {
   const [prompt, setPrompt] = useState("");
   // Structured details that ground the generation (sent as `jd_details`). The
   // first four are required by the backend; the rest are optional.
@@ -51,6 +52,9 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
   const [salary, setSalary] = useState("");
   const [skills, setSkills] = useState("");
   const [generating, setGenerating] = useState(false);
+  // True while the PDF export request is in flight, so the button shows a
+  // spinner and can't be double-fired.
+  const [downloading, setDownloading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Set once the first stream completes. Tracked separately from attemptsLeft
   // so the "reprompt" UI still works even if the X-Attempts-Left header isn't
@@ -82,6 +86,31 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
     Boolean(location.trim());
   const canGenerate =
     Boolean(jobTitle.trim()) && detailsComplete && !generating && !outOfAttempts;
+  // The PDF needs both a JD body and the grounding details the backend requires;
+  // gate the export the same way generation is gated so we don't send a 422.
+  const canDownload =
+    Boolean(jobTitle.trim()) &&
+    Boolean(jdText.trim()) &&
+    detailsComplete &&
+    !generating &&
+    !downloading;
+
+  // Assemble the structured `jd_details` payload shared by generation and PDF
+  // export. Optional numeric/text fields collapse to null when blank.
+  function buildJdDetails(): JdGenerateInput {
+    const trimmedYrs = yrsExperience.trim();
+    const parsedYrs = trimmedYrs ? Number(trimmedYrs) : null;
+    return {
+      job_title: jobTitle.trim(),
+      company_name: companyName.trim(),
+      company_url: normalizeUrl(companyUrl),
+      employment_type_work_arrangement: workArrangement.trim(),
+      location: location.trim(),
+      yrs_experience: parsedYrs !== null && !Number.isNaN(parsedYrs) ? parsedYrs : null,
+      salary_compensation_info: salary.trim() || null,
+      skills: skills.trim() || null,
+    };
+  }
 
   // Reveals streamed text at a steady typewriter pace rather than in the big
   // bursts the backend sends, so it reads like a chat response being typed out.
@@ -100,29 +129,26 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
     if (el) el.scrollTop = el.scrollHeight;
   }, [jdText, generating]);
 
+  // Sync the attempts/resets display from the quota headers returned by both
+  // generation and download. Each field is only applied when present so a
+  // missing (e.g. unexposed) header doesn't blank out a known value.
+  function applyMeta(meta: JdGenerateMeta) {
+    if (meta.attemptsLeft !== null) setAttemptsLeft(meta.attemptsLeft);
+    if (meta.maxAttempts !== null) setMaxAttempts(meta.maxAttempts);
+    if (meta.resetsAt !== null) setResetsAt(meta.resetsAt);
+  }
+
   async function handleGenerate() {
     if (!canGenerate) return;
-    onError(null);
     setGenerating(true);
     // Capture the JD to refine before we clear the textarea for the new stream.
     const currentJd = jdText;
     typewriter.reset();
     onJdTextChange("");
     try {
-      const trimmedYrs = yrsExperience.trim();
-      const parsedYrs = trimmedYrs ? Number(trimmedYrs) : null;
       const meta = await generateJDStream(
         {
-          jd_details: {
-            job_title: jobTitle.trim(),
-            company_name: companyName.trim(),
-            company_url: normalizeUrl(companyUrl),
-            employment_type_work_arrangement: workArrangement.trim(),
-            location: location.trim(),
-            yrs_experience: parsedYrs !== null && !Number.isNaN(parsedYrs) ? parsedYrs : null,
-            salary_compensation_info: salary.trim() || null,
-            skills: skills.trim() || null,
-          },
+          jd_details: buildJdDetails(),
           user_input: prompt.trim(),
           current_Jd: currentJd,
         },
@@ -130,9 +156,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
         (fullText) => typewriter.push(fullText),
       );
       setHasGenerated(true);
-      if (meta.attemptsLeft !== null) setAttemptsLeft(meta.attemptsLeft);
-      if (meta.maxAttempts !== null) setMaxAttempts(meta.maxAttempts);
-      if (meta.resetsAt !== null) setResetsAt(meta.resetsAt);
+      applyMeta(meta);
       // Let the typewriter finish revealing whatever is still buffered, then it
       // flips `generating` off via onDone.
       typewriter.finish();
@@ -140,8 +164,37 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
       // Restore the previous JD so a failed reprompt doesn't wipe the user's work.
       typewriter.cancel();
       onJdTextChange(currentJd);
-      onError(err instanceof Error ? err.message : "Failed to generate job description");
+      toast.error(err instanceof Error ? err.message : "Failed to generate job description");
       setGenerating(false);
+    }
+  }
+
+  async function handleDownloadPdf() {
+    if (!canDownload) return;
+    setDownloading(true);
+    try {
+      const { blob, filename, meta } = await downloadJDPdf({
+        jd_details: buildJdDetails(),
+        user_input: prompt.trim(),
+        current_Jd: jdText,
+      });
+      // The download shares the generation window, so refresh the same
+      // attempts/resets display from its headers.
+      applyMeta(meta);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename ?? `${jobTitle.trim() || "job-description"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      // The backend returns a 429 with a human-readable limit message when the
+      // download quota is spent. Surface it as a toast rather than the parent's
+      // page-top banner: the download button lives deep in the scrolled builder,
+      // so a banner up top would go unseen.
+      toast.error(err instanceof Error ? err.message : "Failed to download PDF");
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -363,25 +416,46 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
         )}
       </div>
 
-      {hasGenerated && (
+      {(hasGenerated || jdText.trim()) && (
         <div className="flex items-center justify-between gap-3 text-xs text-[#A0A0A0]">
           <span>{jdText.length.toLocaleString()} characters</span>
-          {attemptsLeft !== null && (
-            <div className="flex items-center gap-2">
-              {/* Attempts pill: "3 / 8 left", or a muted "0 / 8" when spent. */}
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${
-                  outOfAttempts
-                    ? "bg-[#FBE9E7] text-[#a70c0c]"
-                    : "bg-[#EFEAE1] text-[#404040]"
-                }`}
-              >
-                {maxAttempts !== null ? `${attemptsLeft} / ${maxAttempts}` : attemptsLeft}
-                <span className="font-normal text-[#A0A0A0]">left</span>
-              </span>
-              {resetLabel && <span className="text-[#A0A0A0]">Resets {resetLabel}</span>}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {attemptsLeft !== null && (
+              <>
+                {/* Attempts pill: "3 / 8 left", or a muted "0 / 8" when spent. */}
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${
+                    outOfAttempts
+                      ? "bg-[#FBE9E7] text-[#a70c0c]"
+                      : "bg-[#EFEAE1] text-[#404040]"
+                  }`}
+                >
+                  {maxAttempts !== null ? `${attemptsLeft} / ${maxAttempts}` : attemptsLeft}
+                  <span className="font-normal text-[#A0A0A0]">left</span>
+                </span>
+                {resetLabel && <span className="text-[#A0A0A0]">Resets {resetLabel}</span>}
+              </>
+            )}
+            {/* Download the current JD as a PDF (same payload as generation). */}
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={!canDownload}
+              className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {downloading ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" />
+                  Downloading…
+                </>
+              ) : (
+                <>
+                  <Download size={12} />
+                  Download PDF
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
 
