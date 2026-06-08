@@ -245,10 +245,12 @@ export interface JdGenerateInput {
   job_title: string;
   company_name: string;
   company_url: string;
-  employment_type_work_arrangement: string;
+  employment_type: string;
+  work_arrangement:string
   location: string;
   yrs_experience: number | null;
   salary_compensation_info: string | null;
+  department: string | null;
   skills: string | null;
 }
 
@@ -444,14 +446,40 @@ export async function getBatchProgress(screeningId: string): Promise<BatchProgre
   return request<BatchProgress>(`/api/screenings/${screeningId}/batch-progress`);
 }
 
-export async function exportResults(screeningId: string): Promise<Blob> {
+// Export the screening results as an Excel (.xlsx) file. Accepts the same
+// filter/sort state as getResults so the spreadsheet matches exactly what the
+// user sees in the candidate table. page/page_size are stripped — export spans
+// the full filtered set, not a single page. Returns the binary blob plus the
+// server-suggested filename (from Content-Disposition; null when absent or
+// unexposed cross-origin, so callers fall back).
+export async function exportResults(
+  screeningId: string,
+  params: CandidateQueryState | { page?: number; page_size?: number } = {},
+): Promise<{ blob: Blob; filename: string | null }> {
+  const qs =
+    "search" in params || "stage" in params || "sort" in params
+      ? toRequestParams(params as CandidateQueryState)
+      : new URLSearchParams();
+  qs.delete("page");
+  qs.delete("page_size");
+  const query = qs.toString();
+
   const authHeaders = await getAuthHeader();
-  const res = await fetch(`${API_BASE}/api/screenings/${screeningId}/export`, {
-    method: "POST",
-    headers: authHeaders,
-  });
-  if (!res.ok) throw new Error("Export failed");
-  return res.blob();
+  const res = await fetch(
+    `${API_BASE}/api/v1/screenings/${screeningId}/export${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      headers: authHeaders,
+    },
+  );
+  if (!res.ok) {
+    if (res.status === 401) clearSessionHint();
+    throw new Error("Export failed");
+  }
+  const disposition = res.headers.get("Content-Disposition");
+  const match = disposition?.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+  const filename = match ? decodeURIComponent(match[1].trim()) : null;
+  return { blob: await res.blob(), filename };
 }
 
 // Download a single candidate's scorecard. Returns the file blob plus the

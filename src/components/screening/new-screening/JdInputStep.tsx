@@ -66,7 +66,11 @@ export function JdInputStep({
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <label className="block text-sm font-medium text-[#0F0F0F]">
-              Job description <span className="text-red-500">*</span>
+              Job description <span className="text-red-500">{
+                
+                mode !== "ai" && "*" 
+
+                }</span>
             </label>
             {/* Mode toggle */}
             <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#F0EDE8] border border-[#D4D4D4]">

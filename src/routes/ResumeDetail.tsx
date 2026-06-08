@@ -80,7 +80,9 @@ export default function ResumeDetail() {
   const [pdfLoading, setPdfLoading] = useState(false);
 
   useEffect(() => {
-    if (!pdfUrl) return;
+    // Only PDFs are rendered from a blob URL; DOCX/Office files go through the
+    // Office Online viewer (see officeViewerUrl below), so skip the download.
+    if (!pdfUrl || !data?.original_filename?.toLowerCase().endsWith(".pdf")) return;
     let objectUrl: string | null = null;
     setPdfLoading(true);
     fetch(pdfUrl)
@@ -92,7 +94,7 @@ export default function ResumeDetail() {
       .catch(() => {})
       .finally(() => setPdfLoading(false));
     return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [pdfUrl]);
+  }, [pdfUrl, data?.original_filename]);
 
   if (isLoading) {
     return (
@@ -115,7 +117,15 @@ export default function ResumeDetail() {
   const score  = data.score;
   const tier   = getTierLabel(score.overall_score);
   const initials = (resume.candidate_name ?? resume.original_filename).slice(0, 2).toUpperCase();
-  const isPdf    = resume.original_filename.toLowerCase().endsWith(".pdf");
+  const fileName = resume.original_filename.toLowerCase();
+  const isPdf    = fileName.endsWith(".pdf");
+  // DOCX/DOC have no native browser renderer, so we embed them through the
+  // Microsoft Office Online viewer. It fetches the file server-side, which
+  // works because pdf_url is a publicly-reachable signed URL.
+  const isOffice = /\.(docx?|pptx?|xlsx?)$/.test(fileName);
+  const officeViewerUrl = isOffice && pdfUrl
+    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(pdfUrl)}`
+    : null;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-white">
@@ -381,13 +391,16 @@ export default function ResumeDetail() {
               {pdfBlobUrl && isPdf && (
                 <iframe src={pdfBlobUrl} className="w-full h-full border-0" title="Resume PDF" />
               )}
-              {pdfUrl && !isPdf && !pdfLoading && (
+              {officeViewerUrl && (
+                <iframe src={officeViewerUrl} className="w-full h-full border-0" title="Resume document" />
+              )}
+              {pdfUrl && !isPdf && !isOffice && !pdfLoading && (
                 <div className="flex flex-col items-center justify-center h-full gap-3 text-[#737373]">
                   <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M23 4H10a2 2 0 0 0-2 2v28a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2V13z"/>
                     <path d="M23 4v9h9M14 22h12M14 28h8"/>
                   </svg>
-                  <p className="text-sm font-medium text-[#404040]">DOCX — cannot preview</p>
+                  <p className="text-sm font-medium text-[#404040]">Cannot preview this file</p>
                   <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
                     className="text-sm text-[#0F0F0F] underline">Download to view</a>
                 </div>
