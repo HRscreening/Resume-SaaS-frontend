@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { generateJDStream } from "@/lib/api";
+import { Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { generateJDStream, downloadJDPdf } from "@/lib/api";
+import type { JdGenerateInput, JdGenerateMeta } from "@/lib/api";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import {
   Accordion,
@@ -15,6 +18,7 @@ const fieldClass =
 const labelClass = "block text-xs font-medium text-[#404040] mb-1";
 
 const WORK_ARRANGEMENTS = ["Remote", "Hybrid", "On-site"] as const;
+const EmploymentTypes = ["Full-time", "Internship", "Consulting"] as const;
 
 // The backend rejects a company_url without an http(s):// scheme, so accept a
 // bare domain in the UI and prepend https:// before sending.
@@ -31,48 +35,51 @@ interface JdAiBuilderProps {
   // on reprompts; generation writes its result back through onJdTextChange.
   jdText: string;
   onJdTextChange: (value: string) => void;
-  // Surfaces generation errors through the parent's error banner.
-  onError: (message: string | null) => void;
 }
 
 // "Build with AI" JD mode: a prompt input drives an AI-generated job
 // description into an editable textarea. After the first generation the user
 // can reprompt a limited number of times (attemptsLeft), passing the current
 // JD back so the AI refines rather than starts over.
-export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiBuilderProps) {
+export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderProps) {
   const [prompt, setPrompt] = useState("");
   // Structured details that ground the generation (sent as `jd_details`). The
   // first four are required by the backend; the rest are optional.
   const [companyName, setCompanyName] = useState("");
   const [companyUrl, setCompanyUrl] = useState("");
   const [workArrangement, setWorkArrangement] = useState("");
+  const [employmentType, setEmploymentType] = useState("");
   const [location, setLocation] = useState("");
   const [yrsExperience, setYrsExperience] = useState("");
   const [salary, setSalary] = useState("");
+  const [department, setDepartment] = useState("");
   const [skills, setSkills] = useState("");
   const [generating, setGenerating] = useState(false);
+  // True while the PDF export request is in flight, so the button shows a
+  // spinner and can't be double-fired.
+  const [downloading, setDownloading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Set once the first stream completes. Tracked separately from attemptsLeft
   // so the "reprompt" UI still works even if the X-Attempts-Left header isn't
   // exposed to the browser.
   const [hasGenerated, setHasGenerated] = useState(false);
   // Server-reported reprompts remaining; null when unknown.
-  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
-  // Total reprompts allowed per window, for the "x / y" display; null when unknown.
-  const [maxAttempts, setMaxAttempts] = useState<number | null>(null);
-  // When the attempt window resets; null when unknown.
-  const [resetsAt, setResetsAt] = useState<Date | null>(null);
+  // const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+  // // Total reprompts allowed per window, for the "x / y" display; null when unknown.
+  // const [maxAttempts, setMaxAttempts] = useState<number | null>(null);
+  // // When the attempt window resets; null when unknown.
+  // const [resetsAt, setResetsAt] = useState<Date | null>(null);
 
-  const outOfAttempts = attemptsLeft !== null && attemptsLeft <= 0;
-  // e.g. "Jun 1, 3:45 PM" — compact, locale-aware, drops the year for brevity.
-  const resetLabel = resetsAt
-    ? resetsAt.toLocaleString(undefined, {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    : null;
+  // const outOfAttempts = attemptsLeft !== null && attemptsLeft <= 0;
+  // // e.g. "Jun 1, 3:45 PM" — compact, locale-aware, drops the year for brevity.
+  // const resetLabel = resetsAt
+  //   ? resetsAt.toLocaleString(undefined, {
+  //       month: "short",
+  //       day: "numeric",
+  //       hour: "numeric",
+  //       minute: "2-digit",
+  //     })
+  //   : null;
   // The backend requires these four; gate generation on them so we surface a
   // clear hint instead of a 422.
   const detailsComplete =
@@ -81,7 +88,40 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
     Boolean(workArrangement.trim()) &&
     Boolean(location.trim());
   const canGenerate =
-    Boolean(jobTitle.trim()) && detailsComplete && !generating && !outOfAttempts;
+    Boolean(jobTitle.trim())  && !generating
+  // The PDF needs both a JD body and the grounding details the backend requires;
+  // gate the export the same way generation is gated so we don't send a 422.
+  const canDownload =
+    Boolean(jobTitle.trim()) &&
+    Boolean(jdText.trim()) &&
+    detailsComplete &&
+    !generating &&
+    !downloading;
+
+  // Assemble the structured `jd_details` payload shared by generation and PDF
+  // export. Optional numeric/text fields collapse to null when blank.
+  function buildJdDetails(): JdGenerateInput {
+    const trimmedYrs = yrsExperience.trim();
+    const parsedYrs = trimmedYrs ? Number(trimmedYrs) : null;
+
+    const isCompanyUrlValid = !companyUrl.trim() || /^https?:\/\//i.test(companyUrl.trim());
+    if (!isCompanyUrlValid) {
+      throw new Error("Invalid company URL");
+    }
+
+    return {
+      job_title: jobTitle.trim(),
+      company_name: companyName.trim(),
+      company_url: normalizeUrl(companyUrl),
+      work_arrangement: workArrangement.trim(),
+      employment_type: employmentType.trim(),
+      location: location.trim(),
+      yrs_experience: parsedYrs !== null && !Number.isNaN(parsedYrs) ? parsedYrs : null,
+      salary_compensation_info: salary.trim() || null,
+      department: department.trim() || null,
+      skills: skills.trim() || null,
+    };
+  }
 
   // Reveals streamed text at a steady typewriter pace rather than in the big
   // bursts the backend sends, so it reads like a chat response being typed out.
@@ -100,29 +140,26 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
     if (el) el.scrollTop = el.scrollHeight;
   }, [jdText, generating]);
 
+  // Sync the attempts/resets display from the quota headers returned by both
+  // generation and download. Each field is only applied when present so a
+  // missing (e.g. unexposed) header doesn't blank out a known value.
+  // function applyMeta(meta: JdGenerateMeta) {
+  //   if (meta.attemptsLeft !== null) setAttemptsLeft(meta.attemptsLeft);
+  //   if (meta.maxAttempts !== null) setMaxAttempts(meta.maxAttempts);
+  //   if (meta.resetsAt !== null) setResetsAt(meta.resetsAt);
+  // }
+
   async function handleGenerate() {
     if (!canGenerate) return;
-    onError(null);
     setGenerating(true);
     // Capture the JD to refine before we clear the textarea for the new stream.
     const currentJd = jdText;
     typewriter.reset();
     onJdTextChange("");
     try {
-      const trimmedYrs = yrsExperience.trim();
-      const parsedYrs = trimmedYrs ? Number(trimmedYrs) : null;
       const meta = await generateJDStream(
         {
-          jd_details: {
-            job_title: jobTitle.trim(),
-            company_name: companyName.trim(),
-            company_url: normalizeUrl(companyUrl),
-            employment_type_work_arrangement: workArrangement.trim(),
-            location: location.trim(),
-            yrs_experience: parsedYrs !== null && !Number.isNaN(parsedYrs) ? parsedYrs : null,
-            salary_compensation_info: salary.trim() || null,
-            skills: skills.trim() || null,
-          },
+          jd_details: buildJdDetails(),
           user_input: prompt.trim(),
           current_Jd: currentJd,
         },
@@ -130,9 +167,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
         (fullText) => typewriter.push(fullText),
       );
       setHasGenerated(true);
-      if (meta.attemptsLeft !== null) setAttemptsLeft(meta.attemptsLeft);
-      if (meta.maxAttempts !== null) setMaxAttempts(meta.maxAttempts);
-      if (meta.resetsAt !== null) setResetsAt(meta.resetsAt);
+      // applyMeta(meta);
       // Let the typewriter finish revealing whatever is still buffered, then it
       // flips `generating` off via onDone.
       typewriter.finish();
@@ -140,8 +175,37 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
       // Restore the previous JD so a failed reprompt doesn't wipe the user's work.
       typewriter.cancel();
       onJdTextChange(currentJd);
-      onError(err instanceof Error ? err.message : "Failed to generate job description");
+      toast.error(err instanceof Error ? err.message : "Failed to generate job description");
       setGenerating(false);
+    }
+  }
+
+  async function handleDownloadPdf() {
+    if (!canDownload) return;
+    setDownloading(true);
+    try {
+      const { blob, filename, meta } = await downloadJDPdf({
+        jd_details: buildJdDetails(),
+        user_input: prompt.trim(),
+        current_Jd: jdText,
+      });
+      // The download shares the generation window, so refresh the same
+      // attempts/resets display from its headers.
+      // applyMeta(meta);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename ?? `${jobTitle.trim() || "job-description"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      // The backend returns a 429 with a human-readable limit message when the
+      // download quota is spent. Surface it as a toast rather than the parent's
+      // page-top banner: the download button lives deep in the scrolled builder,
+      // so a banner up top would go unseen.
+      toast.error(err instanceof Error ? err.message : "Failed to download PDF");
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -160,11 +224,6 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
           <AccordionTrigger className="px-1 text-[#0F0F0F]">
             <span className="flex items-center gap-2">
               Job details
-              {!detailsComplete && (
-                <span className="rounded-full bg-[#FBE9E7] px-2 py-0.5 text-[10px] font-medium text-[#a70c0c]">
-                  Required
-                </span>
-              )}
             </span>
           </AccordionTrigger>
           <AccordionContent className="px-1 pt-1">
@@ -172,7 +231,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
               {/* Company name */}
               <div>
                 <label htmlFor="jd-company-name" className={labelClass}>
-                  Company name <span className="text-red-500">*</span>
+                  Company name
                 </label>
                 <input
                   id="jd-company-name"
@@ -187,7 +246,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
               {/* Company website */}
               <div>
                 <label htmlFor="jd-company-url" className={labelClass}>
-                  Company website <span className="text-red-500">*</span>
+                  Company website
                 </label>
                 <input
                   id="jd-company-url"
@@ -203,7 +262,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
               {/* Work arrangement */}
               <div>
                 <label htmlFor="jd-work-arrangement" className={labelClass}>
-                  Work arrangement <span className="text-red-500">*</span>
+                  Work arrangement
                 </label>
                 <select
                   id="jd-work-arrangement"
@@ -222,10 +281,32 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
                   ))}
                 </select>
               </div>
+              {/* Employement Type */}
+              <div>
+                <label htmlFor="jd-work-arrangement" className={labelClass}>
+                  Employment Type
+                </label>
+                <select
+                  id="jd-employment-type"
+                  value={employmentType}
+                  onChange={(e) => setEmploymentType(e.target.value)}
+                  disabled={generating}
+                  className={`${fieldClass} ${employmentType ? "" : "text-[#A0A0A0]"}`}
+                >
+                  <option value="" disabled>
+                    Select…
+                  </option>
+                  {EmploymentTypes.map((opt) => (
+                    <option key={opt} value={opt} className="text-[#0F0F0F]">
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
               {/* Location */}
               <div>
                 <label htmlFor="jd-location" className={labelClass}>
-                  Location <span className="text-red-500">*</span>
+                  Location
                 </label>
                 <input
                   id="jd-location"
@@ -270,6 +351,22 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
                   className={fieldClass}
                 />
               </div>
+              {/* Department / Team */}
+              <div>
+                <label htmlFor="jd-department" className={labelClass}>
+                  Department / Team
+                  <span className="ml-1.5 font-normal text-[#A0A0A0]">(optional)</span>
+                </label>
+                <input
+                  id="jd-department"
+                  type="text"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  disabled={generating}
+                  placeholder="e.g. Engineering — Platform"
+                  className={fieldClass}
+                />
+              </div>
               {/* Skills — full width */}
               <div className="sm:col-span-2">
                 <label htmlFor="jd-skills" className={labelClass}>
@@ -304,7 +401,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleGenerate(); } }}
-            disabled={generating || outOfAttempts}
+            disabled={generating}
             placeholder={
               hasGenerated
                 ? "Optional — e.g. add a section on team leadership"
@@ -331,10 +428,6 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
         </div>
         {!jobTitle.trim() ? (
           <p className="mt-1.5 text-xs text-[#a70c0c]">Enter a job title above to start generating.</p>
-        ) : !detailsComplete ? (
-          <p className="mt-1.5 text-xs text-[#a70c0c]">
-            Fill in the required job details above to start generating.
-          </p>
         ) : (
           !hasGenerated && (
             <p className="mt-1.5 text-xs text-[#A0A0A0]">
@@ -363,25 +456,46 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange, onError }: JdAiB
         )}
       </div>
 
-      {hasGenerated && (
+      {(hasGenerated || jdText.trim()) && (
         <div className="flex items-center justify-between gap-3 text-xs text-[#A0A0A0]">
           <span>{jdText.length.toLocaleString()} characters</span>
-          {attemptsLeft !== null && (
-            <div className="flex items-center gap-2">
-              {/* Attempts pill: "3 / 8 left", or a muted "0 / 8" when spent. */}
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${
-                  outOfAttempts
-                    ? "bg-[#FBE9E7] text-[#a70c0c]"
-                    : "bg-[#EFEAE1] text-[#404040]"
-                }`}
-              >
-                {maxAttempts !== null ? `${attemptsLeft} / ${maxAttempts}` : attemptsLeft}
-                <span className="font-normal text-[#A0A0A0]">left</span>
-              </span>
-              {resetLabel && <span className="text-[#A0A0A0]">Resets {resetLabel}</span>}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {/* { attemptsLeft !== null && (
+              <>
+              
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${
+                    outOfAttempts
+                      ? "bg-[#FBE9E7] text-[#a70c0c]"
+                      : "bg-[#EFEAE1] text-[#404040]"
+                  }`}
+                >
+                  {maxAttempts !== null ? `${attemptsLeft} / ${maxAttempts}` : attemptsLeft}
+                  <span className="font-normal text-[#A0A0A0]">left</span>
+                </span>
+                {resetLabel && <span className="text-[#A0A0A0]">Resets {resetLabel}</span>}
+              </>
+            )} */}
+            {/* Download the current JD as a PDF (same payload as generation). */}
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={!canDownload}
+              className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {downloading ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" />
+                  Downloading…
+                </>
+              ) : (
+                <>
+                  <Download size={12} />
+                  Download PDF
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
 

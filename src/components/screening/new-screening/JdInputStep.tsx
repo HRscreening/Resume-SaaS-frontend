@@ -22,8 +22,6 @@ interface JdInputStepProps {
   onRemoveFile: () => void;
   analyzing: boolean;
   onAnalyze: () => void;
-  // Surfaces AI-generation errors through the parent's error banner.
-  onError: (message: string | null) => void;
 }
 
 // Step 1 of the new-job wizard: collect a job title and the JD itself, either
@@ -41,7 +39,6 @@ export function JdInputStep({
   onRemoveFile,
   analyzing,
   onAnalyze,
-  onError,
 }: JdInputStepProps) {
   const canAnalyze = Boolean(title.trim()) && Boolean(jdText.trim()) && !analyzing && !extracting;
 
@@ -69,7 +66,11 @@ export function JdInputStep({
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <label className="block text-sm font-medium text-[#0F0F0F]">
-              Job description <span className="text-red-500">*</span>
+              Job description <span className="text-red-500">{
+                
+                mode !== "ai" && "*" 
+
+                }</span>
             </label>
             {/* Mode toggle */}
             <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#F0EDE8] border border-[#D4D4D4]">
@@ -117,7 +118,6 @@ export function JdInputStep({
               jobTitle={title}
               jdText={jdText}
               onJdTextChange={onJdTextChange}
-              onError={onError}
             />
           )}
         </div>

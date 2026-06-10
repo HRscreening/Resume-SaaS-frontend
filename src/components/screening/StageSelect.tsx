@@ -61,16 +61,36 @@ export function StageSelect({ value, stages, onChange, onManage }: StageSelectPr
   // Anchor the portalled menu to the trigger using viewport coordinates.
   // Recomputed on open and whenever the page scrolls/resizes so the menu
   // stays glued to the pill without being clipped by the table's overflow.
+  // Flips above the trigger when there isn't enough room below (e.g. the
+  // last rows of the table) so the dropdown is never cut off by the
+  // viewport bottom.
   useLayoutEffect(() => {
     if (!open) return;
     function place() {
       const r = triggerRef.current?.getBoundingClientRect();
-      if (r) setPos({ top: r.bottom + 4, left: r.left });
+      if (!r) return;
+      const margin = 8;
+      // Real height once the menu has mounted; fall back to a sane estimate
+      // for the very first placement pass (before the rAF re-measures).
+      const menuH = menuRef.current?.offsetHeight ?? 320;
+      const spaceBelow = window.innerHeight - r.bottom;
+      // Prefer below; flip up only if it doesn't fit below but does fit above.
+      let top = r.bottom + 4;
+      if (spaceBelow < menuH + margin && r.top > menuH + margin) {
+        top = r.top - menuH - 4;
+      }
+      // Never let it spill past the top edge.
+      top = Math.max(margin, top);
+      setPos({ top, left: r.left });
     }
     place();
+    // Re-place once the menu is actually in the DOM so we measure its true
+    // height (the first pass uses the estimate above).
+    const raf = requestAnimationFrame(place);
     window.addEventListener("scroll", place, true);
     window.addEventListener("resize", place);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener("scroll", place, true);
       window.removeEventListener("resize", place);
     };

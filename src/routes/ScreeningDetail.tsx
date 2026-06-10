@@ -19,6 +19,7 @@ import { ProcessingAccordion } from "@/components/screening/ProcessingAccordion"
 import { RubricModal } from "@/components/screening/RubricModal";
 import { FailedView } from "@/components/screening/FailedView";
 import { CandidatesTable } from "@/components/screening/CandidatesTable";
+import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 
@@ -287,11 +288,11 @@ export default function ScreeningDetail() {
   async function handleExport() {
     setExporting(true);
     try {
-      const blob = await exportResults(id);
+      const { blob, filename } = await exportResults(id, queryState);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${screening?.title ?? "results"}.csv`;
+      a.download = filename ?? `${screening?.title ?? "results"}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch { /* ignored */ } finally { setExporting(false); }
@@ -520,6 +521,12 @@ export default function ScreeningDetail() {
   // page UI doesn't flash empty before the response lands.
   const totalCandidates = serverTotal || screening.scored_resumes || screening.total_resumes || candidates.length;
   const hasAnyCandidates = candidates.length > 0 || totalCandidates > 0;
+  // The current page has no rows, but filters are active and the screening
+  // does have scored candidates — i.e. the filters just matched nothing. Keep
+  // the action buttons visible (so the toolbar stays put) but disable the ones
+  // that operate on visible rows.
+  const filtersMatchedNothing =
+    candidates.length === 0 && hasActiveFilters(queryState) && screening.scored_resumes > 0;
 
   return (
     <div
@@ -547,7 +554,7 @@ export default function ScreeningDetail() {
                 : `${screening.total_resumes} resumes · Created ${formatDate(screening.created_at)}`}
             </p>
           </div>
-          {candidates.length > 0 && (
+          {(candidates.length > 0 || filtersMatchedNothing) && (
           <div className="flex flex-wrap items-center gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -577,7 +584,7 @@ export default function ScreeningDetail() {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => setRescoreMode(true)}
-                  disabled={isProcessing || rescoreMode}
+                  disabled={isProcessing || rescoreMode || candidates.length === 0}
                   className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed`}
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -592,7 +599,7 @@ export default function ScreeningDetail() {
               <TooltipTrigger asChild>
                 <button
                   onClick={handleExport}
-                  disabled={exporting}
+                  disabled={exporting || candidates.length === 0}
                   className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-60`}
                 >
                   {exporting
@@ -934,7 +941,14 @@ export default function ScreeningDetail() {
               rows stream in as they're scored. In rescoreMode, the table
               shows a checkbox column; selection is owned by ScreeningDetail
               so it survives page/filter/search changes. */}
-          {(candidates.length > 0 || (pageLoading && totalCandidates > 0)) && (() => {
+          {/* Keep the table mounted when filters are active even if they
+              return zero rows — otherwise the page goes blank and the user
+              has no way to see/clear the filters. CandidatesTable renders the
+              headers + an empty-state message in that case. The "show selected
+              only" view is excluded since it has no filter toolbar. */}
+          {(candidates.length > 0 ||
+            (pageLoading && totalCandidates > 0) ||
+            (!showSelectedOnly && hasActiveFilters(queryState))) && (() => {
             const selectedList = Object.values(selectedDetails)
               .filter((c) => selectedIds.has(c.resume_id))
               .sort((a, b) => a.rank - b.rank);
