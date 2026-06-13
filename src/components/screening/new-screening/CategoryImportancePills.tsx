@@ -40,3 +40,33 @@ export function CategoryImportancePills({ weight, categoryName, onChange }: Cate
     </div>
   );
 }
+export function CategoryImportancePillsViewOnly({ weight, categoryName,}: {
+  weight: number;
+  categoryName: string;
+}) {
+  const activeKey = weightToCategoryPill(weight);
+  return (
+    <div
+      className="flex items-center gap-1 p-0.5 rounded-full bg-white/70 border border-[#E8E5DF]"
+      role="radiogroup"
+      aria-label={`${categoryName} importance`}
+    >
+      {CATEGORY_PILLS.map((pill) => {
+        const active = activeKey === pill.key;
+        return (
+          <button
+            key={pill.key}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            className={`px-3 h-7 rounded-full text-xs font-semibold transition-colors ${
+              active ? "bg-[#0F0F0F] text-white" : "text-[#737373] hover:text-[#0F0F0F] hover:bg-white"
+            }`}
+          >
+            {pill.key}
+          </button>
+        );
+      })}
+    </div>
+  );
+}

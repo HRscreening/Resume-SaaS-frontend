@@ -4,10 +4,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getScreening, getResults, updateRubric } from "@/lib/api";
 import type { RubricCategory, Subcategory, Rubric, Screening } from "@/types";
 import { truncate } from "@/lib/utils";
+import { CategoryImportancePills } from "@/components/screening/new-screening/CategoryImportancePills";
 
 const CATEGORY_COLORS = [
-  { bg: "bg-blue-50",   border: "border-blue-200",   text: "text-blue-700",   dot: "#3B82F6" },
-  { bg: "bg-amber-50",  border: "border-amber-200",  text: "text-amber-700",  dot: "#F59E0B" },
+  { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", dot: "#3B82F6" },
+  { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", dot: "#F59E0B" },
   { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", dot: "#8B5CF6" },
 ];
 
@@ -56,11 +57,13 @@ export default function EditRubric() {
   const totalWeight = draft.reduce((s, c) => s + c.weight, 0);
   const dirty = JSON.stringify(draft) !== JSON.stringify(initialCategories);
   const hasEmptySubName = draft.some((c) => c.subcategories.some((s) => !s.name.trim()));
-  const canSave = dirty && totalWeight === 100 && !hasEmptySubName && !saving;
+  const canSave = dirty  && !hasEmptySubName && !saving;
 
   function updateCategoryWeight(catIdx: number, weight: number) {
     setDraft((prev) => prev.map((c, i) => (i === catIdx ? { ...c, weight } : c)));
   }
+
+
 
   function updateSub(catIdx: number, subIdx: number, updates: Partial<Subcategory>) {
     setDraft((prev) =>
@@ -164,13 +167,12 @@ export default function EditRubric() {
               Save your changes, then choose which of the <strong>{candidatesCount}</strong> candidates to re-score from the screening page.
             </p>
           </div>
-          <span
-            className={`text-xs font-medium px-2.5 py-1 rounded-md self-start sm:shrink-0 ${
-              totalWeight === 100 ? "text-green-700 bg-green-50" : "text-red-700 bg-red-50"
-            }`}
+          {/* <span
+            className={`text-xs font-medium px-2.5 py-1 rounded-md self-start sm:shrink-0 ${totalWeight === 100 ? "text-green-700 bg-green-50" : "text-red-700 bg-red-50"
+              }`}
           >
             {totalWeight === 100 ? "Weights sum to 100%" : `Weights sum to ${totalWeight}% (must be 100)`}
-          </span>
+          </span> */}
         </div>
       </div>
 
@@ -189,19 +191,11 @@ export default function EditRubric() {
                   <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: color.dot }} />
                   <h3 className={`text-sm font-bold ${color.text} truncate`}>{cat.name}</h3>
                 </div>
-                <div className="flex items-center gap-2.5 min-w-[180px] w-full sm:w-auto">
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={cat.weight}
-                    onChange={(e) => updateCategoryWeight(catIdx, Number(e.target.value))}
-                    className="weight-slider flex-1"
-                    style={{ background: `linear-gradient(to right, #0F0F0F ${cat.weight}%, #E8E5DF ${cat.weight}%)` }}
-                  />
-                  <span className="text-sm font-bold text-[#0F0F0F] w-10 text-right">{cat.weight}%</span>
-                </div>
+                <CategoryImportancePills
+                  weight={cat.weight}
+                  categoryName={cat.name}
+                  onChange={(weight) => updateCategoryWeight(catIdx, weight)}
+                />
               </div>
 
               <div className="bg-white p-4 space-y-3">
@@ -218,22 +212,20 @@ export default function EditRubric() {
                       <button
                         type="button"
                         onClick={() => updateSub(catIdx, subIdx, { is_non_negotiable: !sub.is_non_negotiable })}
-                        className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border transition-colors ${
-                          sub.is_non_negotiable
+                        className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border transition-colors ${sub.is_non_negotiable
                             ? "bg-red-100 text-red-700 border-red-200"
                             : "bg-white text-[#A0A0A0] border-[#E8E5DF] hover:border-red-200 hover:text-red-600"
-                        }`}
+                          }`}
                       >
                         Must Have
                       </button>
                       <button
                         type="button"
                         onClick={() => updateSub(catIdx, subIdx, { is_external_context: !sub.is_external_context })}
-                        className={`text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full border transition-colors ${
-                          sub.is_external_context
+                        className={`text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full border transition-colors ${sub.is_external_context
                             ? "bg-blue-50 text-blue-600 border-blue-200"
                             : "bg-white text-[#A0A0A0] border-[#E8E5DF] hover:border-blue-200 hover:text-blue-600"
-                        }`}
+                          }`}
                       >
                         External Signal
                       </button>
@@ -272,11 +264,10 @@ export default function EditRubric() {
                                 type="button"
                                 onClick={() => updateSub(catIdx, subIdx, { weight: lvl })}
                                 title={IMPORTANCE_LABELS[lvl - 1]}
-                                className={`h-7 w-7 sm:h-6 sm:w-6 rounded-md text-xs font-bold transition-colors ${
-                                  lvl <= sub.weight
+                                className={`h-7 w-7 sm:h-6 sm:w-6 rounded-md text-xs font-bold transition-colors ${lvl <= sub.weight
                                     ? "bg-[#0F0F0F] text-white"
                                     : "bg-[#F0EDE8] text-[#A0A0A0] hover:bg-[#E8E5DF]"
-                                }`}
+                                  }`}
                               >
                                 {lvl}
                               </button>
@@ -350,11 +341,9 @@ export default function EditRubric() {
             <p className="text-xs text-[#737373]">
               {hasEmptySubName
                 ? "Every subcategory needs a name."
-                : totalWeight !== 100
-                ? `Category weights must total 100% (currently ${totalWeight}%).`
-                : dirty
-                ? "Ready to save."
-                : "No changes yet."}
+                  : dirty
+                    ? "Ready to save."
+                    : "No changes yet."}
             </p>
             <div className="flex gap-2 shrink-0">
               <Link
