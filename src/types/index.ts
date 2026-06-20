@@ -336,3 +336,80 @@ export interface VoiceConfigResponse {
 export interface GenerateQuestionPlanResponse {
   question_plan: QuestionPlanItem[];
 }
+
+// ─── Voice calls + scorecards (Phase 2) ────────────────────────────────────
+
+export type CallStatus =
+  | "QUEUED" | "DIALING" | "IN_PROGRESS"
+  | "NO_ANSWER" | "BUSY" | "VOICEMAIL" | "DROPPED" | "FAILED"
+  | "COMPLETED" | "QUEUED_FOR_SCORING" | "SCORING" | "SCORED" | "ERROR";
+
+export interface CallListItem {
+  id: string;
+  resume_id: string;
+  candidate_name: string | null;
+  phone_e164: string;
+  status: CallStatus;
+  attempt_no: number;
+  provider: string | null;
+  duration_seconds: number | null;
+  has_transcript: boolean;
+  error_message: string | null;
+  voice_score: number | null;
+  recommendation: string | null;
+  is_partial: boolean;
+  resume_score: number | null;
+  started_at: string | null;
+  ended_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface SkippedResume {
+  resume_id: string;
+  candidate_name: string | null;
+  candidate_phone: string | null;
+  reason: string;
+}
+
+export interface TriggerCallsResponse {
+  created: CallListItem[];
+  skipped: SkippedResume[];
+}
+
+export interface CallsListResponse {
+  calls: CallListItem[];
+}
+
+export interface TranscriptTurn {
+  speaker: string;
+  text: string;
+  ts: number;
+  confidence: number | null;
+}
+
+export interface CallScorecardDetail {
+  call_id: string;
+  resume_id: string;
+  candidate_name: string | null;
+  status: CallStatus;
+  overall_score: number | null;
+  resume_score: number | null;
+  recommendation: string | null;
+  breakdown: unknown[];
+  grounding_data: unknown[];
+  overall_summary: string | null;
+  strengths: string[] | null;
+  missing_elements: string[] | null;
+  flags: string[] | null;
+  is_partial: boolean;
+  reviewer_override: Record<string, unknown> | null;
+  transcript: TranscriptTurn[] | null;
+  recording_url: string | null;
+}
+
+export interface ScorecardOverrideRequest {
+  overall_score?: number;
+  recommendation?: "advance" | "hold" | "reject";
+  notes?: string;
+}

@@ -40,6 +40,7 @@ import ScreeningDetail from "@/routes/ScreeningDetail";
 import ResumeDetail from "@/routes/ResumeDetail";
 import EditRubric from "@/routes/EditRubric";
 import VoiceConfigPage from "@/routes/VoiceConfig";
+import VoiceCalls from "@/routes/VoiceCalls";
 
 
 
@@ -237,6 +238,12 @@ const voiceConfigRoute = createRoute({
   component: VoiceConfigPage,
 });
 
+const voiceCallsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings/$id/voice/calls",
+  component: VoiceCalls,
+});
+
 const resumeDetailRoute = createRoute({
   getParentRoute: () => authOnlyLayoutRoute,
   path: "/screenings/$id/$resumeId",
@@ -321,6 +328,7 @@ const routeTree = rootRoute.addChildren([
     screeningDetailRoute,
     editRubricRoute,
     voiceConfigRoute,
+    voiceCallsRoute,
     settingsRoute,
     profileRoute,
     changePasswordRoute,

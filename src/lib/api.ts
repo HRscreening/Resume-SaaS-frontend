@@ -531,3 +531,39 @@ export async function saveVoiceConfig(
     body: JSON.stringify(config),
   });
 }
+
+// ─── Voice calls + scorecards (Phase 2) ────────────────────────────────────
+
+export async function triggerVoiceCalls(
+  screeningId: string,
+  resumeIds?: string[],
+): Promise<import("@/types").TriggerCallsResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/calls`, {
+    method: "POST",
+    body: JSON.stringify({ resume_ids: resumeIds ?? null }),
+  });
+}
+
+export async function listVoiceCalls(
+  screeningId: string,
+): Promise<import("@/types").CallsListResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/calls`);
+}
+
+export async function getCallScorecard(
+  screeningId: string,
+  callId: string,
+): Promise<import("@/types").CallScorecardDetail> {
+  return request(`/api/v1/screenings/${screeningId}/voice/calls/${callId}/scorecard`);
+}
+
+export async function overrideCallScorecard(
+  screeningId: string,
+  callId: string,
+  body: import("@/types").ScorecardOverrideRequest,
+): Promise<import("@/types").CallScorecardDetail> {
+  return request(`/api/v1/screenings/${screeningId}/voice/calls/${callId}/scorecard/override`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}

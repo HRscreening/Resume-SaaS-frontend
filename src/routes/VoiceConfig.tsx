@@ -135,10 +135,21 @@ export default function VoiceConfigPage() {
         <span className="text-[#D4D4D4]">/</span>
         <span className="text-[#404040]">Voice round</span>
       </div>
-      <h1 className="text-2xl font-bold text-[#0F0F0F] mb-1">Voice screening round</h1>
-      <p className="text-sm text-[#737373] mb-6">
-        Configure the AI phone screen for shortlisted candidates. Questions are scored on the same rubric as resumes.
-      </p>
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-[#0F0F0F] mb-1">Voice screening round</h1>
+          <p className="text-sm text-[#737373]">
+            Configure the AI phone screen for shortlisted candidates. Questions are scored on the same rubric as resumes.
+          </p>
+        </div>
+        <Link
+          to="/screenings/$id/voice/calls"
+          params={{ id }}
+          className="shrink-0 h-9 px-4 flex items-center border border-[#D4D4D4] text-xs font-medium text-[#404040] rounded-xl hover:bg-white"
+        >
+          View calls →
+        </Link>
+      </div>
 
       {/* Enable toggle */}
       <label className="flex items-center gap-3 mb-6 cursor-pointer select-none">
