@@ -564,6 +564,18 @@ export default function ScreeningDetail() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
+                  onClick={() => navigate({ to: "/screenings/$id/voice", params: { id } })}
+                  className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5a2 2 0 0 1 2 2v3a2 2 0 1 1-4 0v-3a2 2 0 0 1 2-2z"/><path d="M3 6.5a4 4 0 0 0 8 0M7 10.5v2M5 12.5h4"/></svg>
+                  {!analysisOpen && "Voice round"}
+                </button>
+              </TooltipTrigger>
+              {analysisOpen && <TooltipContent><p className="text-xs">Voice round</p></TooltipContent>}
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
                   onClick={() => { setShowUploadMore((v) => !v); setUploadMoreFiles([]); setUploadError(null); }}
                   className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 whitespace-nowrap ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
                 >

@@ -506,3 +506,28 @@ export async function sumbitContactUsForm(
     body: JSON.stringify(data),
   });
 }
+// ─── Voice Screening Round ─────────────────────────────────────────────────
+
+export async function generateQuestionPlan(
+  screeningId: string,
+): Promise<import("@/types").GenerateQuestionPlanResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/question-plan/generate`, {
+    method: "POST",
+  });
+}
+
+export async function getVoiceConfig(
+  screeningId: string,
+): Promise<import("@/types").VoiceConfigResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/config`);
+}
+
+export async function saveVoiceConfig(
+  screeningId: string,
+  config: import("@/types").VoiceConfig,
+): Promise<import("@/types").VoiceConfigResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/config`, {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}

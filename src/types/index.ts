@@ -292,3 +292,47 @@ export interface Toast {
   type: ToastType;
   message: string;
 }
+
+// ─── Voice Screening Round ─────────────────────────────────────────────────
+
+export interface QuestionPlanItem {
+  text: string;
+  competency_ref: string;
+  expected_signals: string[];
+}
+
+export interface VoiceSettings {
+  tts_voice_id: string;
+  tier: "default" | "premium";
+}
+
+export interface CallingWindow {
+  start: string; // "HH:MM"
+  end: string;   // "HH:MM"
+  tz: string;
+}
+
+export interface RetryPolicy {
+  max_attempts: number;
+  backoff: "exponential" | "linear" | "fixed";
+}
+
+export interface VoiceConfig {
+  enabled: boolean;
+  question_plan: QuestionPlanItem[];
+  voice: VoiceSettings;
+  language: "en";
+  calling_window: CallingWindow;
+  default_country_code: string;
+  retry_policy: RetryPolicy;
+  max_concurrent_calls_override: number | null;
+}
+
+export interface VoiceConfigResponse {
+  screening_id: string;
+  voice_config: VoiceConfig | null;
+}
+
+export interface GenerateQuestionPlanResponse {
+  question_plan: QuestionPlanItem[];
+}
