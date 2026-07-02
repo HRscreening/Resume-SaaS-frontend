@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { getCallScorecard, overrideCallScorecard } from "@/lib/api";
+import {
+  getCallArtifacts, getCallScorecard, getScreening, overrideCallScorecard, updateCandidateStage,
+} from "@/lib/api";
+import { REJECTED_STAGE } from "@/lib/stages";
 import type { CallScorecardDetail } from "@/types";
 
 interface Props {
@@ -48,7 +51,41 @@ export function CallScorecardDrawer({ screeningId, callId, onClose }: Props) {
       toast.error(e instanceof Error ? e.message : "Could not save override"),
   });
 
+  // Signed download URLs (recording/transcript). Refetch while the recording
+  // is still being processed by egress so the download appears when ready.
+  const { data: artifacts } = useQuery({
+    queryKey: ["call-artifacts", screeningId, callId],
+    queryFn: () => getCallArtifacts(screeningId, callId),
+    refetchInterval: (q) =>
+      q.state.data?.recording_status === "processing" ? 5000 : false,
+  });
+
+  const stageMut = useMutation({
+    mutationFn: ({ scoreId, stage }: { scoreId: string; stage: string }) =>
+      updateCandidateStage(scoreId, stage),
+    onSuccess: (_res, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["call-scorecard", screeningId, callId] });
+      queryClient.invalidateQueries({ queryKey: ["results", screeningId] });
+      toast.success(`Moved to ${vars.stage}`);
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "Could not update stage"),
+  });
+
   const sc: CallScorecardDetail | undefined = data;
+
+  // Next kanban stage after the candidate's current one (per-screening order).
+  const { data: screening } = useQuery({
+    queryKey: ["screening", screeningId],
+    queryFn: () => getScreening(screeningId),
+  });
+  const orderedStages = Object.entries(screening?.stages ?? {})
+    .sort(([, a], [, b]) => a.index - b.index)
+    .map(([name]) => name);
+  const currentIdx = sc?.stage ? orderedStages.indexOf(sc.stage) : -1;
+  const nextStage = currentIdx >= 0 && currentIdx < orderedStages.length - 1
+    ? orderedStages[currentIdx + 1]
+    : null;
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -87,6 +124,56 @@ export function CallScorecardDrawer({ screeningId, callId, onClose }: Props) {
                   {sc.resume_score != null ? sc.resume_score.toFixed(1) : "—"}
                 </p>
                 <p className="mt-2 text-xs text-[#A3A3A3]">Same 0–100 scale</p>
+              </div>
+            </div>
+
+            {/* Decision: advance / reject via the existing kanban stage */}
+            {sc.score_id && (
+              <div className="flex items-center gap-2">
+                {nextStage && (
+                  <button
+                    onClick={() => stageMut.mutate({ scoreId: sc.score_id!, stage: nextStage })}
+                    disabled={stageMut.isPending}
+                    className="h-9 px-4 bg-green-700 text-white text-xs font-medium rounded-xl hover:bg-green-800 disabled:opacity-60"
+                  >
+                    Advance to {nextStage}
+                  </button>
+                )}
+                <button
+                  onClick={() => stageMut.mutate({ scoreId: sc.score_id!, stage: REJECTED_STAGE })}
+                  disabled={stageMut.isPending || sc.stage === REJECTED_STAGE}
+                  className="h-9 px-4 border border-red-300 text-red-700 text-xs font-medium rounded-xl hover:bg-red-50 disabled:opacity-60"
+                >
+                  Reject
+                </button>
+                {sc.stage && <span className="text-xs text-[#737373]">Current stage: {sc.stage}</span>}
+              </div>
+            )}
+
+            {/* Artifact downloads */}
+            <div className="border border-[#E8E5DF] rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-[#0F0F0F] mb-2">Downloads</h3>
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                {artifacts?.recording_download_url ? (
+                  <a href={artifacts.recording_download_url} download
+                     className="text-[#0F0F0F] underline font-medium">
+                    Download recording
+                  </a>
+                ) : (
+                  <span className="text-[#A3A3A3]">
+                    {artifacts?.recording_status === "processing"
+                      ? "Recording processing…"
+                      : "No recording available"}
+                  </span>
+                )}
+                {artifacts?.transcript_download_url ? (
+                  <a href={artifacts.transcript_download_url} download
+                     className="text-[#0F0F0F] underline font-medium">
+                    Download transcript
+                  </a>
+                ) : (
+                  <span className="text-[#A3A3A3]">Transcript file unavailable</span>
+                )}
               </div>
             </div>
 

@@ -344,12 +344,20 @@ export type CallStatus =
   | "NO_ANSWER" | "BUSY" | "VOICEMAIL" | "DROPPED" | "FAILED"
   | "COMPLETED" | "QUEUED_FOR_SCORING" | "SCORING" | "SCORED" | "ERROR";
 
+export type CallDisplayStatus =
+  | "queued" | "calling" | "in_interview" | "processing" | "ready" | "unreachable";
+
+export type RecordingStatus = "none" | "processing" | "ready" | "failed";
+
 export interface CallListItem {
   id: string;
   resume_id: string;
   candidate_name: string | null;
   phone_e164: string;
   status: CallStatus;
+  display_status: CallDisplayStatus;
+  display_detail: string | null;
+  recording_status: RecordingStatus | null;
   attempt_no: number;
   provider: string | null;
   duration_seconds: number | null;
@@ -393,6 +401,8 @@ export interface CallScorecardDetail {
   resume_id: string;
   candidate_name: string | null;
   status: CallStatus;
+  score_id: string | null;
+  stage: string | null;
   overall_score: number | null;
   resume_score: number | null;
   recommendation: string | null;
@@ -412,4 +422,12 @@ export interface ScorecardOverrideRequest {
   overall_score?: number;
   recommendation?: "advance" | "hold" | "reject";
   notes?: string;
+}
+
+export interface CallArtifactsResponse {
+  call_id: string;
+  recording_status: RecordingStatus;
+  recording_download_url: string | null;
+  transcript_available: boolean;
+  transcript_download_url: string | null;
 }

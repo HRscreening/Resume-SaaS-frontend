@@ -3,28 +3,20 @@ import { Link, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getScreening, listVoiceCalls, triggerVoiceCalls } from "@/lib/api";
-import type { CallListItem, CallStatus } from "@/types";
+import type { CallDisplayStatus, CallListItem } from "@/types";
 import { truncate } from "@/lib/utils";
 import { CallScorecardDrawer } from "@/components/screening/voice/CallScorecardDrawer";
 
-const ACTIVE_STATUSES: CallStatus[] = [
-  "QUEUED", "DIALING", "IN_PROGRESS", "QUEUED_FOR_SCORING", "SCORING",
-];
+// Buckets that are still moving through the pipeline → keep polling.
+const ACTIVE_DISPLAY: CallDisplayStatus[] = ["queued", "calling", "in_interview", "processing"];
 
-const statusStyle: Record<string, string> = {
-  QUEUED: "bg-slate-100 text-slate-700",
-  DIALING: "bg-blue-100 text-blue-700",
-  IN_PROGRESS: "bg-indigo-100 text-indigo-700",
-  COMPLETED: "bg-teal-100 text-teal-700",
-  QUEUED_FOR_SCORING: "bg-violet-100 text-violet-700",
-  SCORING: "bg-violet-100 text-violet-700",
-  SCORED: "bg-green-100 text-green-700",
-  NO_ANSWER: "bg-amber-100 text-amber-700",
-  BUSY: "bg-amber-100 text-amber-700",
-  VOICEMAIL: "bg-amber-100 text-amber-700",
-  DROPPED: "bg-amber-100 text-amber-700",
-  FAILED: "bg-red-100 text-red-700",
-  ERROR: "bg-red-100 text-red-700",
+const DISPLAY: Record<CallDisplayStatus, { label: string; style: string }> = {
+  queued: { label: "Queued", style: "bg-slate-100 text-slate-700" },
+  calling: { label: "Calling…", style: "bg-blue-100 text-blue-700" },
+  in_interview: { label: "In interview", style: "bg-indigo-100 text-indigo-700" },
+  processing: { label: "Processing", style: "bg-violet-100 text-violet-700" },
+  ready: { label: "Ready", style: "bg-green-100 text-green-700" },
+  unreachable: { label: "Unreachable", style: "bg-amber-100 text-amber-700" },
 };
 
 function scoreColor(n: number | null): string {
@@ -50,7 +42,7 @@ export default function VoiceCalls() {
     // Poll while any call is still moving through the pipeline.
     refetchInterval: (q) => {
       const calls = q.state.data?.calls ?? [];
-      return calls.some((c) => ACTIVE_STATUSES.includes(c.status)) ? 3000 : false;
+      return calls.some((c) => ACTIVE_DISPLAY.includes(c.display_status)) ? 3000 : false;
     },
   });
   const calls: CallListItem[] = data?.calls ?? [];
@@ -137,10 +129,10 @@ export default function VoiceCalls() {
                     <div className="text-xs text-[#A3A3A3]">{c.phone_e164}{c.attempt_no > 1 ? ` · attempt ${c.attempt_no}` : ""}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${statusStyle[c.status] ?? "bg-slate-100 text-slate-700"}`}>
-                      {c.status}{c.is_partial ? " · partial" : ""}
+                    <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${DISPLAY[c.display_status]?.style ?? "bg-slate-100 text-slate-700"}`}>
+                      {DISPLAY[c.display_status]?.label ?? c.display_status}{c.is_partial ? " · partial" : ""}
                     </span>
-                    {c.error_message && <div className="text-xs text-red-600 mt-1">{truncate(c.error_message, 60)}</div>}
+                    {c.display_detail && <div className="text-xs text-amber-700 mt-1">{c.display_detail}</div>}
                   </td>
                   <td className={`px-4 py-3 text-right font-medium ${scoreColor(c.voice_score)}`}>
                     {c.voice_score != null ? c.voice_score.toFixed(1) : "—"}
@@ -150,7 +142,7 @@ export default function VoiceCalls() {
                   </td>
                   <td className="px-4 py-3 text-[#404040]">{c.recommendation ?? "—"}</td>
                   <td className="px-4 py-3 text-right">
-                    {c.status === "SCORED" && (
+                    {c.display_status === "ready" && (
                       <button
                         onClick={() => setOpenCallId(c.id)}
                         className="text-xs font-medium text-[#0F0F0F] underline"

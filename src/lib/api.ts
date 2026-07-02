@@ -567,3 +567,10 @@ export async function overrideCallScorecard(
     body: JSON.stringify(body),
   });
 }
+
+export async function getCallArtifacts(
+  screeningId: string,
+  callId: string,
+): Promise<import("@/types").CallArtifactsResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/calls/${callId}/artifacts`);
+}
