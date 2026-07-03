@@ -20,7 +20,7 @@ import { toRequestParams } from "@/components/screening/filters/queryEncoding";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
-async function getAuthHeader(): Promise<Record<string, string>> {
+export async function getAuthHeader(): Promise<Record<string, string>> {
   const token = await getAccessToken();
   return { Authorization: `Bearer ${token}` };
 }
@@ -40,7 +40,7 @@ function parseErrorDetail(body: unknown, status: number): string {
   return `HTTP ${status}`;
 }
 
-async function request<T>(
+export async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
@@ -105,6 +105,17 @@ export async function createJob(data: {
   rubric: Rubric;
 }): Promise<{ screening_id: string }> {
   return request<{ screening_id: string }>("/api/screenings/jobs", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+export async function createJob_v1(data: {
+  title: string;
+  raw_jd_text: string;
+  rubric: Rubric;
+  source_job: boolean;
+}): Promise<{ screening_id: string }> {
+  return request<{ screening_id: string }>("/api/v1/screenings/create-job", {
     method: "POST",
     body: JSON.stringify(data),
   });

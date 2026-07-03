@@ -35,6 +35,14 @@ import ChangePassword from "@/routes/ChangePassword";
 import NewScreening from "@/routes/NewScreening";
 import NotFound from "@/routes/NotFound";
 
+// Candidates
+// import Candidates from "@/routes/Candidates";
+import Candidates from "@/routes/NewCandidatePage";
+
+
+// Sourcing
+import HiristScreening from "@/modules/sourcing/Hirist/route";
+
 // ─── Eager imports — these are the most-visited pages, no lazy delay ──
 import ScreeningDetail from "@/routes/ScreeningDetail";
 import ResumeDetail from "@/routes/ResumeDetail";
@@ -197,6 +205,12 @@ const screeningsRoute = createRoute({
   component: Screenings,
 });
 
+const candidatesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/candidates",
+  component: Candidates,
+});
+
 const newScreeningRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/screenings/new",
@@ -290,6 +304,15 @@ const checkoutRoute = createRoute({
   }),
 });
 
+const hiristSourcingRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings/$screening_id/hirist",
+  component: HiristScreening,
+  validateSearch: (search: Record<string, unknown>) => ({
+    from: typeof search.from === "string" ? search.from : undefined,
+  }),
+});
+
 // ─── Build router ───────────────────────────────────────────
 
 const routeTree = rootRoute.addChildren([
@@ -310,6 +333,8 @@ const routeTree = rootRoute.addChildren([
   appLayoutRoute.addChildren([
     dashboardRoute,
     screeningsRoute,
+    hiristSourcingRoute,
+    candidatesRoute,
     newScreeningRoute,
     screeningDetailRoute,
     editRubricRoute,

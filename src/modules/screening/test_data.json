@@ -1,0 +1,257 @@
+
+
+{
+    "applications":[
+    {
+        "candidate_name": "Sumit Soni",
+        "candidate_email": "sumit1998v@gmail.com",
+        "candidate_phone": "7876055983",
+        "candidate_current_job": null,
+        "current_company": null,
+        "total_experience": 2.16,
+        "current_industry": null,
+        "education": [
+            {
+                "institution": "Deenbandhu Chhotu Ram University of Science and Technology (DCRUST)",
+                "degree": "M.TECH",
+                "course_specialization": "CSE",
+                "education_lvl": "Master's",
+                "start_yr": 2020,
+                "end_yr": 2022,
+                "grade": "77.9%"
+            },
+            {
+                "institution": "Guru Gobind Singh Indraprastha University (GGSIPU)",
+                "degree": "B.TECH",
+                "course_specialization": "CSE",
+                "education_lvl": "Bachelor's",
+                "start_yr": 2016,
+                "end_yr": 2020,
+                "grade": "77.5%"
+            }
+        ],
+        "work_ex": [
+            {
+                "company": "TartanHQ Solutions",
+                "designation": "Backend Engineer",
+                "company_industry": null,
+                "start_date": "2024-10-01T00:00:00Z",
+                "end_date": "2025-07-01T00:00:00Z",
+                "responsibilities": [
+                    "Worked on optimization and scaling of existing Django Based Web-Application by optimizing the Database schemas and architecture.",
+                    "Worked on the integrations of various asynchronous Python based microservices using Redis, Celery, Docker.",
+                    "Worked on the creating the data pipelines in the DAG and reduce the sync scheduling issues between various microservices up to 30%."
+                ],
+                "achievements": [
+                    "Reduced the sync scheduling issues between various microservices up to 30%."
+                ]
+            },
+            {
+                "company": "SCRY Analytics",
+                "designation": "Software Engineer",
+                "company_industry": null,
+                "start_date": "2023-03-01T00:00:00Z",
+                "end_date": "2024-05-01T00:00:00Z",
+                "responsibilities": [
+                    "Worked on the pre-processing and post-processing scripts for NLP based ETL pipeline using python.",
+                    "Improve the efficiency of scripts by up to 30% by implementing the Spark for the data frames related operations.",
+                    "Worked on the Python-based backend components, REST API’s using Django REST Framework, microservices and integrated using Docker.",
+                    "Improve the time efficiency up to 40% of local testing by creating microservice to store as well reuse the AI - server results in local, and increase the AI-server optimization."
+                ],
+                "achievements": [
+                    "Improved the efficiency of scripts by up to 30% by implementing Spark for data frames related operations.",
+                    "Improved the time efficiency up to 40% of local testing by creating microservice to store and reuse AI-server results locally, increasing AI-server optimization."
+                ]
+            },
+            {
+                "company": "Staqu Technologies",
+                "designation": "Software Developer (Backend)",
+                "company_industry": null,
+                "start_date": "2022-02-01T00:00:00Z",
+                "end_date": "2023-01-01T00:00:00Z",
+                "responsibilities": [
+                    "Developed APIs integrated with AI/ Neural-Networks pipeline with Django REST.",
+                    "Created python tasks/pipelines with Redis and Docker to extract data from AI models and transform the data for APIs integration to separate CPU and GPU pre-processing and post-processing.",
+                    "Minimize timeout issues of APIs to 50% by developing APIs with background task scheduler and crons for processing.",
+                    "Worked on the database-schemas to improve the time and space complexity. Used TimescaleDB to make databases more efficient in real time analysis up to 40%."
+                ],
+                "achievements": [
+                    "Minimized timeout issues of APIs to 50% by developing APIs with background task scheduler and crons for processing.",
+                    "Used TimescaleDB to make databases more efficient in real time analysis up to 40%."
+                ]
+            }
+        ],
+        "project": [
+            {
+                "name": "Sentimental Analysis",
+                "description": "Created and implemented by extracting and transforming the data with Apache Spark then analyzing text using NLP.",
+                "role_played": null,
+                "duration": null,
+                "technologies_used": [
+                    "Apache Spark",
+                    "NLP"
+                ]
+            },
+            {
+                "name": "MusiclibAPI",
+                "description": "Developed a web application using Django secured the app using OAuth, JWT authentication which also made the application session less.",
+                "role_played": null,
+                "duration": null,
+                "technologies_used": [
+                    "Django",
+                    "OAuth",
+                    "JWT"
+                ]
+            }
+        ],
+        "certification": null,
+        "achievements": null,
+        "leadership_pors": null,
+        "skills": [
+            "Python",
+            "Java",
+            "HTML",
+            "CSS",
+            "JavaScript",
+            "Django",
+            "Django REST Framework",
+            "GIT",
+            "GITLAB",
+            "Postman",
+            "Airflow",
+            "Pandas",
+            "Numpy",
+            "Scikit-Learn",
+            "NLP",
+            "Docker",
+            "Docker-Compose",
+            "Redis",
+            "AWS",
+            "GCP",
+            "Selenium",
+            "MySQL",
+            "TimescaleDB",
+            "Postgres",
+            "Spark"
+        ],
+        "languages": null,
+        "id": "a5205313-82d5-4ab7-8a62-7a23f30f0534",
+        "resume_url": "resumes/4125ce67-0d8a-41a3-bb1a-7f66a934fae1/84cb9e14-5753-43fc-876e-7bd34107bf9e/2026-06-09-12-42-41-1789306.pdf"
+    },
+    {
+        "candidate_name": "SHIVANG KHANDELWAL",
+        "candidate_email": "ikhandelwal7@gmail.com",
+        "candidate_phone": "+918764314024",
+        "candidate_current_job": "Software Engineer",
+        "current_company": "CLOUDSUFI",
+        "total_experience": 4.08,
+        "current_industry": null,
+        "education": [
+            {
+                "institution": "The LNM Institute of Information Technology",
+                "degree": "B.Tech",
+                "course_specialization": "Computer Science and Engineering",
+                "education_lvl": "Bachelor's",
+                "start_yr": 2017,
+                "end_yr": 2021,
+                "grade": "null"
+            }
+        ],
+        "work_ex": [
+            {
+                "company": "CLOUDSUFI",
+                "designation": "Software Engineer",
+                "company_industry": null,
+                "start_date": "2026-03-01T00:00:00Z",
+                "end_date": null,
+                "responsibilities": [
+                    "Architected a zero-dependency Java 17 SAP connector (Middleware) for Oracle GoldenGate utilizing 5 core GoF design patterns (Strategy, Builder, Facade, Singleton, Template) to streamline the library API/Standalone app.",
+                    "Engineered a fault-tolerant, multi-threaded orchestrator to automate stateless disaster recovery and token management."
+                ],
+                "achievements": [
+                    "Enabling full load and Change Data Capture (CDC) replication for ERP records.",
+                    "Sustaining system uptime against network drops and SAP API failures."
+                ]
+            },
+            {
+                "company": "RoundCircle",
+                "designation": "Software Engineer",
+                "company_industry": null,
+                "start_date": "2024-05-01T00:00:00Z",
+                "end_date": "2025-12-01T00:00:00Z",
+                "responsibilities": [
+                    "Automated index rollover (14GB threshold) and 7-day expiration policies.",
+                    "Tuned OpenSearch indexing strategies and optimised queries.",
+                    "Evaluated multiple OpenSearch versions to benchmark aggregation performance."
+                ],
+                "achievements": [
+                    "Improved query response time by 25%, reducing storage costs by 30%, and ensuring efficient data lifecycle management.",
+                    "Reduced search latency by around 18% and improved indexing throughput across 12M+ documents.",
+                    "Uncovered 10–25% improvements in aggregation latency in upgraded versions, influencing production upgrade decision."
+                ]
+            },
+            {
+                "company": "WheelsEye Technology",
+                "designation": "Software Engineer",
+                "company_industry": null,
+                "start_date": "2021-12-01T00:00:00Z",
+                "end_date": "2024-04-01T00:00:00Z",
+                "responsibilities": [
+                    "Implemented Circuit Breaker patterns using Resilience4j to prevent cascading failures.",
+                    "Enhanced loading detention charge calculations using geofencing techniques.",
+                    "Built an automated bulk payment amount mapping solution.",
+                    "Implemented GST number validation using third-party APIs integrated with MasterGST.",
+                    "Owned and maintained core microservices and aggregators; upgraded Spring Boot from 2.1.0 to 2.6.6.",
+                    "Led monolith-to-microservices migration in production with 0% downtime using NGINX-based routing strategies."
+                ],
+                "achievements": [
+                    "Reduced timeout-related errors by 60% and improved system resilience with effective fallback mechanisms.",
+                    "Increased accuracy to 92% and reducing operational disputes.",
+                    "Reduced payment reconciliation time by 50% and improving user experience.",
+                    "Ensuring tax compliance and reducing manual verification effort.",
+                    "Improving security and performance (from Spring Boot upgrade).",
+                    "0% downtime (from migration).",
+                    "Increased sales team productivity by 194% by translating business requirements into scalable backend solutions delivered on schedule."
+                ]
+            }
+        ],
+        "project": null,
+        "certification": null,
+        "achievements": null,
+        "leadership_pors": [
+            "Led monolith-to-microservices migration in production with 0% downtime using NGINX-based routing strategies."
+        ],
+        "skills": [
+            "Java",
+            "SpringBoot",
+            "Python",
+            "OpenSearch",
+            "SQL",
+            "NoSQL",
+            "Microservices",
+            "Multithreading",
+            "AWS",
+            "Redis",
+            "Distributed Systems",
+            "Maven",
+            "Kafka",
+            "Data Structures",
+            "Algorithms",
+            "Backend Systems",
+            "Scalable Systems",
+            "Performance Tuning",
+            "Automation",
+            "System Performance",
+            "Reliability",
+            "Operational Efficiency",
+            "Data-driven Engineering Decisions"
+        ],
+        "languages": null,
+        "id": "b56d89a8-1daa-40c6-a137-968fc74944bc",
+        "resume_url": "resumes/4125ce67-0d8a-41a3-bb1a-7f66a934fae1/84cb9e14-5753-43fc-876e-7bd34107bf9e/2026-04-17-14-00-03-2208037.pdf"
+    }
+],
+
+"total": 2
+
+}

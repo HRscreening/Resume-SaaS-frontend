@@ -1,5 +1,8 @@
+import { useState } from "react";
 import type { Rubric, Subcategory } from "@/types";
 import { RubricCategoryCard } from "./RubricCategoryCard";
+import { AskSourceJobModal } from "./AskSourcingModal";
+
 
 interface RubricReviewStepProps {
   rubric: Rubric;
@@ -10,6 +13,9 @@ interface RubricReviewStepProps {
   onBack: () => void;
   onSave: () => void;
   saving: boolean;
+  
+  allowSourcing: boolean | null;
+  setAllowSourcing: (val:boolean) => void;
 }
 
 // Step 2 of the new-job wizard: review and tweak the AI-generated rubric, then
@@ -23,7 +29,22 @@ export function RubricReviewStep({
   onBack,
   onSave,
   saving,
+  allowSourcing,
+  setAllowSourcing
 }: RubricReviewStepProps) {
+
+  const [showSourcingModal, setShowSourcingModal] = useState(false);
+ 
+
+  const handleSave = () =>{
+    if(allowSourcing === null){
+      setShowSourcingModal(true);
+    }
+    else {
+      onSave();
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Meta header */}
@@ -65,7 +86,7 @@ export function RubricReviewStep({
           ← Back
         </button>
         <button
-          onClick={onSave}
+          onClick={handleSave}
           disabled={saving}
           className="flex-1 h-10 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
         >
@@ -73,6 +94,14 @@ export function RubricReviewStep({
           {saving ? "Saving job..." : "Save job"}
         </button>
       </div>
+
+      {showSourcingModal &&
+        <AskSourceJobModal
+          setAllowSourcing={setAllowSourcing}
+          onSave={onSave}
+          onClose={() => setShowSourcingModal(false)}
+        />
+      }
     </div>
   );
 }

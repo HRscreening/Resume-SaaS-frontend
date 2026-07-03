@@ -1,0 +1,3074 @@
+{
+    "applications": [
+        {
+            "id": "73572351",
+            "name": "Siddarth Jain",
+            "email": "jainsiddarth5@gmail.com",
+            "phone": "9588262650",
+            "age": 28,
+            "sex": "Male",
+            "img_url": null,
+            "experience_years": 4.0,
+            "comment": "",
+            "current_location": "Bengaluru / Bangalore",
+            "preferred_locations": [
+                "Bengaluru / Bangalore",
+                "Gurgaon",
+                "Hyderabad",
+                "Pune",
+                "Delhi"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-22T16:22:41.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 4827.0,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Software Engineer",
+                    "organization": "MoveInSync",
+                    "tenure": "Jun 2023 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Software Engineer 1",
+                    "organization": "Mason",
+                    "tenure": "Jul 2022 - Sep 2022",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Engineer 1",
+                    "organization": "Vedantu",
+                    "tenure": "Jul 2021 - Jun 2022",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Indian Institute of Technology, Jodhpur (IITJ)",
+                    "batch": "2017-2021"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Siddarth_Jain/2026-01-13-20-33-40-2076302.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/jsid/",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": false,
+                "willingness_to_travel": "Yes",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73244380",
+            "name": "Gaurav Singh",
+            "email": "Gauravsinghjee16@gmail.com",
+            "phone": "9996941351",
+            "age": 28,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2024/08/30/2024-08-30-19-17-26-1831795.jpg",
+            "experience_years": 5.0,
+            "comment": "",
+            "current_location": "Noida",
+            "preferred_locations": [
+                "Gurgaon",
+                "Noida",
+                "Delhi",
+                "Mumbai",
+                "Bengaluru / Bangalore"
+            ],
+            "current_salary": "20",
+            "expected_salary": "24",
+            "applied_date": "2026-06-13T06:16:00.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Senior Software Engineer",
+                    "organization": "TO THE NEW",
+                    "tenure": "Mar 2025 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Senior Developer",
+                    "organization": "RealcoderZ",
+                    "tenure": "Mar 2021 - Feb 2025",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "UIET, kurukshetra",
+                    "batch": "2016-2020"
+                },
+                {
+                    "degree": "Other",
+                    "institution": "Modern School",
+                    "batch": "2015-2016"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Gaurav_Singh/2026-06-08-15-38-02-1831795.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/gaurav-singh-3291a6169",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "English",
+                    "Hindi"
+                ],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73261303",
+            "name": "Akshat Agrawal",
+            "email": "akshatagrawal364@gmail.com",
+            "phone": "9425556790",
+            "age": 28,
+            "sex": "Male",
+            "img_url": null,
+            "experience_years": 4.75,
+            "comment": "",
+            "current_location": "Mumbai",
+            "preferred_locations": [
+                "Bengaluru / Bangalore",
+                "Mumbai",
+                "Pune",
+                "Hyderabad"
+            ],
+            "current_salary": "25",
+            "expected_salary": "29",
+            "applied_date": "2026-06-13T18:38:19.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "SDE-2",
+                    "organization": "Mythik",
+                    "tenure": "Feb 2025 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Senior Software Engineer",
+                    "organization": "Nielsen",
+                    "tenure": "Aug 2024 - Feb 2025",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Development Enginner",
+                    "organization": "Amazon",
+                    "tenure": "Jul 2022 - May 2024",
+                    "is_current": false
+                },
+                {
+                    "designation": "Specialist Programmer",
+                    "organization": "Infosys",
+                    "tenure": "Jul 2021 - Jul 2022",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "MSc / MS / M Tech",
+                    "institution": "International Institute of Information Technology, Bangalore",
+                    "batch": "2019-2021"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Akshat_Agrawal/2026-06-02-00-46-35-3582878.pdf",
+            "social_links": {
+                "linkedin": "https://www.Linkedin.com/in/akshat-sde",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73259980",
+            "name": "Abhishek Police Patil",
+            "email": "abhishekppatil1993@gmail.com",
+            "phone": "8904395014",
+            "age": 33,
+            "sex": "Male",
+            "img_url": null,
+            "experience_years": 3.4166666666666665,
+            "comment": "",
+            "current_location": "Bengaluru / Bangalore",
+            "preferred_locations": [
+                "Bengaluru / Bangalore",
+                "Hyderabad"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-13T17:01:33.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": 0.0
+            },
+            "jobs": [
+                {
+                    "designation": "SDE - 2 (Backend Developer)",
+                    "organization": "Northern Arc Capital",
+                    "tenure": "Jul 2023 - Sep 2023",
+                    "is_current": false
+                },
+                {
+                    "designation": "Java Developer",
+                    "organization": "Proctur",
+                    "tenure": "Feb 2022 - May 2023",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Engineer 1",
+                    "organization": "Dell Technologies",
+                    "tenure": "Dec 2018 - Dec 2020",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "MSc / MS / M Tech",
+                    "institution": "RV College of Engineering, Bangalore",
+                    "batch": "2016-2018"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Abhishek_Police_Patil/2026-06-13-22-19-11-1785234.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/abhishekpolicepatil",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": false
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "English",
+                    "Kannada",
+                    "Hindi"
+                ],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": false,
+                "willing_six_days": false,
+                "willing_relocate": false,
+                "differently_abled": false,
+                "willing_early_stage_startup": false,
+                "willingness_to_travel": "Yes",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73287200",
+            "name": "Shivang Khandelwal",
+            "email": "Ikhandelwal7@gmail.com",
+            "phone": "8764314024",
+            "age": 27,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2026/02/03/2026-02-03-18-33-54-2208037.jpg",
+            "experience_years": 4.5,
+            "comment": "",
+            "current_location": "Gurgaon",
+            "preferred_locations": [
+                "Gurgaon",
+                "Noida",
+                "Bengaluru / Bangalore",
+                "Hyderabad",
+                "Pune"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-15T03:51:02.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Software Engineer",
+                    "organization": "CLOUDSUFI",
+                    "tenure": "Mar 2026 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Senior Software Engineer",
+                    "organization": "RoundCircle",
+                    "tenure": "May 2024 - Dec 2025",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Developer",
+                    "organization": "WheelsEye",
+                    "tenure": "Dec 2021 - Mar 2024",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "The LNM Institute of Information Technology, Jaipur",
+                    "batch": "2017-2021"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Shivang_Khandelwal/2026-04-17-14-00-03-2208037.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/shivang-khandelwal/",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": true
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": null,
+                "languages": [
+                    "English",
+                    "Hindi"
+                ],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "Yes",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73432590",
+            "name": "Sumit Soni",
+            "email": "sumit1998v@gmail.com",
+            "phone": "7876055983",
+            "age": 27,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2022/01/09/2022-01-09-19-49-21-1789306.jpg",
+            "experience_years": 3.0,
+            "comment": "",
+            "current_location": "Gurgaon",
+            "preferred_locations": [
+                "Gurgaon",
+                "Delhi"
+            ],
+            "current_salary": "14",
+            "expected_salary": "18",
+            "applied_date": "2026-06-18T07:54:18.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Backend Engineer",
+                    "organization": "TartanHQ Solutions Pvt. Ltd.",
+                    "tenure": "Sep 2024 - Jul 2025",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Engineer",
+                    "organization": "Scry Analytics",
+                    "tenure": "Mar 2023 - May 2024",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Developer Backend",
+                    "organization": "Staqu Technologies Private Limited",
+                    "tenure": "Feb 2022 - Jan 2023",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "MSc / MS / M Tech",
+                    "institution": "Deenbandhu Chhotu Ram University of Science and Technology, Murthal",
+                    "batch": "2020-2022"
+                },
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "HMR Institute of Technology & Management",
+                    "batch": "2016-2020"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Sumit_Soni/2026-06-09-12-42-41-1789306.pdf",
+            "social_links": {
+                "linkedin": "http://www.linkedin.com/in/sumit-soni-s",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Married",
+                "languages": [],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73247596",
+            "name": "Sankalp",
+            "email": "sankalppande05@gmail.com",
+            "phone": "7311115551",
+            "age": 28,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2026/02/04/2026-02-04-15-20-24-2907406.jpg",
+            "experience_years": 4.666666666666667,
+            "comment": "",
+            "current_location": "Noida",
+            "preferred_locations": [
+                "Gurgaon",
+                "Hyderabad",
+                "Noida",
+                "Bengaluru / Bangalore",
+                "Delhi"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-13T08:27:37.000Z",
+            "score": {
+                "gmat": null,
+                "iit": 3000.0,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Senior software design engineer 2",
+                    "organization": "Newgen Software",
+                    "tenure": "Aug 2021 - Apr 2026",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Indian institute of information technology bhopal",
+                    "batch": "2017-2021"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Sankalp/2026-06-15-11-36-28-2907406.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/sankalp-pande",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "English",
+                    "English",
+                    "Hindi"
+                ],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73551045",
+            "name": "Gaurav Bharti",
+            "email": "gauravbharti586@gmail.com",
+            "phone": "6388374261",
+            "age": 26,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2026/03/10/2026-03-10-02-03-29-2244437.jpg",
+            "experience_years": 3.6666666666666665,
+            "comment": "",
+            "current_location": "Bengaluru / Bangalore",
+            "preferred_locations": [
+                "Anywhere"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-22T07:21:46.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": 0.0
+            },
+            "jobs": [
+                {
+                    "designation": "SDE 2",
+                    "organization": "Wizcommerce",
+                    "tenure": "Jun 2025 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Software Engineer",
+                    "organization": "TeamWare solutions(client: Morgan Stanley)",
+                    "tenure": "Apr 2024 - Apr 2025",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Engineer",
+                    "organization": "1mg.com",
+                    "tenure": "Jul 2022 - Jun 2023",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "National Institute of Technology, Jamshedpur (NITJSR)",
+                    "batch": "2018-2022"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Gaurav_Bharti/2026-05-06-13-18-55-2244437.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/gaurav-bharti-6b3b4717b/",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "English",
+                    "Hindi"
+                ],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "Yes",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73528967",
+            "name": "Tirupataiah goud",
+            "email": "tirupatipalempython@gmail.com",
+            "phone": "9491678078",
+            "age": 33,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2024/11/18/2024-11-18-11-48-10-2342380.jpg",
+            "experience_years": 6.0,
+            "comment": "",
+            "current_location": "Hyderabad",
+            "preferred_locations": [
+                "Anywhere"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-21T13:27:11.000Z",
+            "score": {
+                "gmat": null,
+                "iit": null,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "associate consultant ",
+                    "organization": "Globallogic ",
+                    "tenure": "Dec 2024 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "python software developer",
+                    "organization": "corestrat",
+                    "tenure": "Oct 2023 - Dec 2024",
+                    "is_current": false
+                },
+                {
+                    "designation": "Python Django developer",
+                    "organization": "MBR Informatics",
+                    "tenure": "Mar 2021 - Sep 2023",
+                    "is_current": false
+                },
+                {
+                    "designation": "contract Engineer",
+                    "organization": "DRDO",
+                    "tenure": "Oct 2017 - Jan 2021",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "JNTU College of Engineering, Hyderabad",
+                    "batch": "2010-2014"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Tirupataiah_goud/2026-06-15-07-23-36-2342380.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/tirupati",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Java",
+                    "matched": false
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": null,
+                "languages": [
+                    "English",
+                    "Telugu"
+                ],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": false,
+                "willing_six_days": false,
+                "willing_relocate": false,
+                "differently_abled": false,
+                "willing_early_stage_startup": false,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73267885",
+            "name": "Vaibhav Agrawal",
+            "email": "thevjagrawal@gmail.com",
+            "phone": "7722850198",
+            "age": 2,
+            "sex": "Male",
+            "img_url": null,
+            "experience_years": 2.75,
+            "comment": "",
+            "current_location": "Bengaluru / Bangalore",
+            "preferred_locations": [
+                "Anywhere"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-14T06:40:18.000Z",
+            "score": {
+                "gmat": null,
+                "iit": null,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Software Engineer",
+                    "organization": "Cloudsufi",
+                    "tenure": "Mar 2026 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Software Engineer",
+                    "organization": "MBB Labs",
+                    "tenure": "Jan 2024 - Jun 2025",
+                    "is_current": false
+                },
+                {
+                    "designation": "ASET",
+                    "organization": "TCS",
+                    "tenure": "Jul 2019 - Jun 2020",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "MSc / MS / M Tech",
+                    "institution": "BITS Pilani, Goa Campus",
+                    "batch": "2022-2024"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Vaibhav_Agrawal/2026-06-08-18-58-33-3463189.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/thevjagrawal/",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": null,
+                "languages": [],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": false,
+                "willing_six_days": false,
+                "willing_relocate": false,
+                "differently_abled": false,
+                "willing_early_stage_startup": false,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+          {
+            "id": "73348286",
+            "name": "Harish Kumar",
+            "email": "hemant70001@gmail.com",
+            "phone": "8699852045",
+            "age": 26,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2025/01/22/2025-01-22-03-22-25-4380016.jpeg",
+            "experience_years": 4.0,
+            "comment": "",
+            "current_location": "Gurgaon",
+            "preferred_locations": [
+                "Anywhere",
+                "Delhi",
+                "Gurgaon",
+                "Hyderabad",
+                "Bengaluru / Bangalore"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-16T10:16:13.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": 0.0
+            },
+            "jobs": [
+                {
+                    "designation": "SOFTWARE ENGINEER",
+                    "organization": "HCAH",
+                    "tenure": "Oct 2023 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "ASSOCIATE SOFTWARE ENGINEER",
+                    "organization": "PKWARE",
+                    "tenure": "Feb 2022 - Oct 2023",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Chitkara University, Patiala",
+                    "batch": "2018-2022"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Harish_Kumar/2026-05-06-07-08-51-4380016.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/harish-k-b9b25a1b3",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": false
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "English",
+                    "Hindi"
+                ],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": true,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73256750",
+            "name": "Rishabh Sharma",
+            "email": "r.sharma121999@gmail.com",
+            "phone": "9650504798",
+            "age": 27,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2022/04/15/2022-04-15-18-59-24-1838605.jpg",
+            "experience_years": 3.3333333333333335,
+            "comment": "",
+            "current_location": "Delhi",
+            "preferred_locations": [
+                "Anywhere",
+                "Bengaluru / Bangalore",
+                "Gurgaon",
+                "Hyderabad",
+                "Noida"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-13T14:16:59.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": 0.0
+            },
+            "jobs": [
+                {
+                    "designation": "Software Engineer",
+                    "organization": "Shiprocket",
+                    "tenure": "Dec 2024 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Software Engineer - Java",
+                    "organization": "Neptune Ubicom",
+                    "tenure": "Apr 2024 - Oct 2024",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Engineer",
+                    "organization": "Nielsen",
+                    "tenure": "Jul 2022 - Dec 2023",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Developer intern",
+                    "organization": "Pepcoding Pvt Limited",
+                    "tenure": "Apr 2021 - Aug 2021",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Developer Trainee",
+                    "organization": "Witzeal Technologies",
+                    "tenure": "Mar 2021 - Jun 2022",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Guru Gobind Singh Indraprastha University, Delhi",
+                    "batch": "2018-2022"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Rishabh_Sharma/2026-03-16-20-46-48-1838605.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/rishabh-sharma-32a08b1b4/",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": null,
+                "languages": [
+                    "English",
+                    "Hindi"
+                ],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": false,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73299754",
+            "name": "Netravati Badiger",
+            "email": "netravatib158@gmail.com",
+            "phone": "9148483194",
+            "age": 29,
+            "sex": "Female",
+            "img_url": "https://edgar.hirist.com/media/userpics/2025/08/27/2025-08-27-23-56-22-4708316.jpg",
+            "experience_years": 3.0833333333333335,
+            "comment": "",
+            "current_location": "Bengaluru / Bangalore",
+            "preferred_locations": [
+                "Bengaluru / Bangalore"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-15T07:57:58.000Z",
+            "score": {
+                "gmat": 200.0,
+                "iit": 0.0,
+                "cat": 0.0
+            },
+            "jobs": [
+                {
+                    "designation": "Software Engineer",
+                    "organization": "paycorp.io",
+                    "tenure": "Sep 2022 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "software developer",
+                    "organization": "Paycorp solution ",
+                    "tenure": "Sep 2022 - Present",
+                    "is_current": true
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "University Visvesvaraya College of Engineering, Bangalore",
+                    "batch": "2016-2020"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Netravati_Badiger/2026-06-18-09-39-34-4708316.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/netravati-badiger-0790941ba",
+                "twitter": "https://twitter.com/netravatvatib158",
+                "facebook": "https://www.facebook.com/share/177BfjTEjF/"
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": false
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "English"
+                ],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73248949",
+            "name": "Arpita Kanaujia",
+            "email": "arpitakanaujia1699@gmail.com",
+            "phone": "8882811606",
+            "age": 27,
+            "sex": "Female",
+            "img_url": "https://edgar.hirist.com/media/userpics/2022/04/18/2022-04-18-12-02-19-1839877.jpg",
+            "experience_years": 3.0,
+            "comment": "",
+            "current_location": "Gurgaon",
+            "preferred_locations": [
+                "Bengaluru / Bangalore",
+                "Pune",
+                "Hyderabad",
+                "Gurgaon"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-13T09:17:03.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": 0.0
+            },
+            "jobs": [
+                {
+                    "designation": "Associate Backend Developer",
+                    "organization": "Avizva Solutions",
+                    "tenure": "Aug 2022 - May 2025",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Other",
+                    "batch": "2018-2022"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Arpita_Kanaujia/2026-04-26-17-36-41-1839877.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/arpita-kanaujia",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": false
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": false,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": false,
+                "willingness_to_travel": "Yes",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73289319",
+            "name": "Aravind palisetty",
+            "email": "palisettyaravind68@gmail.com",
+            "phone": "7799536278",
+            "age": 26,
+            "sex": "Male",
+            "img_url": null,
+            "experience_years": 4.75,
+            "comment": "",
+            "current_location": "Hyderabad",
+            "preferred_locations": [
+                "Anywhere"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-15T04:44:23.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": 0.0
+            },
+            "jobs": [
+                {
+                    "designation": "SDE-1",
+                    "organization": "Ixigo",
+                    "tenure": "Sep 2022 - Present",
+                    "is_current": true
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Jawaharlal Nehru Technological University College of Engineering, Kakinada",
+                    "batch": "2017-2021"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Aravind_palisetty/2026-05-05-09-03-32-4421981.pdf",
+            "social_links": {
+                "linkedin": null,
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": false
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "English",
+                    "Telugu",
+                    "Hindi"
+                ],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73287011",
+            "name": "Sumit Pandey ",
+            "email": "sumit.pandey.connect@gmail.com",
+            "phone": "7380855032",
+            "age": 25,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2026/01/15/2026-01-15-10-19-06-5583289.jpg",
+            "experience_years": 3.25,
+            "comment": "",
+            "current_location": "Noida",
+            "preferred_locations": [
+                "Hyderabad",
+                "Pune",
+                "Noida",
+                "Delhi",
+                "Bengaluru / Bangalore"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-15T03:45:20.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Senior Software Engineer",
+                    "organization": "Xcelore",
+                    "tenure": "Sep 2023 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Software Engineer",
+                    "organization": "Gemini Solutions Pvt Ltd",
+                    "tenure": "Feb 2023 - Sep 2023",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Raj Kumar Goel Institute of Technology ",
+                    "batch": "2019-2023"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Sumit_Pandey_/2026-06-16-10-45-21-5583289.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/sumit-pandey-a8b2171ba",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": false
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": null,
+                "languages": [
+                    "English",
+                    "Hindi"
+                ],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": false,
+                "willing_six_days": false,
+                "willing_relocate": false,
+                "differently_abled": false,
+                "willing_early_stage_startup": false,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73380641",
+            "name": "Ketan Kumar",
+            "email": "ketankumarnna@gmail.com",
+            "phone": "7870757017",
+            "age": 26,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2023/04/06/2023-04-06-10-21-45-2214793.jpg",
+            "experience_years": 4.0,
+            "comment": "",
+            "current_location": "Bengaluru / Bangalore",
+            "preferred_locations": [
+                "Anywhere"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-17T06:21:21.000Z",
+            "score": {
+                "gmat": null,
+                "iit": null,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "product development engineer 1",
+                    "organization": "Phenom People",
+                    "tenure": "Jan 2025 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Software development engineer 1",
+                    "organization": "Edge",
+                    "tenure": "Jul 2023 - Dec 2024",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software developer -1",
+                    "organization": "Accubits Technologies",
+                    "tenure": "Apr 2022 - Apr 2023",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Engineer Intern",
+                    "organization": "Accubits Technologies",
+                    "tenure": "Jan 2022 - Apr 2022",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "School of Engineering, Cochin University of Science and Technology, Ernakulam",
+                    "batch": "2018-2022"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Ketan_Kumar/2026-06-07-14-15-47-2214793.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/ketan-kumar-403b75187/",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": null,
+                "languages": [
+                    "English",
+                    "Hindi"
+                ],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73256821",
+            "name": "Gagan sharma",
+            "email": "gagansh19@gmail.com",
+            "phone": "8171915833",
+            "age": 28,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2020/05/28/2020-05-28-18-52-56-772036.jpg",
+            "experience_years": 4.5,
+            "comment": "",
+            "current_location": "Mathura",
+            "preferred_locations": [
+                "Anywhere"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-13T14:20:08.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "software engineer ",
+                    "organization": "saorsa technocrat pvt Ltd ",
+                    "tenure": "Apr 2025 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Software Engineer",
+                    "organization": "Virtusa Consulting",
+                    "tenure": "Sep 2022 - Jan 2024",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Engineer",
+                    "organization": "Hughes Systique Corporation",
+                    "tenure": "Mar 2022 - Aug 2022",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Engineer",
+                    "organization": "Astrea IT Services",
+                    "tenure": "Nov 2020 - Mar 2022",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "G.L Bajaj Group of Institutions, Mathura",
+                    "batch": "2016-2020"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Gagan_sharma/2026-06-10-09-42-12-772036.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/gaganshrmaa",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "English",
+                    "Hindi"
+                ],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": true,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73254373",
+            "name": "Rahul Jindal",
+            "email": "rjjindal.rj@gmail.com",
+            "phone": "9729441702",
+            "age": 25,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2026/04/23/2026-04-23-20-27-41-5820098.jpg",
+            "experience_years": 3.25,
+            "comment": "",
+            "current_location": "Bengaluru / Bangalore",
+            "preferred_locations": [
+                "Bengaluru / Bangalore",
+                "Gurgaon",
+                "Hyderabad",
+                "Mumbai",
+                "Pune"
+            ],
+            "current_salary": "20",
+            "expected_salary": "26",
+            "applied_date": "2026-06-13T12:53:47.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Software Engineer (SDE-2)",
+                    "organization": "Mobileum",
+                    "tenure": "Aug 2025 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Associate Software Engineer",
+                    "organization": "Mobileum",
+                    "tenure": "Aug 2023 - Aug 2025",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Engineer Intern",
+                    "organization": "Barclays",
+                    "tenure": "Mar 2023 - Aug 2023",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "B.M.S. College of Engineering (BMSCE)",
+                    "batch": "2019-2023"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Rahul_Jindal/2026-06-03-06-25-58-5820098.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/rahul-jindal-rj",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": null,
+                "languages": [
+                    "English",
+                    "Hindi"
+                ],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": false,
+                "willing_six_days": false,
+                "willing_relocate": false,
+                "differently_abled": false,
+                "willing_early_stage_startup": false,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73476178",
+            "name": "Debashis Mohapatra",
+            "email": "techie.debashis@gmail.com",
+            "phone": "9668609658",
+            "age": 28,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2024/09/25/2024-09-25-18-05-00-3952105.jpeg",
+            "experience_years": 4.5,
+            "comment": "",
+            "current_location": "Noida",
+            "preferred_locations": [
+                "Bengaluru / Bangalore",
+                "Hyderabad",
+                "Kolkata",
+                "Delhi",
+                "Bhubaneshwar"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-19T09:18:55.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": 0.0
+            },
+            "jobs": [
+                {
+                    "designation": "Software Developer",
+                    "organization": "Vecmocon Technologies",
+                    "tenure": "Dec 2024 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Software Engineer",
+                    "organization": "Unosis IT Solutions pvt ltd",
+                    "tenure": "Oct 2021 - Dec 2024",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Parala Maharaja Engineering College, Berhampur",
+                    "batch": "2016-2019"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Debashis_Mohapatra/2026-06-16-00-18-10-3952105.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/debashis-developer/",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "Hindi",
+                    "English",
+                    "Oriya"
+                ],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": false,
+                "willing_six_days": true,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+         {
+            "id": "73248196",
+            "name": "Sumeet Kumar Singh",
+            "email": "sumeetsingh32112@gmail.com",
+            "phone": "9334725007",
+            "age": 25,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2025/07/25/2025-07-25-16-52-11-4796412.jpg",
+            "experience_years": 3.0,
+            "comment": "",
+            "current_location": "Noida",
+            "preferred_locations": [
+                "Anywhere",
+                "Noida",
+                "Gurgaon",
+                "Delhi",
+                "Bengaluru / Bangalore"
+            ],
+            "current_salary": "16",
+            "expected_salary": "22",
+            "applied_date": "2026-06-13T08:45:08.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": 0.0
+            },
+            "jobs": [
+                {
+                    "designation": "Associate Software Development Engineer - 2",
+                    "organization": "Publicis Sapient",
+                    "tenure": "Dec 2025 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Software Development Engineer - I",
+                    "organization": "BoxFile",
+                    "tenure": "Jun 2023 - Dec 2025",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Indian Institute of Technology, Banaras Hindu University, Varanasi (IITBHU)",
+                    "batch": "2019-2023"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Sumeet_Kumar_Singh/2026-05-19-12-08-34-4796412.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/sumeet-singh-204031201/",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": false
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "Hindi",
+                    "English"
+                ],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": true,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73270742",
+            "name": "Avishek Biswal",
+            "email": "avishekbiswal26@gmail.com",
+            "phone": "6371968348",
+            "age": 25,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2026/04/20/2026-04-20-10-14-33-3587056.jpg",
+            "experience_years": 3.25,
+            "comment": "",
+            "current_location": "Hyderabad",
+            "preferred_locations": [
+                "Hyderabad",
+                "Bengaluru / Bangalore",
+                "Pune",
+                "Noida",
+                "Gurgaon"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-14T08:46:02.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Software Engineer",
+                    "organization": "ASICS TECHNOLOGIES PVT LTD ",
+                    "tenure": "Oct 2022 - Present",
+                    "is_current": true
+                }
+            ],
+            "education": [
+                {
+                    "degree": "MCA",
+                    "institution": "Biju Patnaik University of Technology",
+                    "batch": "2021-2023"
+                },
+                {
+                    "degree": "BSc",
+                    "institution": "Utkal University, Bhubaneswar",
+                    "batch": "2018-2021"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Avishek_Biswal/2026-06-22-07-55-58-3587056.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/avishek-biswal-43b4991a7",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Java",
+                    "matched": false
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "English",
+                    "Hindi",
+                    "Oriya"
+                ],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": false,
+                "willing_six_days": true,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "Yes",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73287075",
+            "name": "Sameer Nasa",
+            "email": "sameernasajobs@gmail.com",
+            "phone": "8529773836",
+            "age": 27,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2024/04/22/2024-04-22-20-26-32-2294089.jpg",
+            "experience_years": 5.083333333333333,
+            "comment": "",
+            "current_location": "Gurgaon",
+            "preferred_locations": [
+                "Bengaluru / Bangalore",
+                "Gurgaon",
+                "Noida",
+                "Chandigarh",
+                "Delhi"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-15T03:46:49.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 84.0,
+                "cat": 0.0
+            },
+            "jobs": [
+                {
+                    "designation": "Senior software developer",
+                    "organization": "appreciate wealth",
+                    "tenure": "Aug 2024 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Software Developer",
+                    "organization": "Industrybuying",
+                    "tenure": "May 2022 - Aug 2024",
+                    "is_current": false
+                },
+                {
+                    "designation": "intern",
+                    "organization": "Industrybuying",
+                    "tenure": "May 2021 - May 2022",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Chitkara University, Patiala",
+                    "batch": "2018-2022"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Sameer_Nasa/2026-06-08-10-24-06-2294089.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/sameernasa2012/",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Java",
+                    "matched": false
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "English",
+                    "Hindi"
+                ],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "Yes",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73287845",
+            "name": "Nitin Kumar Singh",
+            "email": "nitinkumarsingh696@gmail.com",
+            "phone": "7300726144",
+            "age": 26,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2024/04/13/2024-04-13-13-52-53-3317991.jpg",
+            "experience_years": 4.166666666666667,
+            "comment": "",
+            "current_location": "Noida",
+            "preferred_locations": [
+                "Bengaluru / Bangalore",
+                "Gurgaon",
+                "Hyderabad",
+                "Noida",
+                "Delhi"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-15T04:10:28.000Z",
+            "score": {
+                "gmat": null,
+                "iit": null,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Software Engineer",
+                    "organization": "Nucleus Software Exports",
+                    "tenure": "Jul 2022 - Jan 2026",
+                    "is_current": false
+                },
+                {
+                    "designation": "Assistant Software Enginner Intern",
+                    "organization": "Nucleus Software Exports",
+                    "tenure": "Nov 2021 - Jul 2022",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "GLA University, Mathura",
+                    "batch": "2018-2022"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Nitin_Kumar_Singh/2026-05-25-14-44-45-3317991.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/nitin-kumar-singh-774400195",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": null,
+                "languages": [
+                    "English",
+                    "Hindi"
+                ],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": false,
+                "willing_six_days": false,
+                "willing_relocate": false,
+                "differently_abled": false,
+                "willing_early_stage_startup": false,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73437546",
+            "name": "Shruti Patil",
+            "email": "shrutinpatil23@gmail.com",
+            "phone": "8762060302",
+            "age": 28,
+            "sex": "Female",
+            "img_url": null,
+            "experience_years": 2.5,
+            "comment": "",
+            "current_location": "Bengaluru / Bangalore",
+            "preferred_locations": [
+                "Bengaluru / Bangalore",
+                "Hyderabad",
+                "Mumbai",
+                "Pune",
+                "Karnataka - Other"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-18T09:42:25.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": 0.0
+            },
+            "jobs": [
+                {
+                    "designation": "Product Development Engineer",
+                    "organization": "Razorpay",
+                    "tenure": "Apr 2024 - Oct 2024",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Engineer",
+                    "organization": "Qualys",
+                    "tenure": "Jun 2021 - Nov 2023",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Angadi Institute of Technology and Management Belgaum",
+                    "batch": "2016-2020"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Shruti_Patil/2026-05-19-20-57-54-2253904.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/shruti-patil-66089b180/",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "English",
+                    "Hindi",
+                    "Kannada",
+                    "Marathi"
+                ],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": true,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "Yes",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73304076",
+            "name": "Simran Dogra",
+            "email": "Simrandogra863@gmail.com",
+            "phone": "8750932988",
+            "age": 27,
+            "sex": "Female",
+            "img_url": "https://edgar.hirist.com/media/userpics/2024/10/14/2024-10-14-12-16-14-4020748.jpeg",
+            "experience_years": 3.0,
+            "comment": "",
+            "current_location": "Delhi",
+            "preferred_locations": [
+                "Bengaluru / Bangalore",
+                "Gurgaon",
+                "Mumbai",
+                "Delhi",
+                "Hyderabad"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-15T09:40:40.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "SDE-1",
+                    "organization": "Swiggy",
+                    "tenure": "Feb 2025 - Dec 2025",
+                    "is_current": false
+                },
+                {
+                    "designation": "R&D Engineer-1",
+                    "organization": "Nokia",
+                    "tenure": "Jan 2023 - Jul 2024",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "MCA",
+                    "institution": "Indira gandhi delhi technical university for women",
+                    "batch": "2021-2023"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Simran_Dogra/2026-05-22-15-29-42-4020748.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/simran-dogra-56615a220/",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "English"
+                ],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": true,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73305544",
+            "name": "Suryansh Saxena",
+            "email": "saxenasuryansh03@gmail.com",
+            "phone": "9956514777",
+            "age": 26,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2025/07/02/2025-07-02-13-58-45-2996554.jpg",
+            "experience_years": 4.0,
+            "comment": "",
+            "current_location": "Gurgaon",
+            "preferred_locations": [
+                "Anywhere"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-15T10:16:59.000Z",
+            "score": {
+                "gmat": null,
+                "iit": null,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Software Engineer - Backend",
+                    "organization": "Revolution entertainment services ",
+                    "tenure": "Aug 2025 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Software engineer lead",
+                    "organization": "Green rider technology",
+                    "tenure": "Jan 2024 - Jun 2025",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Sharda University, Greater Noida",
+                    "batch": "2018-2022"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Suryansh_Saxena/2026-03-25-15-49-27-2996554.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/suryanshsaxena",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": null,
+                "languages": [],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": false,
+                "willing_six_days": false,
+                "willing_relocate": false,
+                "differently_abled": false,
+                "willing_early_stage_startup": false,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73366324",
+            "name": "Shruti Mittal",
+            "email": "shrutimittal1230@gmail.com",
+            "phone": "8159009035",
+            "age": 25,
+            "sex": "Female",
+            "img_url": "https://edgar.hirist.com/media/userpics/2024/10/19/2024-10-19-14-06-02-4042968.jpeg",
+            "experience_years": 2.8333333333333335,
+            "comment": "",
+            "current_location": "Bengaluru / Bangalore",
+            "preferred_locations": [
+                "Bengaluru / Bangalore",
+                "Pune"
+            ],
+            "current_salary": "confidential",
+            "expected_salary": "confidential",
+            "applied_date": "2026-06-16T18:04:51.000Z",
+            "score": {
+                "gmat": null,
+                "iit": null,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Software Engineer ",
+                    "organization": "Curebay Technology pvt ltd",
+                    "tenure": "Sep 2025 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Associate Software Engineer",
+                    "organization": "Carelon Global Solutions",
+                    "tenure": "Aug 2023 - Sep 2025",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "School of Engineering and Technology, Jain University, Bangalore",
+                    "batch": "2019-2023"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Shruti_Mittal/2026-06-23-15-06-08-4042968.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/shrutimttl",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": null,
+                "languages": [
+                    "Hindi",
+                    "English"
+                ],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": false,
+                "willing_six_days": false,
+                "willing_relocate": false,
+                "differently_abled": false,
+                "willing_early_stage_startup": false,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73461449",
+            "name": "Vivek Raikawar",
+            "email": "vivekckt1997@gmail.com",
+            "phone": "6394075862",
+            "age": 29,
+            "sex": "Male",
+            "img_url": "https://edgar.hirist.com/media/userpics/2024/01/16/2024-01-16-18-23-49-1002664.jpg",
+            "experience_years": 5.166666666666667,
+            "comment": "",
+            "current_location": "Allahabad",
+            "preferred_locations": [
+                "Delhi",
+                "Gurgaon",
+                "Hyderabad",
+                "Noida",
+                "Pune"
+            ],
+            "current_salary": "17",
+            "expected_salary": "19",
+            "applied_date": "2026-06-19T03:38:50.000Z",
+            "score": {
+                "gmat": null,
+                "iit": null,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Software Engineer",
+                    "organization": "Capgemini",
+                    "tenure": "Feb 2025 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "Software Engineer ",
+                    "organization": "STKT Beauty & Technology pvt. Ltd",
+                    "tenure": "Mar 2024 - Feb 2025",
+                    "is_current": false
+                },
+                {
+                    "designation": "Software Engineer",
+                    "organization": "Volkswagen Group Technology Solutions India",
+                    "tenure": "May 2022 - Jan 2024",
+                    "is_current": false
+                },
+                {
+                    "designation": "software Engineer",
+                    "organization": "HCL Technologies",
+                    "tenure": "Mar 2022 - Jun 2022",
+                    "is_current": false
+                },
+                {
+                    "designation": "java developer",
+                    "organization": "Diverse Lynx India Pvt. Ltd.",
+                    "tenure": "Mar 2021 - Mar 2022",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Mahatma Gandhi chitrakoot gramodaya vishwavidhyala",
+                    "batch": "2013-2018"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Vivek_Raikawar/2026-06-16-15-49-59-1002664.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/vivek-raikawar-ckt",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": false
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [
+                    "Hindi",
+                    "Hindi",
+                    "English",
+                    "English",
+                    "Hindi",
+                    "Hindi",
+                    "English"
+                ],
+                "work_permit_usa": false,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": false,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "No",
+                "ex_defence_personnel": null
+            }
+        },
+        {
+            "id": "73285880",
+            "name": "Swati Gupta",
+            "email": "swatigoyal509@gmail.com",
+            "phone": "8769315902",
+            "age": 26,
+            "sex": "Female",
+            "img_url": "https://edgar.hirist.com/media/userpics/2024/09/11/2024-09-11-23-37-16-3907049.jpeg",
+            "experience_years": 4.0,
+            "comment": "",
+            "current_location": "Jaipur",
+            "preferred_locations": [
+                "Anywhere",
+                "Delhi",
+                "Pune",
+                "Bengaluru / Bangalore",
+                "Gurgaon"
+            ],
+            "current_salary": "9",
+            "expected_salary": "15",
+            "applied_date": "2026-06-15T03:11:19.000Z",
+            "score": {
+                "gmat": 0.0,
+                "iit": 0.0,
+                "cat": null
+            },
+            "jobs": [
+                {
+                    "designation": "Senior Software Engineer",
+                    "organization": "Growspace M2M, Jaipur",
+                    "tenure": "Jun 2024 - Present",
+                    "is_current": true
+                },
+                {
+                    "designation": "SDE-1",
+                    "organization": "Axestrack Software Solutions, Jaipur",
+                    "tenure": "Sep 2021 - May 2024",
+                    "is_current": false
+                }
+            ],
+            "education": [
+                {
+                    "degree": "B Tech / BE",
+                    "institution": "Swami Keshvanand Institute of Technology, Management and Gramothan, Jaipur",
+                    "batch": "2018-2022"
+                }
+            ],
+            "resume_url": "https://api-rec.hirist.tech/resume/Swati_Gupta/2026-06-22-08-43-55-3907049.pdf",
+            "social_links": {
+                "linkedin": "https://www.linkedin.com/in/swati-gupta-2248961a7/",
+                "twitter": null,
+                "facebook": null
+            },
+            "matching_tags": [
+                {
+                    "tag_name": "Java",
+                    "matched": true
+                },
+                {
+                    "tag_name": "Python",
+                    "matched": true
+                },
+                {
+                    "tag_name": "SQL",
+                    "matched": true
+                },
+                {
+                    "tag_name": "NoSQL",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Distributed Systems",
+                    "matched": false
+                },
+                {
+                    "tag_name": "OOAD",
+                    "matched": false
+                },
+                {
+                    "tag_name": "Microservices Architecture",
+                    "matched": false
+                }
+            ],
+            "additional_info": {
+                "marital_status": "Single",
+                "languages": [],
+                "work_permit_usa": true,
+                "cat_percentile": null,
+                "handled_team": true,
+                "willing_six_days": true,
+                "willing_relocate": true,
+                "differently_abled": false,
+                "willing_early_stage_startup": true,
+                "willingness_to_travel": "Yes",
+                "ex_defence_personnel": null
+            }
+        }
+    ],
+    "total_applications": 30
+}
