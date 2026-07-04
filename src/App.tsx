@@ -39,6 +39,8 @@ import NotFound from "@/routes/NotFound";
 import ScreeningDetail from "@/routes/ScreeningDetail";
 import ResumeDetail from "@/routes/ResumeDetail";
 import EditRubric from "@/routes/EditRubric";
+import VoiceConfigPage from "@/routes/VoiceConfig";
+import VoiceCalls from "@/routes/VoiceCalls";
 
 
 
@@ -230,6 +232,18 @@ const editRubricRoute = createRoute({
   component: EditRubric,
 });
 
+const voiceConfigRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings/$id/voice",
+  component: VoiceConfigPage,
+});
+
+const voiceCallsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings/$id/voice/calls",
+  component: VoiceCalls,
+});
+
 const resumeDetailRoute = createRoute({
   getParentRoute: () => authOnlyLayoutRoute,
   path: "/screenings/$id/$resumeId",
@@ -313,6 +327,8 @@ const routeTree = rootRoute.addChildren([
     newScreeningRoute,
     screeningDetailRoute,
     editRubricRoute,
+    voiceConfigRoute,
+    voiceCallsRoute,
     settingsRoute,
     profileRoute,
     changePasswordRoute,
