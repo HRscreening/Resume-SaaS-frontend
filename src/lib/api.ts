@@ -682,6 +682,12 @@ export async function listVoiceCalls(
   return request(`/api/v1/screenings/${screeningId}/voice/calls`);
 }
 
+export async function listCallCandidates(
+  screeningId: string,
+): Promise<import("@/types").CallCandidatesResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/candidates`);
+}
+
 export async function getCallScorecard(
   screeningId: string,
   callId: string,

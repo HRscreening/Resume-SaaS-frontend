@@ -380,6 +380,26 @@ export interface SkippedResume {
   reason: string;
 }
 
+export type CandidateCallReason = "callable" | "recall" | "in_progress" | "no_phone";
+
+export interface CallCandidate {
+  resume_id: string;
+  candidate_name: string | null;
+  candidate_phone: string | null;
+  phone_e164: string | null;
+  eligible: boolean;
+  reason: CandidateCallReason;
+  last_call_id: string | null;
+  last_call_status: CallDisplayStatus | null;
+  voice_score: number | null;
+}
+
+export interface CallCandidatesResponse {
+  voice_ready: boolean;
+  default_country_code: string;
+  candidates: CallCandidate[];
+}
+
 export interface TriggerCallsResponse {
   created: CallListItem[];
   skipped: SkippedResume[];

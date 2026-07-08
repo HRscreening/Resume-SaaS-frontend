@@ -6,6 +6,7 @@ import { getScreening, listVoiceCalls, triggerVoiceCalls } from "@/lib/api";
 import type { CallDisplayStatus, CallListItem } from "@/types";
 import { truncate } from "@/lib/utils";
 import { CallScorecardDrawer } from "@/components/screening/voice/CallScorecardDrawer";
+import { VoiceCandidates } from "@/components/screening/voice/VoiceCandidates";
 
 // Buckets that are still moving through the pipeline → keep polling.
 const ACTIVE_DISPLAY: CallDisplayStatus[] = ["queued", "calling", "in_interview", "processing"];
@@ -51,6 +52,7 @@ export default function VoiceCalls() {
     mutationFn: () => triggerVoiceCalls(id),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["voice-calls", id] });
+      queryClient.invalidateQueries({ queryKey: ["voice-candidates", id] });
       const parts = [`${res.created.length} call(s) queued`];
       if (res.skipped.length) parts.push(`${res.skipped.length} skipped`);
       toast.success(parts.join(" · "));
@@ -100,12 +102,18 @@ export default function VoiceCalls() {
         </div>
       </div>
 
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold text-[#0F0F0F] mb-3">Candidates</h2>
+        <VoiceCandidates screeningId={id} />
+      </section>
+
+      <h2 className="text-sm font-semibold text-[#0F0F0F] mb-3">Call history</h2>
       {isLoading ? (
         <p className="text-sm text-[#737373]">Loading…</p>
       ) : calls.length === 0 ? (
         <div className="border border-dashed border-[#E8E5DF] rounded-xl p-10 text-center">
           <p className="text-sm text-[#737373]">
-            No calls yet. Click “Start screening calls” to trigger interviews for shortlisted candidates.
+            No calls yet. Use the Call buttons above, or “Start screening calls” to call all callable candidates.
           </p>
         </div>
       ) : (
