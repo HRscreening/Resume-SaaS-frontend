@@ -1,6 +1,3 @@
-import { useState, useMemo } from "react";
-import testCandidateData from "../../../trash/testCandidateData.json";
-import testApplications from "../../../trash/test.json";
 import CandidateAnalysisSheet from "@/components/candidates/CandidateAnalysisSheet";
 import { Pagination } from "@/components/screening/Pagination";
 import { MultiSelectPopover } from "@/components/screening/filters/MultiSelectPopover";
