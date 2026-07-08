@@ -104,6 +104,7 @@ export interface Screening {
   stages?: StagesMap;
   created_at: string;
   updated_at: string;
+  parsing_batch_ids: string[] | null;
 }
 
 export interface ScreeningListItem {

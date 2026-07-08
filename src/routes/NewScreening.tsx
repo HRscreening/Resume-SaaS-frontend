@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { analyzeJD, createJob, parseJDFile } from "@/lib/api";
+import { analyzeJD, createJob, createJob_v1,parseJDFile } from "@/lib/api";
 import type { Rubric, Subcategory } from "@/types";
 import { MAX_SUBCATEGORIES } from "@/lib/rubric";
 import { StepIndicator } from "@/components/screening/new-screening/StepIndicator";
@@ -28,6 +28,7 @@ export default function NewScreening() {
   const [jdFile, setJdFile] = useState<File | null>(null);
   const [analyzingJD, setAnalyzingJD] = useState(false);
   const [extractingJD, setExtractingJD] = useState(false);
+  const [allowSourcing, setAllowSourcing] = useState<boolean | null>(null);
 
   // Step 2 — rubric editor
   const [rubric, setRubric] = useState<Rubric | null>(null);
@@ -126,10 +127,11 @@ export default function NewScreening() {
     if (!rubric || !title.trim()) return;
     setSaving(true);
     try {
-      const { screening_id } = await createJob({
+      const { screening_id } = await createJob_v1({
         title: title.trim(),
         raw_jd_text: jdText,
         rubric,
+        source_job: allowSourcing || false,
       });
       queryClient.invalidateQueries({ queryKey: ["screenings"] });
       navigate({ to: "/screenings/$id", params: { id: screening_id } });
@@ -175,6 +177,8 @@ export default function NewScreening() {
           onBack={() => setStep(1)}
           onSave={handleSaveJob}
           saving={saving}
+          allowSourcing={allowSourcing}
+          setAllowSourcing={setAllowSourcing}
         />
       )}
     </div>
