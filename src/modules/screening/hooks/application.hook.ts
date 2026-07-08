@@ -1,9 +1,9 @@
-import { useQuery, useMutation,useQueryClient } from "@tanstack/react-query";
-import { ApplicationQueryKeys } from "@/modules/screening/queryKeys";
-
-import { getApplications,type GetApplicationResponseType } from "@/modules/screening/apis/getApplications";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApplicationQueryKeys, ResumeParsingQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys } from "@/modules/screening/queryKeys";
+import { getApplications } from "@/modules/screening/apis/getApplications";
 import { screenResume } from "@/modules/screening/apis/screenResumes";
 import { addApplications } from "@/modules/screening/apis/addApplications";
+import { type GetActiveBatchesResponse } from "@/modules/screening/apis/activeBatches";
 
 type GetApplicationsRequestParams = {
     screening_id: string;
@@ -12,13 +12,11 @@ type GetApplicationsRequestParams = {
     enabled?: boolean;
 };
 
-export  function useApplicationsQuery({
+export function useApplicationsQuery({
     screening_id,
     page = 1,
     pageSize = 10,
-    enabled
 }: GetApplicationsRequestParams) {
-    // console.log("useApplicationsQuery called with params:", { screening_id, page, pageSize, enabled });
     return useQuery({
         queryKey: ApplicationQueryKeys.getApplications(
             screening_id,
@@ -31,13 +29,9 @@ export  function useApplicationsQuery({
                 page,
                 pageSize,
             }),
-        // enabled: (enabled ?? true) && !!screening_id,
-        staleTime: 6 * 60 * 60 * 1000, //! 6 hours as the data is not expected to change frequently
+        staleTime: 6 * 60 * 60 * 1000, // 6 hours
     });
 }
-
-
-
 
 export function useScreeningApplicationsMutation() {
     const queryClient = useQueryClient();
@@ -51,12 +45,18 @@ export function useScreeningApplicationsMutation() {
                     variables.screening_id
                 ),
             });
+            // Invalidate screening details query so processing accordion updates
+            queryClient.invalidateQueries({
+                queryKey: ["screening", variables.screening_id],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["batch-progress", variables.screening_id],
+            });
         },
 
         gcTime: 6 * 60 * 60 * 1000,
     });
 }
-
 
 export function useAddApplicationsMutation() {
     const queryClient = useQueryClient();
@@ -64,12 +64,36 @@ export function useAddApplicationsMutation() {
     return useMutation({
         mutationFn: addApplications,
 
-        onSuccess: (_, variables) => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({
                 queryKey: ApplicationQueryKeys.screening(
                     variables.screening_id
                 ),
             });
+
+            if (data?.batch_id && data.data?.length) {
+                queryClient.setQueryData(
+                    ActiveBatchesQueryKeys.screening(variables.screening_id),
+                    (old: GetActiveBatchesResponse | undefined) => {
+                        if (!old) return old;
+                        return {
+                            ...old,
+                            parsing_batch_ids: [...(old.parsing_batch_ids || []), data.batch_id],
+                        };
+                    }
+                );
+          
+                queryClient.setQueryData(
+                    ResumeParsingQueryKeys.getActiveParsings(
+                        variables.screening_id,
+                        data.batch_id
+                    ),
+                    {
+                        total: data.data.length,
+                        resumes: data.data,
+                    }
+                );
+            }
         },
 
         gcTime: 6 * 60 * 60 * 1000,

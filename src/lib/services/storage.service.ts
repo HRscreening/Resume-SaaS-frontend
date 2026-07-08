@@ -22,7 +22,7 @@ export class StorageService {
         return path;
     }
 
-    async uploadMany(files: { file: File; path: string }[]) {
+    async uploadMany(files: { file: File; path: string,fileName:string }[]) {
         await Promise.all(
             files.map(({ file, path }) => this.upload(path, file))
         );

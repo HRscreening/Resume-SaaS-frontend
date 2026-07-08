@@ -40,11 +40,11 @@ import NotFound from "@/routes/NotFound";
 import Candidates from "@/routes/NewCandidatePage";
 
 
-// Sourcing
-import HiristScreening from "@/modules/sourcing/Hirist/route";
+
 
 // ─── Eager imports — these are the most-visited pages, no lazy delay ──
-import ScreeningDetail from "@/routes/ScreeningDetail";
+// import ScreeningDetail from "@/routes/ScreeningDetail"; // Old one
+import ScreeningDetail from "@/modules/screening/routes/screening"; // New one
 import ResumeDetail from "@/routes/ResumeDetail";
 import EditRubric from "@/routes/EditRubric";
 
@@ -229,7 +229,7 @@ const screeningDetailRoute = createRoute({
     const { id } = params;
     queryClient.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
     queryClient.prefetchQuery({ queryKey: ["results", id], queryFn: () => getResults(id) });
-    queryClient.prefetchQuery({ queryKey: ["batch-progress", id], queryFn: () => getBatchProgress(id) });
+    // queryClient.prefetchQuery({ queryKey: ["batch-progress", id], queryFn: () => getBatchProgress(id) });
   },
   validateSearch: (search: Record<string, unknown>): { saved?: 1 } => {
     // When set, the screening page will show a "Rubric saved" toast.
@@ -304,14 +304,6 @@ const checkoutRoute = createRoute({
   }),
 });
 
-const hiristSourcingRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: "/screenings/$screening_id/hirist",
-  component: HiristScreening,
-  validateSearch: (search: Record<string, unknown>) => ({
-    from: typeof search.from === "string" ? search.from : undefined,
-  }),
-});
 
 // ─── Build router ───────────────────────────────────────────
 
@@ -333,7 +325,6 @@ const routeTree = rootRoute.addChildren([
   appLayoutRoute.addChildren([
     dashboardRoute,
     screeningsRoute,
-    hiristSourcingRoute,
     candidatesRoute,
     newScreeningRoute,
     screeningDetailRoute,

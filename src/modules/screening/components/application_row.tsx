@@ -55,7 +55,7 @@ export default function CandidateRow({
 
 
     const { screening_id,selectedApplications, toggleSelection} = useSelectedApplications();
-    const { mutateAsync,isError,error,isPending,isSuccess } = useScreeningApplicationsMutation();
+    const { isPending} = useScreeningApplicationsMutation();
 
     const selected = selectedApplications.has(candidate.id);
 
@@ -95,11 +95,6 @@ export default function CandidateRow({
             .join("")
             .toUpperCase() || "NA";
 
-
-        
-    async function handleScreenResume(resume_id:string){
-       await mutateAsync({screening_id,resume_ids:[resume_id]});
-    }
 
 
 
@@ -230,10 +225,7 @@ export default function CandidateRow({
                 className="w-20 px-2 py-3 text-center align-middle"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex justify-center gap-4">
                 <InfoSheet candidate={candidate} disabled={isPending}/>
-                <ScreenSingleResumeTrigger candidate_name={candidate.candidate_name} handleScreenResume={()=>handleScreenResume(candidate.id)} disabled={isPending} />
-                </div>
             </td>
         </tr>
     );

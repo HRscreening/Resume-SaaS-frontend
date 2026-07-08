@@ -15,11 +15,12 @@ export class ResumeUploadService {
         files: File[],
         screeningId: string,
         userId: string
-    ): Promise<string[]> {
+    ): Promise<{fileName: string; path: string}[]> {
         const allFiles = await this.collectFiles(files);
 
         const preparedFiles = allFiles.map((file) => ({
             file,
+            fileName: file.name,
             path: generateStoragePath(file.name, screeningId, userId),
         }));
 
@@ -28,7 +29,7 @@ export class ResumeUploadService {
         // return [""]
         await this.storage.uploadMany(preparedFiles);
 
-        return preparedFiles.map((file) => file.path);
+        return preparedFiles.map(({ fileName, path }) => ({ fileName, path }));
     }
 
 

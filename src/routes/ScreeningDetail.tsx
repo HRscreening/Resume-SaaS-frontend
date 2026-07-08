@@ -22,7 +22,7 @@ import { CandidatesTable } from "@/components/screening/CandidatesTable";
 import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import Applications from "@/modules/screening/routes/applications"
+import Applications from "@/modules/screening/tabs/applications"
 
 
 
@@ -397,7 +397,7 @@ export default function ScreeningDetail() {
     console.log("Uploaded files:", result);
 
 
-    const res = await UploadResumes({resume_urls:result,screening_id:screening.id})
+    const res = await UploadResumes({resumes:result,screening_id:screening.id})
     console.log(`Response on uploading ${res}`)
 
     if(isUploadDone) {

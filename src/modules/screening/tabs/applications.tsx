@@ -7,24 +7,25 @@ import { Application } from "@/modules/screening/types/application.type"
 import { useSelectedApplications, SelectedApplicationsProvider } from "@/modules/screening/hooks/useSelectedApplication";
 import { sourceResumes } from "@/lib/apis/SourceResumes"
 import { PlatformName } from "@/types/sourcingData.types";
-import {useApplicationsQuery,useScreeningApplicationsMutation} from "@/modules/screening/hooks/application.hook";
-import { toast } from "sonner"
+import { useApplicationsQuery, useScreeningApplicationsMutation } from "@/modules/screening/hooks/application.hook";
+import { toast } from "sonner";
+import ResumeParsingProgress from "../components/Processing/resumeParsingProgress";
+import { useGetBatchesQuery } from "@/modules/screening/hooks/batch.hook";
 
 const PAGE_SIZE = 10;
 
-export function ApplicationPage({screening_id}:{screening_id:string}) {
+export function ApplicationPage({ screening_id, onTabChange }: { screening_id: string; onTabChange?: (tab: "Applications" | "Screening") => void }) {
 
-    // const { applications, total } = data
     const [page, setPage] = useState<number>(1);
-    
-    
-        const { selectedApplications, clearSelection } = useSelectedApplications();
-        const { mutateAsync: screenResumesMutate, isPending:isScreening } = useScreeningApplicationsMutation();
-        const navigate = useNavigate();
 
-    const { data, isLoading:isFetchingApplication, isError, error,isSuccess } = useApplicationsQuery({screening_id, page: page, pageSize: PAGE_SIZE});
+    const { data, isLoading: isFetchingApplication, isError, error } = useApplicationsQuery({ screening_id, page: page, pageSize: PAGE_SIZE });
+    const { data: active_batches } = useGetBatchesQuery(screening_id);
 
-        
+
+    const { selectedApplications, clearSelection } = useSelectedApplications(); // Custom hook to manage selected applications state
+    const { mutateAsync: screenResumesMutate, isPending: isScreening } = useScreeningApplicationsMutation();
+
+
 
 
     const [sourceMode, setSourceMode] = useState(false);
@@ -36,15 +37,15 @@ export function ApplicationPage({screening_id}:{screening_id:string}) {
 
     if (isFetchingApplication) {
         return <div>Loading...</div>;
-    }    
+    }
 
     if (isError) {
         return <div>{error.message}</div>;
-    }    
+    }
 
     if (!data) {
         return <div>No data available</div>;
-    }   
+    }
 
     async function submitScreen() {
         if (selectedApplications.size === 0) {
@@ -52,14 +53,13 @@ export function ApplicationPage({screening_id}:{screening_id:string}) {
             return;
         }
         setScreening(true);
-    
+
         try {
             const resume_ids = Array.from(selectedApplications);
             const res = await screenResumesMutate({ screening_id, resume_ids });
-            if(isSuccess){
-                toast.success("Candidates screened successfully.");
-            }
-
+            toast.success(res.message || "Candidates scoring batch started successfully.");
+            exitSourceMode();
+            onTabChange?.("Screening");
         }
         catch (error) {
             setSourceError("Error Screening candidates. Please try again.");
@@ -82,22 +82,25 @@ export function ApplicationPage({screening_id}:{screening_id:string}) {
         const endIndex = startIndex + PAGE_SIZE;
     }
 
- 
 
-    const { applications:candidates, total } = data;
+
+    const { applications: candidates, total } = data;
 
 
     return (
         <div >
+            <div className="my-4 space-y-3">
+                { active_batches?.parsing_batch_ids?.map((batch_id) => (
+                    <ResumeParsingProgress key={`parsing-${batch_id}`} screening_id={screening_id} batch_id={batch_id} />
+                ))}
+            </div>
 
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-semibold text-[#0F0F0F]">
-                    Screening: {screening_id}
-                </h1>
-                <div className="flex gap-2 items-center">
+
+                <div className="flex w-full justify-end items-center">
                     <button
                         className="px-3 py-1 rounded-lg bg-[#0F0F0F] text-white text-sm font-medium"
-                        onClick={() => { setSourceMode(!sourceMode) }}
+                        onClick={() => setSourceMode(!sourceMode)}
                     >
                         {sourceMode ? "Cancel" : "Screen Applications"}
                     </button>
@@ -187,14 +190,16 @@ export function ApplicationPage({screening_id}:{screening_id:string}) {
 }
 
 
+interface ApplicationsProps {
+    onTabChange?: (tab: "Applications" | "Screening") => void;
+}
 
 
-
-export default function Applications() {
-    const { id: screening_id } = useParams({ strict: false }) as {id: string;};
+export default function Applications({ onTabChange }: ApplicationsProps) {
+    const { id: screening_id } = useParams({ strict: false }) as { id: string; };
     return (
         <SelectedApplicationsProvider screening_id={screening_id}>
-            <ApplicationPage screening_id={screening_id}/>
+            <ApplicationPage screening_id={screening_id} onTabChange={onTabChange} />
         </SelectedApplicationsProvider>
     );
 }
