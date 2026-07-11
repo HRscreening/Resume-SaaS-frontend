@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { getScreening, listVoiceCalls, triggerVoiceCalls } from "@/lib/api";
+import { cancelScheduledCall, getScreening, listVoiceCalls, triggerVoiceCalls } from "@/lib/api";
 import type { CallDisplayStatus, CallListItem } from "@/types";
 import { truncate } from "@/lib/utils";
 import { CallScorecardDrawer } from "@/components/screening/voice/CallScorecardDrawer";
@@ -25,6 +25,15 @@ function scoreColor(n: number | null): string {
   if (n >= 75) return "text-green-700";
   if (n >= 50) return "text-amber-600";
   return "text-red-600";
+}
+
+/** A queued call with a future scheduled_at is waiting for its scheduled time. */
+function isScheduledPending(c: CallListItem): boolean {
+  return (
+    c.display_status === "queued" &&
+    c.scheduled_at != null &&
+    new Date(c.scheduled_at).getTime() > Date.now()
+  );
 }
 
 export default function VoiceCalls() {
@@ -63,6 +72,17 @@ export default function VoiceCalls() {
     },
     onError: (e: unknown) =>
       toast.error(e instanceof Error ? e.message : "Could not start calls"),
+  });
+
+  const cancelMut = useMutation({
+    mutationFn: (callId: string) => cancelScheduledCall(id, callId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["voice-calls", id] });
+      queryClient.invalidateQueries({ queryKey: ["voice-candidates", id] });
+      toast.success("Scheduled call cancelled");
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "Could not cancel call"),
   });
 
   return (
@@ -137,10 +157,23 @@ export default function VoiceCalls() {
                     <div className="text-xs text-[#A3A3A3]">{c.phone_e164}{c.attempt_no > 1 ? ` · attempt ${c.attempt_no}` : ""}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${DISPLAY[c.display_status]?.style ?? "bg-slate-100 text-slate-700"}`}>
-                      {DISPLAY[c.display_status]?.label ?? c.display_status}{c.is_partial ? " · partial" : ""}
-                    </span>
-                    {c.display_detail && <div className="text-xs text-amber-700 mt-1">{c.display_detail}</div>}
+                    {isScheduledPending(c) ? (
+                      <>
+                        <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                          Scheduled
+                        </span>
+                        <div className="text-xs text-[#737373] mt-1">
+                          {new Date(c.scheduled_at as string).toLocaleString()}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${DISPLAY[c.display_status]?.style ?? "bg-slate-100 text-slate-700"}`}>
+                          {DISPLAY[c.display_status]?.label ?? c.display_status}{c.is_partial ? " · partial" : ""}
+                        </span>
+                        {c.display_detail && <div className="text-xs text-amber-700 mt-1">{c.display_detail}</div>}
+                      </>
+                    )}
                   </td>
                   <td className={`px-4 py-3 text-right font-medium ${scoreColor(c.voice_score)}`}>
                     {c.voice_score != null ? c.voice_score.toFixed(1) : "—"}
@@ -150,14 +183,22 @@ export default function VoiceCalls() {
                   </td>
                   <td className="px-4 py-3 text-[#404040]">{c.recommendation ?? "—"}</td>
                   <td className="px-4 py-3 text-right">
-                    {c.display_status === "ready" && (
+                    {c.display_status === "ready" ? (
                       <button
                         onClick={() => setOpenCallId(c.id)}
                         className="text-xs font-medium text-[#0F0F0F] underline"
                       >
                         Review
                       </button>
-                    )}
+                    ) : isScheduledPending(c) ? (
+                      <button
+                        onClick={() => cancelMut.mutate(c.id)}
+                        disabled={cancelMut.isPending && cancelMut.variables === c.id}
+                        className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                      >
+                        {cancelMut.isPending && cancelMut.variables === c.id ? "Cancelling…" : "Cancel"}
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               ))}

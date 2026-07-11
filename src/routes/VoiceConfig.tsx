@@ -20,6 +20,8 @@ const DEFAULT_CONFIG: VoiceConfig = {
   default_country_code: "+91",
   retry_policy: { max_attempts: 3, backoff: "exponential" },
   max_concurrent_calls_override: null,
+  ask_salary: false,
+  ask_location: false,
 };
 
 const inputCls =
@@ -62,18 +64,28 @@ export default function VoiceConfigPage() {
   const [draft, setDraft] = useState<VoiceConfig>(DEFAULT_CONFIG);
   const [hydrated, setHydrated] = useState(false);
 
-  // Hydrate once from the persisted config (or defaults) without clobbering edits.
+  // Hydrate once from the persisted config (or defaults) without clobbering
+  // edits. Spread over DEFAULT_CONFIG so configs saved before newer fields
+  // (ask_salary / ask_location) still hydrate with defaults.
   useEffect(() => {
     if (hydrated || configLoading) return;
-    setDraft(configResp?.voice_config ?? DEFAULT_CONFIG);
+    setDraft({ ...DEFAULT_CONFIG, ...(configResp?.voice_config ?? {}) });
     setHydrated(true);
   }, [hydrated, configLoading, configResp]);
 
   const generateMutation = useMutation({
     mutationFn: () => generateQuestionPlan(id),
     onSuccess: (res) => {
-      setDraft((d) => ({ ...d, question_plan: res.question_plan }));
+      setDraft((d) => ({
+        ...d,
+        question_plan: res.question_plan,
+        // Remote role: default the location question off (HR can re-enable).
+        ask_location: res.is_remote_job ? false : d.ask_location,
+      }));
       toast.success(`Generated ${res.question_plan.length} questions`);
+      if (res.is_remote_job) {
+        toast.info("Job looks remote: location question disabled by default");
+      }
     },
     onError: (e: unknown) =>
       toast.error(e instanceof Error ? e.message : "Could not generate question plan"),
@@ -245,6 +257,40 @@ export default function VoiceConfigPage() {
         >
           + Add question
         </button>
+      </section>
+
+      {/* Additional wrap-up questions */}
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold text-[#0F0F0F] mb-1">Additional questions</h2>
+        <p className="text-xs text-[#737373] mb-3">
+          Asked at the end of the interview. Captured in the transcript but not scored on the rubric.
+        </p>
+        <div className="space-y-2">
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={draft.ask_salary}
+              onChange={(e) => setDraft((d) => ({ ...d, ask_salary: e.target.checked }))}
+              className="h-4 w-4 accent-[#0F0F0F]"
+            />
+            <span className="text-sm text-[#0F0F0F]">
+              Ask salary details
+              <span className="text-xs text-[#737373] ml-2">current/previous salary and expectations</span>
+            </span>
+          </label>
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={draft.ask_location}
+              onChange={(e) => setDraft((d) => ({ ...d, ask_location: e.target.checked }))}
+              className="h-4 w-4 accent-[#0F0F0F]"
+            />
+            <span className="text-sm text-[#0F0F0F]">
+              Ask current location
+              <span className="text-xs text-[#737373] ml-2">skip this for remote roles</span>
+            </span>
+          </label>
+        </div>
       </section>
 
       {/* Call settings */}

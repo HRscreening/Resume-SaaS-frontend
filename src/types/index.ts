@@ -327,6 +327,9 @@ export interface VoiceConfig {
   default_country_code: string;
   retry_policy: RetryPolicy;
   max_concurrent_calls_override: number | null;
+  // HR wrap-up questions, asked after the plan (not scored on the rubric).
+  ask_salary: boolean;
+  ask_location: boolean;
 }
 
 export interface VoiceConfigResponse {
@@ -336,6 +339,8 @@ export interface VoiceConfigResponse {
 
 export interface GenerateQuestionPlanResponse {
   question_plan: QuestionPlanItem[];
+  // Detected from the JD; UI defaults ask_location off for remote roles.
+  is_remote_job: boolean;
 }
 
 // ─── Voice calls + scorecards (Phase 2) ────────────────────────────────────
@@ -368,6 +373,7 @@ export interface CallListItem {
   recommendation: string | null;
   is_partial: boolean;
   resume_score: number | null;
+  scheduled_at: string | null;
   started_at: string | null;
   ended_at: string | null;
   created_at: string | null;
