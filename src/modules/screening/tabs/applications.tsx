@@ -5,8 +5,6 @@ import data from "../test_data.json"
 
 import { Application } from "@/modules/screening/types/application.type"
 import { useSelectedApplications, SelectedApplicationsProvider } from "@/modules/screening/hooks/useSelectedApplication";
-import { sourceResumes } from "@/lib/apis/SourceResumes"
-import { PlatformName } from "@/types/sourcingData.types";
 import { useApplicationsQuery, useScreeningApplicationsMutation } from "@/modules/screening/hooks/application.hook";
 import { toast } from "sonner";
 import ResumeParsingProgress from "../components/Processing/resumeParsingProgress";
@@ -99,7 +97,7 @@ export function ApplicationPage({ screening_id, onTabChange }: { screening_id: s
 
                 <div className="flex w-full justify-end items-center">
                     <button
-                        className="px-3 py-1 rounded-lg bg-[#0F0F0F] text-white text-sm font-medium"
+                        className="my-2 px-3 py-1 rounded-lg bg-[#0F0F0F] text-white text-sm font-medium cursor-pointer"
                         onClick={() => setSourceMode(!sourceMode)}
                     >
                         {sourceMode ? "Cancel" : "Screen Applications"}

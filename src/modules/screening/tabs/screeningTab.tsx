@@ -16,25 +16,15 @@ import { useAnalysisSheetOpen, setOpenAnalysisSheet, ANALYSIS_SHEET_WIDTH } from
 import { TIERS, getTier, TierSection, type TierId } from "@/components/screening/TierSection";
 
 import { ProcessingAccordion } from "@/components/screening/ProcessingAccordion";
-import { RubricModal } from "@/components/screening/RubricModal";
-import { FailedView } from "@/components/screening/FailedView";
 import { CandidatesTable } from "@/components/screening/CandidatesTable";
 import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import Applications from "@/modules/screening/tabs/applications"
+import {useGetBatchesQuery} from "@/modules/screening/hooks/batch.hook"
+import ResumeScoringProgress from "@/modules/screening/components/Processing/resumeScoringProgress"
 
 
-
-
-import { ResumeUploadService } from "@/lib/services/resumeUpload.service";
-import { StorageService } from "@/lib/services/storage.service";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-
-import { resumeUploadService } from "@/lib/services";
-import { useAddApplicationsMutation } from "@/modules/screening/hooks/application.hook"
 
 type Sections = "Applications" | "Screening"
 
@@ -50,8 +40,13 @@ export default function ScreeningDetail() {
 
     const { user } = useAuth();
 
-    const { mutateAsync: UploadResumes, isSuccess: isUploadDone, isPending: isUploading } = useAddApplicationsMutation()
+      const { data: active_batches } = useGetBatchesQuery(id);
 
+      useEffect(() => {
+        console.log("Active batches updated:", active_batches);
+
+      }, [active_batches])
+    
     const [rescoring, setRescoring] = useState(false);
     const [rescoreError, setRescoreError] = useState<string | null>(null);
     const [showRubric, setShowRubric] = useState(false);
@@ -70,18 +65,7 @@ export default function ScreeningDetail() {
     const [lastClickedId, setLastClickedId] = useState<string | null>(null);
     const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
-    const [draftFiles, setDraftFiles] = useState<File[]>([]);
-    const [dragActive, setDragActive] = useState(false);
-    const [uploading, setUploading] = useState(false);
-    const [uploadStep, setUploadStep] = useState<0 | 1 | 2>(0);
-    const [uploadError, setUploadError] = useState<string | null>(null);
-    const [showUploadMore, setShowUploadMore] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const uploadMoreFileInputRef = useRef<HTMLInputElement>(null);
-    const [uploadMoreFiles, setUploadMoreFiles] = useState<File[]>([]);
-    const [uploadMoreDragActive, setUploadMoreDragActive] = useState(false);
-    // Bumped on each successful upload — tells the accordion to auto-expand briefly.
-    const [uploadNonce, setUploadNonce] = useState(0);
+
 
     // Synchronous status hint from the screenings-list cache. Used to gate the
     // batch-progress query on cold cache so we don't fire a request that 404s
@@ -108,19 +92,19 @@ export default function ScreeningDetail() {
     // sequential waterfall — first paint waited for two roundtrips instead of
     // one. The 404-on-draft case is handled by React Query's retry:1 default
     // and the empty render path below.
-    const { data: progress } = useQuery({
-        queryKey: ["batch-progress", id],
-        queryFn: () => getBatchProgress(id),
-        enabled: !knownIsDraft && (!screening || screening.status !== "draft"),
-        refetchInterval: (query) => {
-            const status = query.state.data?.status;
-            if (status === "completed" || status === "failed") return false;
-            return 3000;
-        },
-    });
+    // const { data: progress } = useQuery({
+    //     queryKey: ["batch-progress", id],
+    //     queryFn: () => getBatchProgress(id),
+    //     enabled: !knownIsDraft && (!screening || screening.status !== "draft"),
+    //     refetchInterval: (query) => {
+    //         const status = query.state.data?.status;
+    //         if (status === "completed" || status === "failed") return false;
+    //         return 3000;
+    //     },
+    // });
 
-    const batchDone = progress?.status === "completed" || progress?.status === "failed";
-
+    // const batchDone = progress?.status === "completed" || progress?.status === "failed";
+    const batchDone = active_batches?.scoring_batch_ids?.length === 0
     // Backend-driven query state (filters, sort, search, pagination) lives in
     // the URL via useCandidateQuery. The hook also owns the results query,
     // so we don't run a separate useQuery here.
@@ -413,28 +397,35 @@ export default function ScreeningDetail() {
 
 
             <div className="w-full space-y-4">
-      
+
                 {/* Processing accordion — combined banner + per-file drill-down */}
-                {isProcessing && (
+                {/* {isProcessing && (
                     <ProcessingAccordion
                         progress={progress ?? null}
                         totalFiles={screening.total_resumes}
                         uploadNonce={uploadNonce}
                     />
-                )}
+                )} */}
 
-                {/* Partial failures */}
+                {/* Partial failures
                 {!isProcessing && progress && (progress.failed_count ?? 0) > 0 && (
                     <FailedView progress={progress} hasResults={candidates.length > 0} />
-                )}
+                )} */}
 
                 {/* Total failure */}
-                {screening.status === "failed" && candidates.length === 0 && !(progress && (progress.failed_count ?? 0) > 0) && (
+                {/* {screening.status === "failed" && candidates.length === 0 && !(progress && (progress.failed_count ?? 0) > 0) && (
                     <div className="bg-red-50 rounded-2xl border border-red-200 p-6 text-center">
                         <p className="text-sm font-semibold text-red-800">Screening failed</p>
                         <p className="text-xs text-red-600 mt-1">All resumes failed to process. Please check the job description and try again.</p>
                     </div>
-                )}
+                )} */}
+
+
+                <div className="my-4 space-y-3">
+                    {active_batches?.scoring_batch_ids?.map((batch_id) => (
+                        <ResumeScoringProgress key={`parsing-${batch_id}`} screening_id={id} batch_id={batch_id} />
+                    ))}
+                </div>
 
                 {/* Flat results table with search, filter, stage & match columns,
               and bottom-center pagination. Visible during processing too —
@@ -512,7 +503,7 @@ export default function ScreeningDetail() {
                     onSave={handleSaveStages}
                 />
 
-               
+
 
 
 
@@ -578,5 +569,5 @@ export default function ScreeningDetail() {
                 );
             })()}
         </div >
-  );
+    );
 }

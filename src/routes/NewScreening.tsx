@@ -9,6 +9,8 @@ import { StepIndicator } from "@/components/screening/new-screening/StepIndicato
 import { JdInputStep } from "@/components/screening/new-screening/JdInputStep";
 import { RubricReviewStep } from "@/components/screening/new-screening/RubricReviewStep";
 
+
+
 type Step = 1 | 2;
 type JdInputMode = "paste" | "upload" | "ai";
 
@@ -28,7 +30,6 @@ export default function NewScreening() {
   const [jdFile, setJdFile] = useState<File | null>(null);
   const [analyzingJD, setAnalyzingJD] = useState(false);
   const [extractingJD, setExtractingJD] = useState(false);
-  const [allowSourcing, setAllowSourcing] = useState<boolean | null>(null);
 
   // Step 2 — rubric editor
   const [rubric, setRubric] = useState<Rubric | null>(null);
@@ -123,16 +124,20 @@ export default function NewScreening() {
     setRubric({ ...rubric, categories: updated });
   }
 
-  async function handleSaveJob() {
+  async function handleSaveJob(sourceJob:boolean) {
     if (!rubric || !title.trim()) return;
     setSaving(true);
     try {
-      const { screening_id } = await createJob_v1({
+      const data = {
         title: title.trim(),
         raw_jd_text: jdText,
         rubric,
-        source_job: allowSourcing || false,
-      });
+        source_job: sourceJob || false,
+      }
+
+      // console.log("Saving job with data:", data);
+
+      const { screening_id } = await createJob_v1(data);
       queryClient.invalidateQueries({ queryKey: ["screenings"] });
       navigate({ to: "/screenings/$id", params: { id: screening_id } });
     } catch (err) {
@@ -177,8 +182,6 @@ export default function NewScreening() {
           onBack={() => setStep(1)}
           onSave={handleSaveJob}
           saving={saving}
-          allowSourcing={allowSourcing}
-          setAllowSourcing={setAllowSourcing}
         />
       )}
     </div>

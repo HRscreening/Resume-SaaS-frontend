@@ -47,8 +47,7 @@ const ResumeScoringProgress = React.memo(({ screening_id, batch_id }: Props) => 
     const eventSourceRef = useRef<EventSource | null>(null);
     const { data, isError } = useActiveScoringQuery({ screening_id, batch_id });
 
-    const pendingApplications = useRef<Application[]>([]);
-    const BATCH_SIZE = 4;
+    console.log("ResumeScoringProgress data:", data);
 
     useEffect(() => {
         if (!data) return;
@@ -59,37 +58,6 @@ const ResumeScoringProgress = React.memo(({ screening_id, batch_id }: Props) => 
     useEffect(() => {
         if (!screening_id || !batch_id) return;
         if (eventSourceRef.current) return;
-
-        const flushApplications = () => {
-            if (pendingApplications.current.length === 0) return;
-
-            const batch = pendingApplications.current;
-            pendingApplications.current = [];
-
-            queryClient.setQueryData(
-                ApplicationQueryKeys.getApplications(screening_id, 1, 10),
-                (oldData: GetApplicationResponseType | undefined) => {
-                    if (!oldData) return oldData;
-
-                    const updatedApps = oldData.applications.map(app => {
-                        const match = batch.find(b => b.id === app.id);
-                        return match ? { ...app, ...match } : app;
-                    });
-
-                    const existingIds = new Set(oldData.applications.map(a => a.id));
-                    const newApps = batch.filter(a => !existingIds.has(a.id));
-
-                    return {
-                        ...oldData,
-                        applications: [
-                            ...newApps,
-                            ...updatedApps,
-                        ],
-                        total: oldData.total + newApps.length,
-                    };
-                }
-            );
-        };
 
         const source = new EventSource(`/api/v1/screenings/${screening_id}/subscribe-events/${batch_id}`);
         eventSourceRef.current = source;
@@ -103,18 +71,9 @@ const ResumeScoringProgress = React.memo(({ screening_id, batch_id }: Props) => 
                     const next = prev.map(r =>
                         r.id === payload.resume_id ? { ...r, status: payload.status } : r
                     );
-
-                    if (payload.status === "success" && payload.data) {
-                        pendingApplications.current.push(payload.data);
-                        if (pendingApplications.current.length >= BATCH_SIZE) {
-                            flushApplications();
-                        }
-                    }
-
                     return next;
                 });
             } else if (type === "Scoring_Batch_Complete") {
-                flushApplications();
                 queryClient.invalidateQueries({ queryKey: ApplicationQueryKeys.screening(screening_id) });
                 queryClient.invalidateQueries({ queryKey: ResumeScoringQueryKeys.getActiveScorings(screening_id, batch_id) });
                 queryClient.setQueryData(
@@ -135,7 +94,6 @@ const ResumeScoringProgress = React.memo(({ screening_id, batch_id }: Props) => 
         };
 
         return () => {
-            flushApplications();
             source.close();
             eventSourceRef.current = null;
         };

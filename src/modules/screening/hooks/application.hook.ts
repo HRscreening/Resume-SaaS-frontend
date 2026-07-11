@@ -39,19 +39,45 @@ export function useScreeningApplicationsMutation() {
     return useMutation({
         mutationFn: screenResume,
 
-        onSuccess: (_, variables) => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({
                 queryKey: ApplicationQueryKeys.screening(
                     variables.screening_id
                 ),
             });
             // Invalidate screening details query so processing accordion updates
-            queryClient.invalidateQueries({
-                queryKey: ["screening", variables.screening_id],
-            });
-            queryClient.invalidateQueries({
-                queryKey: ["batch-progress", variables.screening_id],
-            });
+            // queryClient.invalidateQueries({
+            //     queryKey: ["screening", variables.screening_id],
+            // });
+            // queryClient.invalidateQueries({
+            //     queryKey: ["batch-progress", variables.screening_id],
+            // });
+
+            console.log("Screening applications successful:", data);
+
+            if (data?.batch_id && data.data?.length) {
+                queryClient.setQueryData(
+                    ActiveBatchesQueryKeys.screening(variables.screening_id),
+                    (old: GetActiveBatchesResponse | undefined) => {
+                        if (!old) return old;
+                        return {
+                            ...old,
+                            scoring_batch_ids: [...(old.scoring_batch_ids || []), data.batch_id],
+                        };
+                    }
+                );
+          
+                queryClient.setQueryData(
+                    ResumeScoringQueryKeys.getActiveScorings(
+                        variables.screening_id,
+                        data.batch_id
+                    ),
+                    {
+                        total: data.data.length,
+                        resumes: data.data,
+                    }
+                );
+            }
         },
 
         gcTime: 6 * 60 * 60 * 1000,

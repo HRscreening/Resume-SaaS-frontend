@@ -28,7 +28,6 @@ const PAGE_SIZE = 10;
 export default function ScreeningDetail() {
     const { id } = useParams({ strict: false }) as { id: string };
     const search = useSearch({ strict: false }) as { saved?: number } & Record<string, unknown>;
-    const queryClient = useQueryClient();
 
     const [currentTab, setCurrentTab] = useState<Sections>("Applications")
 
@@ -53,7 +52,6 @@ export default function ScreeningDetail() {
     // is reliable; on direct URL paste it's `undefined` and we let the query
     // fire — a 404 for draft is a rare cost.
 
-    const [parsingBatchIds, setParsingBatchIds] = useState<string[]>([]);
 
     const { data: screening, isLoading, error } = useQuery({
         queryKey: ["screening", id],
@@ -66,23 +64,7 @@ export default function ScreeningDetail() {
     });
 
 
-    // Fire in PARALLEL with the screening query when we have a non-draft hint
-    // (or no hint at all). The previous `enabled: !!screening` gate forced a
-    // sequential waterfall — first paint waited for two roundtrips instead of
-    // one. The 404-on-draft case is handled by React Query's retry:1 default
-    // and the empty render path below.
-    //   const { data: progress } = useQuery({
-    //     queryKey: ["batch-progress", id],
-    //     queryFn: () => getBatchProgress(id),
-    //     enabled: !knownIsDraft && (!screening || screening.status !== "draft"),
-    //     refetchInterval: (query) => {
-    //       const status = query.state.data?.status;
-    //       if (status === "completed" || status === "failed") return false;
-    //       return 3000;
-    //     },
-    //   });
 
-    //   const batchDone = progress?.status === "completed" || progress?.status === "failed";
     const batchDone = true; // Temporary override for testing without batch-progress API
 
     // Backend-driven query state (filters, sort, search, pagination) lives in
@@ -99,10 +81,7 @@ export default function ScreeningDetail() {
     const serverTotal = resultsPage?.total ?? 0;
 
 
-    // Show a "Rubric saved" toast after returning from EditRubric (?saved=1).
-    // Auto-dismiss after a few seconds; strip the saved=1 search param so a
-    // refresh won't re-fire it. Preserves any filter/sort state already in
-    // the URL.
+
     useEffect(() => {
         if (search.saved !== 1) return;
         toast.success("Rubric saved", { duration: 3500 });
@@ -209,84 +188,88 @@ export default function ScreeningDetail() {
                                     : `${screening.total_resumes} resumes · Created ${formatDate(screening.created_at)}`}
                         </p>
                     </div>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <button
-                                onClick={() => { setShowUploadMore((v) => !v) }}
-                                className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 whitespace-nowrap ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
-                            >
-                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v8M3.5 5.5l3.5-3.5 3.5 3.5" /><path d="M2 12h10" /></svg>
-                                {!analysisOpen && "Add resumes"}
-                            </button>
-                        </TooltipTrigger>
-                        {analysisOpen && <TooltipContent><p className="text-xs">Add resumes</p></TooltipContent>}
-                    </Tooltip>
-                    {(candidates.length > 0 || filtersMatchedNothing) && (
-                        <div className="flex flex-wrap items-center gap-2">
-                            {/* <SourcingModal screening_id={id} onClose={()=>{}}/> */}
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        onClick={() => setShowRubric(true)}
-                                        className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
-                                    >
-                                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h3" /></svg>
-                                        {!analysisOpen && "Rubric"}
-                                    </button>
-                                </TooltipTrigger>
-                                {analysisOpen && <TooltipContent><p className="text-xs">Rubric</p></TooltipContent>}
-                            </Tooltip>
+                    <div className="flex flex-wrap items-center gap-2">
 
-                            {currentTab === "Screening" && (
-                                <>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <button
-                                                onClick={() => setRescoreMode(true)}
-                                                disabled={isProcessing || rescoreMode || candidates.length === 0}
-                                                className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed`}
-                                            >
-                                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M11.5 4.5A5 5 0 1 0 12 9" /><path d="M11.5 1.5v3h-3" />
-                                                </svg>
-                                                {!analysisOpen && "Rescore"}
-                                            </button>
-                                        </TooltipTrigger>
-                                        {analysisOpen && <TooltipContent><p className="text-xs">Rescore</p></TooltipContent>}
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <button
-                                                onClick={() => navigate({ to: "/screenings/$id/voice", params: { id } })}
-                                                className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
-                                            >
-                                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5a2 2 0 0 1 2 2v3a2 2 0 1 1-4 0v-3a2 2 0 0 1 2-2z" /><path d="M3 6.5a4 4 0 0 0 8 0M7 10.5v2M5 12.5h4" /></svg>
-                                                {!analysisOpen && "Voice round"}
-                                            </button>
-                                        </TooltipTrigger>
-                                        {analysisOpen && <TooltipContent><p className="text-xs">Voice round</p></TooltipContent>}
-                                    </Tooltip>
-                                </>
-                            )
-                            }
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        onClick={handleExport}
-                                        disabled={exporting || candidates.length === 0}
-                                        className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-60`}
-                                    >
-                                        {exporting
-                                            ? <span className="h-3.5 w-3.5 rounded-full border-2 border-[#404040] border-t-transparent animate-spin" />
-                                            : <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5v8M4 7l3 3 3-3" /><path d="M1.5 10.5v1.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-1.5" /></svg>
-                                        }
-                                        {!analysisOpen && "Export CSV"}
-                                    </button>
-                                </TooltipTrigger>
-                                {analysisOpen && <TooltipContent><p className="text-xs">Export CSV</p></TooltipContent>}
-                            </Tooltip>
-                        </div>
-                    )}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={() => { setShowUploadMore((v) => !v) }}
+                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 whitespace-nowrap ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
+                                >
+                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v8M3.5 5.5l3.5-3.5 3.5 3.5" /><path d="M2 12h10" /></svg>
+                                    {!analysisOpen && "Add resumes"}
+                                </button>
+                            </TooltipTrigger>
+                            {analysisOpen && <TooltipContent><p className="text-xs">Add resumes</p></TooltipContent>}
+                        </Tooltip>
+                        {(candidates.length > 0 || filtersMatchedNothing) && (
+                            <>
+                                {/* <SourcingModal screening_id={id} onClose={()=>{}}/> */}
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={() => setShowRubric(true)}
+                                            className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h3" /></svg>
+                                            {!analysisOpen && "Rubric"}
+                                        </button>
+                                    </TooltipTrigger>
+                                    {analysisOpen && <TooltipContent><p className="text-xs">Rubric</p></TooltipContent>}
+                                </Tooltip>
+
+                                {currentTab === "Screening" && (
+                                    <>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <button
+                                                    onClick={() => setRescoreMode(true)}
+                                                    disabled={isProcessing || rescoreMode || candidates.length === 0}
+                                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed`}
+                                                >
+                                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M11.5 4.5A5 5 0 1 0 12 9" /><path d="M11.5 1.5v3h-3" />
+                                                    </svg>
+                                                    {!analysisOpen && "Rescore"}
+                                                </button>
+                                            </TooltipTrigger>
+                                            {analysisOpen && <TooltipContent><p className="text-xs">Rescore</p></TooltipContent>}
+                                        </Tooltip>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <button
+                                                    onClick={() => navigate({ to: "/screenings/$id/voice", params: { id } })}
+                                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
+                                                >
+                                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5a2 2 0 0 1 2 2v3a2 2 0 1 1-4 0v-3a2 2 0 0 1 2-2z" /><path d="M3 6.5a4 4 0 0 0 8 0M7 10.5v2M5 12.5h4" /></svg>
+                                                    {!analysisOpen && "Voice round"}
+                                                </button>
+                                            </TooltipTrigger>
+                                            {analysisOpen && <TooltipContent><p className="text-xs">Voice round</p></TooltipContent>}
+                                        </Tooltip>
+                                    </>
+                                )
+                                }
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={handleExport}
+                                            disabled={exporting || candidates.length === 0}
+                                            className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-60`}
+                                        >
+                                            {exporting
+                                                ? <span className="h-3.5 w-3.5 rounded-full border-2 border-[#404040] border-t-transparent animate-spin" />
+                                                : <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5v8M4 7l3 3 3-3" /><path d="M1.5 10.5v1.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-1.5" /></svg>
+                                            }
+                                            {!analysisOpen && "Export CSV"}
+                                        </button>
+                                    </TooltipTrigger>
+                                    {analysisOpen && <TooltipContent><p className="text-xs">Export CSV</p></TooltipContent>}
+                                </Tooltip>
+                            </>
+                        )}
+
+                    </div>
                 </div>
 
             </div>
