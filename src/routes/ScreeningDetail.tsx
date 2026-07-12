@@ -131,7 +131,6 @@ export default function ScreeningDetail() {
   // the URL via useCandidateQuery. The hook also owns the results query,
   // so we don't run a separate useQuery here.
   const candidateQuery = useCandidateQuery(id, {
-    pageSize: PAGE_SIZE,
     pollWhileProcessing: true,
     batchDone,
   });
@@ -144,9 +143,7 @@ export default function ScreeningDetail() {
     setSort,
     setOverallRange,
     setCategoryRange,
-    setPage: setQueryPage,
     clearAll,
-    prefetchPage,
     query: resultsQuery,
   } = candidateQuery;
   const resultsPage = resultsQuery.data;
@@ -1056,16 +1053,13 @@ export default function ScreeningDetail() {
                   <CandidatesTable
                     candidates={tableCandidates}
                     categories={rubricCategories}
-                    page={showSelectedOnly ? 1 : currentPage}
-                    pageSize={PAGE_SIZE}
-                    total={tableTotal}
-                    onPageChange={(p) => {
-                      setOpenAnalysisSheet(null);
-                      setQueryPage(p);
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
+                    // page={showSelectedOnly ? 1 : currentPage}
+                    // pageSize={PAGE_SIZE}
+                    // total={tableTotal}
+                    // onPageChange={}
                     loading={!showSelectedOnly && pageLoading}
-                    onPrefetchPage={prefetchPage}
+                    
+                    // onPrefetchPage={()=>{}}
                     selectable={rescoreMode}
                     selectedIds={selectedIds}
                     onToggle={toggleSelection}

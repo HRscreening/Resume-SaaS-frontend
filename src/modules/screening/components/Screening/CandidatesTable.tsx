@@ -1,4 +1,5 @@
-import type { CandidateQueryState, HiringStage, MatchTierId, RangeFilter, RankedCandidate, RubricCategory, SortRule, StagesMap } from "@/types";
+import type { HiringStage, MatchTierId, RangeFilter, RubricCategory, SortRule, StagesMap } from "@/types";
+import type { CandidateQueryState, RankedCandidate } from "@/modules/screening/types/screening.type";
 import { getTier } from "@/lib/tier";
 import AnalysisSheet, { useAnalysisSheetOpen, useAnalysisSheetOpenId, setOpenAnalysisSheet } from "@/components/screening/AnalysisSheet";
 import { Pagination } from "@/components/screening/Pagination";
@@ -9,7 +10,8 @@ import { CandidatesToolbar } from "@/components/screening/filters/CandidatesTool
 import { ActiveFilterChips } from "@/components/screening/filters/ActiveFilterChips";
 import { SortableHeader } from "@/components/screening/filters/SortableHeader";
 import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
-
+import { useEffect, useMemo, useRef } from "react";
+import { useInView } from "react-intersection-observer";
 
 
 interface CandidatesTableProps {
@@ -34,15 +36,18 @@ interface CandidatesTableProps {
   // Filter / sort / search state. When provided, the toolbar + chips render
   // and column headers become sortable. Optional so callers in selection
   // ("show selected only") views can still render the table without filters.
-queryState ?: CandidateQueryState;
-searchInput ?: string;
-onSearchChange ?: (s: string) => void;
-onStageFilterChange ?: (next: string[]) => void;
-onMatchFilterChange ?: (next: MatchTierId[]) => void;
-onSortChange ?: (next: SortRule[]) => void;
-onOverallRangeChange ?: (range: RangeFilter | undefined) => void;
-onCategoryRangeChange ?: (name: string, range: RangeFilter | undefined) => void;
-onClearAllFilters ?: () => void;
+  onLoadMore?: () => Promise<unknown>;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  queryState?: CandidateQueryState;
+  searchInput?: string;
+  onSearchChange?: (s: string) => void;
+  onStageFilterChange?: (next: string[]) => void;
+  onMatchFilterChange?: (next: MatchTierId[]) => void;
+  onSortChange?: (next: SortRule[]) => void;
+  onOverallRangeChange?: (range: RangeFilter | undefined) => void;
+  onCategoryRangeChange?: (name: string, range: RangeFilter | undefined) => void;
+  onClearAllFilters?: () => void;
 }
 
 export function CandidatesTable({
@@ -65,8 +70,14 @@ export function CandidatesTable({
   onOverallRangeChange,
   onCategoryRangeChange,
   onClearAllFilters,
+
+  hasMore,
+  loadingMore,
+  onLoadMore
 }: CandidatesTableProps) {
   const compact = useAnalysisSheetOpen();
+
+  const { ref: loadMoreRef, inView } = useInView({ threshold: 0, rootMargin: "300px", });
 
   // Default landing stage for a candidate that has no stage yet — the first
   // stage in the configured order (e.g. "Applied"). Falls back to "Applied"
@@ -77,6 +88,15 @@ export function CandidatesTable({
   // useCandidateQuery). The page renders exactly what the API returned —
   // no client-side narrowing here. The `searchInput` debounced through
   // useCandidateQuery only echoes back into the toolbar text field.
+
+  useEffect(() => {
+    if (!inView) return;
+    if (!hasMore) return;
+    if (loadingMore) return;
+
+  
+    onLoadMore?.();
+  }, [inView, hasMore, loadingMore, onLoadMore]);
 
   // Header checkbox tri-state — reflects the current page's visible rows.
   const visibleIds = candidates.map((c) => c.resume_id);
@@ -128,9 +148,11 @@ export function CandidatesTable({
           name stays visible if the user does end up scrolling horizontally
           on a narrow viewport. Rank lives as a tiny badge on the avatar
           instead of its own column. */}
+      {/* <div className="rounded-2xl border border-[#E8E5DF] bg-white overflow-hidden">
+        <div className="overflow-x-auto"> */}
       <div className="rounded-2xl border border-[#E8E5DF] bg-white overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm table-fixed">
+        <div className="max-h-[65vh] overflow-y-auto overflow-x-auto">
+          <table className="min-w-full w-full text-sm table-fixed">
             <colgroup>
               {selectable && <col className="w-10" />}
               <col className={compact ? "w-44" : "w-44 sm:w-48"} />
@@ -143,7 +165,7 @@ export function CandidatesTable({
               <col className="w-24" />
               {!compact && <col className="w-11" />}
             </colgroup>
-            <thead>
+            <thead className="sticky top-0 z-20 bg-[#F5F3EE]">
               <tr className="border-b border-[#E8E5DF] bg-[#F5F3EE]">
                 {selectable && (
                   <th className="px-3 py-2.5 bg-[#F5F3EE]">
@@ -276,8 +298,18 @@ export function CandidatesTable({
                   onToggle={onToggle}
                 />
               ))}
+
+
             </tbody>
           </table>
+          {hasMore && (
+            <div ref={loadMoreRef} className="w-full">
+              <div className="w-full flex items-center justify-center gap-3 py-8 text-sm text-muted-foreground">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
+                <span>Loading more candidates...</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

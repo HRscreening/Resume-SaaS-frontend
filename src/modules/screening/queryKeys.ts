@@ -1,3 +1,5 @@
+import { getScreening } from "@/lib/api";
+
 export const ScreeningQueryKeys = {
     all: ["screenings"] as const,
 }
@@ -10,10 +12,9 @@ export const ApplicationQueryKeys = {
 
     getApplications: (
         screeningId: string,
-        page: number,
-        pageSize: number
+        limit: number
     ) =>
-        [...ApplicationQueryKeys.screening(screeningId), page, pageSize] as const,
+        [...ApplicationQueryKeys.screening(screeningId), limit] as const,
 };
 
 
@@ -55,3 +56,20 @@ export const ActiveBatchesQueryKeys = {
     screening: (screeningId: string) =>
         [...ActiveBatchesQueryKeys.all, screeningId] as const,
 };
+
+
+
+import { CandidateQueryState } from "@/modules/screening/types/screening.type";
+export const ScreeningResultsQueryKeys = {
+    all: ["screeningResults"] as const,
+    
+    screening: (screeningId: string) =>
+        [...ScreeningResultsQueryKeys.all, screeningId] as const,
+
+    getScreenings: (
+        screeningId: string,
+        params:Omit<CandidateQueryState, "cursor">
+    ) =>
+        [...ScreeningResultsQueryKeys.screening(screeningId), params] as const,
+};
+

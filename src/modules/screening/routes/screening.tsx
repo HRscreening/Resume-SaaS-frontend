@@ -70,15 +70,15 @@ export default function ScreeningDetail() {
     // Backend-driven query state (filters, sort, search, pagination) lives in
     // the URL via useCandidateQuery. The hook also owns the results query,
     // so we don't run a separate useQuery here.
-    const candidateQuery = useCandidateQuery(id, {
-        pageSize: PAGE_SIZE,
-        pollWhileProcessing: false,
-        batchDone,
-    });
-    const { state: queryState, query: resultsQuery } = candidateQuery;
-    const resultsPage = resultsQuery.data;
-    const candidates = resultsPage?.items ?? [];
-    const serverTotal = resultsPage?.total ?? 0;
+    // const candidateQuery = useCandidateQuery(id, {
+    //     pageSize: PAGE_SIZE,
+    //     pollWhileProcessing: false,
+    //     batchDone,
+    // });
+    // const { state: queryState, query: resultsQuery } = candidateQuery;
+    // const resultsPage = resultsQuery.data;
+    // const candidates = resultsPage?.items ?? [];
+    // const serverTotal = resultsPage?.total ?? 0;
 
 
 
@@ -96,12 +96,15 @@ export default function ScreeningDetail() {
     }, [search, id, navigate]);
 
 
+    const totalCandidates = screening?.scored_resumes ?? 0;
+    const hasAnyCandidates = totalCandidates > 0;
 
 
     async function handleExport() {
         setExporting(true);
         try {
-            const { blob, filename } = await exportResults(id, queryState);
+            // const { blob, filename } = await exportResults(id, queryState);
+            const { blob, filename } = await exportResults(id, {});
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -152,14 +155,14 @@ export default function ScreeningDetail() {
     // Backend's `total` is authoritative for pagination. Fall back to the
     // screening's scored count while the first page is still loading, so the
     // page UI doesn't flash empty before the response lands.
-    const totalCandidates = serverTotal || screening.scored_resumes || screening.total_resumes || candidates.length;
-    const hasAnyCandidates = candidates.length > 0 || totalCandidates > 0;
-    // The current page has no rows, but filters are active and the screening
-    // does have scored candidates — i.e. the filters just matched nothing. Keep
-    // the action buttons visible (so the toolbar stays put) but disable the ones
-    // that operate on visible rows.
-    const filtersMatchedNothing =
-        candidates.length === 0 && hasActiveFilters(queryState) && screening.scored_resumes > 0;
+    // const totalCandidates = serverTotal || screening.scored_resumes || screening.total_resumes || candidates.length;
+    // const hasAnyCandidates = candidates.length > 0 || totalCandidates > 0;
+    // // The current page has no rows, but filters are active and the screening
+    // // does have scored candidates — i.e. the filters just matched nothing. Keep
+    // // the action buttons visible (so the toolbar stays put) but disable the ones
+    // // that operate on visible rows.
+    // const filtersMatchedNothing =
+    //     candidates.length === 0 && hasActiveFilters(queryState) && screening.scored_resumes > 0;
 
     return (
 
@@ -202,7 +205,8 @@ export default function ScreeningDetail() {
                             </TooltipTrigger>
                             {analysisOpen && <TooltipContent><p className="text-xs">Add resumes</p></TooltipContent>}
                         </Tooltip>
-                        {(candidates.length > 0 || filtersMatchedNothing) && (
+                        { true && (
+                        // {(candidates.length > 0 || filtersMatchedNothing) && (
                             <>
                                 {/* <SourcingModal screening_id={id} onClose={()=>{}}/> */}
                                 <Tooltip>
@@ -224,7 +228,8 @@ export default function ScreeningDetail() {
                                             <TooltipTrigger asChild>
                                                 <button
                                                     onClick={() => setRescoreMode(true)}
-                                                    disabled={isProcessing || rescoreMode || candidates.length === 0}
+                                                    disabled={isProcessing || rescoreMode }
+                                                    // disabled={isProcessing || rescoreMode || candidates.length === 0}
                                                     className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed`}
                                                 >
                                                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -254,7 +259,8 @@ export default function ScreeningDetail() {
                                     <TooltipTrigger asChild>
                                         <button
                                             onClick={handleExport}
-                                            disabled={exporting || candidates.length === 0}
+                                            disabled={exporting }
+                                            // disabled={exporting || candidates.length === 0}
                                             className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-60`}
                                         >
                                             {exporting
@@ -275,7 +281,7 @@ export default function ScreeningDetail() {
             </div>
 
             {/* ---------------- Tab Options---------------------- */}
-            <div className="flex flex-row w-full px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-2">
+            <div className="flex flex-row w-full px-4 sm:px-6 md:px-8 gap-2">
                 {
                     sectionTabs.map((tab) => (
                         <button
@@ -309,7 +315,8 @@ export default function ScreeningDetail() {
                     categories={rubricCategories}
                     onClose={() => setShowRubric(false)}
                     onEdit={
-                        !isProcessing && candidates.length > 0
+                        // !isProcessing && candidates.length > 0
+                        !isProcessing 
                             ? () => {
                                 setShowRubric(false);
                                 navigate({ to: "/screenings/$id/rubric", params: { id } });

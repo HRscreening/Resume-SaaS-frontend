@@ -9,6 +9,7 @@ type GetActiveScoringRequestParams = {
 }
 
 export type GetScoringResponseType = {
+    message: string;
     resumes: ResumeScoringBodyType[];
     total: number;
 }

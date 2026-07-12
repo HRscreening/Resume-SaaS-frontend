@@ -1,5 +1,7 @@
 import type { ResumeParsingBodyType, STAGE_CONFIG_TYPE } from "@/modules/screening/types/progress.type";
 import { Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
+import React from "react";
+
 
 export const PARSING_STAGE_CONFIG: STAGE_CONFIG_TYPE = {
   unknown: { label: "Unknown", color: "text-neutral-400", icon: "wait" },
@@ -20,22 +22,34 @@ export const PARSING_STAGE_CONFIG: STAGE_CONFIG_TYPE = {
 
 export const SCORING_STAGE_CONFIG: STAGE_CONFIG_TYPE = {
   queued: { label: "Waiting", color: "text-neutral-400", icon: "wait" },
+  QUEUED: { label: "Waiting", color: "text-neutral-400", icon: "wait" },
   retry: { label: "Retrying", color: "text-amber-500", icon: "wait" },
+  RETRY: { label: "Retrying", color: "text-amber-500", icon: "wait" },
   SCORING_IN_PROGRESS: { label: "Starting scoring", color: "text-blue-500", icon: "spin" },
+  scoring_in_progress: { label: "Starting scoring", color: "text-blue-500", icon: "spin" },
   processing: { label: "Starting scoring", color: "text-blue-500", icon: "spin" },
+  PROCESSING: { label: "Starting scoring", color: "text-blue-500", icon: "spin" },
   analyzing_profile: { label: "Analyzing profile", color: "text-cyan-500", icon: "spin" },
+  ANALYZING_PROFILE: { label: "Analyzing profile", color: "text-cyan-500", icon: "spin" },
   evaluating_criteria: { label: "Evaluating criteria", color: "text-indigo-500", icon: "spin" },
+  EVALUATING_CRITERIA: { label: "Evaluating criteria", color: "text-indigo-500", icon: "spin" },
   calculating_score: { label: "Calculating score", color: "text-violet-500", icon: "spin" },
+  CALCULATING_SCORE: { label: "Calculating score", color: "text-violet-500", icon: "spin" },
   success: { label: "Scored", color: "text-emerald-500", icon: "check" },
+  SUCCESS: { label: "Scored", color: "text-emerald-500", icon: "check" },
+  scored: { label: "Scored", color: "text-emerald-500", icon: "check" },
   SCORED: { label: "Scored", color: "text-emerald-500", icon: "check" },
   error: { label: "Scoring failed", color: "text-rose-500", icon: "error" },
   ERROR: { label: "Scoring failed", color: "text-rose-500", icon: "error" },
+  failed: { label: "Scoring failed", color: "text-rose-500", icon: "error" },
+  FAILED: { label: "Scoring failed", color: "text-rose-500", icon: "error" },
 };
 
-export function PendingResumeRow({ file, type = 'Parsing' }: { file: ResumeParsingBodyType, type: 'Parsing' | 'Scoring' }) {
+export function PendingResumeRowComp({ file, type = 'Parsing' }: { file: ResumeParsingBodyType, type: 'Parsing' | 'Scoring' }) {
+  const statusKey = file.status;
   const config = type === 'Parsing'
-    ? PARSING_STAGE_CONFIG[file.status] ?? PARSING_STAGE_CONFIG.queued
-    : SCORING_STAGE_CONFIG[file.status] ?? SCORING_STAGE_CONFIG.queued;
+    ? PARSING_STAGE_CONFIG[statusKey] ?? PARSING_STAGE_CONFIG[statusKey.toLowerCase()] ?? PARSING_STAGE_CONFIG[statusKey.toUpperCase()] ?? PARSING_STAGE_CONFIG.queued
+    : SCORING_STAGE_CONFIG[statusKey] ?? SCORING_STAGE_CONFIG[statusKey.toLowerCase()] ?? SCORING_STAGE_CONFIG[statusKey.toUpperCase()] ?? SCORING_STAGE_CONFIG.queued;
 
   const bgClass = config.icon === "check" ? "bg-emerald-50"
     : config.icon === "error" ? "bg-rose-50"
@@ -65,3 +79,7 @@ export function PendingResumeRow({ file, type = 'Parsing' }: { file: ResumeParsi
     </div>
   );
 }
+
+
+export const PendingResumeRow = React.memo(PendingResumeRowComp);
+

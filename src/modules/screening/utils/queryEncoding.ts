@@ -4,7 +4,7 @@ import type {
   RangeFilter,
   SortField,
   SortRule,
-} from "@/types";
+} from "@/modules/screening/types/screening.type";
 
 // URL <-> CandidateQueryState. We keep the shape flat & string-y so the
 // router's untyped useSearch can round-trip it without a schema. Unknown
@@ -31,8 +31,8 @@ const VALID_SIMPLE_FIELDS: ReadonlySet<string> = new Set(["overall_score", "cand
 export const DEFAULT_SORT: SortRule[] = [{ field: "overall_score", direction: "desc" }];
 
 export const DEFAULT_QUERY_STATE: CandidateQueryState = {
-  page: 1,
-  limit: 10,
+  cursor: "",
+  limit: 30,
   search: "",
   stage: [],
   match: [],
@@ -106,8 +106,8 @@ export function decodeQueryState(search: Record<string, unknown>): CandidateQuer
   );
 
   return {
-    page: parseNum(search.page) ?? DEFAULT_QUERY_STATE.page,
-    limit: parseNum(search.page_size) ?? DEFAULT_QUERY_STATE.limit,
+    cursor: typeof search.cursor === "string" ? search.cursor : "",
+    limit: parseNum(search.limit) ?? DEFAULT_QUERY_STATE.limit,
     search: typeof search.search === "string" ? search.search : "",
     stage: parseCsv(search.stage),
     match,
@@ -122,7 +122,7 @@ export function decodeQueryState(search: Record<string, unknown>): CandidateQuer
 // stays clean (`/screenings/abc` instead of `/screenings/abc?search=&...`).
 export function encodeQueryState(state: CandidateQueryState): Record<string, string | number> {
   const out: Record<string, string | number> = {};
-  if (state.page !== DEFAULT_QUERY_STATE.page) out.page = state.page ?? "";
+  if(state.cursor) out.cursor = state.cursor;
   if (state.limit !== DEFAULT_QUERY_STATE.limit) out.page_size = state.limit;
   if (state.search) out.search = state.search;
   if (state.stage.length > 0) out.stage = state.stage.join(",");
@@ -146,8 +146,10 @@ export function encodeQueryState(state: CandidateQueryState): Record<string, str
 // contract doc. Returns a URLSearchParams the API client can append.
 export function toRequestParams(state: CandidateQueryState): URLSearchParams {
   const qs = new URLSearchParams();
-  qs.set("page", String(state.page));
-  qs.set("", String(state.limit));
+  if (state.cursor) {
+    qs.set("cursor", String(state.cursor));
+  }
+  qs.set("limit", String(state.limit));
   if (state.search) qs.set("search", state.search);
   if (state.stage.length > 0) qs.set("stage", state.stage.join(","));
   if (state.overall_score?.min !== undefined) qs.set("overall_min", String(state.overall_score.min));

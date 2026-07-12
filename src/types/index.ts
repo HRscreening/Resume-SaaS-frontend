@@ -220,8 +220,8 @@ export interface SortRule {
 export type MatchTierId = "strong" | "potential" | "risky" | "poor";
 
 export interface CandidateQueryState {
-  page: number;
-  page_size: number;
+  page?: number;
+  limit: number;
   search: string;
   stage: string[];
   match: MatchTierId[];

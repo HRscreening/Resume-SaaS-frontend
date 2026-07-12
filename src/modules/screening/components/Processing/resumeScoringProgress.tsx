@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useActiveScoringQuery } from '@/modules/screening/hooks/progress.hook';
 import type { ResumeScoringBodyType, EventBodyType } from "@/modules/screening/types/progress.type";
+import type { GetScoringResponseType} from "@/modules/screening/apis/getActiveScorings";
 import type { Application } from "@/modules/screening/types/application.type";
 import { PendingResumeRow } from './ProcessingResumeRow';
 import { queryClient } from '@/lib/queryClient';
 import { ApplicationQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys } from '@/modules/screening/queryKeys';
-import type { GetApplicationResponseType } from '@/modules/screening/apis/getApplications';
 import type { GetActiveBatchesResponse } from '@/modules/screening/apis/activeBatches';
 import {
     Accordion,
@@ -13,6 +13,8 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion";
+
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 type Props = {
     screening_id: string;
@@ -41,38 +43,44 @@ export function stageLine(counts: Record<string, number>): string {
 }
 
 const ResumeScoringProgress = React.memo(({ screening_id, batch_id }: Props) => {
-    const [resumes, setResumes] = useState<ResumeScoringBodyType[]>([]);
-    const [total, setTotal] = useState(0);
+ 
 
     const eventSourceRef = useRef<EventSource | null>(null);
     const { data, isError } = useActiveScoringQuery({ screening_id, batch_id });
 
-    console.log("ResumeScoringProgress data:", data);
+    const resumes = data?.resumes || [];
+    const totalResumes = data?.total || 0;
 
-    useEffect(() => {
-        if (!data) return;
-        setResumes(data.resumes);
-        setTotal(data.total);
-    }, [data]);
+   
 
     useEffect(() => {
         if (!screening_id || !batch_id) return;
         if (eventSourceRef.current) return;
 
-        const source = new EventSource(`/api/v1/screenings/${screening_id}/subscribe-events/${batch_id}`);
+        const source = new EventSource(`${API_BASE}/api/v1/screenings/${screening_id}/subscribe-events/${batch_id}`);
         eventSourceRef.current = source;
 
         source.onmessage = (event) => {
             const payload: EventBodyType = JSON.parse(event.data);
             const type = payload.type;
 
+
             if (type === "Scoring") {
-                setResumes(prev => {
-                    const next = prev.map(r =>
-                        r.id === payload.resume_id ? { ...r, status: payload.status } : r
-                    );
-                    return next;
-                });
+                queryClient.setQueryData(
+                    ResumeScoringQueryKeys.getActiveScorings(screening_id, batch_id),
+                    (old:GetScoringResponseType | undefined) => {
+                        if (!old) return old;
+
+                        return {
+                            ...old,
+                            resumes: old.resumes.map(r =>
+                                r.id === payload.resume_id
+                                    ? { ...r, status: payload.status }
+                                    : r
+                            ),
+                        };
+                    }
+                );
             } else if (type === "Scoring_Batch_Complete") {
                 queryClient.invalidateQueries({ queryKey: ApplicationQueryKeys.screening(screening_id) });
                 queryClient.invalidateQueries({ queryKey: ResumeScoringQueryKeys.getActiveScorings(screening_id, batch_id) });
@@ -103,23 +111,23 @@ const ResumeScoringProgress = React.memo(({ screening_id, batch_id }: Props) => 
         return <div className="text-sm text-rose-500">No screening ID provided</div>;
     }
 
-    if (!data || isError) {
+    if (!resumes || isError) {
         return <div className="text-sm text-rose-500">Error fetching progress data</div>;
     }
 
-    if (resumes.length === 0) {
+    if (totalResumes === 0) {
         return null;
     }
 
     const counts = countByStage(resumes);
-    const completedCount = resumes.filter(r => 
-        r.status.toLowerCase() === "success" || 
-        r.status.toLowerCase() === "scored" || 
-        r.status.toLowerCase() === "error" || 
+    const completedCount = resumes.filter(r =>
+        r.status.toLowerCase() === "success" ||
+        r.status.toLowerCase() === "scored" ||
+        r.status.toLowerCase() === "error" ||
         r.status.toLowerCase() === "failed"
     ).length;
 
-    const pct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+    const pct = totalResumes > 0 ? Math.round((completedCount / totalResumes) * 100) : 0;
     const sLine = stageLine(counts);
 
     return (
@@ -131,7 +139,7 @@ const ResumeScoringProgress = React.memo(({ screening_id, batch_id }: Props) => 
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1.5">
                                 <p className="text-sm font-semibold text-neutral-800">
-                                    Scoring: {completedCount} of {total} processed
+                                    Scoring: {completedCount} of {totalResumes} processed
                                 </p>
                                 <span className="text-sm font-bold text-indigo-600 shrink-0 ml-4">{pct}%</span>
                             </div>
