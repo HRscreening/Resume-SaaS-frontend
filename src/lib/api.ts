@@ -373,8 +373,8 @@ export async function getResults(
     "search" in params || "stage" in params || "sort" in params
       ? toRequestParams(params as CandidateQueryState)
       : new URLSearchParams({
-          page: String((params as { page?: number }).page ?? 1),
-          page_size: String((params as { page_size?: number }).page_size ?? 20),
+          cursor: String((params as { cursor?: number }).cursor ?? ""),
+          limit: String((params as { limit?: number }).limit ?? 10),
         });
   return request<PaginatedResults>(`/api/v1/screenings/${screeningId}/results?${qs.toString()}`);
 }

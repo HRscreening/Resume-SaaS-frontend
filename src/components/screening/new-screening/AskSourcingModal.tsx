@@ -2,12 +2,10 @@ import { Button } from "@/components/ui/Button";
 import { useState } from "react";
 
 interface SourcingModalProps {
-  setAllowSourcing: (val:boolean) => void;
-  onSave: () => void;
+  onSave: (allowSourcing:boolean) => void;
   onClose: () => void;
 }
 export function AskSourceJobModal({
-  setAllowSourcing,
   onSave,
   onClose,
 }: SourcingModalProps) {
@@ -44,6 +42,7 @@ export function AskSourceJobModal({
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"
+              checked={isChecked}
               onChange={(e) => setIsChecked(e.target.checked)}
               className="mt-1 h-4 w-4 rounded border-gray-300 accent-black"
             />
@@ -61,7 +60,7 @@ export function AskSourceJobModal({
           <Button
             variant="outline"
             onClick={()=>{
-              setAllowSourcing(false);
+              onSave(false);
               onClose();
             }}
           >
@@ -69,8 +68,7 @@ export function AskSourceJobModal({
           </Button>
 
           <Button onClick={()=>{
-            setAllowSourcing(true);
-            onSave();
+            onSave(true);
             onClose();
 
           }}

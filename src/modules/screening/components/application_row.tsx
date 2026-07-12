@@ -4,8 +4,6 @@ import InfoSheet, {
     setOpenAnalysisSheet,
 } from "@/modules/screening/components/info_sheet";
 import { useSelectedApplications } from "@/modules/screening/hooks/useSelectedApplication";
-import { ScanSearch } from "lucide-react";
-import { Tooltip, TooltipTrigger,TooltipContent } from "@/components/ui/tooltip";
 import { useScreeningApplicationsMutation } from "@/modules/screening/hooks/application.hook";
 
 
@@ -17,32 +15,6 @@ interface CandidateRowProps {
 }
 
 
-function ScreenSingleResumeTrigger(
-    {candidate_name,handleScreenResume,disabled=false}:{candidate_name:string,handleScreenResume:()=>void,
-    disabled:boolean
-
-    }) {
-    
-
-    // return 
-    return <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                  disabled={disabled}
-                    onClick={handleScreenResume}
-                    className={``}
-                  >
-                   <ScanSearch className="text-[#A0A0A0] hover:text-[#C85A17]" size={16}/>
-
-                  </button>
-
-                </TooltipTrigger>
-            <TooltipContent>
-                {`Screen ${candidate_name}'s Resume`}
-            </TooltipContent>
-            </Tooltip>
-
-}
 
 
 
@@ -54,7 +26,7 @@ export default function CandidateRow({
     const isOpen = openId === candidate.id;
 
 
-    const { screening_id,selectedApplications, toggleSelection} = useSelectedApplications();
+    const { selectedApplications, toggleSelection} = useSelectedApplications();
     const { isPending} = useScreeningApplicationsMutation();
 
     const selected = selectedApplications.has(candidate.id);

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { ApplicationQueryKeys, ResumeParsingQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys } from "@/modules/screening/queryKeys";
 import { getApplications } from "@/modules/screening/apis/getApplications";
 import { screenResume } from "@/modules/screening/apis/screenResumes";
@@ -12,24 +12,52 @@ type GetApplicationsRequestParams = {
     enabled?: boolean;
 };
 
-export function useApplicationsQuery({
+// export function useApplicationsQuery({
+//     screening_id,
+//     page = 1,
+//     pageSize = 10,
+// }: GetApplicationsRequestParams) {
+//     return useQuery({
+//         queryKey: ApplicationQueryKeys.getApplications(
+//             screening_id,
+//             page,
+//             pageSize
+//         ),
+//         queryFn: () =>
+//             getApplications({
+//                 screening_id,
+//                 page,
+//                 pageSize,
+//             }),
+//         staleTime: 6 * 60 * 60 * 1000, // 6 hours
+//     });
+// }
+
+export function useApplicationsInfiniteQuery({
     screening_id,
-    page = 1,
-    pageSize = 10,
-}: GetApplicationsRequestParams) {
-    return useQuery({
+    limit = 10,
+}: {
+    screening_id: string;
+    limit?: number;
+}) {
+    return useInfiniteQuery({
         queryKey: ApplicationQueryKeys.getApplications(
             screening_id,
-            page,
-            pageSize
+            limit,
         ),
-        queryFn: () =>
+        initialPageParam: null as string | null,
+
+        queryFn: ({ pageParam }:{pageParam:string | null }) =>
             getApplications({
                 screening_id,
-                page,
-                pageSize,
+                cursor: pageParam,
+                limit: limit,
             }),
-        staleTime: 6 * 60 * 60 * 1000, // 6 hours
+
+        getNextPageParam: (lastPage) =>
+            lastPage.has_more ? lastPage.next_cursor : undefined,
+
+        staleTime: 6 * 60 * 60 * 1000,
     });
 }
 
@@ -39,19 +67,45 @@ export function useScreeningApplicationsMutation() {
     return useMutation({
         mutationFn: screenResume,
 
-        onSuccess: (_, variables) => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({
                 queryKey: ApplicationQueryKeys.screening(
                     variables.screening_id
                 ),
             });
             // Invalidate screening details query so processing accordion updates
-            queryClient.invalidateQueries({
-                queryKey: ["screening", variables.screening_id],
-            });
-            queryClient.invalidateQueries({
-                queryKey: ["batch-progress", variables.screening_id],
-            });
+            // queryClient.invalidateQueries({
+            //     queryKey: ["screening", variables.screening_id],
+            // });
+            // queryClient.invalidateQueries({
+            //     queryKey: ["batch-progress", variables.screening_id],
+            // });
+
+            // console.log("Screening applications successful:", data);
+
+            if (data?.batch_id && data.data?.length) {
+                queryClient.setQueryData(
+                    ActiveBatchesQueryKeys.screening(variables.screening_id),
+                    (old: GetActiveBatchesResponse | undefined) => {
+                        if (!old) return old;
+                        return {
+                            ...old,
+                            scoring_batch_ids: [...(old.scoring_batch_ids || []), data.batch_id],
+                        };
+                    }
+                );
+
+                queryClient.setQueryData(
+                    ResumeScoringQueryKeys.getActiveScorings(
+                        variables.screening_id,
+                        data.batch_id
+                    ),
+                    {
+                        total: data.data.length,
+                        resumes: data.data,
+                    }
+                );
+            }
         },
 
         gcTime: 6 * 60 * 60 * 1000,
@@ -82,7 +136,7 @@ export function useAddApplicationsMutation() {
                         };
                     }
                 );
-          
+
                 queryClient.setQueryData(
                     ResumeParsingQueryKeys.getActiveParsings(
                         variables.screening_id,
