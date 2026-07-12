@@ -14,7 +14,7 @@ export type ScreenResumesResponse = {
 
 export const screenResume = async ({resume_ids,screening_id}:ScreenResumesArgs): Promise<ScreenResumesResponse> => {
     try {
-        const res = await request(`/api/v1/screenings/${screening_id}/screen-applications`,{
+        const res = await request(`/api/v1/screenings/${screening_id}/screen-applications-new`,{
             'method':'POST',
             'body':JSON.stringify(resume_ids)
         });

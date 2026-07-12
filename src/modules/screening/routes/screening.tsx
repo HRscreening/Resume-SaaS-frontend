@@ -209,6 +209,18 @@ export default function ScreeningDetail() {
                                     : `${screening.total_resumes} resumes · Created ${formatDate(screening.created_at)}`}
                         </p>
                     </div>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                onClick={() => { setShowUploadMore((v) => !v) }}
+                                className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 whitespace-nowrap ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
+                            >
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v8M3.5 5.5l3.5-3.5 3.5 3.5" /><path d="M2 12h10" /></svg>
+                                {!analysisOpen && "Add resumes"}
+                            </button>
+                        </TooltipTrigger>
+                        {analysisOpen && <TooltipContent><p className="text-xs">Add resumes</p></TooltipContent>}
+                    </Tooltip>
                     {(candidates.length > 0 || filtersMatchedNothing) && (
                         <div className="flex flex-wrap items-center gap-2">
                             {/* <SourcingModal screening_id={id} onClose={()=>{}}/> */}
@@ -224,18 +236,7 @@ export default function ScreeningDetail() {
                                 </TooltipTrigger>
                                 {analysisOpen && <TooltipContent><p className="text-xs">Rubric</p></TooltipContent>}
                             </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        onClick={() => { setShowUploadMore((v) => !v) }}
-                                        className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 whitespace-nowrap ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
-                                    >
-                                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v8M3.5 5.5l3.5-3.5 3.5 3.5" /><path d="M2 12h10" /></svg>
-                                        {!analysisOpen && "Add resumes"}
-                                    </button>
-                                </TooltipTrigger>
-                                {analysisOpen && <TooltipContent><p className="text-xs">Add resumes</p></TooltipContent>}
-                            </Tooltip>
+
                             {currentTab === "Screening" && (
                                 <>
                                     <Tooltip>

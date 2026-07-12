@@ -14,6 +14,8 @@ import {
     AccordionTrigger,
 } from "@/components/ui/accordion";
 
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+
 type Props = {
     screening_id: string;
     batch_id: string;
@@ -86,7 +88,7 @@ const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => 
             );
         };
 
-        const source = new EventSource(`/api/v1/screenings/${screening_id}/subscribe-events/${batch_id}`);
+        const source = new EventSource(`${API_BASE}/api/v1/screenings/${screening_id}/subscribe-events/${batch_id}`);
         eventSourceRef.current = source;
 
         source.onmessage = (event) => {
