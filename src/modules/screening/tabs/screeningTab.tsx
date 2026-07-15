@@ -29,7 +29,12 @@ type Sections = "Applications" | "Screening"
 
 const PAGE_SIZE = 30;
 
-export default function ScreeningDetail() {
+interface ScreeningDetailProps {
+    setCurrentTab: (tab: Sections) => void;
+}
+
+
+export default function ScreeningDetail({setCurrentTab}:ScreeningDetailProps) {
     const { id } = useParams({ strict: false }) as { id: string };
     const search = useSearch({ strict: false }) as { saved?: number } & Record<string, unknown>;
     const queryClient = useQueryClient();
@@ -331,6 +336,30 @@ export default function ScreeningDetail() {
                 <Link to="/screenings" className="text-sm text-[#0F0F0F] underline mt-2 inline-block">
                     Back to screenings
                 </Link>
+            </div>
+        );
+    }
+
+    if (pageLoading){
+        return <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
+            <span>Loading ...</span>
+        </div>
+    }
+
+
+    if (candidates.length === 0 && !pageLoading && !hasActiveFilters(queryState) && screening.scored_resumes === 0) {
+        return (
+            <div className="p-4 sm:p-6 md:p-8 text-center">
+                <p className="text-sm text-[#737373]">
+                    No candidates have been scored yet. Upload resumes to start scoring.
+                </p>
+                <span className="text-sm text-[#0F0F0F] underline mt-2 inline-block cursor-pointer"
+                onClick={()=>setCurrentTab("Applications")}
+                >
+                    Start Screening
+                </span>
+
             </div>
         );
     }

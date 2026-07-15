@@ -116,7 +116,7 @@ const UploadResumes = ({screening_id,user_id,setShowUploadMore}:UploadResumesPro
                 <div className="flex items-center justify-between mb-1">
                     <div>
                         <div className="flex items-center gap-2">
-                            <h2 className="text-base font-semibold text-[#0F0F0F]">Add more resumes</h2>
+                            <h2 className="text-base font-semibold text-[#0F0F0F]">Add resumes</h2>
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F0EDE8] border border-[#D4D4D4] text-xs font-semibold text-[#404040] tracking-wide">.ZIP · .PDF · .DOCX</span>
                         </div>
                         <p className="text-xs text-[#737373] mt-1">Upload a ZIP archive or one-or-more PDF/DOCX files. New resumes are scored and re-ranked against all existing candidates.</p>
@@ -228,7 +228,7 @@ const UploadResumes = ({screening_id,user_id,setShowUploadMore}:UploadResumesPro
                     className="mt-4 w-full h-10 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                 >
                     {uploading || isUploading && <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
-                    {uploading || isUploading ? "Uploading & scoring…" : "Add & re-rank"}
+                    {uploading || isUploading ? "Uploading………" : "Add Resumes"}
                 </button>
             </div>
 
