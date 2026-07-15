@@ -12,11 +12,17 @@ import { useGetBatchesQuery } from "@/modules/screening/hooks/batch.hook";
 
 const PAGE_SIZE = 30;
 
-export function ApplicationPage({ screening_id, onTabChange }: { screening_id: string; onTabChange?: (tab: "Applications" | "Screening") => void }) {
+
+interface ApplicationPageProps {
+    screening_id: string;
+    onTabChange?: (tab: "Applications" | "Screening") => void;
+}
+
+export function ApplicationPage({ screening_id, onTabChange }: ApplicationPageProps) {
 
     const [page, setPage] = useState<number>(1);
 
-    const { data, isLoading: isFetchingApplication, isError, error,fetchNextPage,isFetchingNextPage,hasNextPage } = useApplicationsInfiniteQuery({ screening_id, limit: PAGE_SIZE });
+    const { data, isLoading: isFetchingApplication, isError, error, fetchNextPage, isFetchingNextPage, hasNextPage } = useApplicationsInfiniteQuery({ screening_id, limit: PAGE_SIZE });
     const { data: active_batches } = useGetBatchesQuery(screening_id);
 
 
@@ -87,6 +93,18 @@ export function ApplicationPage({ screening_id, onTabChange }: { screening_id: s
 
     const applications = data?.pages.flatMap(page => page.items) ?? [];
 
+    if (applications.length === 0) {
+        return (
+            <div>
+                <div className="flex flex-col items-center justify-center gap-2 py-8">
+                    <p className="text-sm text-[#737373]">
+                        No Applications have been uploaded yet. Upload resumes to get started.
+                    </p>
+                </div>
+            </div>
+        )
+    }
+
 
     return (
         <div >
@@ -102,6 +120,10 @@ export function ApplicationPage({ screening_id, onTabChange }: { screening_id: s
                     <button
                         className="my-2 px-3 py-1 rounded-lg bg-[#0F0F0F] text-white text-sm font-medium cursor-pointer"
                         onClick={() => {
+                            if (!applications || applications.length === 0) {
+                                toast.error("No candidates available for Screening.");
+                                return;
+                            }
                             if (!sourceMode) { setSourceMode(true) }
                             else exitSourceMode()
                         }}
@@ -205,7 +227,7 @@ interface ApplicationsProps {
 export default function Applications({ onTabChange }: ApplicationsProps) {
     const { id: screening_id } = useParams({ strict: false }) as { id: string; };
     return (
-        <SelectedApplicationsProvider screening_id={screening_id}>
+        <SelectedApplicationsProvider screening_id={screening_id} >
             <ApplicationPage screening_id={screening_id} onTabChange={onTabChange} />
         </SelectedApplicationsProvider>
     );

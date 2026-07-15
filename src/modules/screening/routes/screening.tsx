@@ -192,7 +192,8 @@ export default function ScreeningDetail() {
                         </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-
+                            
+                        {currentTab === "Applications" && (
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <button
@@ -205,30 +206,34 @@ export default function ScreeningDetail() {
                             </TooltipTrigger>
                             {analysisOpen && <TooltipContent><p className="text-xs">Add resumes</p></TooltipContent>}
                         </Tooltip>
-                        { true && (
-                        // {(candidates.length > 0 || filtersMatchedNothing) && (
+                        
+                        )}
+                        {true && (
+                            // {(candidates.length > 0 || filtersMatchedNothing) && (
                             <>
                                 {/* <SourcingModal screening_id={id} onClose={()=>{}}/> */}
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <button
-                                            onClick={() => setShowRubric(true)}
-                                            className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
-                                        >
-                                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h3" /></svg>
-                                            {!analysisOpen && "Rubric"}
-                                        </button>
-                                    </TooltipTrigger>
-                                    {analysisOpen && <TooltipContent><p className="text-xs">Rubric</p></TooltipContent>}
-                                </Tooltip>
 
                                 {currentTab === "Screening" && (
                                     <>
+                                        {/* Rubric button */}
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <button
+                                                    onClick={() => setShowRubric(true)}
+                                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
+                                                >
+                                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h3" /></svg>
+                                                    {!analysisOpen && "Rubric"}
+                                                </button>
+                                            </TooltipTrigger>
+                                            {analysisOpen && <TooltipContent><p className="text-xs">Rubric</p></TooltipContent>}
+                                        </Tooltip>
+                                        {/* Rescore button */}
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <button
                                                     onClick={() => setRescoreMode(true)}
-                                                    disabled={isProcessing || rescoreMode }
+                                                    disabled={isProcessing || rescoreMode}
                                                     // disabled={isProcessing || rescoreMode || candidates.length === 0}
                                                     className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed`}
                                                 >
@@ -240,6 +245,7 @@ export default function ScreeningDetail() {
                                             </TooltipTrigger>
                                             {analysisOpen && <TooltipContent><p className="text-xs">Rescore</p></TooltipContent>}
                                         </Tooltip>
+                                        {/* Voice round button */}
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <button
@@ -252,26 +258,28 @@ export default function ScreeningDetail() {
                                             </TooltipTrigger>
                                             {analysisOpen && <TooltipContent><p className="text-xs">Voice round</p></TooltipContent>}
                                         </Tooltip>
+                                        {/* Export CSV */}
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <button
+                                                    onClick={handleExport}
+                                                    disabled={exporting}
+                                                    // disabled={exporting || candidates.length === 0}
+                                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-60`}
+                                                >
+                                                    {exporting
+                                                        ? <span className="h-3.5 w-3.5 rounded-full border-2 border-[#404040] border-t-transparent animate-spin" />
+                                                        : <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5v8M4 7l3 3 3-3" /><path d="M1.5 10.5v1.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-1.5" /></svg>
+                                                    }
+                                                    {!analysisOpen && "Export CSV"}
+                                                </button>
+                                            </TooltipTrigger>
+                                            {analysisOpen && <TooltipContent><p className="text-xs">Export CSV</p></TooltipContent>}
+                                        </Tooltip>
                                     </>
                                 )
                                 }
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <button
-                                            onClick={handleExport}
-                                            disabled={exporting }
-                                            // disabled={exporting || candidates.length === 0}
-                                            className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-60`}
-                                        >
-                                            {exporting
-                                                ? <span className="h-3.5 w-3.5 rounded-full border-2 border-[#404040] border-t-transparent animate-spin" />
-                                                : <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5v8M4 7l3 3 3-3" /><path d="M1.5 10.5v1.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-1.5" /></svg>
-                                            }
-                                            {!analysisOpen && "Export CSV"}
-                                        </button>
-                                    </TooltipTrigger>
-                                    {analysisOpen && <TooltipContent><p className="text-xs">Export CSV</p></TooltipContent>}
-                                </Tooltip>
+
                             </>
                         )}
 
@@ -299,13 +307,16 @@ export default function ScreeningDetail() {
 
             {/* --------------------- Uploadresume Section -------------------- */}
             {
-                showUploadMore && <UploadResumes screening_id={id} user_id={user?.id ?? ""} setShowUploadMore={setShowUploadMore} />
+                showUploadMore &&
+                <div className="my-4 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
+                <UploadResumes screening_id={id} user_id={user?.id ?? ""} setShowUploadMore={setShowUploadMore} />
+                </div>
             }
 
             {/* ----------------------- Tabs ------------------------ */}
             <div className="flex-1 min-h-0 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
-                {currentTab === "Applications" && <Applications onTabChange={setCurrentTab} />}
-                {currentTab === "Screening" && <Screening />}
+                {currentTab === "Applications" && <Applications onTabChange={setCurrentTab}/>}
+                {currentTab === "Screening" && <Screening setCurrentTab={setCurrentTab} />}
             </div>
 
 
@@ -316,7 +327,7 @@ export default function ScreeningDetail() {
                     onClose={() => setShowRubric(false)}
                     onEdit={
                         // !isProcessing && candidates.length > 0
-                        !isProcessing 
+                        !isProcessing
                             ? () => {
                                 setShowRubric(false);
                                 navigate({ to: "/screenings/$id/rubric", params: { id } });

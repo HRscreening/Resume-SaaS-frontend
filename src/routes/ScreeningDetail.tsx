@@ -1004,7 +1004,7 @@ export default function ScreeningDetail() {
                   className="mt-4 w-full h-10 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                 >
                   {uploading || isUploading && <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
-                  {uploading || isUploading ? "Uploading & scoring…" : "Add & re-rank"}
+                  {uploading || isUploading ? "Uploading………" : "Add Resumes"}
                 </button>
               </div>
             )}
