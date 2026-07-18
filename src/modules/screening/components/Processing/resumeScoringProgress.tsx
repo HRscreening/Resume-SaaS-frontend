@@ -5,7 +5,7 @@ import type { GetScoringResponseType} from "@/modules/screening/apis/getActiveSc
 import type { Application } from "@/modules/screening/types/application.type";
 import { PendingResumeRow } from './ProcessingResumeRow';
 import { queryClient } from '@/lib/queryClient';
-import { ApplicationQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys } from '@/modules/screening/queryKeys';
+import { ApplicationQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys,ScreeningResultsQueryKeys } from '@/modules/screening/queryKeys';
 import type { GetActiveBatchesResponse } from '@/modules/screening/apis/activeBatches';
 import {
     Accordion,
@@ -82,6 +82,7 @@ const ResumeScoringProgress = React.memo(({ screening_id, batch_id }: Props) => 
                     }
                 );
             } else if (type === "Scoring_Batch_Complete") {
+                queryClient.invalidateQueries({ queryKey: ScreeningResultsQueryKeys.screening(screening_id) });
                 queryClient.invalidateQueries({ queryKey: ApplicationQueryKeys.screening(screening_id) });
                 queryClient.invalidateQueries({ queryKey: ResumeScoringQueryKeys.getActiveScorings(screening_id, batch_id) });
                 queryClient.setQueryData(

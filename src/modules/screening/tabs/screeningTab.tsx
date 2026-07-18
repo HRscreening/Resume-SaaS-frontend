@@ -340,7 +340,7 @@ export default function ScreeningDetail({setCurrentTab}:ScreeningDetailProps) {
         );
     }
 
-    if (pageLoading){
+    if (resultsFetching || pageLoading ){
         return <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
             <span>Loading ...</span>
