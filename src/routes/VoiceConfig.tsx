@@ -16,7 +16,10 @@ const DEFAULT_CONFIG: VoiceConfig = {
   question_plan: [],
   voice: { tts_voice_id: "default", tier: "default" },
   language: "en",
-  calling_window: { start: "09:00", end: "21:00", tz: "Asia/Kolkata" },
+  // TEMPORARY (2026-07-13): default to a 24h window during testing. Restore to
+  // { start: "09:00", end: "21:00" } to reinstate quiet hours. The dispatcher
+  // also force-allows 24h via HIRESORT_VOICE_24H_WINDOW.
+  calling_window: { start: "00:00", end: "23:59", tz: "Asia/Kolkata" },
   default_country_code: "+91",
   retry_policy: { max_attempts: 3, backoff: "exponential" },
   max_concurrent_calls_override: null,

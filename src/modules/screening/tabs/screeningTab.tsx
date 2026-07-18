@@ -391,9 +391,16 @@ export default function ScreeningDetail() {
                 };
             },
         );
-        updateCandidateStage(scoreId, next).catch(() => {
-            queryClient.invalidateQueries({ queryKey: ["results", id] });
-        });
+        updateCandidateStage(scoreId, next)
+            .then(() => {
+                // Voice eligibility depends on the Shortlisted stage, so refresh
+                // the voice queries — moving a candidate to Shortlisted should
+                // immediately surface the Call / Schedule controls.
+                queryClient.invalidateQueries({ queryKey: ["voice-candidates", id] });
+            })
+            .catch(() => {
+                queryClient.invalidateQueries({ queryKey: ["results", id] });
+            });
     }
 
     // Backend's `total` is authoritative for pagination. Fall back to the

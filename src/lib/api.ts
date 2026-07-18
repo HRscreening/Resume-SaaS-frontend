@@ -685,12 +685,15 @@ export async function triggerVoiceCalls(
   screeningId: string,
   resumeIds?: string[],
   scheduledAt?: string | null,
+  // TEMPORARY (2026-07-13): dial a UI-entered number for a single candidate.
+  phoneOverride?: string | null,
 ): Promise<import("@/types").TriggerCallsResponse> {
   return request(`/api/v1/screenings/${screeningId}/voice/calls`, {
     method: "POST",
     body: JSON.stringify({
       resume_ids: resumeIds ?? null,
       scheduled_at: scheduledAt ?? null,
+      phone_override: phoneOverride ?? null,
     }),
   });
 }
