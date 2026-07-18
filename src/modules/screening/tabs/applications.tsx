@@ -22,7 +22,7 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
 
     const [page, setPage] = useState<number>(1);
 
-    const { data, isLoading: isFetchingApplication, isError, error, fetchNextPage, isFetchingNextPage, hasNextPage } = useApplicationsInfiniteQuery({ screening_id, limit: PAGE_SIZE });
+    const { data, isLoading,isFetching, isError, error, fetchNextPage, isFetchingNextPage, hasNextPage } = useApplicationsInfiniteQuery({ screening_id, limit: PAGE_SIZE });
     const { data: active_batches } = useGetBatchesQuery(screening_id);
 
 
@@ -39,12 +39,13 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
 
 
 
-    if (isFetchingApplication) {
+    if (isLoading) {
         return <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
             <span>Loading Applications...</span>
         </div>
     }
+
 
     if (isError) {
         return <div>{error.message}</div>;
@@ -89,21 +90,47 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
         const endIndex = startIndex + PAGE_SIZE;
     }
 
+    const hasActiveParsing = (active_batches?.parsing_batch_ids?.length ?? 0) > 0;
+
 
 
     const applications = data?.pages.flatMap(page => page.items) ?? [];
 
-    if (applications.length === 0) {
+
+
+    if (
+        applications.length === 0 &&
+        !isLoading &&
+        hasActiveParsing
+    ) {
         return (
-            <div>
-                <div className="flex flex-col items-center justify-center gap-2 py-8">
-                    <p className="text-sm text-[#737373]">
-                        No Applications have been uploaded yet. Upload resumes to get started.
-                    </p>
+            <div className="space-y-4">
+                <div className="my-4 space-y-3">
+                    {active_batches?.parsing_batch_ids?.map((batch_id) => (
+                        <ResumeParsingProgress
+                            key={`parsing-${batch_id}`}
+                            screening_id={screening_id}
+                            batch_id={batch_id}
+                        />
+                    ))}
                 </div>
+
+                <p className="text-sm text-[#737373] text-center">
+                    Applications are being processed and will appear here
+                    automatically.
+                </p>
             </div>
-        )
+        );
     }
+
+        
+    if (applications.length === 0 && isFetching) {
+        return <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
+            <span>Loading Applications...</span>
+        </div>
+    }
+
 
 
     return (
@@ -115,28 +142,40 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
             </div>
 
             <div className="flex items-center justify-between">
+                {applications.length > 0 &&
 
-                <div className="flex w-full justify-end items-center">
-                    <button
-                        className="my-2 px-3 py-1 rounded-lg bg-[#0F0F0F] text-white text-sm font-medium cursor-pointer"
-                        onClick={() => {
-                            if (!applications || applications.length === 0) {
-                                toast.error("No candidates available for Screening.");
-                                return;
-                            }
-                            if (!sourceMode) { setSourceMode(true) }
-                            else exitSourceMode()
-                        }}
-                    >
-                        {sourceMode ? "Cancel" : "Screen Applications"}
-                    </button>
-                </div>
+                    <div className="flex w-full justify-end items-center">
+                        <button
+                            className="my-2 px-3 py-1 rounded-lg bg-[#0F0F0F] text-white text-sm font-medium cursor-pointer"
+                            onClick={() => {
+                                if (!applications || applications.length === 0) {
+                                    toast.error("No candidates available for Screening.");
+                                    return;
+                                }
+                                if (!sourceMode) { setSourceMode(true) }
+                                else exitSourceMode()
+                            }}
+                        >
+                            {sourceMode ? "Cancel" : "Screen Applications"}
+                        </button>
+                    </div>
+                }
             </div>
 
+            {applications.length === 0 ?  
+
+            <div className="flex flex-col items-center justify-center gap-2 py-8">
+                <p className="text-sm text-[#737373]">
+                    No Applications have been uploaded yet.
+                    Upload resumes to get started.
+                </p>
+            </div>
+            
+            :
             <ApplicationTable
-                candidates={applications}
-                selectable={sourceMode}
-                total={PAGE_SIZE}
+            candidates={applications}
+            selectable={sourceMode}
+            total={PAGE_SIZE}
                 totalPages={10}
                 pageSize={PAGE_SIZE}
                 page={page}
@@ -145,13 +184,14 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
                 hasMore={hasNextPage}
                 loadingMore={isFetchingNextPage}
                 onLoadMore={fetchNextPage}
-
-            />
-
+                
+                />
+            }
+                
             {/* Screen mode hint bar */}
             {sourceMode && applications.length > 0 && (
                 <p className="text-[11px] text-[#737373] -mt-2">
-                    <span className="font-medium text-[#404040]">Screen mode</span> · Click rows or checkboxes to select · Shift+Click for range · Ctrl/Cmd+A selects current page · Esc to exit
+                <span className="font-medium text-[#404040]">Screen mode</span> · Click rows or checkboxes to select · Shift+Click for range · Ctrl/Cmd+A selects current page · Esc to exit
                 </p>
             )}
 
