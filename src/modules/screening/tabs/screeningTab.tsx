@@ -340,7 +340,13 @@ export default function ScreeningDetail({setCurrentTab}:ScreeningDetailProps) {
         );
     }
 
-    if (resultsFetching || pageLoading ){
+    if ( pageLoading ){
+        return <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
+            <span>Loading ...</span>
+        </div>
+    }
+    if ( candidates.length === 0 && resultsFetching ){
         return <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
             <span>Loading ...</span>
@@ -348,7 +354,9 @@ export default function ScreeningDetail({setCurrentTab}:ScreeningDetailProps) {
     }
 
 
-    if (candidates.length === 0 && !pageLoading && !hasActiveFilters(queryState) && screening.scored_resumes === 0) {
+
+
+    if (candidates.length === 0 && !pageLoading && !hasActiveFilters(queryState) && screening.scored_resumes === 0  && !active_batches?.scoring_batch_ids?.length) {
         return (
             <div className="p-4 sm:p-6 md:p-8 text-center">
                 <p className="text-sm text-[#737373]">
