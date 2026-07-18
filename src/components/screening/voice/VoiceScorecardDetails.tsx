@@ -117,6 +117,71 @@ export function VoiceScorecardDetails({ screeningId, callId }: VoiceScorecardDet
         </div>
       )}
 
+      {/* Why this score */}
+      {data.score_drivers && (
+        <div className="rounded-xl bg-[#F5F3EE] p-3 space-y-2.5">
+          <p className="text-[10px] font-semibold text-[#737373] uppercase tracking-wide">
+            Why this score
+          </p>
+
+          {/* Per-category rows */}
+          <div className="space-y-1.5">
+            {data.score_drivers.categories.map((cat, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="flex-1 min-w-0 text-xs text-[#0F0F0F] font-medium truncate">{cat.name}</span>
+                <span className="text-[11px] text-[#737373] shrink-0">{cat.weight_pct}%</span>
+                <span className="text-[11px] text-[#404040] shrink-0">{cat.avg_score.toFixed(1)}/10</span>
+                <span
+                  className={`text-[11px] font-semibold shrink-0 w-14 text-right ${
+                    cat.direction === "positive"
+                      ? "text-green-700"
+                      : cat.direction === "negative"
+                      ? "text-red-600"
+                      : "text-[#737373]"
+                  }`}
+                >
+                  {cat.delta_points >= 0 ? "+" : ""}{cat.delta_points.toFixed(1)}pt
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Driver chips */}
+          {(data.score_drivers.positive_drivers.length > 0 || data.score_drivers.negative_drivers.length > 0) && (
+            <div className="space-y-1.5 pt-1 border-t border-[#E8E5DF]">
+              {data.score_drivers.positive_drivers.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {data.score_drivers.positive_drivers.map((d, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-green-50 border border-green-200 text-green-800"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
+                      {d.criterion}
+                      <span className="font-semibold">{d.score}/10</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {data.score_drivers.negative_drivers.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {data.score_drivers.negative_drivers.map((d, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-red-50 border border-red-200 text-red-700"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
+                      {d.criterion}
+                      <span className="font-semibold">{d.score}/10</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Strengths / Concerns */}
       {(strengths.length > 0 || missing.length > 0) && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

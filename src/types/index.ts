@@ -423,6 +423,30 @@ export interface TranscriptTurn {
   confidence: number | null;
 }
 
+export interface ScoreDriverCategory {
+  name: string;
+  weight_pct: number;
+  avg_score: number;
+  contribution_points: number;
+  delta_points: number;
+  direction: "positive" | "negative" | "neutral";
+}
+
+export interface ScoreDriverCriterion {
+  criterion: string;
+  category: string;
+  score: number;
+  impact_points: number;
+}
+
+export interface ScoreDrivers {
+  baseline: number;
+  overall_score: number;
+  categories: ScoreDriverCategory[];
+  positive_drivers: ScoreDriverCriterion[];
+  negative_drivers: ScoreDriverCriterion[];
+}
+
 export interface CallScorecardDetail {
   call_id: string;
   resume_id: string;
@@ -443,6 +467,7 @@ export interface CallScorecardDetail {
   reviewer_override: Record<string, unknown> | null;
   transcript: TranscriptTurn[] | null;
   recording_url: string | null;
+  score_drivers: ScoreDrivers | null;
 }
 
 export interface ScorecardOverrideRequest {
