@@ -49,8 +49,9 @@ export default function Dashboard() {
   // Stat cards and the recent-screenings list show their own loading affordances.
 
   const recent = screenings.slice(0, 5);
-  const completed = screenings.filter((s: ScreeningListItem) => s.status === "completed").length;
-  const totalResumes = screenings.reduce((sum: number, s: ScreeningListItem) => sum + s.total_resumes, 0);
+  // const completed = screenings.filter((s: ScreeningListItem) => s.status === "completed").length;
+  const totalApplications = screenings.reduce((sum: number, s: ScreeningListItem) => sum + s.total_applications, 0);
+  const totalResumes = screenings.reduce((sum: number, s: ScreeningListItem) => sum + s.screened_applications, 0);
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto">
@@ -75,8 +76,9 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           { label: "Total screenings", value: screeningsLoading ? "\u2014" : screenings.length },
-          { label: "Completed", value: screeningsLoading ? "\u2014" : completed },
-          { label: "Resumes screened", value: screeningsLoading ? "\u2014" : totalResumes },
+          // { label: "Completed", value: screeningsLoading ? "\u2014" : completed },
+          { label: "Total Applications", value: screeningsLoading ? "\u2014" : totalApplications },
+          { label: "Resumes Screened", value: screeningsLoading ? "\u2014" : totalResumes },
           {
             label: isFree ? "Trial usage" : "Monthly usage",
             value: usage ? `${usage.resumes_processed} / ${usage.quota_limit}` : "\u2014",
@@ -226,7 +228,7 @@ export default function Dashboard() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-[#0F0F0F] truncate">{s.title}</p>
                     <p className="text-xs text-[#737373] mt-0.5">
-                      {s.total_resumes} resumes &middot; {formatRelativeDate(s.created_at)}
+                      {s.screened_applications + s.total_applications} resumes &middot; {formatRelativeDate(s.created_at)}
                     </p>
                   </div>
                   <div className="flex items-center gap-4 ml-4 shrink-0">
@@ -236,7 +238,7 @@ export default function Dashboard() {
                         <span className="text-xs text-[#737373] font-normal"> avg</span>
                       </span>
                     )}
-                    <StatusPill status={s.status} />
+                    {/* <StatusPill status={s.status} /> */}
                   </div>
                 </Link>
               </li>

@@ -350,7 +350,7 @@ export async function downloadJDPdf(
 }
 
 export async function listScreenings(): Promise<ScreeningListItem[]> {
-  return request<ScreeningListItem[]>("/api/screenings");
+  return request<ScreeningListItem[]>("/api/v1/screenings");
 }
 
 export async function getScreening(id: string): Promise<Screening> {
