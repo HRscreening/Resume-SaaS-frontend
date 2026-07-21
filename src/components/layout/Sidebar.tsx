@@ -132,11 +132,12 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
     // navigation race, multi-tab, server hiccup) — the counter still ends up
     // correct without the user ever needing to refresh.
     refetchInterval: () => {
-      const screenings = queryClient.getQueryData<ScreeningListItem[]>(userKey("screenings"));
-      const anyInFlight = screenings?.some(
-        (s) => s.status === "processing" || s.status === "pending",
-      );
-      return anyInFlight ? 5000 : false;
+      // const screenings = queryClient.getQueryData<ScreeningListItem[]>(userKey("screenings"));
+      // const anyInFlight = screenings?.some(
+      //   (s) => s.status === "processing" || s.status === "pending",
+      // );
+      // return anyInFlight ? 5000 : false;
+      return 1000 * 60 * 3; // 3 minutes;
     },
   });
 
