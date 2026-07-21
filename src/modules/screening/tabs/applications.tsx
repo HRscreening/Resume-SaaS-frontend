@@ -15,10 +15,12 @@ const PAGE_SIZE = 30;
 
 interface ApplicationPageProps {
     screening_id: string;
+    sourceMode:boolean;
+    setSourceMode: (mode:boolean) => void;
     onTabChange?: (tab: "Applications" | "Screening") => void;
 }
 
-export function ApplicationPage({ screening_id, onTabChange }: ApplicationPageProps) {
+export function ApplicationPage({ screening_id, onTabChange,setSourceMode,sourceMode }: ApplicationPageProps) {
 
     const [page, setPage] = useState<number>(1);
 
@@ -32,7 +34,7 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
 
 
 
-    const [sourceMode, setSourceMode] = useState(false);
+    // const [sourceMode, setSourceMode] = useState(false);
     const [showSelectedOnly, setShowSelectedOnly] = useState(false);
     const [Screening, setScreening] = useState(false);
     const [sourceError, setSourceError] = useState<string | null>(null);
@@ -189,11 +191,11 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
             }
                 
             {/* Screen mode hint bar */}
-            {sourceMode && applications.length > 0 && (
+            {/* {sourceMode && applications.length > 0 && (
                 <p className="text-[11px] text-[#737373] -mt-2">
                 <span className="font-medium text-[#404040]">Screen mode</span> · Click rows or checkboxes to select · Shift+Click for range · Ctrl/Cmd+A selects current page · Esc to exit
                 </p>
-            )}
+            )} */}
 
             {/* Screen action bar — sticky bottom, only in Screen mode */}
             {sourceMode && (() => {
@@ -261,14 +263,16 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
 
 interface ApplicationsProps {
     onTabChange?: (tab: "Applications" | "Screening") => void;
+    sourceMode:boolean;
+    setSourceMode: (mode:boolean) => void;
 }
 
 
-export default function Applications({ onTabChange }: ApplicationsProps) {
+export default function Applications({ onTabChange,sourceMode,setSourceMode }: ApplicationsProps) {
     const { id: screening_id } = useParams({ strict: false }) as { id: string; };
     return (
         <SelectedApplicationsProvider screening_id={screening_id} >
-            <ApplicationPage screening_id={screening_id} onTabChange={onTabChange} />
+            <ApplicationPage screening_id={screening_id} onTabChange={onTabChange}  sourceMode={sourceMode} setSourceMode={setSourceMode}/>
         </SelectedApplicationsProvider>
     );
 }

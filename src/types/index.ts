@@ -110,12 +110,23 @@ export interface Screening {
 export interface ScreeningListItem {
   id: string;
   title: string;
-  status: ScreeningStatus;
-  total_resumes: number;
-  scored_resumes: number;
+  total_applications: number;
+  screened_applications: number;
   avg_score: number | null;
+  last_accessed_at: string | null;
   created_at: string;
 }
+// export interface ScreeningListItem {
+//   id: string;
+//   title: string;
+//   status: ScreeningStatus;
+//   total_applications: number;
+//   screened_applications: number;
+//   total_resumes: number;
+//   scored_resumes: number;
+//   avg_score: number | null;
+//   created_at: string;
+// }
 
 // ─── Resumes & Scores ────────────────────────────────────────────────────────
 
