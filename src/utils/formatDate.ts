@@ -20,3 +20,23 @@ export function formatAppliedDate(date: string) {
 
   return format(appliedDate, "dd MMM yyyy");
 }
+
+export function formatDate(date: string) {
+  const appliedDate = new Date(date);
+
+  if (isToday(appliedDate)) {
+    return "Today";
+  }
+
+  if (isYesterday(appliedDate)) {
+    return "Yesterday";
+  }
+
+  const daysAgo = formatDistanceToNowStrict(appliedDate);
+
+  if (daysAgo.includes("day")) {
+    return `${daysAgo} ago`;
+  }
+
+  return format(appliedDate, "dd MMM yyyy");
+}

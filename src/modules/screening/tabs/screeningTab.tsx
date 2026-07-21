@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient,type InfiniteData,  } from "@tanstack/react-query";
 import {
     getScreening, getBatchProgress, exportResults,
     uploadResumesToJob, addResumesToJob, rescoreScreening,
@@ -21,6 +21,7 @@ import { useGetBatchesQuery } from "@/modules/screening/hooks/batch.hook"
 import ResumeScoringProgress from "@/modules/screening/components/Processing/resumeScoringProgress"
 import { ActiveBatchesQueryKeys } from "@/modules/screening/queryKeys";
 import type { GetActiveBatchesResponse } from "@/modules/screening/apis/activeBatches";
+import { ApplicationQueryKeys } from "@/modules/screening/queryKeys"
 
 import { useAuth } from "@/hooks/useAuth";
 
@@ -31,10 +32,11 @@ const PAGE_SIZE = 30;
 
 interface ScreeningDetailProps {
     setCurrentTab: (tab: Sections) => void;
+    setSourceMode: (mode: boolean) => void;
 }
 
 
-export default function ScreeningDetail({setCurrentTab}:ScreeningDetailProps) {
+export default function ScreeningDetail({ setCurrentTab, setSourceMode }: ScreeningDetailProps) {
     const { id } = useParams({ strict: false }) as { id: string };
     const search = useSearch({ strict: false }) as { saved?: number } & Record<string, unknown>;
     const queryClient = useQueryClient();
@@ -78,7 +80,7 @@ export default function ScreeningDetail({setCurrentTab}:ScreeningDetailProps) {
     const cachedListItem = queryClient
         .getQueryData<ScreeningListItem[]>(["screenings"])
         ?.find((s) => s.id === id);
-    const knownIsDraft = cachedListItem?.status === "draft";
+    // const knownIsDraft = cachedListItem?.status === "draft";
 
     const { data: screening, isLoading, error } = useQuery({
         queryKey: ["screening", id],
@@ -340,13 +342,13 @@ export default function ScreeningDetail({setCurrentTab}:ScreeningDetailProps) {
         );
     }
 
-    if ( pageLoading ){
+    if (pageLoading) {
         return <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
             <span>Loading ...</span>
         </div>
     }
-    if ( candidates.length === 0 && resultsFetching ){
+    if (candidates.length === 0 && resultsFetching) {
         return <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
             <span>Loading ...</span>
@@ -356,14 +358,33 @@ export default function ScreeningDetail({setCurrentTab}:ScreeningDetailProps) {
 
 
 
-    if (candidates.length === 0 && !pageLoading && !hasActiveFilters(queryState) && screening.scored_resumes === 0  && !active_batches?.scoring_batch_ids?.length) {
+    if (candidates.length === 0 && !pageLoading && !hasActiveFilters(queryState) && screening.scored_resumes === 0 && !active_batches?.scoring_batch_ids?.length) {
         return (
             <div className="p-4 sm:p-6 md:p-8 text-center">
                 <p className="text-sm text-[#737373]">
                     No candidates have been scored yet. Upload resumes to start scoring.
                 </p>
                 <span className="text-sm text-[#0F0F0F] underline mt-2 inline-block cursor-pointer"
-                onClick={()=>setCurrentTab("Applications")}
+                    onClick={() => {
+                        setCurrentTab("Applications");
+
+                        const queries = queryClient.getQueriesData({
+                            queryKey: ApplicationQueryKeys.screening(id),
+                        });
+
+                        if (queries.length > 0) {
+                            const applicationsData =
+                                queries[0][1]  as InfiniteData<any>;
+
+                            const hasApplications = applicationsData.pages.some(
+                                (page) => page.items.length > 0,
+                            );
+
+                            setSourceMode(hasApplications);
+                        } else {
+                            setSourceMode(false);
+                        }
+                    }}
                 >
                     Start Screening
                 </span>
