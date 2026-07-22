@@ -468,7 +468,6 @@ export interface QualificationFacts {
   notice_period: string | null;
   candidate_location: string | null;
   relocation_willing: boolean | null;
-  work_model_fit: boolean | null;
 }
 
 export interface Qualification {
