@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getCallScorecard } from "@/lib/api";
 import type { CallScorecardDetail } from "@/types";
@@ -27,6 +27,15 @@ function recommendationChip(rec: string | null): { label: string; cls: string } 
     case "hold": return { label: "Hold", cls: "bg-amber-100 text-amber-800 border-amber-200" };
     case "reject": return { label: "Reject", cls: "bg-red-100 text-red-700 border-red-200" };
     default: return { label: rec ?? "—", cls: "bg-slate-100 text-slate-700 border-slate-200" };
+  }
+}
+
+function verdictChip(v: string | undefined): { label: string; cls: string } {
+  switch (v) {
+    case "qualified": return { label: "Qualified", cls: "bg-green-100 text-green-800 border-green-200" };
+    case "needs_review": return { label: "Needs review", cls: "bg-amber-100 text-amber-800 border-amber-200" };
+    case "not_a_fit": return { label: "Not a fit", cls: "bg-red-100 text-red-700 border-red-200" };
+    default: return { label: v ?? "—", cls: "bg-slate-100 text-slate-700 border-slate-200" };
   }
 }
 
@@ -88,6 +97,76 @@ export function VoiceScorecardDetails({ screeningId, callId }: VoiceScorecardDet
   }
   if (isError || !data) {
     return <p className="text-xs text-[#737373]">Could not load the interview results.</p>;
+  }
+
+  const q = data.qualification;
+  if (q) {
+    const chip = verdictChip(q.verdict);
+    const f = q.facts;
+    const row = (label: string, value: ReactNode) => (
+      <div className="flex items-center justify-between gap-3 py-1 text-xs">
+        <span className="text-[#737373]">{label}</span>
+        <span className="text-[#0F0F0F] font-medium text-right">{value ?? "—"}</span>
+      </div>
+    );
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-md border ${chip.cls}`}>{chip.label}</span>
+          {q.verdict_reason && <span className="text-[11px] text-[#737373]">{q.verdict_reason}</span>}
+        </div>
+
+        <div className="rounded-xl bg-[#F5F3EE] p-3">
+          <p className="text-[10px] font-semibold text-[#737373] uppercase tracking-wide mb-1.5">Captured</p>
+          {row("Current CTC", f.current_ctc)}
+          {row("Expected CTC", f.expected_ctc
+            ? <span>{f.expected_ctc}{f.ctc_in_band === false && <span className="ml-1 text-red-600">over band</span>}{f.ctc_in_band === true && <span className="ml-1 text-green-700">in band</span>}</span>
+            : null)}
+          {row("Notice period", f.notice_period)}
+          {row("Location", f.candidate_location)}
+          {row("Relocation", f.relocation_willing == null ? null : (f.relocation_willing ? "Willing" : "Not willing"))}
+        </div>
+
+        {q.interest_summary && (
+          <div className="rounded-xl bg-[#F5F3EE] p-3">
+            <p className="text-[10px] font-semibold text-[#737373] uppercase tracking-wide mb-1.5">Interest & motivation</p>
+            <p className="text-xs text-[#404040] leading-relaxed">{q.interest_summary}</p>
+          </div>
+        )}
+
+        {q.role_read.length > 0 && (
+          <div className="rounded-xl bg-[#F5F3EE] p-3">
+            <p className="text-[10px] font-semibold text-[#737373] uppercase tracking-wide mb-1.5">Role read</p>
+            <ul className="list-disc pl-4 text-xs text-[#404040] space-y-0.5">
+              {q.role_read.map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {q.flags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {q.flags.map((fl, i) => (
+              <span key={i} className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800">{fl}</span>
+            ))}
+          </div>
+        )}
+
+        {q.reschedule_requested && (
+          <p className="text-[11px] text-[#737373]">Requested callback: {q.reschedule_requested}</p>
+        )}
+
+        {data.transcript && data.transcript.length > 0 && (
+          <details className="rounded-xl bg-[#F5F3EE] p-3">
+            <summary className="text-[10px] font-semibold text-[#737373] uppercase tracking-wide cursor-pointer">Transcript</summary>
+            <div className="mt-2 space-y-1">
+              {data.transcript.map((t, i) => (
+                <p key={i} className="text-xs"><span className="font-semibold text-[#737373]">{t.speaker === "candidate" ? "Candidate" : "Agent"}:</span> <span className="text-[#404040]">{t.text}</span></p>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
+    );
   }
 
   const rec = recommendationChip(data.recommendation);
