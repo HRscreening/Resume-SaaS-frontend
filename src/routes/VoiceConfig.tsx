@@ -8,7 +8,7 @@ import {
   saveVoiceConfig,
   generateQuestionPlan,
 } from "@/lib/api";
-import type { Rubric, VoiceConfig, QuestionPlanItem } from "@/types";
+import type { Rubric, VoiceConfig, QuestionPlanItem, QualificationConfig } from "@/types";
 import { truncate } from "@/lib/utils";
 
 const DEFAULT_CONFIG: VoiceConfig = {
@@ -25,6 +25,10 @@ const DEFAULT_CONFIG: VoiceConfig = {
   max_concurrent_calls_override: null,
   ask_salary: false,
   ask_location: false,
+  qualification: {
+    budget_band_pct: 10, distance_threshold_km: 100, relocation_required: false,
+    ask_notice: true, ask_compensation: true, ask_location: true, role_facts: [],
+  },
 };
 
 const inputCls =
@@ -123,6 +127,9 @@ export default function VoiceConfigPage() {
         { text: "", competency_ref: competencies[0] ?? "", expected_signals: [] },
       ],
     }));
+
+  const setQual = (patch: Partial<QualificationConfig>) =>
+    setDraft((d) => ({ ...d, qualification: { ...(d.qualification ?? {}), ...patch } }));
 
   if (screeningLoading || configLoading) {
     return <div className="p-8 text-sm text-[#737373]">Loading…</div>;
@@ -260,6 +267,122 @@ export default function VoiceConfigPage() {
         >
           + Add question
         </button>
+      </section>
+
+      {/* Qualification (discovery pre-screen) */}
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold text-[#0F0F0F] mb-1">Qualification checks</h2>
+        <p className="text-xs text-[#737373] mb-3">
+          What the screening call qualifies. Budget and band are never spoken to the candidate.
+        </p>
+
+        <div className="space-y-2 mb-4">
+          {([
+            ["ask_compensation", "Ask compensation", "current and expected CTC, asked last"],
+            ["ask_notice", "Ask notice period", "captured, never evaluated aloud"],
+            ["ask_location", "Ask location and work model", "drives the relocation check"],
+          ] as const).map(([key, label, hint]) => (
+            <label key={key} className="flex items-center gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={draft.qualification?.[key] ?? true}
+                onChange={(e) => setQual({ [key]: e.target.checked })}
+                className="h-4 w-4 accent-[#0F0F0F]"
+              />
+              <span className="text-sm text-[#0F0F0F]">{label}
+                <span className="text-xs text-[#737373] ml-2">{hint}</span></span>
+            </label>
+          ))}
+        </div>
+
+        {(draft.qualification?.ask_compensation ?? true) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className={labelCls}>Budget cap, annual <span className="text-[#737373]">(never shown to candidate)</span></label>
+              <input
+                type="number" min={0}
+                value={draft.qualification?.budget_cap ?? ""}
+                onChange={(e) => setQual({ budget_cap: e.target.value ? Number(e.target.value) : null })}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Negotiation band %</label>
+              <input
+                type="number" min={0} max={100}
+                value={draft.qualification?.budget_band_pct ?? 10}
+                onChange={(e) => setQual({ budget_band_pct: Number(e.target.value) })}
+                className={inputCls}
+              />
+            </div>
+          </div>
+        )}
+
+        {(draft.qualification?.ask_location ?? true) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls}>Work model</label>
+              <select
+                value={draft.qualification?.work_model ?? ""}
+                onChange={(e) => setQual({ work_model: (e.target.value || null) as "remote" | "onsite" | "hybrid" | null })}
+                className={inputCls}
+              >
+                <option value="">Not set</option>
+                <option value="remote">Remote</option>
+                <option value="onsite">Onsite</option>
+                <option value="hybrid">Hybrid</option>
+              </select>
+            </div>
+            {(draft.qualification?.work_model === "onsite" || draft.qualification?.work_model === "hybrid") && (
+              <>
+                <div>
+                  <label className={labelCls}>Job city</label>
+                  <input
+                    value={draft.qualification?.job_city ?? ""}
+                    onChange={(e) => setQual({ job_city: e.target.value || null })}
+                    className={inputCls}
+                  />
+                </div>
+                <label className="flex items-center gap-3 cursor-pointer select-none sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={draft.qualification?.relocation_required ?? false}
+                    onChange={(e) => setQual({ relocation_required: e.target.checked })}
+                    className="h-4 w-4 accent-[#0F0F0F]"
+                  />
+                  <span className="text-sm text-[#0F0F0F]">Relocation required
+                    <span className="text-xs text-[#737373] ml-2">if the candidate is far and will not relocate, the call ends</span></span>
+                </label>
+              </>
+            )}
+          </div>
+        )}
+
+        <div className="mt-4">
+          <label className={labelCls}>Role facts the assistant may share</label>
+          <div className="space-y-2">
+            {(draft.qualification?.role_facts ?? []).map((fact, i) => (
+              <div key={i} className="flex gap-2">
+                <input
+                  value={fact}
+                  onChange={(e) => setQual({ role_facts: (draft.qualification?.role_facts ?? []).map((f, j) => (j === i ? e.target.value : f)) })}
+                  className={inputCls}
+                  placeholder="e.g. Hybrid, 3 days in office"
+                />
+                <button
+                  type="button"
+                  onClick={() => setQual({ role_facts: (draft.qualification?.role_facts ?? []).filter((_, j) => j !== i) })}
+                  className="text-xs text-[#737373] px-2"
+                >Remove</button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setQual({ role_facts: [...(draft.qualification?.role_facts ?? []), ""] })}
+              className="text-xs text-[#0F0F0F] font-medium"
+            >+ Add fact</button>
+          </div>
+        </div>
       </section>
 
       {/* Additional wrap-up questions */}

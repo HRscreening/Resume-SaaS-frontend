@@ -318,6 +318,19 @@ export interface RetryPolicy {
   backoff: "exponential" | "linear" | "fixed";
 }
 
+export interface QualificationConfig {
+  budget_cap?: number | null;
+  budget_band_pct?: number;
+  work_model?: "remote" | "onsite" | "hybrid" | null;
+  job_city?: string | null;
+  relocation_required?: boolean;
+  distance_threshold_km?: number;
+  ask_notice?: boolean;
+  ask_compensation?: boolean;
+  ask_location?: boolean;
+  role_facts?: string[];
+}
+
 export interface VoiceConfig {
   enabled: boolean;
   question_plan: QuestionPlanItem[];
@@ -330,6 +343,7 @@ export interface VoiceConfig {
   // HR wrap-up questions, asked after the plan (not scored on the rubric).
   ask_salary: boolean;
   ask_location: boolean;
+  qualification?: QualificationConfig | null;
 }
 
 export interface VoiceConfigResponse {
