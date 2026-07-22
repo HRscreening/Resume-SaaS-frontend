@@ -447,6 +447,26 @@ export interface ScoreDrivers {
   negative_drivers: ScoreDriverCriterion[];
 }
 
+export interface QualificationFacts {
+  current_ctc: string | null;
+  expected_ctc: string | null;
+  ctc_in_band: boolean | null;
+  notice_period: string | null;
+  candidate_location: string | null;
+  relocation_willing: boolean | null;
+  work_model_fit: boolean | null;
+}
+
+export interface Qualification {
+  verdict: "qualified" | "needs_review" | "not_a_fit";
+  verdict_reason: string;
+  facts: QualificationFacts;
+  interest_summary: string;
+  role_read: string[];
+  flags: string[];
+  reschedule_requested: string | null;
+}
+
 export interface CallScorecardDetail {
   call_id: string;
   resume_id: string;
@@ -468,6 +488,7 @@ export interface CallScorecardDetail {
   transcript: TranscriptTurn[] | null;
   recording_url: string | null;
   score_drivers: ScoreDrivers | null;
+  qualification: Qualification | null;
 }
 
 export interface ScorecardOverrideRequest {
