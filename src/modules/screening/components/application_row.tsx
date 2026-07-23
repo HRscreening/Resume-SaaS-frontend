@@ -148,11 +148,11 @@ export default function CandidateRow({
             </td>
 
             {/* Experience */}
-            <td className="px-2 py-3 align-middle text-center">
+            {/* <td className="px-2 py-3 align-middle text-center">
                 <span className="text-sm font-medium text-[#0F0F0F]">
                     {candidate.total_experience?.toPrecision(2) ?? "—"}
                 </span>
-            </td>
+            </td> */}
 
             {/* Education */}
             <td className="px-2 py-3 align-middle">

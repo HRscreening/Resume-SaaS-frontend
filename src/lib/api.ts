@@ -259,7 +259,7 @@ export interface JdGenerateInput {
   employment_type: string;
   work_arrangement:string
   location: string;
-  yrs_experience: number | null;
+  yrs_experience: string | null;
   salary_compensation_info: string | null;
   department: string | null;
   skills: string | null;
