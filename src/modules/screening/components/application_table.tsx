@@ -96,10 +96,10 @@ export function ApplicationTable({
                                     Current Role
                                 </th>
 
-                                {/* <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
+                                <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
                                     <span className="block">Experience</span>
                                     <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">(yrs)</span>
-                                </th> */}
+                                </th>
 
                                 <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
                                     Education
