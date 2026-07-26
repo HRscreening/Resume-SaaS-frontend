@@ -401,7 +401,7 @@ export default function ScreeningDetail({ setCurrentTab, setSourceMode }: Screen
     function handleCandidateStageChange(resumeId: string, scoreId: string, next: HiringStage) {
         // Optimistic per-row update across every cached results page for this
         // // screening — the row may not be on `currentPage`.
-        //  TODO : will fix later
+        //  TODO : will fix later (optimistic setQueriesData kept disabled per uat)
         // queryClient.setQueriesData<PaginatedResults>(
         //     { queryKey: ["results", id] },
         //     (old) => {
@@ -414,9 +414,16 @@ export default function ScreeningDetail({ setCurrentTab, setSourceMode }: Screen
         //         };
         //     },
         // );
-        updateCandidateStage(scoreId, next).catch(() => {
-            queryClient.invalidateQueries({ queryKey: ["results", id] });
-        });
+        updateCandidateStage(scoreId, next)
+            .then(() => {
+                // Voice eligibility depends on the Shortlisted stage, so refresh
+                // the voice queries — moving a candidate to Shortlisted should
+                // immediately surface the Call / Schedule controls.
+                queryClient.invalidateQueries({ queryKey: ["voice-candidates", id] });
+            })
+            .catch(() => {
+                queryClient.invalidateQueries({ queryKey: ["results", id] });
+            });
     }
 
     // console.log("Active batches:", active_batches);

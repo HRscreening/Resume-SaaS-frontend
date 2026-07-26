@@ -329,6 +329,19 @@ export interface RetryPolicy {
   backoff: "exponential" | "linear" | "fixed";
 }
 
+export interface QualificationConfig {
+  budget_cap?: number | null;
+  budget_band_pct?: number;
+  work_model?: "remote" | "onsite" | "hybrid" | null;
+  job_city?: string | null;
+  relocation_required?: boolean;
+  distance_threshold_km?: number;
+  ask_notice?: boolean;
+  ask_compensation?: boolean;
+  ask_location?: boolean;
+  role_facts?: string[];
+}
+
 export interface VoiceConfig {
   enabled: boolean;
   question_plan: QuestionPlanItem[];
@@ -338,6 +351,7 @@ export interface VoiceConfig {
   default_country_code: string;
   retry_policy: RetryPolicy;
   max_concurrent_calls_override: number | null;
+  qualification?: QualificationConfig | null;
 }
 
 export interface VoiceConfigResponse {
@@ -347,6 +361,8 @@ export interface VoiceConfigResponse {
 
 export interface GenerateQuestionPlanResponse {
   question_plan: QuestionPlanItem[];
+  // Detected from the JD; UI defaults ask_location off for remote roles.
+  is_remote_job: boolean;
 }
 
 // ─── Voice calls + scorecards (Phase 2) ────────────────────────────────────
@@ -379,6 +395,7 @@ export interface CallListItem {
   recommendation: string | null;
   is_partial: boolean;
   resume_score: number | null;
+  scheduled_at: string | null;
   started_at: string | null;
   ended_at: string | null;
   created_at: string | null;
@@ -428,6 +445,49 @@ export interface TranscriptTurn {
   confidence: number | null;
 }
 
+export interface ScoreDriverCategory {
+  name: string;
+  weight_pct: number;
+  avg_score: number;
+  contribution_points: number;
+  delta_points: number;
+  direction: "positive" | "negative" | "neutral";
+}
+
+export interface ScoreDriverCriterion {
+  criterion: string;
+  category: string;
+  score: number;
+  impact_points: number;
+}
+
+export interface ScoreDrivers {
+  baseline: number;
+  overall_score: number;
+  categories: ScoreDriverCategory[];
+  positive_drivers: ScoreDriverCriterion[];
+  negative_drivers: ScoreDriverCriterion[];
+}
+
+export interface QualificationFacts {
+  current_ctc: string | null;
+  expected_ctc: string | null;
+  ctc_in_band: boolean | null;
+  notice_period: string | null;
+  candidate_location: string | null;
+  relocation_willing: boolean | null;
+}
+
+export interface Qualification {
+  verdict: "qualified" | "needs_review" | "not_a_fit";
+  verdict_reason: string;
+  facts: QualificationFacts;
+  interest_summary: string;
+  role_read: string[];
+  flags: string[];
+  reschedule_requested: string | null;
+}
+
 export interface CallScorecardDetail {
   call_id: string;
   resume_id: string;
@@ -448,6 +508,8 @@ export interface CallScorecardDetail {
   reviewer_override: Record<string, unknown> | null;
   transcript: TranscriptTurn[] | null;
   recording_url: string | null;
+  score_drivers: ScoreDrivers | null;
+  qualification: Qualification | null;
 }
 
 export interface ScorecardOverrideRequest {

@@ -60,6 +60,10 @@ export async function request<T>(
     throw new Error(parseErrorDetail(body, res.status));
   }
 
+  // 204 No Content (e.g. DELETE) has no body to parse.
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return undefined as T;
+  }
   return res.json() as Promise<T>;
 }
 
@@ -680,10 +684,26 @@ export async function saveVoiceConfig(
 export async function triggerVoiceCalls(
   screeningId: string,
   resumeIds?: string[],
+  scheduledAt?: string | null,
+  // TEMPORARY (2026-07-13): dial a UI-entered number for a single candidate.
+  phoneOverride?: string | null,
 ): Promise<import("@/types").TriggerCallsResponse> {
   return request(`/api/v1/screenings/${screeningId}/voice/calls`, {
     method: "POST",
-    body: JSON.stringify({ resume_ids: resumeIds ?? null }),
+    body: JSON.stringify({
+      resume_ids: resumeIds ?? null,
+      scheduled_at: scheduledAt ?? null,
+      phone_override: phoneOverride ?? null,
+    }),
+  });
+}
+
+export async function cancelScheduledCall(
+  screeningId: string,
+  callId: string,
+): Promise<void> {
+  await request(`/api/v1/screenings/${screeningId}/voice/calls/${callId}`, {
+    method: "DELETE",
   });
 }
 

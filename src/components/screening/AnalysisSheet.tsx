@@ -17,6 +17,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { CandidateVoicePanel } from "@/components/screening/voice/CandidateVoicePanel";
 
 const sheetListeners = new Set<() => void>();
 let openResumeId: string | null = null;
@@ -314,6 +315,15 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                 </div>
               )}
             </div>
+
+            {/* Voice screening — call / schedule / transcript for this candidate */}
+            {screening_id && resume_id && (
+              <CandidateVoicePanel
+                screeningId={screening_id}
+                resumeId={resume_id}
+                candidateName={resume.candidate_name ?? resume.original_filename}
+              />
+            )}
 
             {/* Summary */}
             {score.overall_summary && (
