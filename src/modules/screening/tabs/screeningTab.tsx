@@ -414,16 +414,9 @@ export default function ScreeningDetail({ setCurrentTab, setSourceMode }: Screen
         //         };
         //     },
         // );
-        updateCandidateStage(scoreId, next)
-            .then(() => {
-                // Voice eligibility depends on the Shortlisted stage, so refresh
-                // the voice queries — moving a candidate to Shortlisted should
-                // immediately surface the Call / Schedule controls.
-                queryClient.invalidateQueries({ queryKey: ["voice-candidates", id] });
-            })
-            .catch(() => {
-                queryClient.invalidateQueries({ queryKey: ["results", id] });
-            });
+        updateCandidateStage(scoreId, next).catch(() => {
+            queryClient.invalidateQueries({ queryKey: ["results", id] });
+        });
     }
 
     // console.log("Active batches:", active_batches);
