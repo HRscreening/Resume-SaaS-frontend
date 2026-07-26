@@ -51,6 +51,7 @@ const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => 
     const { data, isError } = useActiveParsingQuery({ screening_id, batch_id });
 
     const pendingApplications = useRef<Application[]>([]);
+    const batchCompleteTimeout = useRef<number | null>(null);
     const BATCH_SIZE = 4;
 
     const resumes = data?.resumes || [];
@@ -125,6 +126,11 @@ const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => 
                 );
 
             } else if (type === "Parsing_Batch_Complete") {
+                 if (batchCompleteTimeout.current) {
+                    clearTimeout(batchCompleteTimeout.current);
+                }
+                batchCompleteTimeout.current = window.setTimeout(() => {
+
                 flushApplications();
                 console.log("Parsing batch complete event received:", payload);
                 queryClient.invalidateQueries({ queryKey: ApplicationQueryKeys.screening(screening_id) });
@@ -138,7 +144,7 @@ const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => 
                             parsing_batch_ids: old.parsing_batch_ids.filter(id => id !== batch_id),
                         };
                     }
-                );
+                );}, 700);
             }
         };
 
@@ -148,6 +154,9 @@ const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => 
 
         return () => {
             flushApplications();
+              if (batchCompleteTimeout.current) {
+                clearTimeout(batchCompleteTimeout.current);
+            }
             source.close();
             eventSourceRef.current = null;
         };
