@@ -6,6 +6,7 @@ import {
 } from "@/lib/api";
 import { REJECTED_STAGE } from "@/lib/stages";
 import type { CallScorecardDetail } from "@/types";
+import { VoiceScorecardDetails } from "./VoiceScorecardDetails";
 
 interface Props {
   screeningId: string;
@@ -177,30 +178,12 @@ export function CallScorecardDrawer({ screeningId, callId, onClose }: Props) {
               </div>
             </div>
 
-            {sc.overall_summary && (
-              <div>
-                <h3 className="text-sm font-semibold text-[#0F0F0F] mb-1">Summary</h3>
-                <p className="text-sm text-[#404040] leading-relaxed">{sc.overall_summary}</p>
-              </div>
-            )}
-
-            {sc.flags && sc.flags.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-[#0F0F0F] mb-1">Flags</h3>
-                <ul className="list-disc pl-5 text-sm text-amber-700 space-y-1">
-                  {sc.flags.map((f, i) => <li key={i}>{f}</li>)}
-                </ul>
-              </div>
-            )}
-
-            {sc.strengths && sc.strengths.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-[#0F0F0F] mb-1">Strengths</h3>
-                <ul className="list-disc pl-5 text-sm text-[#404040] space-y-1">
-                  {sc.strengths.map((s, i) => <li key={i}>{s}</li>)}
-                </ul>
-              </div>
-            )}
+            {/* AI findings + explainability: interview summary, "Why this score"
+                (per-category contribution + drivers), strengths / concerns, flags,
+                the per-criterion breakdown with evidence quotes, and the transcript.
+                Shared with the candidate panel so both surfaces explain the score
+                identically. Degrades gracefully on older scorecards (no drivers). */}
+            <VoiceScorecardDetails screeningId={screeningId} callId={callId} />
 
             {/* Override */}
             <div className="border-t border-[#E8E5DF] pt-4">
@@ -238,22 +221,6 @@ export function CallScorecardDrawer({ screeningId, callId, onClose }: Props) {
               </button>
             </div>
 
-            {/* Transcript */}
-            {sc.transcript && sc.transcript.length > 0 && (
-              <div className="border-t border-[#E8E5DF] pt-4">
-                <h3 className="text-sm font-semibold text-[#0F0F0F] mb-2">Transcript</h3>
-                <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {sc.transcript.map((t, i) => (
-                    <div key={i} className="text-sm">
-                      <span className={`font-medium ${t.speaker === "agent" ? "text-indigo-600" : "text-[#0F0F0F]"}`}>
-                        {t.speaker === "agent" ? "AI" : "Candidate"}:
-                      </span>{" "}
-                      <span className="text-[#404040]">{t.text}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>

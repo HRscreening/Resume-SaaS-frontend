@@ -386,29 +386,9 @@ export default function VoiceConfigPage() {
         </div>
       </section>
 
-      {/* Call settings */}
+      {/* Call settings — voice/tier, timezone, and retry policy use sensible
+          defaults (see DEFAULT_CONFIG) and are not surfaced to the recruiter. */}
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-        <div>
-          <label className={labelCls}>Voice ID</label>
-          <input
-            value={draft.voice.tts_voice_id}
-            onChange={(e) => setDraft((d) => ({ ...d, voice: { ...d.voice, tts_voice_id: e.target.value } }))}
-            className={inputCls}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Voice tier</label>
-          <select
-            value={draft.voice.tier}
-            onChange={(e) =>
-              setDraft((d) => ({ ...d, voice: { ...d.voice, tier: e.target.value as "default" | "premium" } }))
-            }
-            className={inputCls}
-          >
-            <option value="default">Default</option>
-            <option value="premium">Premium</option>
-          </select>
-        </div>
         <div>
           <label className={labelCls}>Default country code</label>
           <input
@@ -418,14 +398,7 @@ export default function VoiceConfigPage() {
             className={inputCls}
           />
         </div>
-        <div>
-          <label className={labelCls}>Timezone</label>
-          <input
-            value={draft.calling_window.tz}
-            onChange={(e) => setDraft((d) => ({ ...d, calling_window: { ...d.calling_window, tz: e.target.value } }))}
-            className={inputCls}
-          />
-        </div>
+        <div className="hidden sm:block" aria-hidden="true" />
         <div>
           <label className={labelCls}>Calling window start</label>
           <input
@@ -443,42 +416,6 @@ export default function VoiceConfigPage() {
             onChange={(e) => setDraft((d) => ({ ...d, calling_window: { ...d.calling_window, end: e.target.value } }))}
             className={inputCls}
           />
-        </div>
-        <div>
-          <label className={labelCls}>Retry attempts</label>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={draft.retry_policy.max_attempts}
-            onChange={(e) =>
-              setDraft((d) => ({
-                ...d,
-                retry_policy: { ...d.retry_policy, max_attempts: Number(e.target.value) },
-              }))
-            }
-            className={inputCls}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Retry backoff</label>
-          <select
-            value={draft.retry_policy.backoff}
-            onChange={(e) =>
-              setDraft((d) => ({
-                ...d,
-                retry_policy: {
-                  ...d.retry_policy,
-                  backoff: e.target.value as "exponential" | "linear" | "fixed",
-                },
-              }))
-            }
-            className={inputCls}
-          >
-            <option value="exponential">Exponential</option>
-            <option value="linear">Linear</option>
-            <option value="fixed">Fixed</option>
-          </select>
         </div>
       </section>
 
