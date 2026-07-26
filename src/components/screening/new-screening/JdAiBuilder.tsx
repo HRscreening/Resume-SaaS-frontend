@@ -109,7 +109,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
 
 
   const canGenerate =
-    Boolean(jobTitle.trim()) && !generating && detailsComplete;
+    Boolean(jobTitle.trim()) && !generating && detailsComplete && companyName.trim() && companyUrl.trim() && workArrangement.trim() && employmentType.trim();
   // The PDF needs both a JD body and the grounding details the backend requires;
   // gate the export the same way generation is gated so we don't send a 422.
   const canDownload =
@@ -298,7 +298,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
               {/* Company name */}
               <div>
                 <label htmlFor="jd-company-name" className={labelClass}>
-                  Company name
+                  Company name<span className="text-red-500">*</span>
                 </label>
                 <input
                   id="jd-company-name"
@@ -313,7 +313,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
               {/* Company website */}
               <div>
                 <label htmlFor="jd-company-url" className={labelClass}>
-                  Company website
+                  Company website<span className="text-red-500">*</span>
                 </label>
                 <input
                   id="jd-company-url"
@@ -329,7 +329,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
               {/* Work arrangement */}
               <div>
                 <label htmlFor="jd-work-arrangement" className={labelClass}>
-                  Work arrangement
+                  Work arrangement<span className="text-red-500">*</span>
                 </label>
                 <select
                   id="jd-work-arrangement"
@@ -351,7 +351,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
               {/* Employement Type */}
               <div>
                 <label htmlFor="jd-work-arrangement" className={labelClass}>
-                  Employment Type
+                  Employment Type<span className="text-red-500">*</span>
                 </label>
                 <select
                   id="jd-employment-type"
@@ -394,7 +394,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
                 <div className="flex items-center gap-2">
                   <input
                     id="jd-yrs-experience-min"
-                    type="Min"
+                    type="number"
                     min={0}
                     value={minExperience}
                     onChange={(e) => setMinExperience(e.target.value)}
@@ -405,7 +405,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
                   -
                   <input
                     id="jd-yrs-experience-max"
-                    type="Min"
+                    type="number"
                     min={0}
                     value={maxExperience}
                     onChange={(e) => setMaxExperience(e.target.value)}
@@ -442,7 +442,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
 
                 <input
                   id="jd-salary-min"
-                  type="text"
+                  type="number"
                   value={minSalary}
                   onChange={(e) => setMinSalary(e.target.value)}
                   disabled={generating}
@@ -452,7 +452,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
                    -
                    <input
                   id="jd-salary-max"
-                  type="text"
+                  type="number"
                   value={maxSalary}
                   onChange={(e) => setMaxSalary(e.target.value)}
                   disabled={generating}
