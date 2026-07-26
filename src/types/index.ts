@@ -340,9 +340,6 @@ export interface VoiceConfig {
   default_country_code: string;
   retry_policy: RetryPolicy;
   max_concurrent_calls_override: number | null;
-  // HR wrap-up questions, asked after the plan (not scored on the rubric).
-  ask_salary: boolean;
-  ask_location: boolean;
   qualification?: QualificationConfig | null;
 }
 
