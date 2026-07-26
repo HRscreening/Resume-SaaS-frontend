@@ -21,18 +21,24 @@ export function validateResume(file: File) {
     const extension = extractExtension(file.name).toLowerCase();
 
     const allowedExtensions = ["pdf", "doc", "docx", "zip"];
-    
-    const allowed = [
+
+    // The file EXTENSION is the reliable gate. Browsers frequently report a
+    // generic or empty MIME type (application/octet-stream, or "") for
+    // perfectly valid PDFs/DOC/DOCX/ZIP depending on the OS, browser, or how
+    // the file was selected — so rejecting on MIME alone breaks real uploads.
+    if (!allowedExtensions.includes(extension))
+        throw new Error(`Unsupported file extension ${extension}`);
+
+    const allowedTypes = [
         "application/pdf",
         "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/zip",
         "application/x-zip-compressed",
+        "application/octet-stream", // generic fallback — extension already validated
+        "", // some browsers report no MIME type at all
     ];
 
-    if (!allowed.includes(file.type))
+    if (!allowedTypes.includes(file.type))
         throw new Error(`Unsupported file type ${file.type}`);
-
-    if (!allowedExtensions.includes(extension))
-        throw new Error(`Unsupported file extension ${extension}`);
 }
