@@ -96,19 +96,26 @@ const UploadResumes = ({screening_id,user_id,setShowUploadMore}:UploadResumesPro
         if (!user_id) { setUploadError("User not authenticated"); return; }
 
         setUploading(true);
-        const result = await resumeUploadService.uploadResumes(uploadMoreFiles, screening_id, user_id)
-        console.log("Uploaded files:", result);
+        setUploadError(null);
+        try {
+            const result = await resumeUploadService.uploadResumes(uploadMoreFiles, screening_id, user_id)
 
+            const res = await UploadResumes({ resumes: result, screening_id: screening_id })
 
-        const res = await UploadResumes({ resumes: result, screening_id: screening_id })
-        // console.log(`Response on uploading ${res}`)
+            toast.success(res.message || "Resumes uploaded successfully");
 
-        toast.success(res.message || "Resumes uploaded successfully");
-        
-        setShowUploadMore(false);
+            setUploadMoreFiles([]);
+            setShowUploadMore(false);
+        } catch (e: unknown) {
+            // Never leave the button stuck on "Uploading & scoring…": surface the
+            // error and reset. (e.g. a bad file in the ZIP failing validation.)
+            const msg = e instanceof Error ? e.message : "Upload failed. Please try again.";
+            setUploadError(msg);
+            toast.error(msg);
+        } finally {
+            setUploading(false);
+        }
         return;
-
-
     }
     return (
         <div>
