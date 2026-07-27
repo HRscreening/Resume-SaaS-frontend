@@ -1,46 +1,42 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient,type InfiniteData,  } from "@tanstack/react-query";
 import {
     getScreening, getBatchProgress, exportResults,
     uploadResumesToJob, addResumesToJob, rescoreScreening,
     saveScreeningStages, updateCandidateStage,
 } from "@/lib/api";
-import { useCandidateQuery } from "@/controllers/screening/useCandidateQuery";
-import type { ScreeningListItem, StagesMap, HiringStage, PaginatedResults } from "@/types";
+import { useCandidateQuery } from "@/modules/screening/hooks/screening/useCandidateQuery";
+import type { ScreeningListItem, StagesMap, HiringStage } from "@/types";
+import type { PaginatedResults } from "@/modules/screening/types/screening.type";
 import { formatDate, truncate } from "@/lib/utils";
 import type { RankedCandidate, RubricCategory } from "@/types";
 import { DEFAULT_STAGES } from "@/lib/stages";
 import { StagesDialog } from "@/components/screening/StagesDialog";
 import { useAnalysisSheetOpen, setOpenAnalysisSheet, ANALYSIS_SHEET_WIDTH } from "@/components/screening/AnalysisSheet";
-import { TIERS, getTier, TierSection, type TierId } from "@/components/screening/TierSection";
-
-import { ProcessingAccordion } from "@/components/screening/ProcessingAccordion";
-import { RubricModal } from "@/components/screening/RubricModal";
-import { FailedView } from "@/components/screening/FailedView";
-import { CandidatesTable } from "@/components/screening/CandidatesTable";
+import { CandidatesTable } from "@/modules/screening/components/Screening/CandidatesTable";
 import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import Applications from "@/modules/screening/tabs/applications"
+import { useGetBatchesQuery } from "@/modules/screening/hooks/batch.hook"
+import ResumeScoringProgress from "@/modules/screening/components/Processing/resumeScoringProgress"
+import { ActiveBatchesQueryKeys } from "@/modules/screening/queryKeys";
+import type { GetActiveBatchesResponse } from "@/modules/screening/apis/activeBatches";
+import { ApplicationQueryKeys } from "@/modules/screening/queryKeys"
 
-
-
-
-import { ResumeUploadService } from "@/lib/services/resumeUpload.service";
-import { StorageService } from "@/lib/services/storage.service";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 
-import { resumeUploadService } from "@/lib/services";
-import { useAddApplicationsMutation } from "@/modules/screening/hooks/application.hook"
-
 type Sections = "Applications" | "Screening"
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 30;
 
-export default function ScreeningDetail() {
+interface ScreeningDetailProps {
+    setCurrentTab: (tab: Sections) => void;
+    setSourceMode: (mode: boolean) => void;
+}
+
+
+export default function ScreeningDetail({ setCurrentTab, setSourceMode }: ScreeningDetailProps) {
     const { id } = useParams({ strict: false }) as { id: string };
     const search = useSearch({ strict: false }) as { saved?: number } & Record<string, unknown>;
     const queryClient = useQueryClient();
@@ -50,11 +46,15 @@ export default function ScreeningDetail() {
 
     const { user } = useAuth();
 
-    const { mutateAsync: UploadResumes, isSuccess: isUploadDone, isPending: isUploading } = useAddApplicationsMutation()
+    const { data: active_batches } = useGetBatchesQuery(id);
+
+    useEffect(() => {
+        console.log("Active batches updated:", active_batches);
+
+    }, [active_batches])
 
     const [rescoring, setRescoring] = useState(false);
     const [rescoreError, setRescoreError] = useState<string | null>(null);
-    const [showRubric, setShowRubric] = useState(false);
     const [showStages, setShowStages] = useState(false);
     const analysisOpen = useAnalysisSheetOpen();
 
@@ -70,18 +70,7 @@ export default function ScreeningDetail() {
     const [lastClickedId, setLastClickedId] = useState<string | null>(null);
     const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
-    const [draftFiles, setDraftFiles] = useState<File[]>([]);
-    const [dragActive, setDragActive] = useState(false);
-    const [uploading, setUploading] = useState(false);
-    const [uploadStep, setUploadStep] = useState<0 | 1 | 2>(0);
-    const [uploadError, setUploadError] = useState<string | null>(null);
-    const [showUploadMore, setShowUploadMore] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const uploadMoreFileInputRef = useRef<HTMLInputElement>(null);
-    const [uploadMoreFiles, setUploadMoreFiles] = useState<File[]>([]);
-    const [uploadMoreDragActive, setUploadMoreDragActive] = useState(false);
-    // Bumped on each successful upload — tells the accordion to auto-expand briefly.
-    const [uploadNonce, setUploadNonce] = useState(0);
+
 
     // Synchronous status hint from the screenings-list cache. Used to gate the
     // batch-progress query on cold cache so we don't fire a request that 404s
@@ -91,7 +80,7 @@ export default function ScreeningDetail() {
     const cachedListItem = queryClient
         .getQueryData<ScreeningListItem[]>(["screenings"])
         ?.find((s) => s.id === id);
-    const knownIsDraft = cachedListItem?.status === "draft";
+    // const knownIsDraft = cachedListItem?.status === "draft";
 
     const { data: screening, isLoading, error } = useQuery({
         queryKey: ["screening", id],
@@ -103,32 +92,11 @@ export default function ScreeningDetail() {
         },
     });
 
-    // Fire in PARALLEL with the screening query when we have a non-draft hint
-    // (or no hint at all). The previous `enabled: !!screening` gate forced a
-    // sequential waterfall — first paint waited for two roundtrips instead of
-    // one. The 404-on-draft case is handled by React Query's retry:1 default
-    // and the empty render path below.
-    const { data: progress } = useQuery({
-        queryKey: ["batch-progress", id],
-        queryFn: () => getBatchProgress(id),
-        enabled: !knownIsDraft && (!screening || screening.status !== "draft"),
-        refetchInterval: (query) => {
-            const status = query.state.data?.status;
-            if (status === "completed" || status === "failed") return false;
-            return 3000;
-        },
-    });
-
-    const batchDone = progress?.status === "completed" || progress?.status === "failed";
-
     // Backend-driven query state (filters, sort, search, pagination) lives in
     // the URL via useCandidateQuery. The hook also owns the results query,
     // so we don't run a separate useQuery here.
-    const candidateQuery = useCandidateQuery(id, {
-        pageSize: PAGE_SIZE,
-        pollWhileProcessing: true,
-        batchDone,
-    });
+    const candidateQuery = useCandidateQuery(id, { limit: PAGE_SIZE });
+
     const {
         state: queryState,
         searchInput,
@@ -138,33 +106,18 @@ export default function ScreeningDetail() {
         setSort,
         setOverallRange,
         setCategoryRange,
-        setPage: setQueryPage,
         clearAll,
-        prefetchPage,
         query: resultsQuery,
     } = candidateQuery;
-    const resultsPage = resultsQuery.data;
-    const resultsFetching = resultsQuery.isFetching;
-    const resultsPlaceholder = resultsQuery.isPlaceholderData;
-    const currentPage = queryState.page;
-    const candidates = resultsPage?.items ?? [];
-    const serverTotal = resultsPage?.total ?? 0;
-    // Only show the in-table skeleton on a cold page-switch — `isFetching` is
-    // also true during the background poll while the previous page's data is
-    // already cached, and we don't want to wipe the UI then.
-    const pageLoading = resultsFetching && (!resultsPage || resultsPlaceholder);
 
-    useEffect(() => {
-        if (batchDone) {
-            queryClient.invalidateQueries({ queryKey: ["results", id] });
-            queryClient.invalidateQueries({ queryKey: ["screening", id] });
-            // Belt-and-suspenders: the upload mutation also invalidates ["usage"],
-            // but if the user navigates away mid-processing and comes back, that
-            // handler is gone. Batch completion is the stable trigger to make sure
-            // the sidebar counter ends up correct.
-            queryClient.invalidateQueries({ queryKey: ["usage"] });
-        }
-    }, [batchDone, id, queryClient]);
+
+    const resultsFetching = resultsQuery.isFetching;
+    const pageLoading = resultsQuery.isLoading;
+    const resultsPlaceholder = resultsQuery.isPlaceholderData;
+    const candidates = resultsQuery.data?.pages.flatMap(page => page.items) ?? [];;
+    // Only show the in-table skeleton on a cold page-switch — `isFetching` is
+
+
 
     // Show a "Rubric saved" toast after returning from EditRubric (?saved=1).
     // Auto-dismiss after a few seconds; strip the saved=1 search param so a
@@ -197,7 +150,25 @@ export default function ScreeningDetail() {
         queryClient.removeQueries({ queryKey: ["batch-progress", id] });
 
         try {
-            await rescoreScreening(id, { resume_ids: [...selectedIds] });
+            const result = await rescoreScreening(id, { resume_ids: [...selectedIds] });
+
+            // Add the new batch_id to the active batches cache
+            queryClient.setQueryData(
+                ActiveBatchesQueryKeys.screening(id),
+                (old: GetActiveBatchesResponse | undefined) => {
+                    if (!old) {
+                        return {
+                            parsing_batch_ids: [],
+                            scoring_batch_ids: [result.batch_id],
+                        };
+                    }
+                    return {
+                        ...old,
+                        scoring_batch_ids: [...(old.scoring_batch_ids || []), result.batch_id],
+                    };
+                }
+            );
+
             queryClient.invalidateQueries({ queryKey: ["batch-progress", id] });
             queryClient.invalidateQueries({ queryKey: ["results", id] });
             queryClient.invalidateQueries({ queryKey: ["screening", id] });
@@ -371,6 +342,57 @@ export default function ScreeningDetail() {
         );
     }
 
+    if (pageLoading) {
+        return <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
+            <span>Loading ...</span>
+        </div>
+    }
+    if (candidates.length === 0 && resultsFetching) {
+        return <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
+            <span>Loading ...</span>
+        </div>
+    }
+
+
+
+
+    if (candidates.length === 0 && !pageLoading && !hasActiveFilters(queryState) && screening.scored_resumes === 0 && !active_batches?.scoring_batch_ids?.length) {
+        return (
+            <div className="p-4 sm:p-6 md:p-8 text-center">
+                <p className="text-sm text-[#737373]">
+                    No candidates have been scored yet. Upload resumes to start scoring.
+                </p>
+                <span className="text-sm text-[#0F0F0F] underline mt-2 inline-block cursor-pointer"
+                    onClick={() => {
+                        setCurrentTab("Applications");
+
+                        const queries = queryClient.getQueriesData({
+                            queryKey: ApplicationQueryKeys.screening(id),
+                        });
+
+                        if (queries.length > 0) {
+                            const applicationsData =
+                                queries[0][1]  as InfiniteData<any>;
+
+                            const hasApplications = applicationsData.pages.some(
+                                (page) => page.items.length > 0,
+                            );
+
+                            setSourceMode(hasApplications);
+                        } else {
+                            setSourceMode(false);
+                        }
+                    }}
+                >
+                    Start Screening
+                </span>
+
+            </div>
+        );
+    }
+
     const isDraft = screening.status === "draft";
     const isProcessing = !isDraft && !["completed", "failed"].includes(screening.status);
     const rubricCategories: RubricCategory[] = (screening.rubric as any)?.categories ?? [];
@@ -378,19 +400,20 @@ export default function ScreeningDetail() {
 
     function handleCandidateStageChange(resumeId: string, scoreId: string, next: HiringStage) {
         // Optimistic per-row update across every cached results page for this
-        // screening — the row may not be on `currentPage`.
-        queryClient.setQueriesData<PaginatedResults>(
-            { queryKey: ["results", id] },
-            (old) => {
-                if (!old) return old;
-                return {
-                    ...old,
-                    items: old.items.map((c) =>
-                        c.resume_id === resumeId ? { ...c, stage: next } : c,
-                    ),
-                };
-            },
-        );
+        // // screening — the row may not be on `currentPage`.
+        //  TODO : will fix later (optimistic setQueriesData kept disabled per uat)
+        // queryClient.setQueriesData<PaginatedResults>(
+        //     { queryKey: ["results", id] },
+        //     (old) => {
+        //         if (!old) return old;
+        //         return {
+        //             ...old,
+        //             items: old.items.map((c) =>
+        //                 c.resume_id === resumeId ? { ...c, stage: next } : c,
+        //             ),
+        //         };
+        //     },
+        // );
         updateCandidateStage(scoreId, next)
             .then(() => {
                 // Voice eligibility depends on the Shortlisted stage, so refresh
@@ -403,45 +426,32 @@ export default function ScreeningDetail() {
             });
     }
 
+    // console.log("Active batches:", active_batches);
+
     // Backend's `total` is authoritative for pagination. Fall back to the
     // screening's scored count while the first page is still loading, so the
     // page UI doesn't flash empty before the response lands.
-    const totalCandidates = serverTotal || screening.scored_resumes || screening.total_resumes || candidates.length;
+    const totalCandidates = screening.scored_resumes || screening.total_resumes || candidates.length;
     const hasAnyCandidates = candidates.length > 0 || totalCandidates > 0;
     // The current page has no rows, but filters are active and the screening
     // does have scored candidates — i.e. the filters just matched nothing. Keep
     // the action buttons visible (so the toolbar stays put) but disable the ones
     // that operate on visible rows.
-    const filtersMatchedNothing =
-        candidates.length === 0 && hasActiveFilters(queryState) && screening.scored_resumes > 0;
+    // const filtersMatchedNothing =
+    //     candidates.length === 0 && hasActiveFilters(queryState) && screening.scored_resumes > 0;
 
     return (
         <div>
 
 
-            <div className="w-full space-y-4">
-      
-                {/* Processing accordion — combined banner + per-file drill-down */}
-                {isProcessing && (
-                    <ProcessingAccordion
-                        progress={progress ?? null}
-                        totalFiles={screening.total_resumes}
-                        uploadNonce={uploadNonce}
-                    />
-                )}
+            <div className="w-full ">
 
-                {/* Partial failures */}
-                {!isProcessing && progress && (progress.failed_count ?? 0) > 0 && (
-                    <FailedView progress={progress} hasResults={candidates.length > 0} />
-                )}
 
-                {/* Total failure */}
-                {screening.status === "failed" && candidates.length === 0 && !(progress && (progress.failed_count ?? 0) > 0) && (
-                    <div className="bg-red-50 rounded-2xl border border-red-200 p-6 text-center">
-                        <p className="text-sm font-semibold text-red-800">Screening failed</p>
-                        <p className="text-xs text-red-600 mt-1">All resumes failed to process. Please check the job description and try again.</p>
-                    </div>
-                )}
+                <div className="my-4 space-y-3">
+                    {active_batches?.scoring_batch_ids?.map((batch_id) => (
+                        <ResumeScoringProgress key={`scoring-${batch_id}`} screening_id={id} batch_id={batch_id} />
+                    ))}
+                </div>
 
                 {/* Flat results table with search, filter, stage & match columns,
               and bottom-center pagination. Visible during processing too —
@@ -453,56 +463,62 @@ export default function ScreeningDetail() {
               has no way to see/clear the filters. CandidatesTable renders the
               headers + an empty-state message in that case. The "show selected
               only" view is excluded since it has no filter toolbar. */}
-                {(candidates.length > 0 ||
-                    (pageLoading && totalCandidates > 0) ||
-                    (!showSelectedOnly && hasActiveFilters(queryState))) && (() => {
-                        const selectedList = Object.values(selectedDetails)
-                            .filter((c) => selectedIds.has(c.resume_id))
-                            .sort((a, b) => a.rank - b.rank);
-                        const tableCandidates = showSelectedOnly ? selectedList : candidates;
-                        const tableTotal = showSelectedOnly ? selectedList.length : totalCandidates;
-                        return (
-                            <CandidatesTable
-                                candidates={tableCandidates}
-                                categories={rubricCategories}
-                                page={showSelectedOnly ? 1 : currentPage}
-                                pageSize={PAGE_SIZE}
-                                total={tableTotal}
-                                onPageChange={(p) => {
-                                    setOpenAnalysisSheet(null);
-                                    setQueryPage(p);
-                                    window.scrollTo({ top: 0, behavior: "smooth" });
-                                }}
-                                loading={!showSelectedOnly && pageLoading}
-                                onPrefetchPage={prefetchPage}
-                                selectable={rescoreMode}
-                                selectedIds={selectedIds}
-                                onToggle={toggleSelection}
-                                onTogglePage={togglePage}
-                                stages={stagesMap}
-                                onCandidateStageChange={handleCandidateStageChange}
-                                onManageStages={() => setShowStages(true)}
-                                // Filter/sort/search are disabled in the "show selected
-                                // only" view — those rows come from cross-page memory and
-                                // sorting/filtering them server-side would be a category
-                                // error. Toolbar reappears as soon as the user toggles
-                                // back to the full list.
-                                {...(showSelectedOnly
-                                    ? {}
-                                    : {
-                                        queryState,
-                                        searchInput,
-                                        onSearchChange: setSearch,
-                                        onStageFilterChange: setStage,
-                                        onMatchFilterChange: setMatch,
-                                        onSortChange: setSort,
-                                        onOverallRangeChange: setOverallRange,
-                                        onCategoryRangeChange: setCategoryRange,
-                                        onClearAllFilters: clearAll,
-                                    })}
-                            />
-                        );
-                    })()}
+
+
+                <div className="overflow-x-auto">
+
+
+                    {(candidates.length > 0 ||
+                        (pageLoading && totalCandidates > 0) ||
+                        (!showSelectedOnly
+                            && hasActiveFilters(queryState)
+                        ))
+                        && (() => {
+                            const selectedList = Object.values(selectedDetails)
+                                .filter((c) => selectedIds.has(c.resume_id))
+                                .sort((a, b) => a.rank - b.rank);
+                            const tableCandidates = showSelectedOnly ? selectedList : candidates;
+                            return (
+                                <CandidatesTable
+                                    candidates={tableCandidates}
+                                    categories={rubricCategories}
+                                    loading={!showSelectedOnly && pageLoading}
+                                    selectable={rescoreMode}
+                                    selectedIds={selectedIds}
+                                    onToggle={toggleSelection}
+                                    onTogglePage={togglePage}
+                                    hasMore={resultsQuery.hasNextPage}
+                                    loadingMore={resultsQuery.isFetchingNextPage}
+                                    onLoadMore={resultsQuery.fetchNextPage}
+                                    stages={stagesMap}
+                                    onCandidateStageChange={handleCandidateStageChange}
+                                    onManageStages={() => setShowStages(true)}
+
+                                    {...(showSelectedOnly
+                                        ? {}
+                                        : {
+                                            queryState,
+                                            searchInput,
+                                            onSearchChange: setSearch,
+                                            onStageFilterChange: setStage,
+                                            onMatchFilterChange: setMatch,
+                                            onSortChange: setSort,
+                                            onOverallRangeChange: setOverallRange,
+                                            onCategoryRangeChange: setCategoryRange,
+                                            onClearAllFilters: clearAll,
+                                        })}
+                                />
+                            );
+                        })()}
+
+                    {/* {resultsQuery.isFetchingNextPage && (
+                        <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
+                            <span>Loading more candidates...</span>
+                        </div>
+                    )} */}
+
+                </div>
 
                 {/* Rescore mode hint bar */}
                 {rescoreMode && candidates.length > 0 && (
@@ -519,7 +535,7 @@ export default function ScreeningDetail() {
                     onSave={handleSaveStages}
                 />
 
-               
+
 
 
 
@@ -585,5 +601,5 @@ export default function ScreeningDetail() {
                 );
             })()}
         </div >
-  );
+    );
 }

@@ -263,7 +263,7 @@ export interface JdGenerateInput {
   employment_type: string;
   work_arrangement:string
   location: string;
-  yrs_experience: number | null;
+  yrs_experience: string | null;
   salary_compensation_info: string | null;
   department: string | null;
   skills: string | null;
@@ -354,7 +354,7 @@ export async function downloadJDPdf(
 }
 
 export async function listScreenings(): Promise<ScreeningListItem[]> {
-  return request<ScreeningListItem[]>("/api/screenings");
+  return request<ScreeningListItem[]>("/api/v1/screenings");
 }
 
 export async function getScreening(id: string): Promise<Screening> {
@@ -377,8 +377,8 @@ export async function getResults(
     "search" in params || "stage" in params || "sort" in params
       ? toRequestParams(params as CandidateQueryState)
       : new URLSearchParams({
-          page: String((params as { page?: number }).page ?? 1),
-          page_size: String((params as { page_size?: number }).page_size ?? 20),
+          cursor: String((params as { cursor?: number }).cursor ?? ""),
+          limit: String((params as { limit?: number }).limit ?? 10),
         });
   return request<PaginatedResults>(`/api/v1/screenings/${screeningId}/results?${qs.toString()}`);
 }

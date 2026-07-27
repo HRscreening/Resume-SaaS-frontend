@@ -12,6 +12,13 @@ export type ResumeScoringBodyType = {
     status: string;
 }
 
+export type ResumeBatchBodyType = {
+    id: string;
+    url: string;
+    filename: string;
+    status: string;
+}
+
 export type EventBodyType = {
     type: 'Parsing' | 'Scoring' | 'Screening' | 'Parsing_Batch_Complete' | 'Scoring_Batch_Complete';
     resume_id: string;

@@ -20,6 +20,15 @@ const labelClass = "block text-xs font-medium text-[#404040] mb-1";
 const WORK_ARRANGEMENTS = ["Remote", "Hybrid", "On-site"] as const;
 const EmploymentTypes = ["Full-time", "Internship", "Consulting"] as const;
 
+
+const CURRENCY_OPTIONS = [
+  { value: "INR", label: "₹ INR" },
+  { value: "USD", label: "$ USD" },
+  { value: "EUR", label: "€ EUR" },
+  { value: "GBP", label: "£ GBP" },
+  { value: "JPY", label: "¥ JPY" },
+  { value: "AUD", label: "$ AUD" },
+]
 // The backend rejects a company_url without an http(s):// scheme, so accept a
 // bare domain in the UI and prepend https:// before sending.
 function normalizeUrl(value: string): string {
@@ -50,8 +59,17 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
   const [workArrangement, setWorkArrangement] = useState("");
   const [employmentType, setEmploymentType] = useState("");
   const [location, setLocation] = useState("");
-  const [yrsExperience, setYrsExperience] = useState("");
-  const [salary, setSalary] = useState("");
+  // const [salary, setSalary] = useState("");
+
+  const [currency, setCurrency] = useState("INR");
+  const [minSalary, setMinSalary] = useState("");
+  const [maxSalary, setMaxSalary] = useState("");
+
+  // const [yrsExperience, setYrsExperience] = useState("");
+
+  const [minExperience, setMinExperience] = useState("");
+  const [maxExperience, setMaxExperience] = useState("");
+
   const [department, setDepartment] = useState("");
   const [skills, setSkills] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -83,12 +101,15 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
   // The backend requires these four; gate generation on them so we surface a
   // clear hint instead of a 422.
   const detailsComplete =
-    Boolean(companyName.trim()) &&
-    Boolean(companyUrl.trim()) &&
-    Boolean(workArrangement.trim()) &&
-    Boolean(location.trim());
+    Boolean(currency.trim()) &&
+    Boolean(minSalary.trim()) &&
+    Boolean(maxSalary.trim()) &&
+    Boolean(minExperience.trim()) &&
+    Boolean(maxExperience.trim())
+
+
   const canGenerate =
-    Boolean(jobTitle.trim())  && !generating
+    Boolean(jobTitle.trim()) && !generating && detailsComplete && companyName.trim() && companyUrl.trim() && workArrangement.trim() && employmentType.trim();
   // The PDF needs both a JD body and the grounding details the backend requires;
   // gate the export the same way generation is gated so we don't send a 422.
   const canDownload =
@@ -101,8 +122,54 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
   // Assemble the structured `jd_details` payload shared by generation and PDF
   // export. Optional numeric/text fields collapse to null when blank.
   function buildJdDetails(): JdGenerateInput {
-    const trimmedYrs = yrsExperience.trim();
-    const parsedYrs = trimmedYrs ? Number(trimmedYrs) : null;
+    
+    if(!minExperience.trim() && maxExperience.trim()){
+      throw new Error("Please enter minimum experience");
+    }
+
+    if(minExperience.trim() && !maxExperience.trim()){
+      throw new Error("Please enter maximum experience");
+    }
+
+    if(!minSalary.trim() && maxSalary.trim()){
+      throw new Error("Please enter minimum salary");
+    }
+
+    if(minSalary.trim() && !maxSalary.trim()){
+      throw new Error("Please enter maximum salary");
+    }
+
+    if(minExperience.trim() && maxExperience.trim() && parseInt(minExperience) > parseInt(maxExperience)){
+      throw new Error("Minimum experience cannot be greater than maximum experience");
+    }
+
+    if(minSalary.trim() && maxSalary.trim() && parseInt(minSalary) > parseInt(maxSalary)){
+      throw new Error("Minimum salary cannot be greater than maximum salary");
+    }
+
+    if(minExperience.trim() && maxExperience.trim() && parseInt(minExperience) < 0){
+      throw new Error("Minimum experience cannot be negative");
+    }
+
+    if(minSalary.trim() && maxSalary.trim() && parseInt(minSalary) < 0){
+      throw new Error("Minimum salary cannot be negative");
+    }
+
+    if(minExperience.trim() && maxExperience.trim() && parseInt(maxExperience) < 0){
+      throw new Error("Maximum experience cannot be negative");
+    }
+
+    if(minSalary.trim() && maxSalary.trim() && parseInt(maxSalary) < 0){
+      throw new Error("Maximum salary cannot be negative");
+    }
+
+    if(minExperience.trim() && maxExperience.trim() && parseInt(maxExperience) > 50){
+      throw new Error("Maximum experience cannot be greater than 50 yrs");
+    }
+
+    const experienceRange = `${minExperience.trim()}-${maxExperience.trim()}`;
+    const salaryRange = `${currency} ${minSalary.trim()}-${maxSalary.trim()} LPA`;
+
 
     const isCompanyUrlValid = !companyUrl.trim() || /^https?:\/\//i.test(companyUrl.trim());
     if (!isCompanyUrlValid) {
@@ -116,8 +183,8 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
       work_arrangement: workArrangement.trim(),
       employment_type: employmentType.trim(),
       location: location.trim(),
-      yrs_experience: parsedYrs !== null && !Number.isNaN(parsedYrs) ? parsedYrs : null,
-      salary_compensation_info: salary.trim() || null,
+      yrs_experience: experienceRange,
+      salary_compensation_info: salaryRange,
       department: department.trim() || null,
       skills: skills.trim() || null,
     };
@@ -231,7 +298,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
               {/* Company name */}
               <div>
                 <label htmlFor="jd-company-name" className={labelClass}>
-                  Company name
+                  Company name<span className="text-red-500">*</span>
                 </label>
                 <input
                   id="jd-company-name"
@@ -246,7 +313,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
               {/* Company website */}
               <div>
                 <label htmlFor="jd-company-url" className={labelClass}>
-                  Company website
+                  Company website<span className="text-red-500">*</span>
                 </label>
                 <input
                   id="jd-company-url"
@@ -262,7 +329,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
               {/* Work arrangement */}
               <div>
                 <label htmlFor="jd-work-arrangement" className={labelClass}>
-                  Work arrangement
+                  Work arrangement<span className="text-red-500">*</span>
                 </label>
                 <select
                   id="jd-work-arrangement"
@@ -284,7 +351,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
               {/* Employement Type */}
               <div>
                 <label htmlFor="jd-work-arrangement" className={labelClass}>
-                  Employment Type
+                  Employment Type<span className="text-red-500">*</span>
                 </label>
                 <select
                   id="jd-employment-type"
@@ -321,35 +388,78 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
               {/* Years of experience */}
               <div>
                 <label htmlFor="jd-yrs-experience" className={labelClass}>
-                  Years of experience
-                  <span className="ml-1.5 font-normal text-[#A0A0A0]">(optional)</span>
+                  Years of experience<span className="text-red-500">*</span>
+                                  
                 </label>
-                <input
-                  id="jd-yrs-experience"
-                  type="number"
-                  min={0}
-                  value={yrsExperience}
-                  onChange={(e) => setYrsExperience(e.target.value)}
-                  disabled={generating}
-                  placeholder="e.g. 3"
-                  className={fieldClass}
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    id="jd-yrs-experience-min"
+                    type="number"
+                    min={0}
+                    value={minExperience}
+                    onChange={(e) => setMinExperience(e.target.value)}
+                    disabled={generating}
+                    placeholder="Min. yrs"
+                    className={fieldClass}
+                  />
+                  -
+                  <input
+                    id="jd-yrs-experience-max"
+                    type="number"
+                    min={0}
+                    value={maxExperience}
+                    onChange={(e) => setMaxExperience(e.target.value)}
+                    disabled={generating}
+                    placeholder="Max. yrs"
+                    className={fieldClass}
+                  />
+                </div>
               </div>
               {/* Salary / compensation */}
               <div>
                 <label htmlFor="jd-salary" className={labelClass}>
-                  Salary / compensation
-                  <span className="ml-1.5 font-normal text-[#A0A0A0]">(optional)</span>
+                  Salary / compensation<span className="text-red-500">*</span>
+                                    <span className="ml-1.5 font-normal text-[#A0A0A0]">(In LPA)</span>
                 </label>
-                <input
-                  id="jd-salary"
-                  type="text"
-                  value={salary}
-                  onChange={(e) => setSalary(e.target.value)}
+                <div className="flex items-center gap-2">
+                
+                <select
+                  id="salary-currency"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
                   disabled={generating}
-                  placeholder="e.g. ₹18–24 LPA"
+                  className={`${fieldClass} ${employmentType ? "" : "text-[#A0A0A0]"}`}
+                >
+                  <option value="" disabled>
+                    Select…
+                  </option>
+                  {CURRENCY_OPTIONS.map((cur) => (
+                    <option key={cur.value} value={cur.value} className="text-[#0F0F0F]">
+                      {cur.label}
+                    </option>
+                  ))}
+                </select>
+
+                <input
+                  id="jd-salary-min"
+                  type="number"
+                  value={minSalary}
+                  onChange={(e) => setMinSalary(e.target.value)}
+                  disabled={generating}
+                  placeholder="Min. LPA"
                   className={fieldClass}
-                />
+                  /> 
+                   -
+                   <input
+                  id="jd-salary-max"
+                  type="number"
+                  value={maxSalary}
+                  onChange={(e) => setMaxSalary(e.target.value)}
+                  disabled={generating}
+                  placeholder="Max. LPA"
+                  className={fieldClass}
+                  /> 
+                  </div>
               </div>
               {/* Department / Team */}
               <div>
@@ -388,7 +498,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
         </AccordionItem>
       </Accordion>
 
-       {/* Prompt input + generate */}
+      {/* Prompt input + generate */}
       <div>
         <label htmlFor="jd-ai-prompt" className="block text-xs font-medium text-[#404040] mb-1.5">
           {hasGenerated ? "Refine the job description" : "Describe the role you want to hire for"}
@@ -499,7 +609,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
         </div>
       )}
 
-     
+
     </div>
   );
 }

@@ -97,7 +97,8 @@ export default function ScreeningDetail() {
   const cachedListItem = queryClient
     .getQueryData<ScreeningListItem[]>(["screenings"])
     ?.find((s) => s.id === id);
-  const knownIsDraft = cachedListItem?.status === "draft";
+  // const knownIsDraft = cachedListItem?.status === "draft";
+  const knownIsDraft = false;
 
   const { data: screening, isLoading, error } = useQuery({
     queryKey: ["screening", id],
@@ -131,7 +132,6 @@ export default function ScreeningDetail() {
   // the URL via useCandidateQuery. The hook also owns the results query,
   // so we don't run a separate useQuery here.
   const candidateQuery = useCandidateQuery(id, {
-    pageSize: PAGE_SIZE,
     pollWhileProcessing: true,
     batchDone,
   });
@@ -144,9 +144,7 @@ export default function ScreeningDetail() {
     setSort,
     setOverallRange,
     setCategoryRange,
-    setPage: setQueryPage,
     clearAll,
-    prefetchPage,
     query: resultsQuery,
   } = candidateQuery;
   const resultsPage = resultsQuery.data;
@@ -713,7 +711,7 @@ export default function ScreeningDetail() {
       <div className="flex-1 min-h-0 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
         
         {
-          currentTab === "Applications" && <Applications />
+          currentTab === "Applications" && <>Not Found</> 
         }
 
         {/* Content area */
@@ -1007,7 +1005,7 @@ export default function ScreeningDetail() {
                   className="mt-4 w-full h-10 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                 >
                   {uploading || isUploading && <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
-                  {uploading || isUploading ? "Uploading & scoring…" : "Add & re-rank"}
+                  {uploading || isUploading ? "Uploading…" : "Add Resumes"}
                 </button>
               </div>
             )}
@@ -1056,16 +1054,13 @@ export default function ScreeningDetail() {
                   <CandidatesTable
                     candidates={tableCandidates}
                     categories={rubricCategories}
-                    page={showSelectedOnly ? 1 : currentPage}
-                    pageSize={PAGE_SIZE}
-                    total={tableTotal}
-                    onPageChange={(p) => {
-                      setOpenAnalysisSheet(null);
-                      setQueryPage(p);
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
+                    // page={showSelectedOnly ? 1 : currentPage}
+                    // pageSize={PAGE_SIZE}
+                    // total={tableTotal}
+                    // onPageChange={}
                     loading={!showSelectedOnly && pageLoading}
-                    onPrefetchPage={prefetchPage}
+                    
+                    // onPrefetchPage={()=>{}}
                     selectable={rescoreMode}
                     selectedIds={selectedIds}
                     onToggle={toggleSelection}

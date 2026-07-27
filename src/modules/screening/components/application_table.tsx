@@ -1,5 +1,6 @@
 import { Pagination } from "@/components/screening/Pagination";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useInView } from "react-intersection-observer";
 
 import { Application } from "@/modules/screening/types/application.type";
 import CandidateRow from "@/modules/screening/components/application_row";
@@ -16,22 +17,37 @@ interface ApplicationTableProps {
     page: number;
     showSelectedOnly: boolean;
     onPageChange: (page: number) => void;
+    onLoadMore?: () => Promise<unknown>;
+    hasMore?: boolean;
+    loadingMore?: boolean;
 }
 
 export function ApplicationTable({
     candidates,
     selectable = false,
-    total,
-    totalPages = 1,
     pageSize = 10,
-    page,
     showSelectedOnly,
     onPageChange,
+    hasMore,
+    loadingMore,
+    onLoadMore
 }: ApplicationTableProps) {
 
     const [loading, setLoading] = useState<boolean>(false);
 
+    const { ref: loadMoreRef, inView } = useInView({ threshold: 0, rootMargin: "300px", });
     const { selectedApplications, togglePageSelection } = useSelectedApplications();
+
+
+    useEffect(() => {
+        if (!inView) return;
+        if (!hasMore) return;
+        if (loadingMore) return;
+
+        console.log("inView:", inView);
+        console.log("hasMore:", hasMore);
+        onLoadMore?.();
+    }, [inView, hasMore, loadingMore, onLoadMore]);
 
     const visibleIds = candidates.map(c => c.id);
 
@@ -49,11 +65,13 @@ export function ApplicationTable({
     return (
         <div className="space-y-4">
             {/* Table */}
+            {/* <div className="rounded-2xl border border-[#E8E5DF] bg-white overflow-hidden">
+                <div className="overflow-x-auto"> */}
             <div className="rounded-2xl border border-[#E8E5DF] bg-white overflow-hidden">
-                <div className="overflow-x-auto">
+                <div className="max-h-[65vh] overflow-y-auto overflow-x-auto">
                     <table className="w-full text-sm table-fixed">
 
-                        <thead>
+                        <thead className="sticky top-0 z-20 bg-[#F5F3EE]">
                             <tr className="border-b border-[#E8E5DF] bg-[#F5F3EE]">
 
                                 {selectable && (
@@ -123,22 +141,19 @@ export function ApplicationTable({
                             ))}
                         </tbody>
                     </table>
+
+                    {hasMore && (
+                        <div ref={loadMoreRef} className="w-full">
+                            <div className="w-full flex items-center justify-center gap-3 py-8 text-sm text-muted-foreground">
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
+                                <span>Loading more applications...</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="pt-2">
-                    <Pagination
-                        currentPage={page}
-                        totalPages={totalPages}
-                        total={total}
-                        pageSize={pageSize}
-                        onChange={onPageChange}
-                        onPrefetchPage={() => { }}
-                    />
-                </div>
-            )}
+
 
         </div>
     );

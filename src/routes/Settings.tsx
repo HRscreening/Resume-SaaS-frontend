@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getProfile, getUsage, getPlans, deleteAccount, cancelSubscription } from "@/lib/api";
@@ -8,10 +8,11 @@ import { useUserKey } from "@/lib/userKey";
 import { cn } from "@/lib/utils";
 import type { SubscriptionPlan } from "@/types";
 
+
 type TabKey = "general" | "account" | "privacy" | "billing" | "capabilities" | "connectors";
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: "general", label: "General" },
+  // { key: "general", label: "General" },
   { key: "account", label: "Account" },
   // { key: "privacy", label: "Privacy" },
   { key: "billing", label: "Billing" },
@@ -97,6 +98,24 @@ function AccountPanel() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  const [hideChangePassword, setHideChangePassword] = useState(true);
+
+  async function checkGoogleUser() {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getUser();
+
+
+    const isGoogleUser =
+      data.user?.app_metadata?.provider === "google";
+
+    setHideChangePassword(isGoogleUser);
+  }
+
+  useEffect(() => {
+    checkGoogleUser();
+
+  }, [])
+
   async function handleLogout() {
     setLoggingOut(true);
     clearAuthCache();
@@ -141,17 +160,19 @@ function AccountPanel() {
         />
 
         {/* Change password */}
-        <Row
-          label="Change password"
-          action={
-            <Link
-              to="/settings/password"
-              className="h-9 px-4 border border-[#E8E5DF] text-sm font-medium text-[#0F0F0F] rounded-xl hover:bg-[#F5F3EE] transition-colors inline-flex items-center"
-            >
-              Change password
-            </Link>
-          }
-        />
+        {hideChangePassword &&
+          <Row
+            label="Change password"
+            action={
+              <Link
+                to="/settings/password"
+                className="h-9 px-4 border border-[#E8E5DF] text-sm font-medium text-[#0F0F0F] rounded-xl hover:bg-[#F5F3EE] transition-colors inline-flex items-center"
+              >
+                Change password
+              </Link>
+            }
+          />
+        }
 
         {/* Delete account */}
         <Row

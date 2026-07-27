@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useActiveParsingQuery } from '@/modules/screening/hooks/progress.hook';
 import type { ResumeParsingBodyType, EventBodyType } from "@/modules/screening/types/progress.type";
+import type { GetParsingResponseType } from "@/modules/screening/apis/getActiveParsings";
 import type { Application } from "@/modules/screening/types/application.type";
 import { PendingResumeRow } from './ProcessingResumeRow';
 import { queryClient } from '@/lib/queryClient';
 import { ApplicationQueryKeys, ResumeParsingQueryKeys, ActiveBatchesQueryKeys } from '@/modules/screening/queryKeys';
-import type { GetApplicationResponseType } from '@/modules/screening/apis/getApplications';
+import type { GetApplicationsResponseType } from '@/modules/screening/apis/getApplications';
 import type { GetActiveBatchesResponse } from '@/modules/screening/apis/activeBatches';
 import {
     Accordion,
@@ -13,6 +14,7 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion";
+import type { InfiniteData } from "@tanstack/react-query";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
@@ -43,20 +45,17 @@ export function stageLine(counts: Record<string, number>): string {
 }
 
 const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => {
-    const [resumes, setResumes] = useState<ResumeParsingBodyType[]>([]);
-    const [total, setTotal] = useState(0);
+
 
     const eventSourceRef = useRef<EventSource | null>(null);
     const { data, isError } = useActiveParsingQuery({ screening_id, batch_id });
 
     const pendingApplications = useRef<Application[]>([]);
+    const batchCompleteTimeout = useRef<number | null>(null);
     const BATCH_SIZE = 4;
 
-    useEffect(() => {
-        if (!data) return;
-        setResumes(data.resumes);
-        setTotal(data.total);
-    }, [data]);
+    const resumes = data?.resumes || [];
+    const total = data?.total || 0;
 
     useEffect(() => {
         if (!screening_id || !batch_id) return;
@@ -69,20 +68,25 @@ const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => 
             pendingApplications.current = [];
 
             queryClient.setQueryData(
-                ApplicationQueryKeys.getApplications(screening_id, 1, 10),
-                (oldData: GetApplicationResponseType | undefined) => {
+                ApplicationQueryKeys.getApplications(screening_id, 10),
+                (oldData: InfiniteData<GetApplicationsResponseType> | undefined) => {
                     if (!oldData) return oldData;
 
-                    const existingIds = new Set(oldData.applications.map(a => a.id));
+                    const firstPage = oldData.pages[0];
+                    if (!firstPage) return oldData;
+
+                    const existingIds = new Set(firstPage.items.map(a => a.id));
                     const newApps = batch.filter(a => !existingIds.has(a.id));
 
                     return {
                         ...oldData,
-                        applications: [
-                            ...newApps,
-                            ...oldData.applications,
+                        pages: [
+                            {
+                                ...firstPage,
+                                items: [...newApps, ...firstPage.items],
+                            },
+                            ...oldData.pages.slice(1),
                         ],
-                        total: oldData.total + newApps.length,
                     };
                 }
             );
@@ -96,22 +100,39 @@ const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => 
             const type = payload.type;
 
             if (type === "Parsing") {
-                setResumes(prev => {
-                    const next = prev.map(r =>
-                        r.id === payload.resume_id ? { ...r, status: payload.status } : r
-                    );
 
-                    if (payload.status === "success" && payload.data) {
-                        pendingApplications.current.push(payload.data);
-                        if (pendingApplications.current.length >= BATCH_SIZE) {
-                            flushApplications();
+                queryClient.setQueryData(
+                    ResumeParsingQueryKeys.getActiveParsings(screening_id, batch_id),
+                    (old: GetParsingResponseType | undefined) => {
+                        if (!old) return old;
+
+                        if (payload.status === "success" && payload.data) {
+                            pendingApplications.current.push(payload.data);
+
+                            if (pendingApplications.current.length >= BATCH_SIZE) {
+                                flushApplications();
+                            }
                         }
-                    }
 
-                    return next;
-                });
+                        return {
+                            ...old,
+                            resumes: old.resumes.map(r =>
+                                r.id === payload.resume_id
+                                    ? { ...r, status: payload.status }
+                                    : r
+                            ),
+                        };
+                    }
+                );
+
             } else if (type === "Parsing_Batch_Complete") {
+                 if (batchCompleteTimeout.current) {
+                    clearTimeout(batchCompleteTimeout.current);
+                }
+                batchCompleteTimeout.current = window.setTimeout(() => {
+
                 flushApplications();
+                console.log("Parsing batch complete event received:", payload);
                 queryClient.invalidateQueries({ queryKey: ApplicationQueryKeys.screening(screening_id) });
                 queryClient.invalidateQueries({ queryKey: ResumeParsingQueryKeys.getActiveParsings(screening_id, batch_id) });
                 queryClient.setQueryData(
@@ -123,7 +144,7 @@ const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => 
                             parsing_batch_ids: old.parsing_batch_ids.filter(id => id !== batch_id),
                         };
                     }
-                );
+                );}, 700);
             }
         };
 
@@ -133,6 +154,9 @@ const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => 
 
         return () => {
             flushApplications();
+              if (batchCompleteTimeout.current) {
+                clearTimeout(batchCompleteTimeout.current);
+            }
             source.close();
             eventSourceRef.current = null;
         };
@@ -151,10 +175,10 @@ const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => 
     }
 
     const counts = countByStage(resumes);
-    const completedCount = resumes.filter(r => 
-        r.status.toLowerCase() === "success" || 
-        r.status.toLowerCase() === "parsed" || 
-        r.status.toLowerCase() === "error" || 
+    const completedCount = resumes.filter(r =>
+        r.status.toLowerCase() === "success" ||
+        r.status.toLowerCase() === "parsed" ||
+        r.status.toLowerCase() === "error" ||
         r.status.toLowerCase() === "failed"
     ).length;
 
