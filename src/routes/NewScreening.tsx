@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { analyzeJD, createJob, parseJDFile } from "@/lib/api";
+import { analyzeJD, createJob, createJob_v1,parseJDFile } from "@/lib/api";
 import type { Rubric, Subcategory } from "@/types";
 import { MAX_SUBCATEGORIES } from "@/lib/rubric";
 import { StepIndicator } from "@/components/screening/new-screening/StepIndicator";
 import { JdInputStep } from "@/components/screening/new-screening/JdInputStep";
 import { RubricReviewStep } from "@/components/screening/new-screening/RubricReviewStep";
+
+
 
 type Step = 1 | 2;
 type JdInputMode = "paste" | "upload" | "ai";
@@ -122,15 +124,20 @@ export default function NewScreening() {
     setRubric({ ...rubric, categories: updated });
   }
 
-  async function handleSaveJob() {
+  async function handleSaveJob(sourceJob:boolean) {
     if (!rubric || !title.trim()) return;
     setSaving(true);
     try {
-      const { screening_id } = await createJob({
+      const data = {
         title: title.trim(),
         raw_jd_text: jdText,
         rubric,
-      });
+        source_job: sourceJob || false,
+      }
+
+      // console.log("Saving job with data:", data);
+
+      const { screening_id } = await createJob_v1(data);
       queryClient.invalidateQueries({ queryKey: ["screenings"] });
       navigate({ to: "/screenings/$id", params: { id: screening_id } });
     } catch (err) {

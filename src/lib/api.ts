@@ -20,7 +20,7 @@ import { toRequestParams } from "@/components/screening/filters/queryEncoding";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
-async function getAuthHeader(): Promise<Record<string, string>> {
+export async function getAuthHeader(): Promise<Record<string, string>> {
   const token = await getAccessToken();
   return { Authorization: `Bearer ${token}` };
 }
@@ -40,7 +40,7 @@ function parseErrorDetail(body: unknown, status: number): string {
   return `HTTP ${status}`;
 }
 
-async function request<T>(
+export async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
@@ -60,6 +60,10 @@ async function request<T>(
     throw new Error(parseErrorDetail(body, res.status));
   }
 
+  // 204 No Content (e.g. DELETE) has no body to parse.
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return undefined as T;
+  }
   return res.json() as Promise<T>;
 }
 
@@ -105,6 +109,17 @@ export async function createJob(data: {
   rubric: Rubric;
 }): Promise<{ screening_id: string }> {
   return request<{ screening_id: string }>("/api/screenings/jobs", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+export async function createJob_v1(data: {
+  title: string;
+  raw_jd_text: string;
+  rubric: Rubric;
+  source_job: boolean;
+}): Promise<{ screening_id: string }> {
+  return request<{ screening_id: string }>("/api/v1/screenings/create-job", {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -248,7 +263,7 @@ export interface JdGenerateInput {
   employment_type: string;
   work_arrangement:string
   location: string;
-  yrs_experience: number | null;
+  yrs_experience: string | null;
   salary_compensation_info: string | null;
   department: string | null;
   skills: string | null;
@@ -339,7 +354,7 @@ export async function downloadJDPdf(
 }
 
 export async function listScreenings(): Promise<ScreeningListItem[]> {
-  return request<ScreeningListItem[]>("/api/screenings");
+  return request<ScreeningListItem[]>("/api/v1/screenings");
 }
 
 export async function getScreening(id: string): Promise<Screening> {
@@ -362,8 +377,8 @@ export async function getResults(
     "search" in params || "stage" in params || "sort" in params
       ? toRequestParams(params as CandidateQueryState)
       : new URLSearchParams({
-          page: String((params as { page?: number }).page ?? 1),
-          page_size: String((params as { page_size?: number }).page_size ?? 20),
+          cursor: String((params as { cursor?: number }).cursor ?? ""),
+          limit: String((params as { limit?: number }).limit ?? 10),
         });
   return request<PaginatedResults>(`/api/v1/screenings/${screeningId}/results?${qs.toString()}`);
 }

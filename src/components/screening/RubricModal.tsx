@@ -1,4 +1,5 @@
 import type { RubricCategory } from "@/types";
+import { CategoryImportancePillsViewOnly } from "@/components/screening/new-screening/CategoryImportancePills";
 
 interface RubricModalProps {
   categories: RubricCategory[];
@@ -30,11 +31,11 @@ export function RubricModal({ categories, onClose, onEdit }: RubricModalProps) {
           </div>
         </div>
         <div className="p-6 space-y-4">
-          {categories.map((cat) => (
+          {categories.map((cat,index) => (
             <div key={cat.name} className="border border-[#E8E5DF] rounded-xl overflow-hidden">
               <div className="px-4 py-3 bg-[#F5F3EE] flex items-center justify-between">
                 <span className="text-sm font-semibold text-[#0F0F0F]">{cat.name}</span>
-                <span className="text-xs font-bold text-[#404040]">{cat.weight}%</span>
+                <CategoryImportancePillsViewOnly weight={cat.weight} categoryName={cat.name} key={index}/>
               </div>
               {cat.subcategories.length > 0 && (
                 <div className="divide-y divide-[#E8E5DF]">

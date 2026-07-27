@@ -104,17 +104,29 @@ export interface Screening {
   stages?: StagesMap;
   created_at: string;
   updated_at: string;
+  parsing_batch_ids: string[] | null;
 }
 
 export interface ScreeningListItem {
   id: string;
   title: string;
-  status: ScreeningStatus;
-  total_resumes: number;
-  scored_resumes: number;
+  total_applications: number;
+  screened_applications: number;
   avg_score: number | null;
+  last_accessed_at: string | null;
   created_at: string;
 }
+// export interface ScreeningListItem {
+//   id: string;
+//   title: string;
+//   status: ScreeningStatus;
+//   total_applications: number;
+//   screened_applications: number;
+//   total_resumes: number;
+//   scored_resumes: number;
+//   avg_score: number | null;
+//   created_at: string;
+// }
 
 // ─── Resumes & Scores ────────────────────────────────────────────────────────
 
@@ -219,8 +231,8 @@ export interface SortRule {
 export type MatchTierId = "strong" | "potential" | "risky" | "poor";
 
 export interface CandidateQueryState {
-  page: number;
-  page_size: number;
+  page?: number;
+  limit: number;
   search: string;
   stage: string[];
   match: MatchTierId[];

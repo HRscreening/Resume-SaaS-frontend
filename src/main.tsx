@@ -24,6 +24,6 @@ initAuth().finally(() => {
         </TooltipProvider>
         {import.meta.env.VITE_ENVIROMENT === "Development" && true && (<ReactQueryDevtools initialIsOpen={false} />)}
       </QueryClientProvider>
-    </StrictMode>
+    </StrictMode> 
   );
 });

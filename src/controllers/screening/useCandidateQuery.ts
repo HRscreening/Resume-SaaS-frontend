@@ -19,15 +19,16 @@ import type {
 const SEARCH_DEBOUNCE_MS = 350;
 
 interface UseCandidateQueryOptions {
-  pageSize?: number;
+  limit?: number;
   // When true, polls the results endpoint until the parent says batch is done.
   // Mirrors the previous behavior in ScreeningDetail.
   pollWhileProcessing?: boolean;
   batchDone?: boolean;
+  cursor?: string;
 }
 
 export function useCandidateQuery(screeningId: string, options: UseCandidateQueryOptions = {}) {
-  const { pageSize = 10, pollWhileProcessing = false, batchDone = true } = options;
+  const { limit = 10,cursor = null, pollWhileProcessing = false, batchDone = true } = options;
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -38,8 +39,8 @@ export function useCandidateQuery(screeningId: string, options: UseCandidateQuer
   // the URL, so downstream memoisation keeps working.
   const urlState = useMemo<CandidateQueryState>(() => {
     const decoded = decodeQueryState(rawSearch);
-    return { ...decoded, page_size: pageSize };
-  }, [rawSearch, pageSize]);
+    return { ...decoded, limit: limit };
+  }, [rawSearch, limit]);
 
   // Local search-input state — typed-into immediately for snappy UX, but
   // only flushed into the URL after the debounce. Initial value comes from
@@ -52,14 +53,14 @@ export function useCandidateQuery(screeningId: string, options: UseCandidateQuer
   // the debounced value, via the effect below.
   const state = useMemo<CandidateQueryState>(() => {
     if (debouncedSearch === urlState.search) return urlState;
-    return { ...urlState, search: debouncedSearch, page: 1 };
+    return { ...urlState, search: debouncedSearch};
   }, [urlState, debouncedSearch]);
 
   // Push debounced search to URL whenever it diverges. Other setters write
   // synchronously through pushState() below.
   useEffect(() => {
     if (debouncedSearch === urlState.search) return;
-    pushState({ ...urlState, search: debouncedSearch, page: 1 });
+    pushState({ ...urlState, search: debouncedSearch });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
@@ -105,10 +106,10 @@ export function useCandidateQuery(screeningId: string, options: UseCandidateQuer
   // Setters — each one resets to page 1 when filter criteria change so the
   // user isn't left on page 5 of a result set that only has 2 pages.
   const setSearch = useCallback((s: string) => setSearchInput(s), []);
-  const setStage = useCallback((stage: string[]) => pushState({ ...urlState, stage, page: 1 }), [urlState]);
-  const setMatch = useCallback((match: MatchTierId[]) => pushState({ ...urlState, match, page: 1 }), [urlState]);
+  const setStage = useCallback((stage: string[]) => pushState({ ...urlState, stage }), [urlState]);
+  const setMatch = useCallback((match: MatchTierId[]) => pushState({ ...urlState, match }), [urlState]);
   const setOverallRange = useCallback(
-    (range: RangeFilter | undefined) => pushState({ ...urlState, overall_score: range, page: 1 }),
+    (range: RangeFilter | undefined) => pushState({ ...urlState, overall_score: range }),
     [urlState],
   );
   const setCategoryRange = useCallback(
@@ -119,29 +120,17 @@ export function useCandidateQuery(screeningId: string, options: UseCandidateQuer
       } else {
         next[name] = range;
       }
-      pushState({ ...urlState, category_scores: next, page: 1 });
+      pushState({ ...urlState, category_scores: next});
     },
     [urlState],
   );
-  const setSort = useCallback((sort: SortRule[]) => pushState({ ...urlState, sort, page: 1 }), [urlState]);
-  const setPage = useCallback((page: number) => pushState({ ...urlState, page }), [urlState]);
+  const setSort = useCallback((sort: SortRule[]) => pushState({ ...urlState, sort }), [urlState]);
   const clearAll = useCallback(() => {
     setSearchInput("");
-    pushState({ ...DEFAULT_QUERY_STATE, page_size: pageSize });
-  }, [pageSize]);
+    pushState({ ...DEFAULT_QUERY_STATE, limit: limit });
+  }, [limit]);
 
-  // Hover-prefetch hook for pagination buttons — mirrors the existing
-  // prefetch pattern in ScreeningDetail.
-  const prefetchPage = useCallback(
-    (page: number) => {
-      const target = { ...requestState, page };
-      queryClient.prefetchQuery({
-        queryKey: ["results", screeningId, target],
-        queryFn: () => getResults(screeningId, target),
-      });
-    },
-    [queryClient, screeningId, requestState],
-  );
+  
 
   return {
     state,
@@ -152,9 +141,7 @@ export function useCandidateQuery(screeningId: string, options: UseCandidateQuer
     setOverallRange,
     setCategoryRange,
     setSort,
-    setPage,
     clearAll,
-    prefetchPage,
     // Surface the underlying query for parent components that need
     // loading/data signals alongside the URL-state setters.
     query,

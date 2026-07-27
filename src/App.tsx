@@ -35,8 +35,16 @@ import ChangePassword from "@/routes/ChangePassword";
 import NewScreening from "@/routes/NewScreening";
 import NotFound from "@/routes/NotFound";
 
+// Candidates
+// import Candidates from "@/routes/Candidates";
+import Candidates from "@/routes/NewCandidatePage";
+
+
+
+
 // ─── Eager imports — these are the most-visited pages, no lazy delay ──
-import ScreeningDetail from "@/routes/ScreeningDetail";
+// import ScreeningDetail from "@/routes/ScreeningDetail"; // Old one
+import ScreeningDetail from "@/modules/screening/routes/screening"; // New one
 import ResumeDetail from "@/routes/ResumeDetail";
 import EditRubric from "@/routes/EditRubric";
 
@@ -197,6 +205,12 @@ const screeningsRoute = createRoute({
   component: Screenings,
 });
 
+const candidatesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/candidates",
+  component: Candidates,
+});
+
 const newScreeningRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/screenings/new",
@@ -215,7 +229,7 @@ const screeningDetailRoute = createRoute({
     const { id } = params;
     queryClient.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
     queryClient.prefetchQuery({ queryKey: ["results", id], queryFn: () => getResults(id) });
-    queryClient.prefetchQuery({ queryKey: ["batch-progress", id], queryFn: () => getBatchProgress(id) });
+    // queryClient.prefetchQuery({ queryKey: ["batch-progress", id], queryFn: () => getBatchProgress(id) });
   },
   validateSearch: (search: Record<string, unknown>): { saved?: 1 } => {
     // When set, the screening page will show a "Rubric saved" toast.
@@ -290,6 +304,7 @@ const checkoutRoute = createRoute({
   }),
 });
 
+
 // ─── Build router ───────────────────────────────────────────
 
 const routeTree = rootRoute.addChildren([
@@ -310,6 +325,7 @@ const routeTree = rootRoute.addChildren([
   appLayoutRoute.addChildren([
     dashboardRoute,
     screeningsRoute,
+    candidatesRoute,
     newScreeningRoute,
     screeningDetailRoute,
     editRubricRoute,

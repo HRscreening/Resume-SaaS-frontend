@@ -32,7 +32,7 @@ export const DEFAULT_SORT: SortRule[] = [{ field: "overall_score", direction: "d
 
 export const DEFAULT_QUERY_STATE: CandidateQueryState = {
   page: 1,
-  page_size: 10,
+  limit: 10,
   search: "",
   stage: [],
   match: [],
@@ -107,7 +107,7 @@ export function decodeQueryState(search: Record<string, unknown>): CandidateQuer
 
   return {
     page: parseNum(search.page) ?? DEFAULT_QUERY_STATE.page,
-    page_size: parseNum(search.page_size) ?? DEFAULT_QUERY_STATE.page_size,
+    limit: parseNum(search.page_size) ?? DEFAULT_QUERY_STATE.limit,
     search: typeof search.search === "string" ? search.search : "",
     stage: parseCsv(search.stage),
     match,
@@ -122,8 +122,8 @@ export function decodeQueryState(search: Record<string, unknown>): CandidateQuer
 // stays clean (`/screenings/abc` instead of `/screenings/abc?search=&...`).
 export function encodeQueryState(state: CandidateQueryState): Record<string, string | number> {
   const out: Record<string, string | number> = {};
-  if (state.page !== DEFAULT_QUERY_STATE.page) out.page = state.page;
-  if (state.page_size !== DEFAULT_QUERY_STATE.page_size) out.page_size = state.page_size;
+  if (state.page !== DEFAULT_QUERY_STATE.page) out.page = state.page ?? "";
+  if (state.limit !== DEFAULT_QUERY_STATE.limit) out.page_size = state.limit;
   if (state.search) out.search = state.search;
   if (state.stage.length > 0) out.stage = state.stage.join(",");
   if (state.match.length > 0) out.match = state.match.join(",");
@@ -147,7 +147,7 @@ export function encodeQueryState(state: CandidateQueryState): Record<string, str
 export function toRequestParams(state: CandidateQueryState): URLSearchParams {
   const qs = new URLSearchParams();
   qs.set("page", String(state.page));
-  qs.set("page_size", String(state.page_size));
+  qs.set("", String(state.limit));
   if (state.search) qs.set("search", state.search);
   if (state.stage.length > 0) qs.set("stage", state.stage.join(","));
   if (state.overall_score?.min !== undefined) qs.set("overall_min", String(state.overall_score.min));

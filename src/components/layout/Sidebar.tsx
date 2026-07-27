@@ -7,6 +7,7 @@ import { getUsage, listScreenings } from "@/lib/api";
 import { useUserKey, userKey } from "@/lib/userKey";
 import { cn } from "@/lib/utils";
 import type { ScreeningListItem, SubscriptionPlan } from "@/types";
+import { User} from "lucide-react"
 
 interface NavItem {
   href: string;
@@ -77,6 +78,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: <HomeIcon />, exact: true },
   { href: "/screenings", label: "Jobs", icon: <ListIcon /> },
   { href: "/screenings/new", label: "New Job", icon: <PlusIcon />, exact: true },
+  { href: "/candidates", label: "Candidates", icon: <User size={14} />, exact: true },
 ];
 
 const PLAN_LABEL: Record<SubscriptionPlan, string> = {
@@ -130,11 +132,12 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
     // navigation race, multi-tab, server hiccup) — the counter still ends up
     // correct without the user ever needing to refresh.
     refetchInterval: () => {
-      const screenings = queryClient.getQueryData<ScreeningListItem[]>(userKey("screenings"));
-      const anyInFlight = screenings?.some(
-        (s) => s.status === "processing" || s.status === "pending",
-      );
-      return anyInFlight ? 5000 : false;
+      // const screenings = queryClient.getQueryData<ScreeningListItem[]>(userKey("screenings"));
+      // const anyInFlight = screenings?.some(
+      //   (s) => s.status === "processing" || s.status === "pending",
+      // );
+      // return anyInFlight ? 5000 : false;
+      return 1000 * 60 * 3; // 3 minutes;
     },
   });
 

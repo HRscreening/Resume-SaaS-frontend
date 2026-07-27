@@ -10,18 +10,15 @@ import { ActiveFilterChips } from "@/components/screening/filters/ActiveFilterCh
 import { SortableHeader } from "@/components/screening/filters/SortableHeader";
 import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
 
+
+
 interface CandidatesTableProps {
   candidates: RankedCandidate[];
   categories: RubricCategory[];
-  page: number;
-  pageSize: number;
-  total: number;
-  onPageChange: (page: number) => void;
   // Skeleton state for page transitions — when true, tbody shows
   // pageSize skeleton rows instead of the (stale) previous page's data.
   loading?: boolean;
   // Hover-prefetch hook for pagination buttons.
-  onPrefetchPage?: (page: number) => void;
   // Selection mode (rescore picker). When `selectable` is true, a checkbox
   // column is prepended and rows toggle into `selectedIds` instead of opening
   // the analysis sheet. Selection lives on the parent so it survives page
@@ -37,26 +34,21 @@ interface CandidatesTableProps {
   // Filter / sort / search state. When provided, the toolbar + chips render
   // and column headers become sortable. Optional so callers in selection
   // ("show selected only") views can still render the table without filters.
-  queryState?: CandidateQueryState;
-  searchInput?: string;
-  onSearchChange?: (s: string) => void;
-  onStageFilterChange?: (next: string[]) => void;
-  onMatchFilterChange?: (next: MatchTierId[]) => void;
-  onSortChange?: (next: SortRule[]) => void;
-  onOverallRangeChange?: (range: RangeFilter | undefined) => void;
-  onCategoryRangeChange?: (name: string, range: RangeFilter | undefined) => void;
-  onClearAllFilters?: () => void;
+queryState ?: CandidateQueryState;
+searchInput ?: string;
+onSearchChange ?: (s: string) => void;
+onStageFilterChange ?: (next: string[]) => void;
+onMatchFilterChange ?: (next: MatchTierId[]) => void;
+onSortChange ?: (next: SortRule[]) => void;
+onOverallRangeChange ?: (range: RangeFilter | undefined) => void;
+onCategoryRangeChange ?: (name: string, range: RangeFilter | undefined) => void;
+onClearAllFilters ?: () => void;
 }
 
 export function CandidatesTable({
   candidates,
   categories,
-  page,
-  pageSize,
-  total,
-  onPageChange,
   loading = false,
-  onPrefetchPage,
   selectable = false,
   selectedIds,
   onToggle,
@@ -85,7 +77,6 @@ export function CandidatesTable({
   // useCandidateQuery). The page renders exactly what the API returned —
   // no client-side narrowing here. The `searchInput` debounced through
   // useCandidateQuery only echoes back into the toolbar text field.
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   // Header checkbox tri-state — reflects the current page's visible rows.
   const visibleIds = candidates.map((c) => c.resume_id);
@@ -254,7 +245,7 @@ export function CandidatesTable({
             </thead>
             <tbody className="divide-y divide-[#E8E5DF]">
               {loading ? (
-                Array.from({ length: pageSize }).map((_, i) => (
+                Array.from({ length: 10 }).map((_, i) => (
                   <SkeletonRow
                     key={`sk-${i}`}
                     categories={categories}
@@ -290,20 +281,7 @@ export function CandidatesTable({
         </div>
       </div>
 
-      {/* Pagination — full-width row so "Showing X–Y of N" sits left and
-          the page buttons sit right (justify-between is on Pagination itself). */}
-      {totalPages > 1 && (
-        <div className="pt-2">
-          <Pagination
-            currentPage={page}
-            totalPages={totalPages}
-            total={total}
-            pageSize={pageSize}
-            onChange={onPageChange}
-            onPrefetchPage={onPrefetchPage}
-          />
-        </div>
-      )}
+
 
     </div>
   );
@@ -346,13 +324,13 @@ function CandidateRow({
   const stickyBg = selected
     ? "bg-[#FBF1E7] group-hover:bg-[#F8E9D9]"
     : isOpen
-    ? "bg-[#FBF1E7]"
-    : "bg-white group-hover:bg-[#FAFAF8]";
+      ? "bg-[#FBF1E7]"
+      : "bg-white group-hover:bg-[#FAFAF8]";
   const rowBg = selected
     ? "bg-[#FBF1E7] hover:bg-[#F8E9D9]"
     : isOpen
-    ? "bg-[#FBF1E7]"
-    : "hover:bg-[#FAFAF8]";
+      ? "bg-[#FBF1E7]"
+      : "hover:bg-[#FAFAF8]";
 
   function handleRowClick(e: React.MouseEvent) {
     if (selectable) {
