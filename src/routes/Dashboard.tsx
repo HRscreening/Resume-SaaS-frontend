@@ -77,7 +77,7 @@ export default function Dashboard() {
         {[
           { label: "Total screenings", value: screeningsLoading ? "\u2014" : screenings.length },
           // { label: "Completed", value: screeningsLoading ? "\u2014" : completed },
-          { label: "Total Applications", value: screeningsLoading ? "\u2014" : totalApplications },
+          { label: "Total Applications", value: screeningsLoading ? "\u2014" : totalApplications + totalResumes },
           { label: "Resumes Screened", value: screeningsLoading ? "\u2014" : totalResumes },
           {
             label: isFree ? "Trial usage" : "Monthly usage",
