@@ -117,7 +117,7 @@ export default function Screenings() {
                     </Link>
                   </td>
                   <td className="px-6 py-4 text-sm text-[#404040] hidden md:table-cell">
-                    {s.total_applications}
+                    {s.total_applications + s.screened_applications}
                   </td>
                   <td className="px-6 py-4 text-sm text-[#404040] hidden md:table-cell">
                     {s.screened_applications}

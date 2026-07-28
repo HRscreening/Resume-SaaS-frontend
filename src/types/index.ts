@@ -99,7 +99,8 @@ export interface Screening {
   rubric: Rubric | null;
   status: ScreeningStatus;
   total_resumes: number;
-  scored_resumes: number;
+  scored_resumes_cnt: number;
+  applications_cnt:number
   avg_score: number | null;
   stages?: StagesMap;
   created_at: string;

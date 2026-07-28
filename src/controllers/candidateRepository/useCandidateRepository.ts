@@ -97,11 +97,12 @@ export function useCandidateRepositoryQuery( options: UseCandidateRepositoryQuer
   });
 
   function pushState(next: CandidateRepositoryQueryParams) {
-    navigate({
-      to: "/candidates",
-      search: encodeQueryState(next) as never,
-      replace: true,
-    });
+    console.log("Feature Disabled")
+    // navigate({
+    //   to: "/candidates",
+    //   search: encodeQueryState(next) as never,
+    //   replace: true,
+    // });
   }
 
   // Setters — each one resets to page 1 when filter criteria change so the

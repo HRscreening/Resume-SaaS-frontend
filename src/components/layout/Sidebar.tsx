@@ -78,7 +78,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: <HomeIcon />, exact: true },
   { href: "/screenings", label: "Jobs", icon: <ListIcon /> },
   { href: "/screenings/new", label: "New Job", icon: <PlusIcon />, exact: true },
-  { href: "/candidates", label: "Candidates", icon: <User size={14} />, exact: true },
+  // { href: "/candidates", label: "Candidates", icon: <User size={14} />, exact: true },
 ];
 
 const PLAN_LABEL: Record<SubscriptionPlan, string> = {

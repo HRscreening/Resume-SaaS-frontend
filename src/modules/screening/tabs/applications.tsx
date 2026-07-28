@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import ResumeParsingProgress from "../components/Processing/resumeParsingProgress";
 import { useGetBatchesQuery } from "@/modules/screening/hooks/batch.hook";
 
+import { useAnalysisSheetOpen as useInfoSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/modules/screening/components/info_sheet";
+
 const PAGE_SIZE = 30;
 
 
@@ -23,6 +25,7 @@ interface ApplicationPageProps {
 export function ApplicationPage({ screening_id, onTabChange,setSourceMode,sourceMode }: ApplicationPageProps) {
 
     const [page, setPage] = useState<number>(1);
+    const infoOpen = useInfoSheetOpen();
 
     const { data, isLoading,isFetching, isError, error, fetchNextPage, isFetchingNextPage, hasNextPage } = useApplicationsInfiniteQuery({ screening_id, limit: PAGE_SIZE });
     const { data: active_batches } = useGetBatchesQuery(screening_id);
@@ -204,7 +207,7 @@ export function ApplicationPage({ screening_id, onTabChange,setSourceMode,source
                 return (
                     <div
                         className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#E8E5DF] bg-white/95 backdrop-blur px-6 py-3 flex items-center justify-between gap-4 transition-[padding] duration-200 ease-out"
-
+                        style={{ paddingRight: infoOpen ? ANALYSIS_SHEET_WIDTH + 24 : 24 }}
                     >
                         <div className="flex items-center gap-4 flex-wrap">
                             <span className="text-sm font-semibold text-[#0F0F0F]">

@@ -578,14 +578,14 @@ export default function ScreeningDetail() {
   // Backend's `total` is authoritative for pagination. Fall back to the
   // screening's scored count while the first page is still loading, so the
   // page UI doesn't flash empty before the response lands.
-  const totalCandidates = serverTotal || screening.scored_resumes || screening.total_resumes || candidates.length;
+  const totalCandidates = serverTotal || screening.scored_resumes_cnt || screening.total_resumes || candidates.length;
   const hasAnyCandidates = candidates.length > 0 || totalCandidates > 0;
   // The current page has no rows, but filters are active and the screening
   // does have scored candidates — i.e. the filters just matched nothing. Keep
   // the action buttons visible (so the toolbar stays put) but disable the ones
   // that operate on visible rows.
   const filtersMatchedNothing =
-    candidates.length === 0 && hasActiveFilters(queryState) && screening.scored_resumes > 0;
+    candidates.length === 0 && hasActiveFilters(queryState) && screening.scored_resumes_cnt > 0;
 
   return (
     <div
@@ -607,7 +607,7 @@ export default function ScreeningDetail() {
             <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">{screening.title}</h1>
             <p className="text-sm text-[#737373] mt-0.5">
               {isProcessing && totalCandidates > 0
-                ? `${screening.scored_resumes} scored so far · Ranking finalizes when all complete`
+                ? `${screening.scored_resumes_cnt} scored so far · Ranking finalizes when all complete`
                 : hasAnyCandidates
                   ? `${totalCandidates} candidate${totalCandidates === 1 ? "" : "s"} · Ranked by overall score`
                   : `${screening.total_resumes} resumes · Created ${formatDate(screening.created_at)}`}
