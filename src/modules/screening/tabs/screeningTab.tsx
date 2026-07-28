@@ -358,7 +358,7 @@ export default function ScreeningDetail({ setCurrentTab, setSourceMode }: Screen
 
 
 
-    if (candidates.length === 0 && !pageLoading && !hasActiveFilters(queryState) && screening.scored_resumes === 0 && !active_batches?.scoring_batch_ids?.length) {
+    if (candidates.length === 0 && !pageLoading && !hasActiveFilters(queryState) && screening.scored_resumes_cnt === 0 && !active_batches?.scoring_batch_ids?.length) {
         return (
             <div className="p-4 sm:p-6 md:p-8 text-center">
                 <p className="text-sm text-[#737373]">
@@ -424,7 +424,7 @@ export default function ScreeningDetail({ setCurrentTab, setSourceMode }: Screen
     // Backend's `total` is authoritative for pagination. Fall back to the
     // screening's scored count while the first page is still loading, so the
     // page UI doesn't flash empty before the response lands.
-    const totalCandidates = screening.scored_resumes || screening.total_resumes || candidates.length;
+    const totalCandidates = screening.scored_resumes_cnt ?? 0;
     const hasAnyCandidates = candidates.length > 0 || totalCandidates > 0;
     // The current page has no rows, but filters are active and the screening
     // does have scored candidates — i.e. the filters just matched nothing. Keep

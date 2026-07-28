@@ -392,7 +392,9 @@ export async function getResumeDetail(
   );
 }
 
+import {Application} from "@/modules/screening/types/application.type"
 export type ResumeDetailFull = Resume & {
+  profile : Application | null;
   score: Score | null;
   parsed_text: string | null;
   parsed_data: Record<string, unknown> | null;
@@ -405,12 +407,14 @@ export type ResumeDetailFull = Resume & {
 // /full returns { detail: Resume + score + parsed_*, pdf_url, pdf_filename }.
 // Flattened here so callers consume a single object and avoid a second
 // pdf-url round-trip.
+
 export async function getResumeDetailFull(
   screeningId: string,
   resumeId: string
 ): Promise<ResumeDetailFull> {
   const res = await request<{
     detail: Resume & {
+      profile: Application | null;
       score: Score | null;
       parsed_text: string | null;
       parsed_data: Record<string, unknown> | null;
@@ -423,6 +427,7 @@ export async function getResumeDetailFull(
 
   return {
     ...res.detail,
+    profile:res.detail.profile ?? null,
     pdf_url: res.pdf_url,
     pdf_filename: res.pdf_filename,
   };

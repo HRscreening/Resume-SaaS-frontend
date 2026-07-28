@@ -12,6 +12,7 @@ import { useScreeningApplicationsMutation } from "@/modules/screening/hooks/appl
 interface CandidateRowProps {
     candidate: Application;
     selectable: boolean;
+    compact: boolean;
 }
 
 
@@ -21,6 +22,7 @@ interface CandidateRowProps {
 export default function CandidateRow({
     candidate,
     selectable,
+    compact,
 }: CandidateRowProps) {
     const openId = useAnalysisSheetOpenId();
     const isOpen = openId === candidate.id;
@@ -155,50 +157,61 @@ export default function CandidateRow({
             </td>
 
             {/* Education */}
-            <td className="px-2 py-3 align-middle">
-                <div className="min-w-0">
-                    <p
-                        className="text-sm font-medium text-[#0F0F0F] truncate"
-                        title={primaryEducation?.institution ?? "—"}
-                    >
-                        {primaryEducation?.institution ?? "—"}
-                    </p>
-                    <p className="text-[11px] text-[#737373] truncate">
-                        {primaryEducation?.degree ?? "—"}
-                    </p>
-                </div>
-            </td>
+            {!compact && (
+                <td className="px-2 py-3 align-middle">
+                    <div className="min-w-0">
+                        <p
+                            className="text-sm font-medium text-[#0F0F0F] truncate"
+                            title={primaryEducation?.institution ?? "—"}
+                        >
+                            {primaryEducation?.institution ?? "—"}
+                        </p>
+                        <p className="text-[11px] text-[#737373] truncate">
+                            {primaryEducation?.degree ?? "—"}
+                        </p>
+                    </div>
+                </td>
+            )}
 
             {/* Skills */}
-            <td className="px-2 py-3 align-middle">
-                <div className="flex flex-wrap justify-center gap-1">
-                    {visibleSkills.map((skill, i) => (
-                        <span
-                            key={i}
-                            className="inline-flex items-center h-5 px-2 rounded-full bg-[#F5F3EE] text-[10px] font-medium text-[#404040] truncate max-w-20"
-                            title={skill}
-                        >
-                            {skill}
-                        </span>
-                    ))}
-                    {skillsCount > 2 && (
-                        <span className="inline-flex items-center h-5 px-1.5 rounded-full bg-[#E8E5DF] text-[10px] font-semibold text-[#737373]">
-                            +{skillsCount - 2}
-                        </span>
-                    )}
-                    {skillsCount === 0 && (
-                        <span className="text-[11px] text-[#A0A0A0]">—</span>
-                    )}
-                </div>
-            </td>
+            {!compact && (
+                <td className="px-2 py-3 align-middle">
+                    <div className="flex flex-wrap justify-center gap-1">
+                        {visibleSkills.map((skill, i) => (
+                            <span
+                                key={i}
+                                className="inline-flex items-center h-5 px-2 rounded-full bg-[#F5F3EE] text-[10px] font-medium text-[#404040] truncate max-w-20"
+                                title={skill}
+                            >
+                                {skill}
+                            </span>
+                        ))}
+                        {skillsCount > 2 && (
+                            <span className="inline-flex items-center h-5 px-1.5 rounded-full bg-[#E8E5DF] text-[10px] font-semibold text-[#737373]">
+                                +{skillsCount - 2}
+                            </span>
+                        )}
+                        {skillsCount === 0 && (
+                            <span className="text-[11px] text-[#A0A0A0]">—</span>
+                        )}
+                    </div>
+                </td>
+            )}
 
-            {/* View Details */}
-            <td
-                className="w-20 px-2 py-3 text-center align-middle"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <InfoSheet candidate={candidate} disabled={isPending}/>
-            </td>
+            {/* View Details / Actions */}
+            {!compact && (
+                <td
+                    className="w-20 px-2 py-3 text-center align-middle"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <InfoSheet candidate={candidate} disabled={isPending}/>
+                </td>
+            )}
+            {compact && isOpen && (
+                <td className="hidden" onClick={(e) => e.stopPropagation()}>
+                    <InfoSheet candidate={candidate} disabled={isPending}/>
+                </td>
+            )}
         </tr>
     );
 }
