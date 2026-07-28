@@ -70,10 +70,24 @@ export class ResumeUploadService {
         for (const [relativePath, entry] of Object.entries(zip.files)) {
             if (entry.dir) continue;
 
+            // Skip macOS archive junk: __MACOSX resource forks and dot-files
+            // (.DS_Store, ._name). They aren't resumes and would fail
+            // validateResume, aborting the whole upload (the button then hangs
+            // on "Uploading & scoring…").
+            const baseName = relativePath.split("/").pop() ?? "";
+            if (
+                relativePath.startsWith("__MACOSX/") ||
+                relativePath.includes("/__MACOSX/") ||
+                baseName.startsWith(".") ||
+                baseName === ""
+            ) {
+                continue;
+            }
+
             const blob = await entry.async("blob");
 
             files.push(
-                new File([blob], relativePath, {
+                new File([blob], baseName, {
                     type: this.getMimeType(relativePath),
                 })
             );

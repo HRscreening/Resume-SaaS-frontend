@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { useCandidateScreeningDetail } from "@/controllers/screening/getCandidateScreeningDetail";
-import { VoiceScorePill } from "@/components/screening/voice/VoiceScorePill";
 import { useScreening } from "@/controllers/screening/getScreening";
 import { formatDate } from "@/lib/utils";
 
@@ -163,9 +162,6 @@ export default function ResumeDetail() {
           {Math.round(score.overall_score)} · {tier.label}
           {score.rank && <span className="text-xs font-normal text-[#737373] ml-1">#{score.rank}</span>}
         </div>
-
-        {/* Voice interview result (renders only when a scored call exists) */}
-        <VoiceScorePill screeningId={id} resumeId={resumeId} />
 
         {/* Panel toggles — desktop only; on mobile the layout stacks and these don't apply. */}
         <div className="hidden md:flex items-center gap-1 shrink-0 ml-1">
