@@ -345,6 +345,10 @@ export interface QualificationConfig {
 export interface VoiceConfig {
   enabled: boolean;
   question_plan: QuestionPlanItem[];
+  // Company the agent names when introducing itself. Falls back to the parsed
+  // JD's company; without either, calls are blocked (the greeting would be
+  // generic and read as a spam call).
+  hiring_company?: string | null;
   voice: VoiceSettings;
   language: "en";
   calling_window: CallingWindow;
@@ -425,6 +429,7 @@ export interface CallCandidate {
 
 export interface CallCandidatesResponse {
   voice_ready: boolean;
+  hiring_company?: string | null;
   default_country_code: string;
   candidates: CallCandidate[];
 }

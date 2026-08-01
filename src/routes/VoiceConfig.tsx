@@ -14,6 +14,7 @@ import { truncate } from "@/lib/utils";
 const DEFAULT_CONFIG: VoiceConfig = {
   enabled: false,
   question_plan: [],
+  hiring_company: "",
   voice: { tts_voice_id: "default", tier: "default" },
   language: "en",
   // TEMPORARY (2026-07-13): default to a 24h window during testing. Restore to
@@ -184,6 +185,25 @@ export default function VoiceConfigPage() {
         />
         <span className="text-sm font-medium text-[#0F0F0F]">Enable voice round for this screening</span>
       </label>
+
+      {/* Hiring company — the agent introduces itself with this. Required: without
+          it the greeting is generic ("the hiring team") and reads as a spam call,
+          so the backend refuses to dial. */}
+      <section className="mb-8">
+        <label className={labelCls}>
+          Hiring company <span className="text-red-600">*</span>
+        </label>
+        <input
+          value={draft.hiring_company ?? ""}
+          onChange={(e) => setDraft((d) => ({ ...d, hiring_company: e.target.value }))}
+          placeholder="e.g. Acme Corp"
+          className={inputCls}
+        />
+        <p className="text-xs text-[#737373] mt-1">
+          The agent says &ldquo;calling from {(draft.hiring_company || "…").trim() || "…"}&rsquo;s hiring team&rdquo;.
+          Calls cannot start until this is set.
+        </p>
+      </section>
 
       {/* Question plan */}
       <section className="mb-8">
