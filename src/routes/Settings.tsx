@@ -160,7 +160,7 @@ function AccountPanel() {
         />
 
         {/* Change password */}
-        {hideChangePassword &&
+        {/* {hideChangePassword && */}
           <Row
             label="Change password"
             action={
@@ -172,7 +172,7 @@ function AccountPanel() {
               </Link>
             }
           />
-        }
+        {/* } */}
 
         {/* Delete account */}
         <Row

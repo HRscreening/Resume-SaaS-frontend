@@ -229,7 +229,7 @@ export default function ScreeningDetail() {
                                             {analysisOpen && <TooltipContent><p className="text-xs">Rubric</p></TooltipContent>}
                                         </Tooltip>
                                         {/* Rescore button */}
-                                        {/* <Tooltip>
+                                        <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <button
                                                     onClick={() => setRescoreMode(true)}
@@ -244,7 +244,7 @@ export default function ScreeningDetail() {
                                                 </button>
                                             </TooltipTrigger>
                                             {analysisOpen && <TooltipContent><p className="text-xs">Rescore</p></TooltipContent>}
-                                        </Tooltip> */}
+                                        </Tooltip>
                                         {/* Voice round button */}
                                         {/* <Tooltip>
                                             <TooltipTrigger asChild>
@@ -316,7 +316,7 @@ export default function ScreeningDetail() {
             {/* ----------------------- Tabs ------------------------ */}
             <div className="flex-1 min-h-0 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
                 {currentTab === "Applications" && <Applications onTabChange={setCurrentTab} sourceMode={sourceMode} setSourceMode={setSourceMode}/>}
-                {currentTab === "Screening" && <Screening setCurrentTab={setCurrentTab} setSourceMode={setSourceMode} />}
+                {currentTab === "Screening" && <Screening setCurrentTab={setCurrentTab} setSourceMode={setSourceMode} rescoreMode={rescoreMode} setRescoreMode={setRescoreMode} />}
             </div>
 
 
