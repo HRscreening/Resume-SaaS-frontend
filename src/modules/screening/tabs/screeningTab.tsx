@@ -280,9 +280,16 @@ function ScreeningDetailContent({
     const stagesMap: StagesMap = screening.stages ?? DEFAULT_STAGES;
 
     function handleCandidateStageChange(resumeId: string, scoreId: string, next: HiringStage) {
-        updateCandidateStage(scoreId, next).catch(() => {
-            queryClient.invalidateQueries({ queryKey: ["results", id] });
-        });
+        updateCandidateStage(scoreId, next)
+            .then(() => {
+                // Voice eligibility depends on the Shortlisted stage, so refresh
+                // the voice queries — moving a candidate to Shortlisted should
+                // immediately surface the Call / Schedule controls.
+                queryClient.invalidateQueries({ queryKey: ["voice-candidates", id] });
+            })
+            .catch(() => {
+                queryClient.invalidateQueries({ queryKey: ["results", id] });
+            });
     }
 
     const totalCandidates = screening.scored_resumes_cnt ?? 0;

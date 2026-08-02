@@ -9,6 +9,7 @@ import { CandidatesToolbar } from "@/components/screening/filters/CandidatesTool
 import { ActiveFilterChips } from "@/components/screening/filters/ActiveFilterChips";
 import { SortableHeader } from "@/components/screening/filters/SortableHeader";
 import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
+import { CandidateVoiceCell } from "@/components/screening/voice/CandidateVoiceCell";
 
 
 
@@ -381,6 +382,7 @@ function CandidateRow({
                 {candidate.candidate_email ?? candidate.candidate_phone}
               </p>
             )}
+            {!compact && <CandidateVoiceCell resumeId={candidate.resume_id} />}
           </div>
         </div>
       </td>

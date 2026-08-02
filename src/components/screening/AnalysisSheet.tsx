@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { useCandidateScreeningDetail } from "@/controllers/screening/getCandidateScreeningDetail";
 import InfoTab from "@/modules/screening/components/info_sheet_tab";
+import { CandidateVoicePanel } from "@/components/screening/voice/CandidateVoicePanel";
 import { useScreening } from "@/controllers/screening/getScreening";
 import { formatDate } from "@/lib/utils";
 import {
@@ -463,6 +464,15 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                   Scored {formatDate(score.created_at)}
                 </p>
               </div>
+            )}
+
+            {/* Voice screening — call / schedule / transcript for this candidate */}
+            {screening_id && resume_id && resume && (
+              <CandidateVoicePanel
+                screeningId={screening_id}
+                resumeId={resume_id}
+                candidateName={resume.candidate_name ?? resume.original_filename}
+              />
             )}
           </div>
         }
