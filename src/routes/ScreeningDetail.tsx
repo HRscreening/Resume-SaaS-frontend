@@ -578,14 +578,14 @@ export default function ScreeningDetail() {
   // Backend's `total` is authoritative for pagination. Fall back to the
   // screening's scored count while the first page is still loading, so the
   // page UI doesn't flash empty before the response lands.
-  const totalCandidates = serverTotal || screening.scored_resumes || screening.total_resumes || candidates.length;
+  const totalCandidates = serverTotal || screening.scored_resumes_cnt || screening.total_resumes || candidates.length;
   const hasAnyCandidates = candidates.length > 0 || totalCandidates > 0;
   // The current page has no rows, but filters are active and the screening
   // does have scored candidates — i.e. the filters just matched nothing. Keep
   // the action buttons visible (so the toolbar stays put) but disable the ones
   // that operate on visible rows.
   const filtersMatchedNothing =
-    candidates.length === 0 && hasActiveFilters(queryState) && screening.scored_resumes > 0;
+    candidates.length === 0 && hasActiveFilters(queryState) && screening.scored_resumes_cnt > 0;
 
   return (
     <div
@@ -607,7 +607,7 @@ export default function ScreeningDetail() {
             <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">{screening.title}</h1>
             <p className="text-sm text-[#737373] mt-0.5">
               {isProcessing && totalCandidates > 0
-                ? `${screening.scored_resumes} scored so far · Ranking finalizes when all complete`
+                ? `${screening.scored_resumes_cnt} scored so far · Ranking finalizes when all complete`
                 : hasAnyCandidates
                   ? `${totalCandidates} candidate${totalCandidates === 1 ? "" : "s"} · Ranked by overall score`
                   : `${screening.total_resumes} resumes · Created ${formatDate(screening.created_at)}`}
@@ -616,18 +616,6 @@ export default function ScreeningDetail() {
           {(candidates.length > 0 || filtersMatchedNothing) && (
             <div className="flex flex-wrap items-center gap-2">
               {/* <SourcingModal screening_id={id} onClose={()=>{}}/> */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setShowRubric(true)}
-                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h3" /></svg>
-                    {!analysisOpen && "Rubric"}
-                  </button>
-                </TooltipTrigger>
-                {analysisOpen && <TooltipContent><p className="text-xs">Rubric</p></TooltipContent>}
-              </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -640,6 +628,18 @@ export default function ScreeningDetail() {
               </TooltipTrigger>
               {analysisOpen && <TooltipContent><p className="text-xs">Voice round</p></TooltipContent>}
             </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setShowRubric(true)}
+                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h3" /></svg>
+                    {!analysisOpen && "Rubric"}
+                  </button>
+                </TooltipTrigger>
+                {analysisOpen && <TooltipContent><p className="text-xs">Rubric</p></TooltipContent>}
+              </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button

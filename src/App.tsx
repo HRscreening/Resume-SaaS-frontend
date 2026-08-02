@@ -207,11 +207,11 @@ const screeningsRoute = createRoute({
   component: Screenings,
 });
 
-const candidatesRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: "/candidates",
-  component: Candidates,
-});
+// const candidatesRoute = createRoute({
+//   getParentRoute: () => appLayoutRoute,
+//   path: "/candidates",
+//   component: Candidates,
+// });
 
 const newScreeningRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
@@ -339,7 +339,7 @@ const routeTree = rootRoute.addChildren([
   appLayoutRoute.addChildren([
     dashboardRoute,
     screeningsRoute,
-    candidatesRoute,
+    // candidatesRoute,
     newScreeningRoute,
     screeningDetailRoute,
     editRubricRoute,

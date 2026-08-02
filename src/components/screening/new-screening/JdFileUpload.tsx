@@ -47,7 +47,7 @@ export function JdFileUpload({ file, extractedText, extracting, onSelect, onRemo
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-green-800 truncate">{file.name}</p>
-            <p className="text-xs text-green-700 mt-0.5">{extractedText.length.toLocaleString()} characters extracted</p>
+            {/* <p className="text-xs text-green-700 mt-0.5">{extractedText.length.toLocaleString()} characters extracted</p> */}
           </div>
           <button
             type="button"

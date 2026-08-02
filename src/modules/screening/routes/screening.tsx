@@ -5,7 +5,7 @@ import { getScreening, exportResults } from "@/lib/api";
 import { useCandidateQuery } from "@/controllers/screening/useCandidateQuery";
 import type { RankedCandidate, RubricCategory } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";
-import { useAnalysisSheetOpen } from "@/components/screening/AnalysisSheet";
+import { useAnalysisSheetOpen, setOpenAnalysisSheet } from "@/components/screening/AnalysisSheet";
 import { RubricModal } from "@/components/screening/RubricModal";
 import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -18,6 +18,7 @@ import UploadResumes from "@/modules/screening/components/uploadResumes"
 
 import { useAuth } from "@/hooks/useAuth";
 import { SelectedApplicationsProvider } from "../hooks/useSelectedApplication";
+import { setOpenAnalysisSheet as setOpenInfoSheet, useAnalysisSheetOpen as useInfoSheetOpen } from "@/modules/screening/components/info_sheet";
 
 type Sections = "Applications" | "Screening"
 
@@ -38,7 +39,9 @@ export default function ScreeningDetail() {
     const [exporting, setExporting] = useState(false);
     const [sourceMode, setSourceMode] = useState(false);
     const [showRubric, setShowRubric] = useState(false);
-    const analysisOpen = useAnalysisSheetOpen();
+    const screeningAnalysisOpen = useAnalysisSheetOpen();
+    const infoSheetOpen = useInfoSheetOpen();
+    const analysisOpen = screeningAnalysisOpen || infoSheetOpen;
 
     // Rescore selection mode — flipped on by the Rescore button in the action
     // row. `selectedIds` is the cross-page basket; pagination / search / filter
@@ -96,8 +99,8 @@ export default function ScreeningDetail() {
         });
     }, [search, id, navigate]);
 
-
-    const totalCandidates = screening?.scored_resumes ?? 0;
+    const totalCandidates = screening?.scored_resumes_cnt ?? 0;
+    const totalApplications = (screening?.applications_cnt ?? 0) + (screening?.scored_resumes_cnt ?? 0);
     const hasAnyCandidates = totalCandidates > 0;
 
 
@@ -185,11 +188,7 @@ export default function ScreeningDetail() {
                         </div>
                         <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">{screening.title}</h1>
                         <p className="text-sm text-[#737373] mt-0.5">
-                            {isProcessing && totalCandidates > 0
-                                ? `${screening.scored_resumes} scored so far · Ranking finalizes when all complete`
-                                : hasAnyCandidates
-                                    ? `${totalCandidates} candidate${totalCandidates === 1 ? "" : "s"} · Ranked by overall score`
-                                    : `${screening.total_resumes} resumes · Created ${formatDate(screening.created_at)}`}
+                            {totalApplications} resumes · Created {formatDate(screening.created_at)}
                         </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -247,7 +246,7 @@ export default function ScreeningDetail() {
                                             {analysisOpen && <TooltipContent><p className="text-xs">Rescore</p></TooltipContent>}
                                         </Tooltip>
                                         {/* Voice round button */}
-                                        <Tooltip>
+                                        {/* <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <button
                                                     onClick={() => navigate({ to: "/screenings/$id/voice", params: { id } })}
@@ -258,7 +257,7 @@ export default function ScreeningDetail() {
                                                 </button>
                                             </TooltipTrigger>
                                             {analysisOpen && <TooltipContent><p className="text-xs">Voice round</p></TooltipContent>}
-                                        </Tooltip>
+                                        </Tooltip> */}
                                         {/* Export CSV */}
                                         <Tooltip>
                                             <TooltipTrigger asChild>
@@ -295,7 +294,7 @@ export default function ScreeningDetail() {
                     sectionTabs.map((tab) => (
                         <button
                             key={tab}
-                            onClick={() => { setCurrentTab(tab); setShowUploadMore(false) }}
+                            onClick={() => { setCurrentTab(tab); setShowUploadMore(false); setOpenAnalysisSheet(null); setOpenInfoSheet(null); }}
                             className={`px-4 py-2 text-sm font-medium rounded-t-lg focus:outline-none ${currentTab === tab ? "bg-[#0F0F0F] text-white" : "bg-[#E8E5DF] text-[#404040] hover:bg-[#D4D4D4]"}`}
                         >
                             {tab}
@@ -317,7 +316,7 @@ export default function ScreeningDetail() {
             {/* ----------------------- Tabs ------------------------ */}
             <div className="flex-1 min-h-0 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
                 {currentTab === "Applications" && <Applications onTabChange={setCurrentTab} sourceMode={sourceMode} setSourceMode={setSourceMode}/>}
-                {currentTab === "Screening" && <Screening setCurrentTab={setCurrentTab} setSourceMode={setSourceMode} />}
+                {currentTab === "Screening" && <Screening setCurrentTab={setCurrentTab} setSourceMode={setSourceMode} rescoreMode={rescoreMode} setRescoreMode={setRescoreMode} />}
             </div>
 
 

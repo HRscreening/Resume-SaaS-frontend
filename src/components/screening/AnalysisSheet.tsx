@@ -10,6 +10,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useCandidateScreeningDetail } from "@/controllers/screening/getCandidateScreeningDetail";
+import InfoTab from "@/modules/screening/components/info_sheet_tab";
+import { CandidateVoicePanel } from "@/components/screening/voice/CandidateVoicePanel";
 import { useScreening } from "@/controllers/screening/getScreening";
 import { formatDate } from "@/lib/utils";
 import {
@@ -17,7 +19,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { CandidateVoicePanel } from "@/components/screening/voice/CandidateVoicePanel";
 
 const sheetListeners = new Set<() => void>();
 let openResumeId: string | null = null;
@@ -72,10 +73,24 @@ function criterionBarColor(score: number) {
   return "#EF4444";
 }
 
+
+type Tab = {
+  title: string;
+  value: "scorecard" | "profile";
+}
+
+const tabs: Tab[] = [
+  { title: "Analysis", value: "scorecard" },
+  { title: "Profile", value: "profile" },
+]
+
+
 const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
   const { id: screening_id } = useParams({ strict: false }) as { id: string };
   const openId = useAnalysisSheetOpenId();
   const open = openId === resume_id;
+
+  const [tab, SetTab] = useState<"scorecard" | "profile">("scorecard")
 
   const handleOpenChange = (next: boolean) => {
     setOpenAnalysisSheet(next ? resume_id : null);
@@ -156,7 +171,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
 
 
   return (
-    <Sheet  open={open} onOpenChange={handleOpenChange} modal={false}>
+    <Sheet open={open} onOpenChange={handleOpenChange} modal={false}>
       <SheetTrigger asChild>
         <button
           type="button"
@@ -182,25 +197,28 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
         // w-3/4 — too narrow at 320–430 px to be useful). sm+: cap at 600 px.
         className="!w-full sm:!max-w-[600px] overflow-y-auto p-0 !z-40"
       >
-        <SheetHeader className="px-6 pt-6 pb-3 border-b border-[#E8E5DF]">
-          <div className="flex items-center justify-between gap-3 mt-4">
-            <SheetTitle className="text-sm font-semibold text-[#0F0F0F]">
-              Candidate analysis
-            </SheetTitle>
-          </div>
-          {tier && score && (
-            <div className="mt-2 flex items-center gap-2">
-              <div
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${tier.bg} ${tier.border} ${tier.color}`}
-              >
-                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: tier.dot }} />
-                {Math.round(score.overall_score)} · {tier.label}
-                {score.rank != null && (
-                  <span className="text-[#737373] font-normal ml-1">#{score.rank}</span>
-                )}
-              </div>
+        <SheetHeader className="px-6 pt-6 border-b border-[#E8E5DF] pb-0">
+          <SheetTitle className="text-sm font-semibold text-[#0F0F0F]">
+            <div className="flex items-center justify-start gap-1 mt-4">
+              {
+                tabs.map((t: Tab) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => SetTab(t.value)}
+                    disabled={tab === t.value}
+                    className={`relative px-3 py-2 text-sm font-semibold transition-colors cursor-pointer
+        ${tab === t.value
+                        ? "text-[#2563EB] border-b-2 border-[#2563EB]"
+                        : "text-[#0F0F0F] border-b-2 border-transparent hover:text-[#2563EB]"
+                      }`}
+                  >
+                    {t.title}
+                  </button>
+                ))
+              }
             </div>
-          )}
+          </SheetTitle>
         </SheetHeader>
 
         {/* Loading */}
@@ -210,232 +228,268 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
           </div>
         )}
 
-        {/* Error */}
-        {!isLoading && isError && (
-          <div className="px-6 py-10 text-center">
-            <p className="text-sm font-medium text-red-700">Failed to load analysis</p>
-            <p className="text-xs text-[#737373] mt-1">
-              {error instanceof Error ? error.message : "Something went wrong."}
-            </p>
-          </div>
-        )}
 
-        {/* No score yet */}
-        {!isLoading && !isError && resume && !score && (
-          <div className="px-6 py-10 text-center">
-            <p className="text-sm text-[#404040]">Not yet scored.</p>
-            <p className="text-xs text-[#737373] mt-1">
-              This candidate hasn't been scored yet — check back once processing completes.
-            </p>
-          </div>
-        )}
-
-        {/* Content */}
-        {!isLoading && !isError && resume && score && (
-          <div className="px-6 py-6 space-y-5">
-            {/* Candidate info */}
-            <div className="flex items-start gap-4">
-              <div className="h-12 w-12 rounded-full bg-[#F0EDE8] border border-[#E8E5DF] flex items-center justify-center shrink-0">
-                <span className="text-base font-bold text-[#404040]">{initials}</span>
+        {/* Screening Tab */}
+        {
+          tab === "scorecard" && <div>
+            {/* Error */}
+            {!isLoading && isError && (
+              <div className="px-6 py-10 text-center">
+                <p className="text-sm font-medium text-red-700">Failed to load analysis</p>
+                <p className="text-xs text-[#737373] mt-1">
+                  {error instanceof Error ? error.message : "Something went wrong."}
+                </p>
               </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-lg font-bold text-[#0F0F0F] leading-tight">
-                  {resume.candidate_name ?? resume.original_filename}
-                </h1>
-                {resume.candidate_current_job && (
-                  <p className="text-sm text-[#404040] mt-0.5">{resume.candidate_current_job}</p>
-                )}
-                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
-                  {resume.candidate_email && (
-                    <a
-                      href={`mailto:${resume.candidate_email}`}
-                      className="text-xs text-[#737373] hover:text-[#0F0F0F]"
+            )}
+
+            {/* No score yet */}
+            {!isLoading && !isError && resume && !score && (
+              <div className="px-6 py-10 text-center">
+                <p className="text-sm text-[#404040]">Not yet scored.</p>
+                <p className="text-xs text-[#737373] mt-1">
+                  This candidate hasn't been scored yet — check back once processing completes.
+                </p>
+              </div>
+            )}
+
+
+
+            {/* Content */}
+            {!isLoading && !isError && resume && score && (
+              <div className="px-6 py-2 space-y-5">
+
+                {tier && score && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${tier.bg} ${tier.border} ${tier.color}`}
                     >
-                      {resume.candidate_email}
-                    </a>
-                  )}
-                  {resume.candidate_phone && (
-                    <span className="text-xs text-[#737373]">{resume.candidate_phone}</span>
-                  )}
-                  {(resume as any).page_count && (
-                    <span className="text-xs text-[#A0A0A0]">
-                      {(resume as any).page_count}p resume
-                    </span>
+                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: tier.dot }} />
+                      {Math.round(score.overall_score)} · {tier.label}
+                      {score.rank != null && (
+                        <span className="text-[#737373] font-normal ml-1">#{score.rank}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+
+                {/* Candidate info */}
+                <div className="flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-full bg-[#F0EDE8] border border-[#E8E5DF] flex items-center justify-center shrink-0">
+                    <span className="text-base font-bold text-[#404040]">{initials}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-lg font-bold text-[#0F0F0F] leading-tight">
+                      {resume.candidate_name ?? resume.original_filename}
+                    </h1>
+                    {resume.candidate_current_job && (
+                      <p className="text-sm text-[#404040] mt-0.5">{resume.candidate_current_job}</p>
+                    )}
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                      {resume.candidate_email && (
+                        <a
+                          href={`mailto:${resume.candidate_email}`}
+                          className="text-xs text-[#737373] hover:text-[#0F0F0F]"
+                        >
+                          {resume.candidate_email}
+                        </a>
+                      )}
+                      {resume.candidate_phone && (
+                        <span className="text-xs text-[#737373]">{resume.candidate_phone}</span>
+                      )}
+
+                    </div>
+                  </div>
+
+                  {screening_id && resume_id && (
+                    <div className="flex flex-row items-center gap-1">
+
+                      {score?.id && (
+                        <Tooltip>
+                          <TooltipTrigger asChild className="shrink-0">
+                            <button
+                              type="button"
+                              onClick={handleDownloadScorecard}
+                              className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+                            >
+                              {downloading ? (
+                                <>
+                                  <Loader2 size={12} className="animate-spin" />
+                                  Downloading
+                                </>
+                              ) : (
+                                <>
+                                  <Download size={12} />
+                                  Scorecard
+                                </>
+                              )}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Download scorecard</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      <Tooltip>
+                        <TooltipTrigger className="shrink-0">
+
+                          <a
+                            href={`/screenings/${screening_id}/${resume_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+
+                          >
+                            <Expand size={12} />
+                            Expand
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">Open Expanded view</p>
+                        </TooltipContent>
+                      </Tooltip>
+
+                    </div>
                   )}
                 </div>
-              </div>
 
-              {screening_id && resume_id && (
-                <div className="flex flex-row items-center gap-1">
-                  {score?.id && (
-                    <Tooltip>
-                      <TooltipTrigger asChild className="shrink-0">
-                        <button
-                          type="button"
-                          onClick={handleDownloadScorecard}
-                          className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+                {/* Summary */}
+                {score.overall_summary && (
+                  <div className="bg-[#F5F3EE] rounded-xl p-4">
+                    <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-2">
+                      AI Summary
+                    </p>
+                    <p className="text-sm text-[#404040] leading-relaxed">{score.overall_summary}</p>
+                  </div>
+                )}
+
+                {/* Category scores */}
+                {categoryScores.some((c) => c.score !== null) && (
+                  <div>
+                    <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-2.5">
+                      Category Scores
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      {categoryScores.map((cat) => (
+                        <div
+                          key={cat.name}
+                          className="rounded-xl border border-[#E8E5DF] bg-white px-3 py-3 flex flex-col items-center text-center"
                         >
-                          {downloading ? (
+                          <p className="text-[10px] font-semibold text-[#737373] uppercase tracking-wide leading-tight">
+                            {cat.name}
+                          </p>
+                          <p className="text-[10px] text-[#BDB8AE] mt-0.5">(out of 10)</p>
+                          <p className="text-[10px] text-[#A0A0A0]">{cat.weight}%</p>
+                          {cat.score !== null ? (
                             <>
-                              <Loader2 size={12} className="animate-spin" />
-                              Downloading
+                              <span className="text-base font-bold text-[#0F0F0F] mt-2 leading-none">
+                                {cat.score.toFixed(1)}
+                              </span>
+                              <div className="w-14 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden mt-1.5">
+                                <div
+                                  className="h-full rounded-full bg-[#C85A17]"
+                                  style={{ width: `${cat.score * 10}%` }}
+                                />
+                              </div>
                             </>
                           ) : (
-                            <>
-                              <Download size={12} />
-                              Scorecard
-                            </>
+                            <span className="text-xs text-[#D4D4D4] mt-2">--</span>
                           )}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">Download scorecard</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  <Tooltip>
-                    <TooltipTrigger className="shrink-0">
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                  <a
-                    href={`/screenings/${screening_id}/${resume_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+                {/* Strengths + Missing */}
+                {((score.strengths?.length ?? 0) > 0 || (score.missing_elements?.length ?? 0) > 0) && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {(score.strengths?.length ?? 0) > 0 && (
+                      <div className="bg-green-50 border border-green-100 rounded-xl p-4">
+                        <p className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-2.5">
+                          Strengths
+                        </p>
+                        <ul className="space-y-1.5">
+                          {score.strengths!.map((s, i) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-green-900">
+                              <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
+                              {s}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {(score.missing_elements?.length ?? 0) > 0 && (
+                      <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+                        <p className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-2.5">
+                          Missing
+                        </p>
+                        <ul className="space-y-1.5">
+                          {score.missing_elements!.map((s, i) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-red-900">
+                              <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
+                              {s}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                    >
-                    <Expand size={12} />
-                    Expand
-                  </a>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs">Open Expanded view</p>
-                  </TooltipContent>
-                  </Tooltip>
-
+                {/* Criteria breakdown */}
+                <div>
+                  <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-3">
+                    Criteria Breakdown
+                  </p>
+                  <div className="space-y-2">
+                    {[...score.breakdown]
+                      .sort((a, b) => {
+                        const aNn = nonNegotiableSet.has(a.criterion) ? 1 : 0;
+                        const bNn = nonNegotiableSet.has(b.criterion) ? 1 : 0;
+                        return bNn - aNn;
+                      })
+                      .map((cs, i) => (
+                        <CriterionCard
+                          key={i}
+                          cs={cs as BreakdownItem}
+                          isNonNegotiable={nonNegotiableSet.has(cs.criterion)}
+                        />
+                      ))}
+                  </div>
                 </div>
-              )}
-            </div>
+
+                <p className="text-xs text-[#A0A0A0] pb-2">
+                  Scored {formatDate(score.created_at)}
+                </p>
+              </div>
+            )}
 
             {/* Voice screening — call / schedule / transcript for this candidate */}
-            {screening_id && resume_id && (
+            {screening_id && resume_id && resume && (
               <CandidateVoicePanel
                 screeningId={screening_id}
                 resumeId={resume_id}
                 candidateName={resume.candidate_name ?? resume.original_filename}
               />
             )}
-
-            {/* Summary */}
-            {score.overall_summary && (
-              <div className="bg-[#F5F3EE] rounded-xl p-4">
-                <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-2">
-                  AI Summary
-                </p>
-                <p className="text-sm text-[#404040] leading-relaxed">{score.overall_summary}</p>
-              </div>
-            )}
-
-            {/* Category scores */}
-            {categoryScores.some((c) => c.score !== null) && (
-              <div>
-                <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-2.5">
-                  Category Scores
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {categoryScores.map((cat) => (
-                    <div
-                      key={cat.name}
-                      className="rounded-xl border border-[#E8E5DF] bg-white px-3 py-3 flex flex-col items-center text-center"
-                    >
-                      <p className="text-[10px] font-semibold text-[#737373] uppercase tracking-wide leading-tight">
-                        {cat.name}
-                      </p>
-                      <p className="text-[10px] text-[#BDB8AE] mt-0.5">(out of 10)</p>
-                      <p className="text-[10px] text-[#A0A0A0]">{cat.weight}%</p>
-                      {cat.score !== null ? (
-                        <>
-                          <span className="text-base font-bold text-[#0F0F0F] mt-2 leading-none">
-                            {cat.score.toFixed(1)}
-                          </span>
-                          <div className="w-14 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden mt-1.5">
-                            <div
-                              className="h-full rounded-full bg-[#C85A17]"
-                              style={{ width: `${cat.score * 10}%` }}
-                            />
-                          </div>
-                        </>
-                      ) : (
-                        <span className="text-xs text-[#D4D4D4] mt-2">--</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Strengths + Missing */}
-            {((score.strengths?.length ?? 0) > 0 || (score.missing_elements?.length ?? 0) > 0) && (
-              <div className="grid grid-cols-2 gap-3">
-                {(score.strengths?.length ?? 0) > 0 && (
-                  <div className="bg-green-50 border border-green-100 rounded-xl p-4">
-                    <p className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-2.5">
-                      Strengths
-                    </p>
-                    <ul className="space-y-1.5">
-                      {score.strengths!.map((s, i) => (
-                        <li key={i} className="flex items-start gap-2 text-xs text-green-900">
-                          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-green-500 shrink-0" />
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {(score.missing_elements?.length ?? 0) > 0 && (
-                  <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-                    <p className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-2.5">
-                      Missing
-                    </p>
-                    <ul className="space-y-1.5">
-                      {score.missing_elements!.map((s, i) => (
-                        <li key={i} className="flex items-start gap-2 text-xs text-red-900">
-                          <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Criteria breakdown */}
-            <div>
-              <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide mb-3">
-                Criteria Breakdown
-              </p>
-              <div className="space-y-2">
-                {[...score.breakdown]
-                  .sort((a, b) => {
-                    const aNn = nonNegotiableSet.has(a.criterion) ? 1 : 0;
-                    const bNn = nonNegotiableSet.has(b.criterion) ? 1 : 0;
-                    return bNn - aNn;
-                  })
-                  .map((cs, i) => (
-                    <CriterionCard
-                      key={i}
-                      cs={cs as BreakdownItem}
-                      isNonNegotiable={nonNegotiableSet.has(cs.criterion)}
-                    />
-                  ))}
-              </div>
-            </div>
-
-            <p className="text-xs text-[#A0A0A0] pb-2">
-              Scored {formatDate(score.created_at)}
-            </p>
           </div>
-        )}
+        }
+        {
+          tab === "profile" && resume && (<div>
+            {!resume.profile 
+            ? 
+            <div className="px-6 py-10 text-center">
+              Profile not available. Please Contact Support for more information.
+            </div>
+              :
+              <InfoTab candidate={resume.profile} />
+            }
+          </div>)
+        }
+
+
       </SheetContent>
     </Sheet>
   );

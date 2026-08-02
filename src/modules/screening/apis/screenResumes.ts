@@ -5,6 +5,7 @@ import { m } from "framer-motion";
 type ScreenResumesArgs = {
     resume_ids: string[];
     screening_id: string;
+    isRescore?: boolean;
 }
 
 export type ScreenResumesResponse = {
@@ -13,9 +14,12 @@ export type ScreenResumesResponse = {
     batch_id: string;
 }
 
-export const screenResume = async ({ resume_ids, screening_id }: ScreenResumesArgs): Promise<ScreenResumesResponse> => {
+export const screenResume = async ({ resume_ids, screening_id, isRescore }: ScreenResumesArgs): Promise<ScreenResumesResponse> => {
     try {
-        const res = await request(`/api/v1/screenings/${screening_id}/screen-applications-new`, {
+        const url = isRescore
+            ? `/api/v1/screenings/${screening_id}/screen-applications-new?is_rescore=true`
+            : `/api/v1/screenings/${screening_id}/screen-applications-new`;
+        const res = await request(url, {
             'method': 'POST',
             'body': JSON.stringify(resume_ids)
         });

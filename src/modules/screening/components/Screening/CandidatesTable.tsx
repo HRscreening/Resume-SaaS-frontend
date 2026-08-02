@@ -283,8 +283,9 @@ export function CandidatesTable({
                       : "No candidates yet."}
                   </td>
                 </tr>
-              ) : candidates.map((c) => (
+              ) : candidates.map((c,index) => (
                 <CandidateRow
+                  index={index}
                   key={c.resume_id}
                   candidate={c}
                   categories={categories}
@@ -322,6 +323,7 @@ export function CandidatesTable({
 function CandidateRow({
   candidate, categories, compact, stage, stages, onStageChange, onManageStages,
   selectable, selected, onToggle,
+  index,
 }: {
   candidate: RankedCandidate;
   categories: RubricCategory[];
@@ -333,6 +335,7 @@ function CandidateRow({
   selectable: boolean;
   selected: boolean;
   onToggle?: (id: string, e: React.MouseEvent | React.ChangeEvent) => void;
+  index: number;
 }) {
   const openId = useAnalysisSheetOpenId();
   const isOpen = openId === candidate.resume_id;
@@ -401,7 +404,7 @@ function CandidateRow({
         <div className="flex gap-2 items-center min-w-0">
           <div className="h-8 w-8 rounded-full bg-[#FBF1E7] flex items-center justify-center shrink-0" title={`Rank ${candidate.rank}`}>
             <span className="text-[12px] font-bold text-[#C85A17] leading-none">
-              {candidate.rank}
+              {index + 1}
             </span>
           </div>
           <div className="min-w-0 flex-1">
