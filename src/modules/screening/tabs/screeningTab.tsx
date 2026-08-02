@@ -90,18 +90,18 @@ function ScreeningDetailContent({
     const pageLoading = resultsQuery.isLoading;
     const candidates = resultsQuery.data?.pages.flatMap((page) => page.items) ?? [];
 
-    useEffect(() => {
-        if (search.saved !== 1) return;
-        toast.success("Rubric saved", { duration: 3500 });
-        setRescoreMode?.(true);
-        const { saved: _saved, ...rest } = search as Record<string, unknown>;
-        navigate({
-            to: "/screenings/$id",
-            params: { id },
-            search: rest as never,
-            replace: true,
-        });
-    }, [search, id, navigate, setRescoreMode]);
+    // useEffect(() => {
+    //     if (search.saved !== 1) return;
+    //     toast.success("Rubric saved", { duration: 3500 });
+    //     setRescoreMode?.(true);
+    //     const { saved: _saved, ...rest } = search as Record<string, unknown>;
+    //     navigate({
+    //         to: "/screenings/$id",
+    //         params: { id },
+    //         search: rest as never,
+    //         replace: true,
+    //     });
+    // }, [search, id, navigate, setRescoreMode]);
 
     async function submitRescore() {
         if (selectedCandidates.size === 0 || isRescoringMutation) return;

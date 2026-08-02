@@ -176,7 +176,7 @@ export default function ScreeningDetail() {
   // the URL.
   useEffect(() => {
     if (search.saved !== 1) return;
-    toast.success("Rubric saved", { duration: 3500 });
+    // toast.success("Rubric saved", { duration: 3500 });
     setRescoreMode(true);
     const { saved: _saved, ...rest } = search as Record<string, unknown>;
     navigate({

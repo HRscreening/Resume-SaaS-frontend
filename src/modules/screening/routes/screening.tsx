@@ -86,8 +86,15 @@ export default function ScreeningDetail() {
 
 
 
+    const toastShownRef = useRef(false);
+
     useEffect(() => {
-        if (search.saved !== 1) return;
+        if (search.saved !== 1) {
+            toastShownRef.current = false;
+            return;
+        }
+        if (toastShownRef.current) return;
+        toastShownRef.current = true;
         toast.success("Rubric saved", { duration: 3500 });
         setRescoreMode(true);
         const { saved: _saved, ...rest } = search as Record<string, unknown>;
@@ -233,7 +240,7 @@ export default function ScreeningDetail() {
                                             <TooltipTrigger asChild>
                                                 <button
                                                     onClick={() => setRescoreMode(true)}
-                                                    disabled={isProcessing || rescoreMode}
+                                                    disabled={isProcessing || rescoreMode || !hasAnyCandidates}
                                                     // disabled={isProcessing || rescoreMode || candidates.length === 0}
                                                     className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed`}
                                                 >
