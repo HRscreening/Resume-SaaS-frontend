@@ -281,7 +281,11 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
         )}
 
         {done && (
-          <VoiceScorecardDetails screeningId={screeningId} callId={latestCall.id} />
+          <VoiceScorecardDetails
+            screeningId={screeningId}
+            callId={latestCall.id}
+            durationSeconds={latestCall.duration_seconds}
+          />
         )}
 
         {/* Re-call is available once the last attempt is finished (done/unreachable). */}

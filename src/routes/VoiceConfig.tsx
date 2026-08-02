@@ -69,13 +69,19 @@ export default function VoiceConfigPage() {
 
   const [draft, setDraft] = useState<VoiceConfig>(DEFAULT_CONFIG);
   const [hydrated, setHydrated] = useState(false);
+  // True when a voice round was already configured before this visit — flips
+  // the page from setup copy ("Voice screening round") to edit copy, so the
+  // recruiter can tell at a glance they are changing something that exists.
+  const [isEditing, setIsEditing] = useState(false);
 
   // Hydrate once from the persisted config (or defaults) without clobbering
   // edits. Spread over DEFAULT_CONFIG so configs saved before newer fields
   // still hydrate with defaults.
   useEffect(() => {
     if (hydrated || configLoading) return;
-    setDraft({ ...DEFAULT_CONFIG, ...(configResp?.voice_config ?? {}) });
+    const saved = configResp?.voice_config;
+    setDraft({ ...DEFAULT_CONFIG, ...(saved ?? {}) });
+    setIsEditing(Boolean(saved && (saved.enabled || (saved.question_plan?.length ?? 0) > 0)));
     setHydrated(true);
   }, [hydrated, configLoading, configResp]);
 
@@ -110,6 +116,27 @@ export default function VoiceConfigPage() {
     onError: (e: unknown) =>
       toast.error(e instanceof Error ? e.message : "Could not save voice config"),
   });
+
+  // The location stage anchors on the city: onsite/hybrid with the location
+  // question (or a relocation knockout) but no city means the agent cannot say
+  // where the role is. A live call shipped with exactly this hole, so it blocks
+  // the save rather than warns.
+  const qual = draft.qualification;
+  const needsJobCity =
+    (qual?.work_model === "onsite" || qual?.work_model === "hybrid") &&
+    ((qual?.ask_location ?? true) || (qual?.relocation_required ?? false)) &&
+    !(qual?.job_city ?? "").trim();
+  const saveBlockers: string[] = [];
+  if (draft.enabled && !(draft.hiring_company ?? "").trim()) {
+    saveBlockers.push("Hiring company is required before calls can start.");
+  }
+  if (draft.enabled && needsJobCity) {
+    saveBlockers.push(
+      qual?.relocation_required
+        ? "Relocation is required, so the agent must be able to name the job city."
+        : "The role is " + (qual?.work_model ?? "onsite") + ", so the location question needs a job city.",
+    );
+  }
 
   // ── Immutable question-plan editors ──────────────────────────────────────
   const updateQuestion = (idx: number, patch: Partial<QuestionPlanItem>) =>
@@ -161,9 +188,21 @@ export default function VoiceConfigPage() {
       </div>
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#0F0F0F] mb-1">Voice screening round</h1>
+          <div className="flex items-center gap-2.5 mb-1">
+            <h1 className="text-2xl font-bold text-[#0F0F0F]">
+              {isEditing ? "Edit voice round" : "Set up voice round"}
+            </h1>
+            {isEditing && (
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                Configured
+              </span>
+            )}
+          </div>
           <p className="text-sm text-[#737373]">
-            Configure the AI phone screen for shortlisted candidates. Questions are scored on the same rubric as resumes.
+            {isEditing
+              ? "This screening already has a voice round. Changes apply to the next call you place."
+              : "Configure the AI phone screen for shortlisted candidates. Questions are scored on the same rubric as resumes."}
           </p>
         </div>
         <Link
@@ -223,43 +262,52 @@ export default function VoiceConfigPage() {
           </button>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {draft.question_plan.map((q, idx) => (
-            <div key={idx} className="border border-[#E8E5DF] rounded-xl p-3 bg-white">
-              <div className="flex items-start gap-2">
+            <div
+              key={idx}
+              className="group rounded-xl border border-[#E8E5DF] bg-white transition-colors focus-within:border-[#C85A17]/50"
+            >
+              <div className="flex items-start gap-3 px-3.5 pt-3">
+                <span className="mt-0.5 shrink-0 text-xs font-bold tabular-nums text-[#C85A17]">
+                  {String(idx + 1).padStart(2, "0")}
+                </span>
                 <textarea
                   value={q.text}
                   onChange={(e) => updateQuestion(idx, { text: e.target.value })}
                   rows={2}
-                  placeholder="Question text"
-                  className="flex-1 px-3 py-2 border border-[#D4D4D4] rounded-lg text-sm text-[#0F0F0F] focus:outline-none focus:border-[#0F0F0F] resize-y"
+                  placeholder="Question the agent will ask, word for word"
+                  className="min-h-0 flex-1 resize-none bg-transparent text-sm leading-relaxed text-[#0F0F0F] placeholder:text-[#A3A3A3] focus:outline-none [field-sizing:content]"
                 />
                 <button
                   onClick={() => removeQuestion(idx)}
                   aria-label="Remove question"
-                  className="h-8 w-8 shrink-0 flex items-center justify-center text-[#737373] hover:text-red-600 rounded-lg"
+                  title="Remove question"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[#D4D4D4] transition-colors hover:bg-red-50 hover:text-red-600 group-hover:text-[#737373]"
                 >
-                  ✕
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M2 2l8 8M10 2l-8 8" />
+                  </svg>
                 </button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                <div>
-                  <label className={labelCls}>Competency</label>
-                  <select
-                    value={q.competency_ref}
-                    onChange={(e) => updateQuestion(idx, { competency_ref: e.target.value })}
-                    className={inputCls}
-                  >
-                    {!competencies.includes(q.competency_ref) && q.competency_ref && (
-                      <option value={q.competency_ref}>{q.competency_ref} (not in rubric)</option>
-                    )}
-                    {competencies.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelCls}>Expected signals (comma-separated)</label>
+              <div className="mt-2 flex flex-col gap-2 border-t border-[#F0EEE8] px-3.5 py-2 sm:flex-row sm:items-center">
+                <select
+                  value={q.competency_ref}
+                  onChange={(e) => updateQuestion(idx, { competency_ref: e.target.value })}
+                  title="Competency this question assesses"
+                  className="h-7 w-fit max-w-full shrink-0 cursor-pointer rounded-md bg-[#F5F3EE] px-2 pr-6 text-xs font-medium text-[#404040] focus:outline-none"
+                >
+                  {!competencies.includes(q.competency_ref) && q.competency_ref && (
+                    <option value={q.competency_ref}>{q.competency_ref} (not in rubric)</option>
+                  )}
+                  {competencies.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                  <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-[#A3A3A3]">
+                    Listen for
+                  </span>
                   <input
                     value={q.expected_signals.join(", ")}
                     onChange={(e) =>
@@ -270,14 +318,16 @@ export default function VoiceConfigPage() {
                           .filter(Boolean),
                       })
                     }
-                    className={inputCls}
+                    placeholder="comma-separated, guides the follow-up"
+                    title="Private notes on what a strong answer mentions — the agent probes once when these are missing, and never reads them aloud"
+                    className="h-7 min-w-0 flex-1 bg-transparent text-xs text-[#404040] placeholder:text-[#C9C5BD] focus:outline-none"
                   />
                 </div>
               </div>
             </div>
           ))}
           {draft.question_plan.length === 0 && (
-            <p className="text-sm text-[#737373] py-4 text-center border border-dashed border-[#E8E5DF] rounded-xl">
+            <p className="rounded-xl border border-dashed border-[#E8E5DF] py-4 text-center text-sm text-[#737373]">
               No questions yet. Generate a plan or add one manually.
             </p>
           )}
@@ -357,12 +407,27 @@ export default function VoiceConfigPage() {
             {(draft.qualification?.work_model === "onsite" || draft.qualification?.work_model === "hybrid") && (
               <>
                 <div>
-                  <label className={labelCls}>Job city</label>
+                  <label className={labelCls}>
+                    Job city <span className="text-red-600">*</span>
+                  </label>
                   <input
                     value={draft.qualification?.job_city ?? ""}
                     onChange={(e) => setQual({ job_city: e.target.value || null })}
-                    className={inputCls}
+                    placeholder="e.g. Bangalore"
+                    aria-invalid={needsJobCity}
+                    className={
+                      needsJobCity
+                        ? inputCls.replace("border-[#D4D4D4]", "border-red-400") + " bg-red-50/40"
+                        : inputCls
+                    }
                   />
+                  {needsJobCity && (
+                    <p className="mt-1 text-xs text-red-600">
+                      {draft.qualification?.relocation_required
+                        ? "Required: the relocation check needs a city the agent can name."
+                        : "Required for an " + (draft.qualification?.work_model ?? "onsite") + " role: the agent asks whether being based here works."}
+                    </p>
+                  )}
                 </div>
                 <label className="flex items-center gap-3 cursor-pointer select-none sm:col-span-2">
                   <input
@@ -440,21 +505,31 @@ export default function VoiceConfigPage() {
       </section>
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-3 border-t border-[#E8E5DF] pt-4">
-        <Link
-          to="/screenings/$id"
-          params={{ id }}
-          className="h-9 px-4 flex items-center text-sm font-medium text-[#404040] hover:text-[#0F0F0F]"
-        >
-          Cancel
-        </Link>
-        <button
-          onClick={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending}
-          className="h-9 px-5 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60"
-        >
-          {saveMutation.isPending ? "Saving…" : "Save voice round"}
-        </button>
+      <div className="border-t border-[#E8E5DF] pt-4">
+        {saveBlockers.length > 0 && (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            {saveBlockers.map((msg, i) => (
+              <p key={i} className="text-xs leading-relaxed text-amber-800">{msg}</p>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center justify-end gap-3">
+          <Link
+            to="/screenings/$id"
+            params={{ id }}
+            className="h-9 px-4 flex items-center text-sm font-medium text-[#404040] hover:text-[#0F0F0F]"
+          >
+            Cancel
+          </Link>
+          <button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || saveBlockers.length > 0}
+            title={saveBlockers.length > 0 ? saveBlockers.join(" ") : undefined}
+            className="h-9 px-5 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {saveMutation.isPending ? "Saving…" : isEditing ? "Save changes" : "Save voice round"}
+          </button>
+        </div>
       </div>
     </div>
   );
