@@ -84,7 +84,7 @@ type Tab = {
 const tabs: Tab[] = [
   { title: "Profile", value: "profile" },
   { title: "Analysis", value: "scorecard" },
-  { title: "Voice", value: "voice" },
+  { title: "Interview", value: "voice" },
 ]
 
 
@@ -486,7 +486,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
           </div>)
         }
 
-        {/* Voice Tab — call / schedule / transcript + scorecard for this candidate */}
+        {/* Interview Tab — call / schedule / transcript + scorecard for this candidate */}
         {
           tab === "voice" && (
             <div className="px-6 py-4">
@@ -498,7 +498,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                 />
               ) : (
                 <div className="py-10 text-center text-sm text-[#737373]">
-                  Voice screening is not available for this candidate.
+                  The interview round is not available for this candidate.
                 </div>
               )}
             </div>
