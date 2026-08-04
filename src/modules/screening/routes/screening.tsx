@@ -253,7 +253,7 @@ export default function ScreeningDetail() {
                                             {analysisOpen && <TooltipContent><p className="text-xs">Rescore</p></TooltipContent>}
                                         </Tooltip>
                                         {/* Voice round button */}
-                                        {/* <Tooltip>
+                                        <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <button
                                                     onClick={() => navigate({ to: "/screenings/$id/voice", params: { id } })}
@@ -264,7 +264,7 @@ export default function ScreeningDetail() {
                                                 </button>
                                             </TooltipTrigger>
                                             {analysisOpen && <TooltipContent><p className="text-xs">Voice round</p></TooltipContent>}
-                                        </Tooltip> */}
+                                        </Tooltip>
                                         {/* Export CSV */}
                                         <Tooltip>
                                             <TooltipTrigger asChild>
