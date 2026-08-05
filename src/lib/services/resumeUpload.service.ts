@@ -33,8 +33,8 @@ export class ResumeUploadService {
     }
 
 
-    async generateSignedUrls(paths: string,): Promise<string> {
-        return await this.storage.createSignedUrl(paths, this.signedUrlExpiry);
+    async generateSignedUrls(path: string,): Promise<string> {
+        return await this.storage.createSignedUrl(path, this.signedUrlExpiry);
     }
 
     private async collectFiles(files: File[]): Promise<File[]> {

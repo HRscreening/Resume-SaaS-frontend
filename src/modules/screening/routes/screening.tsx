@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+// import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useScreeningQuery } from "@/modules/screening/hooks/screening/screening.query"
 import { getScreening, exportResults } from "@/lib/api";
 import { useCandidateQuery } from "@/controllers/screening/useCandidateQuery";
 import type { RankedCandidate, RubricCategory } from "@/types";
@@ -19,6 +20,9 @@ import UploadResumes from "@/modules/screening/components/uploadResumes"
 import { useAuth } from "@/hooks/useAuth";
 import { SelectedApplicationsProvider } from "../hooks/useSelectedApplication";
 import { setOpenAnalysisSheet as setOpenInfoSheet, useAnalysisSheetOpen as useInfoSheetOpen } from "@/modules/screening/components/info_sheet";
+import { jdStorageService } from "@/lib/services/index"
+
+
 
 type Sections = "Applications" | "Screening"
 
@@ -57,15 +61,7 @@ export default function ScreeningDetail() {
     // fire — a 404 for draft is a rare cost.
 
 
-    const { data: screening, isLoading, error } = useQuery({
-        queryKey: ["screening", id],
-        queryFn: () => getScreening(id),
-        refetchInterval: (query) => {
-            const s = query.state.data;
-            if (!s || ["completed", "failed", "draft"].includes(s.status)) return false;
-            return 5000;
-        },
-    });
+    const { data: screening, isLoading, error } = useScreeningQuery(id);
 
 
 
@@ -110,6 +106,26 @@ export default function ScreeningDetail() {
     const totalApplications = (screening?.applications_cnt ?? 0) + (screening?.scored_resumes_cnt ?? 0);
     const hasAnyCandidates = totalCandidates > 0;
 
+
+    async function viewJD() {
+        try {
+            const url = screening?.jd_url;
+
+           if(!url){
+            toast.error("Job description not available");
+            return;
+           }
+            // const signedUrl = await jdStorageService.createSignedUrl(url, 60 * 5);
+            const signedUrl = jdStorageService.getPublicUrl(url);
+            window.open(signedUrl, "_blank");
+        } catch (err) {
+            toast.error(
+                err instanceof Error
+                    ? err.message
+                    : "Failed to view job description"
+            );
+        }
+    }
 
     async function handleExport() {
         setExporting(true);
@@ -199,21 +215,64 @@ export default function ScreeningDetail() {
                         </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                            
-                        {currentTab === "Applications" && (
+
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <button
-                                    onClick={() => { setShowUploadMore((v) => !v) }}
-                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 whitespace-nowrap ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
+                                    disabled={!screening }
+                                    onClick={() => viewJD()}
+                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
                                 >
-                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v8M3.5 5.5l3.5-3.5 3.5 3.5" /><path d="M2 12h10" /></svg>
-                                    {!analysisOpen && "Add resumes"}
+                                  
+                                        <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        >
+                                        <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
+                                        <path d="M14 2v5h5" />
+                                        <path d="M9 13h6" />
+                                        <path d="M9 17h4" />
+                                    </svg>
+                                
+                                    {!analysisOpen && "Job Desc."}
                                 </button>
                             </TooltipTrigger>
-                            {analysisOpen && <TooltipContent><p className="text-xs">Add resumes</p></TooltipContent>}
+                            {analysisOpen && <TooltipContent><p className="text-xs">Job Desc.</p></TooltipContent>}
                         </Tooltip>
-                        
+
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    onClick={() => setShowRubric(true)}
+                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
+                                >
+                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h3" /></svg>
+                                    {!analysisOpen && "Rubric"}
+                                </button>
+                            </TooltipTrigger>
+                            {analysisOpen && <TooltipContent><p className="text-xs">Rubric</p></TooltipContent>}
+                        </Tooltip>
+
+                        {currentTab === "Applications" && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        onClick={() => { setShowUploadMore((v) => !v) }}
+                                        className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 whitespace-nowrap ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
+                                    >
+                                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v8M3.5 5.5l3.5-3.5 3.5 3.5" /><path d="M2 12h10" /></svg>
+                                        {!analysisOpen && "Add resumes"}
+                                    </button>
+                                </TooltipTrigger>
+                                {analysisOpen && <TooltipContent><p className="text-xs">Add resumes</p></TooltipContent>}
+                            </Tooltip>
+
                         )}
                         {true && (
                             // {(candidates.length > 0 || filtersMatchedNothing) && (
@@ -223,18 +282,7 @@ export default function ScreeningDetail() {
                                 {currentTab === "Screening" && (
                                     <>
                                         {/* Rubric button */}
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <button
-                                                    onClick={() => setShowRubric(true)}
-                                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
-                                                >
-                                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h3" /></svg>
-                                                    {!analysisOpen && "Rubric"}
-                                                </button>
-                                            </TooltipTrigger>
-                                            {analysisOpen && <TooltipContent><p className="text-xs">Rubric</p></TooltipContent>}
-                                        </Tooltip>
+
                                         {/* Rescore button */}
                                         <Tooltip>
                                             <TooltipTrigger asChild>
@@ -316,13 +364,13 @@ export default function ScreeningDetail() {
             {
                 showUploadMore &&
                 <div className="my-4 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
-                <UploadResumes screening_id={id} user_id={user?.id ?? ""} setShowUploadMore={setShowUploadMore} />
+                    <UploadResumes screening_id={id} user_id={user?.id ?? ""} setShowUploadMore={setShowUploadMore} />
                 </div>
             }
 
             {/* ----------------------- Tabs ------------------------ */}
             <div className="flex-1 min-h-0 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
-                {currentTab === "Applications" && <Applications onTabChange={setCurrentTab} sourceMode={sourceMode} setSourceMode={setSourceMode}/>}
+                {currentTab === "Applications" && <Applications onTabChange={setCurrentTab} sourceMode={sourceMode} setSourceMode={setSourceMode} />}
                 {currentTab === "Screening" && <Screening setCurrentTab={setCurrentTab} setSourceMode={setSourceMode} rescoreMode={rescoreMode} setRescoreMode={setRescoreMode} />}
             </div>
 

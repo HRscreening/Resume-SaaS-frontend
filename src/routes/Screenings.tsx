@@ -2,9 +2,9 @@ import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listScreenings, getScreening, getResults } from "@/lib/api";
 import { useUserKey } from "@/lib/userKey";
-import { formatRelativeDate } from "@/lib/utils";
+// import { formatRelativeDate } from "@/lib/utils";
 import type { ScreeningListItem } from "@/types";
-import {formatDate} from "@/utils/formatDate";
+import {formatRelativeDate,ExactDate} from "@/utils/formatDate";
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -129,10 +129,10 @@ export default function Screenings() {
                     <StatusPill status={s.status} />
                   </td> */}
                   <td className="px-6 py-4 text-sm text-[#737373] hidden lg:table-cell">
-                    {s.last_accessed_at ? formatDate(s.last_accessed_at) : ""}
+                    {s.last_accessed_at ? formatRelativeDate(s.last_accessed_at) : "-"}
                   </td>
                   <td className="px-6 py-4 text-sm text-[#737373] hidden lg:table-cell">
-                    {formatRelativeDate(s.created_at)}
+                    {s.created_at ? ExactDate(s.created_at) : "-"}
                   </td>
                 </tr>
               ))}

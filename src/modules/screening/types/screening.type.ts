@@ -1,3 +1,59 @@
+export interface Subcategory {
+  name: string;
+  weight: number; // 1–5 importance (1=low, 5=critical); normalised to weights during scoring
+  description: string;
+  is_non_negotiable?: boolean;
+  is_external_context?: boolean;
+}
+
+export interface RubricCategory {
+  name: string;
+  weight: number; // 0–100, of overall
+  subcategories: Subcategory[];
+}
+
+
+export interface Rubric {
+  categories: RubricCategory[];
+  threshold_score: number;
+  source: "AI" | "MANUAL" | "COMBINED";
+  domain?: string;
+  seniority_level?: string;
+}
+
+export type ScreeningStatus = "draft" | "pending" | "processing" | "completed" | "failed";
+
+export interface StageConfig {
+  color: string;
+  index: number;
+}
+
+export type StagesMap = Record<string, StageConfig>;
+
+
+
+export interface Screening {
+  id: string;
+  user_id: string;
+  title: string;
+  raw_jd_text: string;
+  jd_url: string | null;
+  rubric: Rubric | null;
+  status: ScreeningStatus;
+  total_resumes: number;
+  scored_resumes_cnt: number;
+  applications_cnt:number
+  avg_score: number | null;
+  stages?: StagesMap;
+  created_at: string;
+  updated_at: string;
+  parsing_batch_ids: string[] | null;
+}
+
+
+
+
+
 
 
 export type MatchTierId = "strong" | "potential" | "risky" | "poor";

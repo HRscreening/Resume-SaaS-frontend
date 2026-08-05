@@ -2,6 +2,10 @@ import { getScreening } from "@/lib/api";
 
 export const ScreeningQueryKeys = {
     all: ["screenings"] as const,
+
+    getScreening: (screeningId: string) =>
+        [...ScreeningQueryKeys.all, screeningId] as const,
+
 }
 
 export const ApplicationQueryKeys = {

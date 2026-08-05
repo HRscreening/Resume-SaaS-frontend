@@ -4,4 +4,5 @@ import { ResumeUploadService } from "@/lib/services/resumeUpload.service";
 
 const supabaseClient = createClient();
 const storageService = new StorageService(supabaseClient, "resumes");
+export const jdStorageService = new StorageService(supabaseClient, "Job_Descriptions");
 export const resumeUploadService = new ResumeUploadService(storageService);

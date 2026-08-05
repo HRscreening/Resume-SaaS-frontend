@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
-import {
-    getScreening, saveScreeningStages, updateCandidateStage,
-} from "@/lib/api";
+import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
+
+import { useScreeningQuery } from "@/modules/screening/hooks/screening/screening.query"
+import { useSaveScreeningStagesMutation,useChangeCandidateStageMutation} from "@/modules/screening/hooks/screening/stages.query"
 import { useCandidateQuery } from "@/modules/screening/hooks/screening/useCandidateQuery";
 import type { ScreeningListItem, StagesMap, HiringStage } from "@/types";
 import { useAnalysisSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/components/screening/AnalysisSheet";
@@ -61,16 +61,8 @@ function ScreeningDetailContent({
     const analysisOpen = useAnalysisSheetOpen();
     const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
-    const { data: screening, isLoading, error } = useQuery({
-        queryKey: ["screening", id],
-        queryFn: () => getScreening(id),
-        refetchInterval: (query) => {
-            const s = query.state.data;
-            if (!s || ["completed", "failed", "draft"].includes(s.status)) return false;
-            return 5000;
-        },
-    });
-
+    const { data: screening, isLoading, error } = useScreeningQuery(id);
+    const saveStagesMutation = useSaveScreeningStagesMutation(id, screening!);
     const candidateQuery = useCandidateQuery(id, { limit: PAGE_SIZE });
 
     const {
@@ -166,24 +158,7 @@ function ScreeningDetailContent({
         return () => window.removeEventListener("keydown", onKeyDown);
     }, [rescoreMode, showSelectedOnly, selectedCandidates, selectedDetails]);
 
-    const saveStagesMutation = useMutation({
-        mutationFn: (next: StagesMap) => saveScreeningStages(id, next),
-        onMutate: async (next) => {
-            await queryClient.cancelQueries({ queryKey: ["screening", id] });
-            const prev = queryClient.getQueryData<typeof screening>(["screening", id]);
-            queryClient.setQueryData(
-                ["screening", id],
-                (old: typeof screening) => (old ? { ...old, stages: next } : old),
-            );
-            return { prev };
-        },
-        onError: (_err, _next, ctx) => {
-            if (ctx?.prev) queryClient.setQueryData(["screening", id], ctx.prev);
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ["screening", id] });
-        },
-    });
+
 
     async function handleSaveStages(next: StagesMap): Promise<void> {
         await saveStagesMutation.mutateAsync(next);
@@ -279,10 +254,18 @@ function ScreeningDetailContent({
     const rubricCategories: RubricCategory[] = (screening.rubric as any)?.categories ?? [];
     const stagesMap: StagesMap = screening.stages ?? DEFAULT_STAGES;
 
+
+    // ! to be fixed: this is a hack to avoid TS error, but it should be fixed in the future
     function handleCandidateStageChange(resumeId: string, scoreId: string, next: HiringStage) {
-        updateCandidateStage(scoreId, next).catch(() => {
+        // updateCandidateStage(scoreId, next).catch(() => {
+        //     queryClient.invalidateQueries({ queryKey: ["results", id] });
+        // });
+        useChangeCandidateStageMutation(scoreId, next).mutateAsync().catch(() => {
             queryClient.invalidateQueries({ queryKey: ["results", id] });
-        });
+        }
+    );
+
+
     }
 
     const totalCandidates = screening.scored_resumes_cnt ?? 0;
