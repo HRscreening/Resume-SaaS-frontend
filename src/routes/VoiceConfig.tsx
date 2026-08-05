@@ -12,7 +12,7 @@ import type { Rubric, VoiceConfig, QuestionPlanItem, QualificationConfig } from 
 import { truncate } from "@/lib/utils";
 
 const DEFAULT_CONFIG: VoiceConfig = {
-  enabled: false,
+  enabled: true,
   question_plan: [],
   hiring_company: "",
   voice: { tts_voice_id: "default", tier: "default" },
@@ -111,7 +111,7 @@ export default function VoiceConfigPage() {
     onSuccess: (res) => {
       queryClient.setQueryData(["voice-config", id], res);
       toast.success("Voice round saved");
-      navigate({ to: "/screenings/$id", params: { id } });
+      navigate({ to: "/screenings/$id", params: { id },search: { tab: "Screening" } });
     },
     onError: (e: unknown) =>
       toast.error(e instanceof Error ? e.message : "Could not save voice config"),
@@ -180,7 +180,7 @@ export default function VoiceConfigPage() {
       <div className="flex items-center gap-2 mb-2 text-xs">
         <Link to="/screenings" className="text-[#737373] hover:text-[#0F0F0F]">Screenings</Link>
         <span className="text-[#D4D4D4]">/</span>
-        <Link to="/screenings/$id" params={{ id }} className="text-[#737373] hover:text-[#0F0F0F]">
+        <Link to="/screenings/$id" params={{ id }} search={{ tab:"Screening" }} className="text-[#737373] hover:text-[#0F0F0F]">
           {truncate(screening.title, 32)}
         </Link>
         <span className="text-[#D4D4D4]">/</span>
@@ -215,7 +215,7 @@ export default function VoiceConfigPage() {
       </div>
 
       {/* Enable toggle */}
-      <label className="flex items-center gap-3 mb-6 cursor-pointer select-none">
+      {/* <label className="flex items-center gap-3 mb-6 cursor-pointer select-none">
         <input
           type="checkbox"
           checked={draft.enabled}
@@ -223,7 +223,7 @@ export default function VoiceConfigPage() {
           className="h-4 w-4 accent-[#0F0F0F]"
         />
         <span className="text-sm font-medium text-[#0F0F0F]">Enable voice round for this screening</span>
-      </label>
+      </label> */}
 
       {/* Hiring company — the agent introduces itself with this. Required: without
           it the greeting is generic ("the hiring team") and reads as a spam call,
@@ -517,6 +517,7 @@ export default function VoiceConfigPage() {
           <Link
             to="/screenings/$id"
             params={{ id }}
+            search={{ tab: "Screening" }}
             className="h-9 px-4 flex items-center text-sm font-medium text-[#404040] hover:text-[#0F0F0F]"
           >
             Cancel

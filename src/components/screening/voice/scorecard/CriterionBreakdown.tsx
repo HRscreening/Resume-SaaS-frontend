@@ -101,7 +101,7 @@ export function CriterionBreakdown({ items }: { items: VoiceBreakdownItem[] }) {
   if (items.length === 0) return null;
 
   return (
-    <div>
+    <div className="w-full flex-shrink-0">
       <button
         onClick={() => setOpen((v) => !v)}
         className="text-xs font-medium text-[#0F0F0F] underline underline-offset-2 hover:text-[#C85A17]"

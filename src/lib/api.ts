@@ -67,6 +67,36 @@ export async function request<T>(
   return res.json() as Promise<T>;
 }
 
+export async function requestFormData<T>(
+  path: string,
+  formData: FormData,
+  options: Omit<RequestInit, "body"> = {}
+): Promise<T> {
+  const authHeaders = await getAuthHeader();
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    method: options.method ?? "POST",
+    body: formData,
+    headers: {
+      ...authHeaders,
+      ...(options.headers as Record<string, string> ?? {}),
+    },
+  });
+
+  if (!res.ok) {
+    if (res.status === 401) clearSessionHint();
+    const body = await res.json().catch(() => ({}));
+    throw new Error(parseErrorDetail(body, res.status));
+  }
+
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return undefined as T;
+  }
+
+  return res.json() as Promise<T>;
+}
+
 // ─── User ─────────────────────────────────────────────────────────────────────
 
 export async function getProfile(): Promise<Profile> {
@@ -113,16 +143,11 @@ export async function createJob(data: {
     body: JSON.stringify(data),
   });
 }
-export async function createJob_v1(data: {
-  title: string;
-  raw_jd_text: string;
-  rubric: Rubric;
-  source_job: boolean;
-}): Promise<{ screening_id: string }> {
-  return request<{ screening_id: string }>("/api/v1/screenings/create-job", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+
+export async function createJob_v1(
+  data: FormData
+): Promise<{ screening_id: string }> {
+  return requestFormData("/api/v1/screenings/create-job", data);
 }
 
 function buildUploadHeaders(
@@ -560,29 +585,6 @@ export async function rescoreScreening(
 // POST /api/screenings/:id/save-stages with the StagesMap as the raw body
 // (not wrapped). Always send the complete current map — the endpoint
 // replaces, not merges.
-export async function saveScreeningStages(
-  screeningId: string,
-  stages: StagesMap,
-): Promise<string> {
-  return request<string>(`/api/v1/screenings/${screeningId}/save-stages`, {
-    method: "POST",
-    body: JSON.stringify(stages),
-  });
-}
-
-// Update a single candidate's current stage. Backend contract:
-// POST /api/v1/scores/:scoreId/update-stage?new_stage=<stage>. Returns a
-// plain string body.
-export async function updateCandidateStage(
-  scoreId: string,
-  stage: HiringStage,
-): Promise<string> {
-  const qs = new URLSearchParams({ new_stage: stage });
-  return request<string>(
-    `/api/v1/scores/${scoreId}/update-stage?${qs.toString()}`,
-    { method: "POST" },
-  );
-}
 
 // ─── Billing ─────────────────────────────────────────────────────────────────
 

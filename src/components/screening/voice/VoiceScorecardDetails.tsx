@@ -115,7 +115,7 @@ export function VoiceScorecardDetails({
         </section>
       )}
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-0.5">
+      <div className="w-full flex flex-col items-start gap-x-4 gap-y-1.5 pt-0.5">
         <CriterionBreakdown items={breakdown} />
         <TranscriptPanel turns={data.transcript} />
       </div>

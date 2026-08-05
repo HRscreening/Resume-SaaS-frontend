@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { analyzeJD, createJob, createJob_v1,parseJDFile } from "@/lib/api";
+import { analyzeJD, createJob, createJob_v1, parseJDFile } from "@/lib/api";
 import type { Rubric, Subcategory } from "@/types";
 import { MAX_SUBCATEGORIES } from "@/lib/rubric";
 import { StepIndicator } from "@/components/screening/new-screening/StepIndicator";
@@ -124,17 +124,26 @@ export default function NewScreening() {
     setRubric({ ...rubric, categories: updated });
   }
 
-  async function handleSaveJob(sourceJob:boolean) {
+  async function handleSaveJob(sourceJob: boolean) {
     if (!rubric || !title.trim()) return;
     setSaving(true);
     try {
-      const data = {
-        title: title.trim(),
-        raw_jd_text: jdText,
-        rubric,
-        source_job: sourceJob || false,
-      }
+      const data = new FormData();
+      // const data = {
+      //   title: title.trim(),
+      //   raw_jd_text: jdText,
+      //   rubric,
+      //   source_job: sourceJob || false,
+      // }
 
+      data.append("title", title);
+      data.append("raw_jd_text", jdText);
+      data.append("rubric", JSON.stringify(rubric));
+      data.append("source_job", sourceJob ? "true" : "false");
+      
+      if (jdFile) {
+        data.append("jd_file", jdFile, jdFile.name);
+      }
       // console.log("Saving job with data:", data);
 
       const { screening_id } = await createJob_v1(data);

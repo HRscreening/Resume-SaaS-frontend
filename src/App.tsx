@@ -45,8 +45,11 @@ import Candidates from "@/routes/NewCandidatePage";
 // ─── Eager imports — these are the most-visited pages, no lazy delay ──
 // import ScreeningDetail from "@/routes/ScreeningDetail"; // Old one
 import ScreeningDetail from "@/modules/screening/routes/screening"; // New one
+import { Sections, sectionTabs } from "@/modules/screening/routes/screening";
+import {searchSchema} from "@/modules/screening/types/searchSchema"; // New one
+
 import ResumeDetail from "@/routes/ResumeDetail";
-import EditRubric from "@/routes/EditRubric";
+import EditRubric from "@/modules/screening/routes/EditRubric";
 import VoiceConfigPage from "@/routes/VoiceConfig";
 import VoiceCalls from "@/routes/VoiceCalls";
 
@@ -63,7 +66,7 @@ function RootLayout() {
   return <Outlet />;
 }
 
-function AppLayout({isSidebarRequired = true}: {isSidebarRequired?: boolean}) {
+function AppLayout({ isSidebarRequired = true }: { isSidebarRequired?: boolean }) {
   return (
     <AuthGuard>
       <div className="flex h-screen overflow-hidden">
@@ -221,7 +224,7 @@ const newScreeningRoute = createRoute({
 
 const screeningDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
-  
+
   path: "/screenings/$id",
   component: ScreeningDetail,
   // Fire-and-forget prefetch on Link hover (defaultPreload: "intent").
@@ -233,11 +236,7 @@ const screeningDetailRoute = createRoute({
     queryClient.prefetchQuery({ queryKey: ["results", id], queryFn: () => getResults(id) });
     // queryClient.prefetchQuery({ queryKey: ["batch-progress", id], queryFn: () => getBatchProgress(id) });
   },
-  validateSearch: (search: Record<string, unknown>): { saved?: 1 } => {
-    // When set, the screening page will show a "Rubric saved" toast.
-    if (search.saved === 1 || search.saved === "1") return { saved: 1 };
-    return {};
-  },
+  validateSearch: searchSchema // Zod schema for search params validation
 });
 
 const editRubricRoute = createRoute({
@@ -374,7 +373,7 @@ export function App() {
   return (
     <>
       <RouterProvider router={router} />
-      <Toaster position="top-right" richColors={true}/>
+      <Toaster position="top-right" richColors={true} />
     </>
   );
 }

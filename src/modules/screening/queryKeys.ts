@@ -1,9 +1,17 @@
 import { getScreening } from "@/lib/api";
 
+
+// --------------------------------- Screening Query Keys ---------------------------------
 export const ScreeningQueryKeys = {
     all: ["screenings"] as const,
+
+    getScreening: (screeningId: string) =>
+        [...ScreeningQueryKeys.all, screeningId] as const,
+
 }
 
+
+// --------------------------------- Application Query Keys ---------------------------------
 export const ApplicationQueryKeys = {
     all: ["applications"] as const,
 
@@ -15,8 +23,10 @@ export const ApplicationQueryKeys = {
         limit: number
     ) =>
         [...ApplicationQueryKeys.screening(screeningId), limit] as const,
-};
-
+    };
+    
+    
+// --------------------------------- Active Batches Query Keys ---------------------------------
 
 export const ResumeParsingQueryKeys = {
     all: ["resumeParsing"] as const,
@@ -50,6 +60,7 @@ export const ResumeScoringQueryKeys = {
         [...ResumeScoringQueryKeys.screening(screeningId), batchId] as const,
 };
 
+
 export const ActiveBatchesQueryKeys = {
     all: ["activeBatches"] as const,
 
@@ -59,6 +70,8 @@ export const ActiveBatchesQueryKeys = {
 
 
 
+
+// --------------------------------- Screening Results Query Keys ---------------------------------
 import { CandidateQueryState } from "@/modules/screening/types/screening.type";
 export const ScreeningResultsQueryKeys = {
     all: ["screeningResults"] as const,

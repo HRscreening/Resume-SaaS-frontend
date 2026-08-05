@@ -1,7 +1,7 @@
 import type { HiringStage, MatchTierId, RangeFilter, RubricCategory, SortRule, StagesMap } from "@/types";
 import type { CandidateQueryState, RankedCandidate } from "@/modules/screening/types/screening.type";
 import { getTier } from "@/lib/tier";
-import AnalysisSheet, { useAnalysisSheetOpen, useAnalysisSheetOpenId, setOpenAnalysisSheet } from "@/components/screening/AnalysisSheet";
+import AnalysisSheet, { useAnalysisSheetOpen, useAnalysisSheetOpenId, setOpenAnalysisSheet } from "@/modules/screening/components/Screening/AnalysisSheet";
 import { Pagination } from "@/components/screening/Pagination";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { StageSelect } from "@/components/screening/StageSelect";

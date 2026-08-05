@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
-import {
-    getScreening, saveScreeningStages, updateCandidateStage,
-} from "@/lib/api";
+import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
+
+import { useScreeningQuery } from "@/modules/screening/hooks/screening/screening.query"
+import { useSaveScreeningStagesMutation, useChangeCandidateStageMutation } from "@/modules/screening/hooks/screening/stages.query"
 import { useCandidateQuery } from "@/modules/screening/hooks/screening/useCandidateQuery";
 import type { ScreeningListItem, StagesMap, HiringStage } from "@/types";
-import { useAnalysisSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/components/screening/AnalysisSheet";
+import { useAnalysisSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/modules/screening/components/Screening/AnalysisSheet";
 import { CandidatesTable } from "@/modules/screening/components/Screening/CandidatesTable";
 import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
 import { toast } from "sonner";
 import { useGetBatchesQuery } from "@/modules/screening/hooks/batch.hook";
-import ResumeScoringProgress from "@/modules/screening/components/Processing/resumeScoringProgress";
+import ResumeScoringProgress from "@/modules/screening/components/Screening/resumeScoringProgress";
 import { ApplicationQueryKeys } from "@/modules/screening/queryKeys";
 import { useScreeningApplicationsMutation } from "@/modules/screening/hooks/application.hook";
 import {
@@ -61,16 +61,9 @@ function ScreeningDetailContent({
     const analysisOpen = useAnalysisSheetOpen();
     const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
-    const { data: screening, isLoading, error } = useQuery({
-        queryKey: ["screening", id],
-        queryFn: () => getScreening(id),
-        refetchInterval: (query) => {
-            const s = query.state.data;
-            if (!s || ["completed", "failed", "draft"].includes(s.status)) return false;
-            return 5000;
-        },
-    });
-
+    const { data: screening, isLoading, error } = useScreeningQuery(id);
+    const changeStageMutation = useChangeCandidateStageMutation(id);
+    const saveStagesMutation = useSaveScreeningStagesMutation(id, screening!);
     const candidateQuery = useCandidateQuery(id, { limit: PAGE_SIZE });
 
     const {
@@ -90,18 +83,7 @@ function ScreeningDetailContent({
     const pageLoading = resultsQuery.isLoading;
     const candidates = resultsQuery.data?.pages.flatMap((page) => page.items) ?? [];
 
-    // useEffect(() => {
-    //     if (search.saved !== 1) return;
-    //     toast.success("Rubric saved", { duration: 3500 });
-    //     setRescoreMode?.(true);
-    //     const { saved: _saved, ...rest } = search as Record<string, unknown>;
-    //     navigate({
-    //         to: "/screenings/$id",
-    //         params: { id },
-    //         search: rest as never,
-    //         replace: true,
-    //     });
-    // }, [search, id, navigate, setRescoreMode]);
+
 
     async function submitRescore() {
         if (selectedCandidates.size === 0 || isRescoringMutation) return;
@@ -166,24 +148,7 @@ function ScreeningDetailContent({
         return () => window.removeEventListener("keydown", onKeyDown);
     }, [rescoreMode, showSelectedOnly, selectedCandidates, selectedDetails]);
 
-    const saveStagesMutation = useMutation({
-        mutationFn: (next: StagesMap) => saveScreeningStages(id, next),
-        onMutate: async (next) => {
-            await queryClient.cancelQueries({ queryKey: ["screening", id] });
-            const prev = queryClient.getQueryData<typeof screening>(["screening", id]);
-            queryClient.setQueryData(
-                ["screening", id],
-                (old: typeof screening) => (old ? { ...old, stages: next } : old),
-            );
-            return { prev };
-        },
-        onError: (_err, _next, ctx) => {
-            if (ctx?.prev) queryClient.setQueryData(["screening", id], ctx.prev);
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ["screening", id] });
-        },
-    });
+
 
     async function handleSaveStages(next: StagesMap): Promise<void> {
         await saveStagesMutation.mutateAsync(next);
@@ -279,17 +244,17 @@ function ScreeningDetailContent({
     const rubricCategories: RubricCategory[] = (screening.rubric as any)?.categories ?? [];
     const stagesMap: StagesMap = screening.stages ?? DEFAULT_STAGES;
 
-    function handleCandidateStageChange(resumeId: string, scoreId: string, next: HiringStage) {
-        updateCandidateStage(scoreId, next)
-            .then(() => {
-                // Voice eligibility depends on the Shortlisted stage, so refresh
-                // the voice queries — moving a candidate to Shortlisted should
-                // immediately surface the Call / Schedule controls.
-                queryClient.invalidateQueries({ queryKey: ["voice-candidates", id] });
-            })
-            .catch(() => {
-                queryClient.invalidateQueries({ queryKey: ["results", id] });
-            });
+
+    // ! to be fixed: this is a hack to avoid TS error, but it should be fixed in the future
+    async function handleCandidateStageChange(
+        resume_id: string,
+        scoreId: string,
+        next: HiringStage
+    ) {
+        await changeStageMutation.mutateAsync({
+            scoreId,
+            stage: next,
+        });
     }
 
     const totalCandidates = screening.scored_resumes_cnt ?? 0;
@@ -330,16 +295,16 @@ function ScreeningDetailContent({
                                     {...(showSelectedOnly
                                         ? {}
                                         : {
-                                              queryState,
-                                              searchInput,
-                                              onSearchChange: setSearch,
-                                              onStageFilterChange: setStage,
-                                              onMatchFilterChange: setMatch,
-                                              onSortChange: setSort,
-                                              onOverallRangeChange: setOverallRange,
-                                              onCategoryRangeChange: setCategoryRange,
-                                              onClearAllFilters: clearAll,
-                                          })}
+                                            queryState,
+                                            searchInput,
+                                            onSearchChange: setSearch,
+                                            onStageFilterChange: setStage,
+                                            onMatchFilterChange: setMatch,
+                                            onSortChange: setSort,
+                                            onOverallRangeChange: setOverallRange,
+                                            onCategoryRangeChange: setCategoryRange,
+                                            onClearAllFilters: clearAll,
+                                        })}
                                 />
                             );
                         })()}
@@ -373,9 +338,8 @@ function ScreeningDetailContent({
                                     )}
                                 </span>
                                 <label
-                                    className={`flex items-center gap-2 text-xs ${
-                                        totalSelected === 0 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-                                    } text-[#404040]`}
+                                    className={`flex items-center gap-2 text-xs ${totalSelected === 0 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                                        } text-[#404040]`}
                                 >
                                     <input
                                         type="checkbox"

@@ -2,9 +2,9 @@ import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listScreenings, getScreening, getResults } from "@/lib/api";
 import { useUserKey } from "@/lib/userKey";
-import { formatRelativeDate } from "@/lib/utils";
+// import { formatRelativeDate } from "@/lib/utils";
 import type { ScreeningListItem } from "@/types";
-import {formatDate} from "@/utils/formatDate";
+import {formatRelativeDate,ExactDate} from "@/utils/formatDate";
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -112,7 +112,7 @@ export default function Screenings() {
               {screenings.map((s: ScreeningListItem) => (
                 <tr key={s.id} className="hover:bg-[#F5F3EE] transition-colors" onMouseEnter={() => prefetch(s.id)}>
                   <td className="px-6 py-4">
-                    <Link to="/screenings/$id" params={{ id: s.id }} className="text-sm font-medium text-[#0F0F0F] hover:underline cursor-pointer">
+                    <Link to="/screenings/$id" params={{ id: s.id }}   search={{ tab: "Applications" }} className="text-sm font-medium text-[#0F0F0F] hover:underline cursor-pointer">
                       {s.title}
                     </Link>
                   </td>
@@ -129,10 +129,10 @@ export default function Screenings() {
                     <StatusPill status={s.status} />
                   </td> */}
                   <td className="px-6 py-4 text-sm text-[#737373] hidden lg:table-cell">
-                    {s.last_accessed_at ? formatDate(s.last_accessed_at) : ""}
+                    {s.last_accessed_at ? formatRelativeDate(s.last_accessed_at) : "-"}
                   </td>
                   <td className="px-6 py-4 text-sm text-[#737373] hidden lg:table-cell">
-                    {formatRelativeDate(s.created_at)}
+                    {s.created_at ? ExactDate(s.created_at) : "-"}
                   </td>
                 </tr>
               ))}

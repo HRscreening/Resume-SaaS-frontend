@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "@tanstack/react-router";
-import { ApplicationTable } from "@/modules/screening/components/application_table";
+import { ApplicationTable } from "@/modules/screening/components/Application/application_table";
 import data from "../test_data.json"
 
 import { Application } from "@/modules/screening/types/application.type"
 import { useSelectedApplications, SelectedApplicationsProvider } from "@/modules/screening/hooks/useSelectedApplication";
 import { useApplicationsInfiniteQuery, useScreeningApplicationsMutation } from "@/modules/screening/hooks/application.hook";
 import { toast } from "sonner";
-import ResumeParsingProgress from "../components/Processing/resumeParsingProgress";
+import ResumeParsingProgress from "@/modules/screening/components/Application/resumeParsingProgress";
 import { useGetBatchesQuery } from "@/modules/screening/hooks/batch.hook";
 
 import { useAnalysisSheetOpen as useInfoSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/modules/screening/components/info_sheet";

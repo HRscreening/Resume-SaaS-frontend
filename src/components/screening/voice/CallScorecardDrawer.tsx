@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  getCallArtifacts, getCallScorecard, getScreening, overrideCallScorecard, updateCandidateStage,
+  getCallArtifacts, getCallScorecard, getScreening, overrideCallScorecard,
 } from "@/lib/api";
+import { updateCandidateStage } from "@/modules/screening/apis/stages";
+
 import { REJECTED_STAGE } from "@/lib/stages";
 import type { CallScorecardDetail } from "@/types";
 import { VoiceScorecardDetails } from "./VoiceScorecardDetails";

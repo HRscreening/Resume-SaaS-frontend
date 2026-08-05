@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useInView } from "react-intersection-observer";
 
 import { Application } from "@/modules/screening/types/application.type";
-import CandidateRow from "@/modules/screening/components/application_row";
+import CandidateRow from "@/modules/screening/components/Application/application_row";
 import { useSelectedApplications } from "@/modules/screening/hooks/useSelectedApplication";
 import { useAnalysisSheetOpen } from "@/modules/screening/components/info_sheet";
 

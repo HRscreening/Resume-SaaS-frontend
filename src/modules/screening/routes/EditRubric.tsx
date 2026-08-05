@@ -57,7 +57,7 @@ export default function EditRubric() {
   const totalWeight = draft.reduce((s, c) => s + c.weight, 0);
   const dirty = JSON.stringify(draft) !== JSON.stringify(initialCategories);
   const hasEmptySubName = draft.some((c) => c.subcategories.some((s) => !s.name.trim()));
-  const canSave = dirty  && !hasEmptySubName && !saving;
+  const canSave = dirty && !hasEmptySubName && !saving;
 
   function updateCategoryWeight(catIdx: number, weight: number) {
     setDraft((prev) => prev.map((c, i) => (i === catIdx ? { ...c, weight } : c)));
@@ -127,9 +127,12 @@ export default function EditRubric() {
       );
 
       navigate({
-        to: "/screenings/$id",
+        to: "..",
         params: { id },
-        search: { saved: 1 },
+        search: (prev) => ({
+          ...prev,
+          saved: 1,
+        }),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save rubric");
@@ -213,8 +216,8 @@ export default function EditRubric() {
                         type="button"
                         onClick={() => updateSub(catIdx, subIdx, { is_non_negotiable: !sub.is_non_negotiable })}
                         className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border transition-colors ${sub.is_non_negotiable
-                            ? "bg-red-100 text-red-700 border-red-200"
-                            : "bg-white text-[#A0A0A0] border-[#E8E5DF] hover:border-red-200 hover:text-red-600"
+                          ? "bg-red-100 text-red-700 border-red-200"
+                          : "bg-white text-[#A0A0A0] border-[#E8E5DF] hover:border-red-200 hover:text-red-600"
                           }`}
                       >
                         Must Have
@@ -223,8 +226,8 @@ export default function EditRubric() {
                         type="button"
                         onClick={() => updateSub(catIdx, subIdx, { is_external_context: !sub.is_external_context })}
                         className={`text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full border transition-colors ${sub.is_external_context
-                            ? "bg-blue-50 text-blue-600 border-blue-200"
-                            : "bg-white text-[#A0A0A0] border-[#E8E5DF] hover:border-blue-200 hover:text-blue-600"
+                          ? "bg-blue-50 text-blue-600 border-blue-200"
+                          : "bg-white text-[#A0A0A0] border-[#E8E5DF] hover:border-blue-200 hover:text-blue-600"
                           }`}
                       >
                         External Signal
@@ -265,8 +268,8 @@ export default function EditRubric() {
                                 onClick={() => updateSub(catIdx, subIdx, { weight: lvl })}
                                 title={IMPORTANCE_LABELS[lvl - 1]}
                                 className={`h-7 w-7 sm:h-6 sm:w-6 rounded-md text-xs font-bold transition-colors ${lvl <= sub.weight
-                                    ? "bg-[#0F0F0F] text-white"
-                                    : "bg-[#F0EDE8] text-[#A0A0A0] hover:bg-[#E8E5DF]"
+                                  ? "bg-[#0F0F0F] text-white"
+                                  : "bg-[#F0EDE8] text-[#A0A0A0] hover:bg-[#E8E5DF]"
                                   }`}
                               >
                                 {lvl}
@@ -341,18 +344,17 @@ export default function EditRubric() {
             <p className="text-xs text-[#737373]">
               {hasEmptySubName
                 ? "Every subcategory needs a name."
-                  : dirty
-                    ? "Ready to save."
-                    : "No changes yet."}
+                : dirty
+                  ? "Ready to save."
+                  : "No changes yet."}
             </p>
             <div className="flex gap-2 shrink-0">
-              <Link
-                to="/screenings/$id"
-                params={{ id }}
+              <div
+                onClick={() => navigate({ to: "..", params: { id }, search: (prev) => prev })}
                 className="h-10 px-4 text-sm font-medium text-[#404040] border border-[#D4D4D4] rounded-xl hover:bg-[#F5F3EE] flex items-center"
               >
                 Cancel
-              </Link>
+              </div>
               <button
                 onClick={() => setConfirmOpen(true)}
                 disabled={!canSave}
@@ -364,7 +366,7 @@ export default function EditRubric() {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 }
 

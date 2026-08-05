@@ -96,6 +96,7 @@ export interface Screening {
   user_id: string;
   title: string;
   raw_jd_text: string;
+  jd_url: string | null;
   rubric: Rubric | null;
   status: ScreeningStatus;
   total_resumes: number;

@@ -45,13 +45,18 @@ export class StorageService {
 
     async createSignedUrl(path: string, expiresIn: number, download: boolean = false): Promise<string> {
 
+
         const { data, error } = await this.supabase.storage
             .from(this.bucket)
             .createSignedUrl(path, expiresIn, {
                 download: download,
             });
 
-        if (error) throw error;
+        // if (error) throw error;
+        if (error) {
+            console.error("Error creating signed URL:", error);
+            throw error;
+        }
 
         return data.signedUrl;
     }
