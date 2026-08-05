@@ -4,15 +4,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getScreening, getBatchProgress, exportResults,
   uploadResumesToJob, addResumesToJob, rescoreScreening,
-  saveScreeningStages, updateCandidateStage,
 } from "@/lib/api";
+import {saveScreeningStages, updateCandidateStage} from "@/modules/screening/apis/stages";
 import { useCandidateQuery } from "@/controllers/screening/useCandidateQuery";
 import type { ScreeningListItem, StagesMap, HiringStage, PaginatedResults } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";
 import type { RankedCandidate, RubricCategory } from "@/types";
 import { DEFAULT_STAGES } from "@/lib/stages";
 import { StagesDialog } from "@/components/screening/StagesDialog";
-import { useAnalysisSheetOpen, setOpenAnalysisSheet, ANALYSIS_SHEET_WIDTH } from "@/components/screening/AnalysisSheet";
+import { useAnalysisSheetOpen, setOpenAnalysisSheet, ANALYSIS_SHEET_WIDTH } from "@/modules/screening/components/Screening/AnalysisSheet";
 import { TIERS, getTier, TierSection, type TierId } from "@/components/screening/TierSection";
 
 import { ProcessingAccordion } from "@/components/screening/ProcessingAccordion";

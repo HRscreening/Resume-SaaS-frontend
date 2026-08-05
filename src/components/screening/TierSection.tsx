@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { RankedCandidate, RubricCategory } from "@/types";
-import AnalysisSheet, { useAnalysisSheetOpen, useAnalysisSheetOpenId, setOpenAnalysisSheet } from "@/components/screening/AnalysisSheet";
+import AnalysisSheet, { useAnalysisSheetOpen, useAnalysisSheetOpenId, setOpenAnalysisSheet } from "@/modules/screening/components/Screening/AnalysisSheet";
 
 // Module-level so we don't reconstruct it on every CandidateRow render.
 const LIST_FORMATTER = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
