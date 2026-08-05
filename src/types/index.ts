@@ -306,3 +306,229 @@ export interface Toast {
   type: ToastType;
   message: string;
 }
+
+// ─── Voice Screening Round ─────────────────────────────────────────────────
+
+export interface QuestionPlanItem {
+  text: string;
+  competency_ref: string;
+  expected_signals: string[];
+}
+
+export interface VoiceSettings {
+  tts_voice_id: string;
+  tier: "default" | "premium";
+}
+
+export interface CallingWindow {
+  start: string; // "HH:MM"
+  end: string;   // "HH:MM"
+  tz: string;
+}
+
+export interface RetryPolicy {
+  max_attempts: number;
+  backoff: "exponential" | "linear" | "fixed";
+}
+
+export interface QualificationConfig {
+  budget_cap?: number | null;
+  budget_band_pct?: number;
+  work_model?: "remote" | "onsite" | "hybrid" | null;
+  job_city?: string | null;
+  relocation_required?: boolean;
+  distance_threshold_km?: number;
+  ask_notice?: boolean;
+  ask_compensation?: boolean;
+  ask_location?: boolean;
+  role_facts?: string[];
+}
+
+export interface VoiceConfig {
+  enabled: boolean;
+  question_plan: QuestionPlanItem[];
+  // Company the agent names when introducing itself. Falls back to the parsed
+  // JD's company; without either, calls are blocked (the greeting would be
+  // generic and read as a spam call).
+  hiring_company?: string | null;
+  voice: VoiceSettings;
+  language: "en";
+  calling_window: CallingWindow;
+  default_country_code: string;
+  retry_policy: RetryPolicy;
+  max_concurrent_calls_override: number | null;
+  qualification?: QualificationConfig | null;
+}
+
+export interface VoiceConfigResponse {
+  screening_id: string;
+  voice_config: VoiceConfig | null;
+}
+
+export interface GenerateQuestionPlanResponse {
+  question_plan: QuestionPlanItem[];
+  // Detected from the JD; UI defaults ask_location off for remote roles.
+  is_remote_job: boolean;
+}
+
+// ─── Voice calls + scorecards (Phase 2) ────────────────────────────────────
+
+export type CallStatus =
+  | "QUEUED" | "DIALING" | "IN_PROGRESS"
+  | "NO_ANSWER" | "BUSY" | "VOICEMAIL" | "DROPPED" | "FAILED"
+  | "COMPLETED" | "QUEUED_FOR_SCORING" | "SCORING" | "SCORED" | "ERROR";
+
+export type CallDisplayStatus =
+  | "queued" | "calling" | "in_interview" | "processing" | "ready" | "unreachable";
+
+export type RecordingStatus = "none" | "processing" | "ready" | "failed";
+
+export interface CallListItem {
+  id: string;
+  resume_id: string;
+  candidate_name: string | null;
+  phone_e164: string;
+  status: CallStatus;
+  display_status: CallDisplayStatus;
+  display_detail: string | null;
+  recording_status: RecordingStatus | null;
+  attempt_no: number;
+  provider: string | null;
+  duration_seconds: number | null;
+  has_transcript: boolean;
+  error_message: string | null;
+  voice_score: number | null;
+  recommendation: string | null;
+  is_partial: boolean;
+  resume_score: number | null;
+  scheduled_at: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface SkippedResume {
+  resume_id: string;
+  candidate_name: string | null;
+  candidate_phone: string | null;
+  reason: string;
+}
+
+export type CandidateCallReason = "callable" | "recall" | "in_progress" | "no_phone";
+
+export interface CallCandidate {
+  resume_id: string;
+  candidate_name: string | null;
+  candidate_phone: string | null;
+  phone_e164: string | null;
+  eligible: boolean;
+  reason: CandidateCallReason;
+  last_call_id: string | null;
+  last_call_status: CallDisplayStatus | null;
+  voice_score: number | null;
+}
+
+export interface CallCandidatesResponse {
+  voice_ready: boolean;
+  hiring_company?: string | null;
+  default_country_code: string;
+  candidates: CallCandidate[];
+}
+
+export interface TriggerCallsResponse {
+  created: CallListItem[];
+  skipped: SkippedResume[];
+}
+
+export interface CallsListResponse {
+  calls: CallListItem[];
+}
+
+export interface TranscriptTurn {
+  speaker: string;
+  text: string;
+  ts: number;
+  confidence: number | null;
+}
+
+export interface ScoreDriverCategory {
+  name: string;
+  weight_pct: number;
+  avg_score: number;
+  contribution_points: number;
+  delta_points: number;
+  direction: "positive" | "negative" | "neutral";
+}
+
+export interface ScoreDriverCriterion {
+  criterion: string;
+  category: string;
+  score: number;
+  impact_points: number;
+}
+
+export interface ScoreDrivers {
+  baseline: number;
+  overall_score: number;
+  categories: ScoreDriverCategory[];
+  positive_drivers: ScoreDriverCriterion[];
+  negative_drivers: ScoreDriverCriterion[];
+}
+
+export interface QualificationFacts {
+  current_ctc: string | null;
+  expected_ctc: string | null;
+  ctc_in_band: boolean | null;
+  notice_period: string | null;
+  candidate_location: string | null;
+  relocation_willing: boolean | null;
+}
+
+export interface Qualification {
+  verdict: "qualified" | "needs_review" | "not_a_fit";
+  verdict_reason: string;
+  facts: QualificationFacts;
+  interest_summary: string;
+  role_read: string[];
+  flags: string[];
+  reschedule_requested: string | null;
+}
+
+export interface CallScorecardDetail {
+  call_id: string;
+  resume_id: string;
+  candidate_name: string | null;
+  status: CallStatus;
+  score_id: string | null;
+  stage: string | null;
+  overall_score: number | null;
+  resume_score: number | null;
+  recommendation: string | null;
+  breakdown: unknown[];
+  grounding_data: unknown[];
+  overall_summary: string | null;
+  strengths: string[] | null;
+  missing_elements: string[] | null;
+  flags: string[] | null;
+  is_partial: boolean;
+  reviewer_override: Record<string, unknown> | null;
+  transcript: TranscriptTurn[] | null;
+  recording_url: string | null;
+  score_drivers: ScoreDrivers | null;
+  qualification: Qualification | null;
+}
+
+export interface ScorecardOverrideRequest {
+  overall_score?: number;
+  recommendation?: "advance" | "hold" | "reject";
+  notes?: string;
+}
+
+export interface CallArtifactsResponse {
+  call_id: string;
+  recording_status: RecordingStatus;
+  recording_download_url: string | null;
+  transcript_available: boolean;
+  transcript_download_url: string | null;
+}

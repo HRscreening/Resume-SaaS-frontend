@@ -3,7 +3,7 @@ import { useActiveParsingQuery } from '@/modules/screening/hooks/progress.hook';
 import type { ResumeParsingBodyType, EventBodyType } from "@/modules/screening/types/progress.type";
 import type { GetParsingResponseType } from "@/modules/screening/apis/getActiveParsings";
 import type { Application } from "@/modules/screening/types/application.type";
-import { PendingResumeRow } from './ProcessingResumeRow';
+import { PendingResumeRow } from '@/modules/screening/components/shared/ProcessingResumeRow';
 import { queryClient } from '@/lib/queryClient';
 import { ApplicationQueryKeys, ResumeParsingQueryKeys, ActiveBatchesQueryKeys } from '@/modules/screening/queryKeys';
 import type { GetApplicationsResponseType } from '@/modules/screening/apis/getApplications';

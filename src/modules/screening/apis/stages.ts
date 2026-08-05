@@ -1,5 +1,5 @@
 import { request } from "@/lib/api";
-import { StagesMap,HiringStage } from "@/modules/screening/types/screening.type";
+import { StagesMap, HiringStage } from "@/modules/screening/types/screening.type";
 
 export async function saveScreeningStages(
   screeningId: string,

@@ -112,7 +112,7 @@ export default function Screenings() {
               {screenings.map((s: ScreeningListItem) => (
                 <tr key={s.id} className="hover:bg-[#F5F3EE] transition-colors" onMouseEnter={() => prefetch(s.id)}>
                   <td className="px-6 py-4">
-                    <Link to="/screenings/$id" params={{ id: s.id }} className="text-sm font-medium text-[#0F0F0F] hover:underline cursor-pointer">
+                    <Link to="/screenings/$id" params={{ id: s.id }}   search={{ tab: "Applications" }} className="text-sm font-medium text-[#0F0F0F] hover:underline cursor-pointer">
                       {s.title}
                     </Link>
                   </td>

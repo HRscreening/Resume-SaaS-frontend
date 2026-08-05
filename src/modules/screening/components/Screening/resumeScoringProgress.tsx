@@ -3,7 +3,7 @@ import { useActiveScoringQuery } from '@/modules/screening/hooks/progress.hook';
 import type { ResumeScoringBodyType, EventBodyType } from "@/modules/screening/types/progress.type";
 import type { GetScoringResponseType} from "@/modules/screening/apis/getActiveScorings";
 import type { Application } from "@/modules/screening/types/application.type";
-import { PendingResumeRow } from './ProcessingResumeRow';
+import { PendingResumeRow } from '@/modules/screening/components/shared/ProcessingResumeRow';
 import { queryClient } from '@/lib/queryClient';
 import { ApplicationQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys,ScreeningResultsQueryKeys } from '@/modules/screening/queryKeys';
 import type { GetActiveBatchesResponse } from '@/modules/screening/apis/activeBatches';

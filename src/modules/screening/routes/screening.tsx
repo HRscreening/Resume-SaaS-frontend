@@ -6,7 +6,7 @@ import { getScreening, exportResults } from "@/lib/api";
 import { useCandidateQuery } from "@/controllers/screening/useCandidateQuery";
 import type { RankedCandidate, RubricCategory } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";
-import { useAnalysisSheetOpen, setOpenAnalysisSheet } from "@/components/screening/AnalysisSheet";
+import { useAnalysisSheetOpen, setOpenAnalysisSheet } from "@/modules/screening/components/Screening/AnalysisSheet";
 import { RubricModal } from "@/components/screening/RubricModal";
 import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -18,25 +18,26 @@ import Screening from "@/modules/screening/tabs/screeningTab"
 import UploadResumes from "@/modules/screening/components/uploadResumes"
 
 import { useAuth } from "@/hooks/useAuth";
-import { SelectedApplicationsProvider } from "../hooks/useSelectedApplication";
 import { setOpenAnalysisSheet as setOpenInfoSheet, useAnalysisSheetOpen as useInfoSheetOpen } from "@/modules/screening/components/info_sheet";
 import { jdStorageService } from "@/lib/services/index"
 
+import SearchSchema from "@/modules/screening/types/searchSchema";
 
 
-type Sections = "Applications" | "Screening"
 
-const sectionTabs: Sections[] = ["Applications", "Screening"];
+export const sectionTabs = ["Applications", "Screening"] as const;
 
-const PAGE_SIZE = 10;
+export type Sections = typeof sectionTabs[number];
+
+
 
 export default function ScreeningDetail() {
     const { id } = useParams({ strict: false }) as { id: string };
-    const search = useSearch({ strict: false }) as { saved?: number } & Record<string, unknown>;
+    const search = useSearch({ strict: false }) as SearchSchema;
 
-    const [currentTab, setCurrentTab] = useState<Sections>("Applications")
+    const currentTab: Sections = search.tab ?? "Applications";
 
-    const navigate = useNavigate();
+    const navigate = useNavigate({from: "/screenings/$id",});
 
     const { user } = useAuth();
 
@@ -93,7 +94,7 @@ export default function ScreeningDetail() {
         toastShownRef.current = true;
         toast.success("Rubric saved", { duration: 3500 });
         setRescoreMode(true);
-        const { saved: _saved, ...rest } = search as Record<string, unknown>;
+        const { saved: _saved, ...rest } = search as SearchSchema;
         navigate({
             to: "/screenings/$id",
             params: { id },
@@ -111,10 +112,10 @@ export default function ScreeningDetail() {
         try {
             const url = screening?.jd_url;
 
-           if(!url){
-            toast.error("Job description not available");
-            return;
-           }
+            if (!url) {
+                toast.error("Job description not available");
+                return;
+            }
             // const signedUrl = await jdStorageService.createSignedUrl(url, 60 * 5);
             const signedUrl = jdStorageService.getPublicUrl(url);
             window.open(signedUrl, "_blank");
@@ -126,6 +127,16 @@ export default function ScreeningDetail() {
             );
         }
     }
+
+    const changeTab = (tab: Sections) => {
+        navigate({
+            replace: true,
+            search: (prev) => ({
+                ...prev,
+                tab,
+            }),
+        });
+    };
 
     async function handleExport() {
         setExporting(true);
@@ -215,36 +226,37 @@ export default function ScreeningDetail() {
                         </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                        {screening.jd_url &&
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        disabled={!screening}
+                                        onClick={() => viewJD()}
+                                        className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
+                                    >
 
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <button
-                                    disabled={!screening }
-                                    onClick={() => viewJD()}
-                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
-                                >
-                                  
                                         <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
+                                            width="14"
+                                            height="14"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
                                         >
-                                        <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
-                                        <path d="M14 2v5h5" />
-                                        <path d="M9 13h6" />
-                                        <path d="M9 17h4" />
-                                    </svg>
-                                
-                                    {!analysisOpen && "Job Desc."}
-                                </button>
-                            </TooltipTrigger>
-                            {analysisOpen && <TooltipContent><p className="text-xs">Job Desc.</p></TooltipContent>}
-                        </Tooltip>
+                                            <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
+                                            <path d="M14 2v5h5" />
+                                            <path d="M9 13h6" />
+                                            <path d="M9 17h4" />
+                                        </svg>
+
+                                        {!analysisOpen && "Job Desc."}
+                                    </button>
+                                </TooltipTrigger>
+                                {analysisOpen && <TooltipContent><p className="text-xs">Job Desc.</p></TooltipContent>}
+                            </Tooltip>
+                        }
 
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -301,7 +313,7 @@ export default function ScreeningDetail() {
                                             {analysisOpen && <TooltipContent><p className="text-xs">Rescore</p></TooltipContent>}
                                         </Tooltip>
                                         {/* Voice round button */}
-                                        {/* <Tooltip>
+                                        <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <button
                                                     onClick={() => navigate({ to: "/screenings/$id/voice", params: { id } })}
@@ -312,7 +324,7 @@ export default function ScreeningDetail() {
                                                 </button>
                                             </TooltipTrigger>
                                             {analysisOpen && <TooltipContent><p className="text-xs">Voice round</p></TooltipContent>}
-                                        </Tooltip> */}
+                                        </Tooltip>
                                         {/* Export CSV */}
                                         <Tooltip>
                                             <TooltipTrigger asChild>
@@ -349,7 +361,12 @@ export default function ScreeningDetail() {
                     sectionTabs.map((tab) => (
                         <button
                             key={tab}
-                            onClick={() => { setCurrentTab(tab); setShowUploadMore(false); setOpenAnalysisSheet(null); setOpenInfoSheet(null); }}
+                            onClick={() => {
+                                changeTab(tab);
+                                setShowUploadMore(false);
+                                setOpenAnalysisSheet(null);
+                                setOpenInfoSheet(null);
+                            }}
                             className={`px-4 py-2 text-sm font-medium rounded-t-lg focus:outline-none ${currentTab === tab ? "bg-[#0F0F0F] text-white" : "bg-[#E8E5DF] text-[#404040] hover:bg-[#D4D4D4]"}`}
                         >
                             {tab}
@@ -370,8 +387,8 @@ export default function ScreeningDetail() {
 
             {/* ----------------------- Tabs ------------------------ */}
             <div className="flex-1 min-h-0 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
-                {currentTab === "Applications" && <Applications onTabChange={setCurrentTab} sourceMode={sourceMode} setSourceMode={setSourceMode} />}
-                {currentTab === "Screening" && <Screening setCurrentTab={setCurrentTab} setSourceMode={setSourceMode} rescoreMode={rescoreMode} setRescoreMode={setRescoreMode} />}
+                {currentTab === "Applications" && <Applications onTabChange={changeTab} sourceMode={sourceMode} setSourceMode={setSourceMode} />}
+                {currentTab === "Screening" && <Screening setCurrentTab={changeTab} setSourceMode={setSourceMode} rescoreMode={rescoreMode} setRescoreMode={setRescoreMode} />}
             </div>
 
 
@@ -385,7 +402,7 @@ export default function ScreeningDetail() {
                         !isProcessing
                             ? () => {
                                 setShowRubric(false);
-                                navigate({ to: "/screenings/$id/rubric", params: { id } });
+                                navigate({ to: "/screenings/$id/rubric", params: { id }, search: (prev) => prev });
                             }
                             : undefined
                     }

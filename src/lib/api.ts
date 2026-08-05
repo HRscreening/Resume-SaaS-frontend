@@ -432,7 +432,6 @@ export type ResumeDetailFull = Resume & {
 // /full returns { detail: Resume + score + parsed_*, pdf_url, pdf_filename }.
 // Flattened here so callers consume a single object and avoid a second
 // pdf-url round-trip.
-
 export async function getResumeDetailFull(
   screeningId: string,
   resumeId: string
@@ -659,4 +658,94 @@ export async function sumbitContactUsForm(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
+}
+// ─── Voice Screening Round ─────────────────────────────────────────────────
+
+export async function generateQuestionPlan(
+  screeningId: string,
+): Promise<import("@/types").GenerateQuestionPlanResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/question-plan/generate`, {
+    method: "POST",
+  });
+}
+
+export async function getVoiceConfig(
+  screeningId: string,
+): Promise<import("@/types").VoiceConfigResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/config`);
+}
+
+export async function saveVoiceConfig(
+  screeningId: string,
+  config: import("@/types").VoiceConfig,
+): Promise<import("@/types").VoiceConfigResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/config`, {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}
+
+// ─── Voice calls + scorecards (Phase 2) ────────────────────────────────────
+
+export async function triggerVoiceCalls(
+  screeningId: string,
+  resumeIds?: string[],
+  scheduledAt?: string | null,
+  // TEMPORARY (2026-07-13): dial a UI-entered number for a single candidate.
+  phoneOverride?: string | null,
+): Promise<import("@/types").TriggerCallsResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/calls`, {
+    method: "POST",
+    body: JSON.stringify({
+      resume_ids: resumeIds ?? null,
+      scheduled_at: scheduledAt ?? null,
+      phone_override: phoneOverride ?? null,
+    }),
+  });
+}
+
+export async function cancelScheduledCall(
+  screeningId: string,
+  callId: string,
+): Promise<void> {
+  await request(`/api/v1/screenings/${screeningId}/voice/calls/${callId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function listVoiceCalls(
+  screeningId: string,
+): Promise<import("@/types").CallsListResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/calls`);
+}
+
+export async function listCallCandidates(
+  screeningId: string,
+): Promise<import("@/types").CallCandidatesResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/candidates`);
+}
+
+export async function getCallScorecard(
+  screeningId: string,
+  callId: string,
+): Promise<import("@/types").CallScorecardDetail> {
+  return request(`/api/v1/screenings/${screeningId}/voice/calls/${callId}/scorecard`);
+}
+
+export async function overrideCallScorecard(
+  screeningId: string,
+  callId: string,
+  body: import("@/types").ScorecardOverrideRequest,
+): Promise<import("@/types").CallScorecardDetail> {
+  return request(`/api/v1/screenings/${screeningId}/voice/calls/${callId}/scorecard/override`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getCallArtifacts(
+  screeningId: string,
+  callId: string,
+): Promise<import("@/types").CallArtifactsResponse> {
+  return request(`/api/v1/screenings/${screeningId}/voice/calls/${callId}/artifacts`);
 }

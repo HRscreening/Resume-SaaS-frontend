@@ -3,15 +3,15 @@ import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router"
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { useScreeningQuery } from "@/modules/screening/hooks/screening/screening.query"
-import { useSaveScreeningStagesMutation,useChangeCandidateStageMutation} from "@/modules/screening/hooks/screening/stages.query"
+import { useSaveScreeningStagesMutation, useChangeCandidateStageMutation } from "@/modules/screening/hooks/screening/stages.query"
 import { useCandidateQuery } from "@/modules/screening/hooks/screening/useCandidateQuery";
 import type { ScreeningListItem, StagesMap, HiringStage } from "@/types";
-import { useAnalysisSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/components/screening/AnalysisSheet";
+import { useAnalysisSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/modules/screening/components/Screening/AnalysisSheet";
 import { CandidatesTable } from "@/modules/screening/components/Screening/CandidatesTable";
 import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
 import { toast } from "sonner";
 import { useGetBatchesQuery } from "@/modules/screening/hooks/batch.hook";
-import ResumeScoringProgress from "@/modules/screening/components/Processing/resumeScoringProgress";
+import ResumeScoringProgress from "@/modules/screening/components/Screening/resumeScoringProgress";
 import { ApplicationQueryKeys } from "@/modules/screening/queryKeys";
 import { useScreeningApplicationsMutation } from "@/modules/screening/hooks/application.hook";
 import {
@@ -62,6 +62,7 @@ function ScreeningDetailContent({
     const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
     const { data: screening, isLoading, error } = useScreeningQuery(id);
+    const changeStageMutation = useChangeCandidateStageMutation(id);
     const saveStagesMutation = useSaveScreeningStagesMutation(id, screening!);
     const candidateQuery = useCandidateQuery(id, { limit: PAGE_SIZE });
 
@@ -82,18 +83,7 @@ function ScreeningDetailContent({
     const pageLoading = resultsQuery.isLoading;
     const candidates = resultsQuery.data?.pages.flatMap((page) => page.items) ?? [];
 
-    // useEffect(() => {
-    //     if (search.saved !== 1) return;
-    //     toast.success("Rubric saved", { duration: 3500 });
-    //     setRescoreMode?.(true);
-    //     const { saved: _saved, ...rest } = search as Record<string, unknown>;
-    //     navigate({
-    //         to: "/screenings/$id",
-    //         params: { id },
-    //         search: rest as never,
-    //         replace: true,
-    //     });
-    // }, [search, id, navigate, setRescoreMode]);
+
 
     async function submitRescore() {
         if (selectedCandidates.size === 0 || isRescoringMutation) return;
@@ -256,16 +246,15 @@ function ScreeningDetailContent({
 
 
     // ! to be fixed: this is a hack to avoid TS error, but it should be fixed in the future
-    function handleCandidateStageChange(resumeId: string, scoreId: string, next: HiringStage) {
-        // updateCandidateStage(scoreId, next).catch(() => {
-        //     queryClient.invalidateQueries({ queryKey: ["results", id] });
-        // });
-        useChangeCandidateStageMutation(scoreId, next).mutateAsync().catch(() => {
-            queryClient.invalidateQueries({ queryKey: ["results", id] });
-        }
-    );
-
-
+    async function handleCandidateStageChange(
+        resume_id: string,
+        scoreId: string,
+        next: HiringStage
+    ) {
+        await changeStageMutation.mutateAsync({
+            scoreId,
+            stage: next,
+        });
     }
 
     const totalCandidates = screening.scored_resumes_cnt ?? 0;
@@ -306,16 +295,16 @@ function ScreeningDetailContent({
                                     {...(showSelectedOnly
                                         ? {}
                                         : {
-                                              queryState,
-                                              searchInput,
-                                              onSearchChange: setSearch,
-                                              onStageFilterChange: setStage,
-                                              onMatchFilterChange: setMatch,
-                                              onSortChange: setSort,
-                                              onOverallRangeChange: setOverallRange,
-                                              onCategoryRangeChange: setCategoryRange,
-                                              onClearAllFilters: clearAll,
-                                          })}
+                                            queryState,
+                                            searchInput,
+                                            onSearchChange: setSearch,
+                                            onStageFilterChange: setStage,
+                                            onMatchFilterChange: setMatch,
+                                            onSortChange: setSort,
+                                            onOverallRangeChange: setOverallRange,
+                                            onCategoryRangeChange: setCategoryRange,
+                                            onClearAllFilters: clearAll,
+                                        })}
                                 />
                             );
                         })()}
@@ -349,9 +338,8 @@ function ScreeningDetailContent({
                                     )}
                                 </span>
                                 <label
-                                    className={`flex items-center gap-2 text-xs ${
-                                        totalSelected === 0 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-                                    } text-[#404040]`}
+                                    className={`flex items-center gap-2 text-xs ${totalSelected === 0 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                                        } text-[#404040]`}
                                 >
                                     <input
                                         type="checkbox"

@@ -1,16 +1,67 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { saveScreeningStages,updateCandidateStage } from "@/modules/screening/apis/stages";
-import type { StagesMap, Screening } from "@/modules/screening/types/screening.type";
+import { saveScreeningStages, updateCandidateStage } from "@/modules/screening/apis/stages";
+import type { StagesMap, Screening, HiringStage } from "@/modules/screening/types/screening.type";
+import { ScreeningResultsQueryKeys } from "@/modules/screening/queryKeys";
 
 
-
-export function useChangeCandidateStageMutation(scoreId: string, stage: string) {
+export function useChangeCandidateStageMutation(screeningId: string) {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: () => updateCandidateStage(scoreId, stage),
-    })
+        mutationFn: ({ scoreId, stage }: {
+            scoreId: string;
+            stage: HiringStage;
+        }) => {
+            // console.log("mutationFn", scoreId, stage);
+            return updateCandidateStage(scoreId, stage)
+        },
 
+        onMutate: async ({ scoreId, stage }) => {
+
+            await queryClient.cancelQueries({
+                queryKey: ScreeningResultsQueryKeys.screening(screeningId),
+            });
+
+            const previous = queryClient.getQueriesData({
+                queryKey: ScreeningResultsQueryKeys.screening(screeningId),
+            });
+
+            previous.forEach(([key]) => {
+                queryClient.setQueryData(key, (old: any) => {
+                    if (!old) return old;
+
+                    return {
+                        ...old,
+                        pages: old.pages.map((page: any) => ({
+                            ...page,
+                            items: page.items.map((candidate: any) =>
+                                candidate.score_id === scoreId
+                                    ? {
+                                        ...candidate,
+                                        stage,
+                                    }
+                                    : candidate
+                            ),
+                        })),
+                    };
+                });
+            });
+
+            return { previous };
+        },
+
+        onError: (_err, _variables, context) => {
+            context?.previous.forEach(([key, data]) => {
+                queryClient.setQueryData(key, data);
+            });
+        },
+
+        onSettled: () => {
+            queryClient.invalidateQueries({
+                queryKey: ScreeningResultsQueryKeys.screening(screeningId),
+            });
+        },
+    });
 }
 
 

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { useCandidateScreeningDetail } from "@/controllers/screening/getCandidateScreeningDetail";
 import InfoTab from "@/modules/screening/components/info_sheet_tab";
+import { CandidateVoicePanel } from "@/components/screening/voice/CandidateVoicePanel";
 import { useScreening } from "@/controllers/screening/getScreening";
 import { formatDate } from "@/lib/utils";
 import {
@@ -73,14 +74,17 @@ function criterionBarColor(score: number) {
 }
 
 
+type TabValue = "profile" | "scorecard" | "voice";
+
 type Tab = {
   title: string;
-  value: "scorecard" | "profile";
+  value: TabValue;
 }
 
 const tabs: Tab[] = [
-  { title: "Analysis", value: "scorecard" },
   { title: "Profile", value: "profile" },
+  { title: "Analysis", value: "scorecard" },
+  { title: "Interview", value: "voice" },
 ]
 
 
@@ -89,7 +93,10 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
   const openId = useAnalysisSheetOpenId();
   const open = openId === resume_id;
 
-  const [tab, SetTab] = useState<"scorecard" | "profile">("scorecard")
+  // Opens on Analysis even though Profile is listed first: the scorecard
+  // always has content, whereas Profile renders a "not available" notice
+  // for any candidate without an application record.
+  const [tab, SetTab] = useState<TabValue>("scorecard")
 
   const handleOpenChange = (next: boolean) => {
     setOpenAnalysisSheet(next ? resume_id : null);
@@ -477,6 +484,25 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
               <InfoTab candidate={resume.profile} />
             }
           </div>)
+        }
+
+        {/* Interview Tab — call / schedule / transcript + scorecard for this candidate */}
+        {
+          tab === "voice" && (
+            <div className="px-6 py-4">
+              {screening_id && resume_id && resume ? (
+                <CandidateVoicePanel
+                  screeningId={screening_id}
+                  resumeId={resume_id}
+                  candidateName={resume.candidate_name ?? resume.original_filename}
+                />
+              ) : (
+                <div className="py-10 text-center text-sm text-[#737373]">
+                  The interview round is not available for this candidate.
+                </div>
+              )}
+            </div>
+          )
         }
 
 
