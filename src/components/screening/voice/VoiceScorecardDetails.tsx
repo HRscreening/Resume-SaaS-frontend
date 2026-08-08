@@ -7,6 +7,7 @@ import { ScreeningFacts } from "./scorecard/ScreeningFacts";
 import { AssessmentSection } from "./scorecard/AssessmentSection";
 import { CriterionBreakdown, isBreakdownItem } from "./scorecard/CriterionBreakdown";
 import { TranscriptPanel } from "./scorecard/TranscriptPanel";
+import { CollapsibleSection } from "./scorecard/CollapsibleSection";
 import {
   TONE_CHIP, formatDuration, hasAssessment, humanizeFlag, mergeFlags,
 } from "./scorecard/scorecardUtils";
@@ -88,23 +89,23 @@ export function VoiceScorecardDetails({
         </p>
       )}
 
-      {hasAssessment(data) && <AssessmentSection data={data} />}
+      {hasAssessment(data) && (
+        <CollapsibleSection title="Interview assessment">
+          <div className="space-y-2.5 pt-1">
+            <AssessmentSection data={data} />
+          </div>
+        </CollapsibleSection>
+      )}
 
       {q?.interest_summary && (
-        <section className="rounded-xl border border-[#E8E5DF] bg-white p-3.5">
-          <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[#737373]">
-            Interest and motivation
-          </h4>
-          <p className="text-xs leading-relaxed text-[#404040]">{q.interest_summary}</p>
-        </section>
+        <CollapsibleSection title="Interest and motivation">
+          <p className="pt-1 text-xs leading-relaxed text-[#404040]">{q.interest_summary}</p>
+        </CollapsibleSection>
       )}
 
       {q && q.role_read.length > 0 && (
-        <section className="rounded-xl border border-[#E8E5DF] bg-white p-3.5">
-          <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[#737373]">
-            How they answered the role questions
-          </h4>
-          <ul className="space-y-1.5">
+        <CollapsibleSection title="How they answered the role questions" count={q.role_read.length}>
+          <ul className="space-y-1.5 pt-1">
             {q.role_read.map((line, i) => (
               <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-[#404040]">
                 <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#C85A17]" />
@@ -112,7 +113,7 @@ export function VoiceScorecardDetails({
               </li>
             ))}
           </ul>
-        </section>
+        </CollapsibleSection>
       )}
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-0.5">
