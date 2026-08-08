@@ -369,6 +369,7 @@ export interface GenerateQuestionPlanResponse {
   question_plan: QuestionPlanItem[];
   // Detected from the JD; UI defaults ask_location off for remote roles.
   is_remote_job: boolean;
+  role_facts?: string[];
 }
 
 // ─── Voice calls + scorecards (Phase 2) ────────────────────────────────────
