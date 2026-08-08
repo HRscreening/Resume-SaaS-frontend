@@ -1,5 +1,7 @@
 import type { CallScorecardDetail } from "@/types";
 import { TONE_HEX, criterionTone, partitionMissingElements } from "./scorecardUtils";
+import CatgoryScoreCard from "@/components/screening/voice/scorecard/categoryScores";
+
 
 function SectionCard({ title, aside, children }: {
   title: string;
@@ -51,15 +53,31 @@ export function AssessmentSection({ data }: { data: CallScorecardDetail }) {
         </SectionCard>
       )}
 
+      {/* Category Scores */}
+      {
+        data.categrory_scores && data.categrory_scores.length > 0 && (
+
+          <div className="w-full flex flex-row items-start justify-between gap-2">
+            {
+              data.categrory_scores.map((cat, i) => (
+                <CatgoryScoreCard key={i} data={cat} />
+              ))
+            }
+          </div>
+        )
+      }
+
       {(strengths.length > 0 || concerns.length > 0) && (
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {strengths.length > 0 && (
-            <SectionCard title="Demonstrated">
+            // <SectionCard title="Demonstrated">
+            <SectionCard title="Strengths">
               <PointList items={strengths} color={TONE_HEX.positive} />
             </SectionCard>
           )}
           {concerns.length > 0 && (
-            <SectionCard title="Counted against">
+            <SectionCard title="Missing">
+              {/* <SectionCard title="Counted against"> */}
               <PointList items={concerns} color={TONE_HEX.critical} />
             </SectionCard>
           )}
@@ -110,11 +128,10 @@ export function AssessmentSection({ data }: { data: CallScorecardDetail }) {
                       <span className="text-[10px] font-normal text-[#A3A3A3]">/10</span>
                     </span>
                     <span
-                      className={`w-11 shrink-0 text-right text-[10px] font-semibold tabular-nums ${
-                        cat.direction === "positive" ? "text-green-700"
-                        : cat.direction === "negative" ? "text-red-600"
-                        : "text-[#A3A3A3]"
-                      }`}
+                      className={`w-11 shrink-0 text-right text-[10px] font-semibold tabular-nums ${cat.direction === "positive" ? "text-green-700"
+                          : cat.direction === "negative" ? "text-red-600"
+                            : "text-[#A3A3A3]"
+                        }`}
                     >
                       {cat.delta_points >= 0 ? "+" : ""}{cat.delta_points.toFixed(1)}
                     </span>

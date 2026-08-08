@@ -495,6 +495,12 @@ export interface Qualification {
   reschedule_requested: string | null;
 }
 
+
+export interface CallCategoryScore {
+  category: string;
+  score: number;   
+}
+
 export interface CallScorecardDetail {
   call_id: string;
   resume_id: string;
@@ -506,6 +512,7 @@ export interface CallScorecardDetail {
   resume_score: number | null;
   recommendation: string | null;
   breakdown: unknown[];
+  categrory_scores: CallCategoryScore[] | null;
   grounding_data: unknown[];
   overall_summary: string | null;
   strengths: string[] | null;

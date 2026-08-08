@@ -99,6 +99,9 @@ export function VoiceScorecardDetails({
         </section>
       )}
 
+
+  
+
       {q && q.role_read.length > 0 && (
         <section className="rounded-xl border border-[#E8E5DF] bg-white p-3.5">
           <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[#737373]">
