@@ -77,6 +77,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
   // number from their resume; any edit overrides just this call. Remove the
   // PhoneEditor + this state to revert to read-only phone display.
   const [phoneDraft, setPhoneDraft] = useState<string | null>(null);
+  const [editingPhone, setEditingPhone] = useState(false);
 
   const { data: config } = useQuery({
     queryKey: ["voice-config", screeningId],
@@ -144,18 +145,29 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
   // candidate's resume phone; the recruiter can override it for a test call.
   const knownPhone = candidate?.candidate_phone ?? candidate?.phone_e164 ?? latestCall?.phone_e164 ?? "";
   const phoneValue = phoneDraft ?? knownPhone;
-  // A JSX element (not an inner component) so the <input> keeps focus across
-  // re-renders while typing. Delete this + the state to restore read-only phone.
-  const phoneEditor = (
+  // Phone override stays available (test calls need it) but no longer occupies
+  // the panel by default: plain text + "edit" until the recruiter asks for it.
+  const phoneEditor = editingPhone ? (
     <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-medium text-[#737373]">Number to dial (temporary override)</label>
+      <label className="text-[11px] font-medium text-[#737373]">Number to dial</label>
       <input
         type="tel"
         value={phoneValue}
         onChange={(e) => setPhoneDraft(e.target.value)}
         placeholder="+91XXXXXXXXXX"
+        autoFocus
         className="h-8 px-2 w-full max-w-[240px] border border-[#D4D4D4] rounded-lg text-xs text-[#0F0F0F] focus:outline-none focus:border-[#0F0F0F]"
       />
+    </div>
+  ) : (
+    <div className="flex items-center gap-2 text-xs text-[#737373]">
+      <span>{phoneValue || "No number on file"}</span>
+      <button
+        onClick={() => setEditingPhone(true)}
+        className="text-[11px] font-medium text-[#0F0F0F] underline underline-offset-2 hover:text-[#C85A17]"
+      >
+        edit
+      </button>
     </div>
   );
 
