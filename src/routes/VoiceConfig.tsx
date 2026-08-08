@@ -88,6 +88,9 @@ export default function VoiceConfigPage() {
   const generateMutation = useMutation({
     mutationFn: () => generateQuestionPlan(id),
     onSuccess: (res) => {
+      // Precompute whether facts already exist before updating state (avoid stale closure).
+      const hadFacts = (draft.qualification?.role_facts?.length ?? 0) > 0;
+
       setDraft((d) => ({
         ...d,
         question_plan: res.question_plan,
@@ -95,9 +98,17 @@ export default function VoiceConfigPage() {
         qualification: {
           ...d.qualification,
           ask_location: res.is_remote_job ? false : (d.qualification?.ask_location ?? true),
+          // Prefill shareable facts from the JD, but never overwrite a list the
+          // recruiter has already curated.
+          role_facts: (d.qualification?.role_facts?.length ?? 0) > 0
+            ? d.qualification?.role_facts
+            : (res.role_facts ?? []),
         },
       }));
       toast.success(`Generated ${res.question_plan.length} questions`);
+      if (!hadFacts && (res.role_facts?.length ?? 0) > 0) {
+        toast.info(`Added ${res.role_facts!.length} shareable role facts from the job description`);
+      }
       if (res.is_remote_job) {
         toast.info("Job looks remote: location question disabled by default");
       }
