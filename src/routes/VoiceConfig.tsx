@@ -11,6 +11,27 @@ import {
 import type { Rubric, VoiceConfig, QuestionPlanItem, QualificationConfig } from "@/types";
 import { truncate } from "@/lib/utils";
 
+type CountryCode = {
+  code: string;
+  country: string;
+}
+
+const COUNTRY_CODES: CountryCode[] = [
+  { code: "+91", country: "India" },
+  { code: "+1", country: "United States" },
+  { code: "+44", country: "United Kingdom" },
+  { code: "+61", country: "Australia" },
+  { code: "+81", country: "Japan" },
+  { code: "+49", country: "Germany" },
+  { code: "+33", country: "France" },
+  { code: "+971", country: "UAE" },
+  { code: "+65", country: "Singapore" },
+  { code: "+86", country: "China" },
+  { code: "+7", country: "Russia" },
+  { code: "+27", country: "South Africa" },
+];
+
+
 const DEFAULT_CONFIG: VoiceConfig = {
   enabled: true,
   question_plan: [],
@@ -121,7 +142,7 @@ export default function VoiceConfigPage() {
     onSuccess: (res) => {
       queryClient.setQueryData(["voice-config", id], res);
       toast.success("Voice round saved");
-      navigate({ to: "/screenings/$id", params: { id },search: { tab: "Screening" } });
+      navigate({ to: "/screenings/$id", params: { id }, search: { tab: "Screening" } });
     },
     onError: (e: unknown) =>
       toast.error(e instanceof Error ? e.message : "Could not save voice config"),
@@ -190,7 +211,7 @@ export default function VoiceConfigPage() {
       <div className="flex items-center gap-2 mb-2 text-xs">
         <Link to="/screenings" className="text-[#737373] hover:text-[#0F0F0F]">Screenings</Link>
         <span className="text-[#D4D4D4]">/</span>
-        <Link to="/screenings/$id" params={{ id }} search={{ tab:"Screening" }} className="text-[#737373] hover:text-[#0F0F0F]">
+        <Link to="/screenings/$id" params={{ id }} search={{ tab: "Screening" }} className="text-[#737373] hover:text-[#0F0F0F]">
           {truncate(screening.title, 32)}
         </Link>
         <span className="text-[#D4D4D4]">/</span>
@@ -484,14 +505,24 @@ export default function VoiceConfigPage() {
       {/* Call settings — voice/tier, timezone, and retry policy use sensible
           defaults (see DEFAULT_CONFIG) and are not surfaced to the recruiter. */}
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-        <div>
+        <div className="max-w-50">
           <label className={labelCls}>Default country code</label>
-          <input
+          <select
             value={draft.default_country_code}
-            onChange={(e) => setDraft((d) => ({ ...d, default_country_code: e.target.value }))}
-            placeholder="+91"
+            onChange={(e) =>
+              setDraft((d) => ({
+                ...d,
+                default_country_code: e.target.value,
+              }))
+            }
             className={inputCls}
-          />
+          >
+            {COUNTRY_CODES.map(({ code,country }) => (
+              <option key={code} value={code}>
+                {code} - {country}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="hidden sm:block" aria-hidden="true" />
         <div>

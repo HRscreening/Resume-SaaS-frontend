@@ -4,7 +4,7 @@ import { getCallScorecard } from "@/lib/api";
 import type { CallScorecardDetail } from "@/types";
 import { ScorecardHeader } from "./scorecard/ScorecardHeader";
 import { ScreeningFacts } from "./scorecard/ScreeningFacts";
-import { AssessmentSection } from "./scorecard/AssessmentSection";
+import { AssessmentSection,SectionCard } from "./scorecard/AssessmentSection";
 import { CriterionBreakdown, isBreakdownItem } from "./scorecard/CriterionBreakdown";
 import { TranscriptPanel } from "./scorecard/TranscriptPanel";
 import { CollapsibleSection } from "./scorecard/CollapsibleSection";
@@ -68,11 +68,11 @@ export function VoiceScorecardDetails({
       />
 
       {flags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className={`flex flex-wrap gap-1 py-2 ${TONE_CHIP.caution}`}>
           {flags.map((flag, i) => (
             <span
               key={i}
-              className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium ${TONE_CHIP.caution}`}
+              className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium `}
             >
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
               {humanizeFlag(flag)}
@@ -81,7 +81,13 @@ export function VoiceScorecardDetails({
         </div>
       )}
 
-      {q && <ScreeningFacts qualification={q} />}
+      {data.overall_summary && (
+        <SectionCard title="Summary">
+          <p className="text-xs leading-relaxed text-[#404040]">{data.overall_summary}</p>
+        </SectionCard>
+      )}
+
+      {q && <ScreeningFacts qualification={q} data={data} />}
 
       {q?.reschedule_requested && (
         <p className="rounded-lg border border-[#E8E5DF] bg-[#F5F3EE] px-3 py-2 text-[11px] text-[#404040]">
@@ -103,6 +109,9 @@ export function VoiceScorecardDetails({
         </CollapsibleSection>
       )}
 
+
+  
+
       {q && q.role_read.length > 0 && (
         <CollapsibleSection title="How they answered the role questions" count={q.role_read.length}>
           <ul className="space-y-1.5 pt-1">
@@ -118,7 +127,7 @@ export function VoiceScorecardDetails({
 
       <div className="w-full flex flex-col items-start gap-x-4 gap-y-1.5 pt-0.5">
         <CriterionBreakdown items={breakdown} />
-        <TranscriptPanel turns={data.transcript} />
+        {/* <TranscriptPanel turns={data.transcript} /> */}
       </div>
     </div>
   );

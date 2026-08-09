@@ -489,7 +489,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
         {/* Interview Tab — call / schedule / transcript + scorecard for this candidate */}
         {
           tab === "voice" && (
-            <div className="px-6 py-4">
+            <div className="px-6 py-2 space-y-5">
               {screening_id && resume_id && resume ? (
                 <CandidateVoicePanel
                   screeningId={screening_id}

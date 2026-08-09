@@ -5,7 +5,8 @@ import { TONE_HEX, criterionTone } from "./scorecardUtils";
 // supporting evidence quotes pulled from the transcript.
 export interface VoiceBreakdownItem {
   category?: string | null;
-  criterion: string;
+  // criterion: string;
+  question: string;
   score: number;
   confidence?: "high" | "medium" | "low" | null;
   evidence: string[];
@@ -16,7 +17,7 @@ export function isBreakdownItem(v: unknown): v is VoiceBreakdownItem {
   return (
     typeof v === "object" &&
     v !== null &&
-    typeof (v as VoiceBreakdownItem).criterion === "string" &&
+    typeof (v as VoiceBreakdownItem).question === "string" &&
     typeof (v as VoiceBreakdownItem).score === "number"
   );
 }
@@ -40,7 +41,7 @@ function CriterionRow({ item }: { item: VoiceBreakdownItem }) {
           style={{ backgroundColor: TONE_HEX[tone] }}
         />
         <span className="min-w-0 flex-1">
-          <span className="block text-xs font-medium text-[#0F0F0F]">{item.criterion}</span>
+          <span className="block text-xs font-medium text-[#0F0F0F]">{item.question}</span>
           {!open && item.explanation && (
             <span className="mt-0.5 block truncate text-[11px] text-[#737373]">{item.explanation}</span>
           )}
@@ -84,7 +85,7 @@ function CriterionRow({ item }: { item: VoiceBreakdownItem }) {
 
 /** Per-criterion detail, collapsed by default — this is the audit trail, not the headline. */
 export function CriterionBreakdown({ items }: { items: VoiceBreakdownItem[] }) {
-  const [open, setOpen] = useState(false);
+  // const [open, setOpen] = useState(false);
 
   // Preserve source order but cluster criteria under their category heading.
   const grouped = useMemo(() => {
@@ -101,27 +102,41 @@ export function CriterionBreakdown({ items }: { items: VoiceBreakdownItem[] }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="w-full flex-shrink-0">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="text-xs font-medium text-[#0F0F0F] underline underline-offset-2 hover:text-[#C85A17]"
-      >
-        {open ? "Hide criterion detail" : `Criterion detail and evidence (${items.length})`}
-      </button>
-      {open && (
+    <div className="w-full">
+      <div className="text-xs font-semibold uppercase tracking-wide text-[#737373]">Score Breakdown</div>
         <div className="mt-2 space-y-3">
           {grouped.map((group) => (
             <div key={group.category} className="space-y-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#737373]">
-                {group.category}
-              </p>
               {group.items.map((item, i) => (
                 <CriterionRow key={i} item={item} />
               ))}
             </div>
           ))}
         </div>
-      )}
     </div>
   );
+  // return (
+  //   <div className="w-full flex-shrink-0">
+  //     <button
+  //       onClick={() => setOpen((v) => !v)}
+  //       className="text-xs font-medium text-[#0F0F0F] underline underline-offset-2 hover:text-[#C85A17]"
+  //     >
+  //       {open ? "Hide criterion detail" : `Criterion detail and evidence (${items.length})`}
+  //     </button>
+  //     {open && (
+  //       <div className="mt-2 space-y-3">
+  //         {grouped.map((group) => (
+  //           <div key={group.category} className="space-y-1.5">
+  //             <p className="text-[10px] font-semibold uppercase tracking-wide text-[#737373]">
+  //               {group.category}
+  //             </p>
+  //             {group.items.map((item, i) => (
+  //               <CriterionRow key={i} item={item} />
+  //             ))}
+  //           </div>
+  //         ))}
+  //       </div>
+  //     )}
+  //   </div>
+  // );
 }
