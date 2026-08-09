@@ -1,9 +1,9 @@
 import type { CallScorecardDetail } from "@/types";
 import { TONE_HEX, criterionTone, partitionMissingElements } from "./scorecardUtils";
-import CatgoryScoreCard from "@/components/screening/voice/scorecard/categoryScores";
 
 
-function SectionCard({ title, aside, children }: {
+
+export function SectionCard({ title, aside, children }: {
   title: string;
   aside?: React.ReactNode;
   children: React.ReactNode;
@@ -47,25 +47,9 @@ export function AssessmentSection({ data }: { data: CallScorecardDetail }) {
 
   return (
     <>
-      {data.overall_summary && (
-        <SectionCard title="What the interview showed">
-          <p className="text-xs leading-relaxed text-[#404040]">{data.overall_summary}</p>
-        </SectionCard>
-      )}
+      
 
-      {/* Category Scores */}
-      {
-        data.categrory_scores && data.categrory_scores.length > 0 && (
-
-          <div className="w-full flex flex-row items-start justify-between gap-2">
-            {
-              data.categrory_scores.map((cat, i) => (
-                <CatgoryScoreCard key={i} data={cat} />
-              ))
-            }
-          </div>
-        )
-      }
+      
 
       {(strengths.length > 0 || concerns.length > 0) && (
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">

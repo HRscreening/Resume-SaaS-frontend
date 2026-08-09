@@ -4,7 +4,7 @@ import { getCallScorecard } from "@/lib/api";
 import type { CallScorecardDetail } from "@/types";
 import { ScorecardHeader } from "./scorecard/ScorecardHeader";
 import { ScreeningFacts } from "./scorecard/ScreeningFacts";
-import { AssessmentSection } from "./scorecard/AssessmentSection";
+import { AssessmentSection,SectionCard } from "./scorecard/AssessmentSection";
 import { CriterionBreakdown, isBreakdownItem } from "./scorecard/CriterionBreakdown";
 import { TranscriptPanel } from "./scorecard/TranscriptPanel";
 import {
@@ -80,7 +80,13 @@ export function VoiceScorecardDetails({
         </div>
       )}
 
-      {q && <ScreeningFacts qualification={q} />}
+      {data.overall_summary && (
+        <SectionCard title="Summary">
+          <p className="text-xs leading-relaxed text-[#404040]">{data.overall_summary}</p>
+        </SectionCard>
+      )}
+
+      {q && <ScreeningFacts qualification={q} data={data} />}
 
       {q?.reschedule_requested && (
         <p className="rounded-lg border border-[#E8E5DF] bg-[#F5F3EE] px-3 py-2 text-[11px] text-[#404040]">
@@ -89,8 +95,11 @@ export function VoiceScorecardDetails({
       )}
 
       {hasAssessment(data) && <AssessmentSection data={data} />}
+      
 
-      {q?.interest_summary && (
+
+      {/* WIll be removed  */}
+      {/* {q?.interest_summary && (
         <section className="rounded-xl border border-[#E8E5DF] bg-white p-3.5">
           <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[#737373]">
             Interest and motivation
@@ -116,11 +125,13 @@ export function VoiceScorecardDetails({
             ))}
           </ul>
         </section>
-      )}
+      )} */}
+
+      <div className="border w-full border-gray-300"/>
 
       <div className="w-full flex flex-col items-start gap-x-4 gap-y-1.5 pt-0.5">
         <CriterionBreakdown items={breakdown} />
-        <TranscriptPanel turns={data.transcript} />
+        {/* <TranscriptPanel turns={data.transcript} /> */}
       </div>
     </div>
   );

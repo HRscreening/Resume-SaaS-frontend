@@ -1,12 +1,16 @@
 import { TONE_HEX, buildFactRows } from "./scorecardUtils";
 import type { Qualification } from "@/types";
 
+import CatgoryScoreCard from "@/components/screening/voice/scorecard/CategoryScores";
+import type { CallScorecardDetail } from "@/types";
+
+
 /**
  * The logistics grid: pay, notice, location, relocation. These knock a candidate
  * out more often than the competency score does, so they sit above the
  * assessment and anything blocking is marked rather than left to be spotted.
  */
-export function ScreeningFacts({ qualification }: { qualification: Qualification }) {
+export function ScreeningFacts({ qualification,data }: { qualification: Qualification,data:CallScorecardDetail }) {
   const rows = buildFactRows(qualification);
   const captured = rows.filter((r) => r.value).length;
 
@@ -21,7 +25,21 @@ export function ScreeningFacts({ qualification }: { qualification: Qualification
         </span>
       </div>
 
-      <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg bg-[#E8E5DF] sm:grid-cols-2">
+      {/* Category Scores */}
+            {
+              data.categrory_scores && data.categrory_scores.length > 0 && (
+      
+                <div className="w-full flex flex-row items-start justify-between gap-2">
+                  {
+                    data.categrory_scores.map((cat, i) => (
+                      <CatgoryScoreCard key={i} data={cat} />
+                    ))
+                  }
+                </div>
+              )
+            }
+
+      <dl className="mt-2 grid grid-cols-1 gap-px overflow-hidden rounded-lg bg-[#E8E5DF] sm:grid-cols-2">
         {rows.map((row) => (
           <div
             key={row.label}

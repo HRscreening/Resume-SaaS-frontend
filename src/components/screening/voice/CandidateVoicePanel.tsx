@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import type { CallListItem, CallCandidate, CallDisplayStatus } from "@/types";
 import { VoiceScorecardDetails } from "./VoiceScorecardDetails";
+import { ExternalLink, Loader2 } from "lucide-react";
 
 interface CandidateVoicePanelProps {
   screeningId: string;
@@ -29,15 +30,15 @@ function isScheduledPending(c: CallListItem): boolean {
   );
 }
 
-function statusChip(s: CallDisplayStatus): { label: string; cls: string } {
+function statusBadge(s: CallDisplayStatus): { label: string; cls: string } {
   switch (s) {
-    case "queued": return { label: "Queued", cls: "bg-slate-100 text-slate-700" };
-    case "calling": return { label: "Calling…", cls: "bg-blue-100 text-blue-700" };
-    case "in_interview": return { label: "In interview", cls: "bg-indigo-100 text-indigo-700" };
-    case "processing": return { label: "Processing", cls: "bg-violet-100 text-violet-700" };
-    case "ready": return { label: "Completed", cls: "bg-green-100 text-green-700" };
-    case "unreachable": return { label: "Unreachable", cls: "bg-amber-100 text-amber-700" };
-    default: return { label: s, cls: "bg-slate-100 text-slate-700" };
+    case "queued": return { label: "Queued", cls: "bg-slate-50 border-slate-200 text-slate-700" };
+    case "calling": return { label: "Calling…", cls: "bg-blue-50 border-blue-200 text-blue-700" };
+    case "in_interview": return { label: "In interview", cls: "bg-indigo-50 border-indigo-200 text-indigo-700" };
+    case "processing": return { label: "Processing", cls: "bg-violet-50 border-violet-200 text-violet-700" };
+    case "ready": return { label: "Completed", cls: "bg-green-50 border-green-200 text-green-700" };
+    case "unreachable": return { label: "Unreachable", cls: "bg-amber-50 border-amber-200 text-amber-700" };
+    default: return { label: s, cls: "bg-slate-50 border-slate-200 text-slate-700" };
   }
 }
 
@@ -46,6 +47,13 @@ function scoreColor(n: number | null | undefined): string {
   if (n >= 75) return "text-green-700";
   if (n >= 50) return "text-amber-600";
   return "text-red-600";
+}
+
+function formatDuration(seconds: number | null | undefined): string | null {
+  if (seconds == null || seconds <= 0) return null;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
 }
 
 /** Default the schedule picker to ~1 hour out, in the user's local time. */
@@ -78,19 +86,19 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
   // PhoneEditor + this state to revert to read-only phone display.
   const [phoneDraft, setPhoneDraft] = useState<string | null>(null);
 
-  const { data: config } = useQuery({
+  const { data: config, isLoading: configLoading } = useQuery({
     queryKey: ["voice-config", screeningId],
     queryFn: () => getVoiceConfig(screeningId),
     staleTime: 60_000,
   });
 
-  const { data: candidatesResp } = useQuery({
+  const { data: candidatesResp, isLoading: candidatesLoading } = useQuery({
     queryKey: ["voice-candidates", screeningId],
     queryFn: () => listCallCandidates(screeningId),
     staleTime: 15_000,
   });
 
-  const { data: callsResp } = useQuery({
+  const { data: callsResp, isLoading: callsLoading } = useQuery({
     queryKey: ["voice-calls", screeningId],
     queryFn: () => listVoiceCalls(screeningId),
     // Poll while this candidate has a live call so the panel advances on its own.
@@ -130,6 +138,8 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Could not cancel"),
   });
 
+  const isLoading = configLoading || candidatesLoading || callsLoading;
+
   const voiceReady = Boolean(
     config?.voice_config?.enabled &&
     (config.voice_config.question_plan?.length ?? 0) > 0,
@@ -159,27 +169,28 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
     </div>
   );
 
-  const header = (
-    <div className="flex items-center gap-2">
-      <span className="text-[#404040]"><PhoneIcon size={14} /></span>
-      <h3 className="text-sm font-semibold text-[#0F0F0F]">Voice screening</h3>
-    </div>
-  );
-
-  const wrap = (children: React.ReactNode) => (
-    <section className="rounded-2xl border border-[#E8E5DF] bg-[#FAFAF8] p-4 space-y-3">
-      {header}
-      {children}
-    </section>
-  );
+  // ── Loading state ──────────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   // ── Voice round not configured ───────────────────────────────────────────
   if (!voiceReady) {
-    return wrap(
-      <div className="space-y-2">
-        <p className="text-xs text-[#737373]">
-          Set up the voice round for this screening to run an AI phone interview with this candidate.
-        </p>
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="text-[#404040]"><PhoneIcon size={14} /></span>
+          <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Voice Screening</p>
+        </div>
+        <div className="bg-[#F5F3EE] rounded-xl p-4">
+          <p className="text-xs text-[#404040] leading-relaxed">
+            Set up the voice round for this screening to run an AI phone interview with this candidate.
+          </p>
+        </div>
         <Link
           to="/screenings/$id/voice"
           params={{ id: screeningId }}
@@ -187,7 +198,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
         >
           Set up voice round
         </Link>
-      </div>,
+      </div>
     );
   }
 
@@ -238,34 +249,92 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
 
   // ── A call exists for this candidate ─────────────────────────────────────
   if (latestCall) {
-    const chip = statusChip(latestCall.display_status);
+    const chip = statusBadge(latestCall.display_status);
     const scheduled = isScheduledPending(latestCall);
     const done = latestCall.display_status === "ready";
     const active = ACTIVE.includes(latestCall.display_status) && !scheduled;
+    const duration = formatDuration(latestCall.duration_seconds);
 
-    return wrap(
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
+    return (
+      <div className="space-y-4">
+        {/* Section header */}
+
+        <div className="flex flex-row w-full justify-between">
+
           <div className="flex items-center gap-2">
-            {scheduled ? (
-              <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Scheduled</span>
-            ) : (
-              <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${chip.cls}`}>{chip.label}</span>
-            )}
-            {latestCall.is_partial && <span className="text-[11px] text-amber-700">partial</span>}
+            <span className="text-[#404040]"><PhoneIcon size={14} /></span>
+            <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Voice Screening</p>
           </div>
-          {done && latestCall.voice_score != null && (
+
+          {/* Status + Score row */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              {scheduled ? (
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold bg-purple-50 border-purple-200 text-purple-700">
+                  <div className="h-2 w-2 rounded-full bg-purple-500" />
+                  Scheduled
+                </span>
+              ) : (
+                <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${chip.cls}`}>
+                  <div className="h-2 w-2 rounded-full" style={{ backgroundColor: done ? "#22C55E" : "#A3A3A3" }} />
+                  {chip.label}
+                </span>
+              )}
+              {latestCall.is_partial && (
+                <span className="text-[11px] text-amber-700 font-medium">partial</span>
+              )}
+            </div>
+
+            {/* {done && latestCall.voice_score != null && (
             <span className={`text-sm font-bold ${scoreColor(latestCall.voice_score)}`}>
               {latestCall.voice_score.toFixed(1)} <span className="text-[11px] font-normal text-[#737373]">voice</span>
             </span>
-          )}
+          )} */}
+
+            {done && latestCall.has_transcript && (
+              <div className="flex items-center gap-2">
+                <a
+                  href={`/screenings/${screeningId}/voice/calls/${latestCall.id}/transcript`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+                >
+                  <ExternalLink size={12} />
+                  View Transcript
+                </a>
+              </div>
+            )}
+
+          </div>
+
         </div>
 
-        <div className="text-xs text-[#737373]">{latestCall.phone_e164}</div>
+        {done && (
+
+          <VoiceScorecardDetails
+            screeningId={screeningId}
+            callId={latestCall.id}
+            durationSeconds={latestCall.duration_seconds}
+          />
+        )}
+
+
+
+
+        {/* Phone & duration */}
+        {/* <div className="flex items-center gap-3 text-xs text-[#737373]">
+          <span>{latestCall.phone_e164}</span>
+          {duration && (
+            <>
+              <span className="h-3 w-px bg-[#E8E5DF]" />
+              <span>{duration} call</span>
+            </>
+          )}
+        </div> */}
 
         {scheduled && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-[#404040]">for {new Date(latestCall.scheduled_at as string).toLocaleString()}</span>
+          <div className="flex items-center justify-between gap-2 bg-[#F5F3EE] rounded-xl px-4 py-3">
+            <span className="text-xs text-[#404040]">Scheduled for {new Date(latestCall.scheduled_at as string).toLocaleString()}</span>
             <button
               onClick={() => cancelMut.mutate(latestCall.id)}
               disabled={cancelMut.isPending}
@@ -277,22 +346,20 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
         )}
 
         {active && (
-          <p className="text-xs text-[#737373]">The interview is running. This updates automatically when it finishes.</p>
+          <div className="bg-[#F5F3EE] rounded-xl px-4 py-3">
+            <p className="text-xs text-[#404040] leading-relaxed">
+              The interview is running. This updates automatically when it finishes.
+            </p>
+          </div>
         )}
 
-        {done && (
-          <VoiceScorecardDetails
-            screeningId={screeningId}
-            callId={latestCall.id}
-            durationSeconds={latestCall.duration_seconds}
-          />
-        )}
+
 
         {/* Re-call is available once the last attempt is finished (done/unreachable). */}
         {!scheduled && !active && (
           scheduling ? <Scheduler /> : <div className="space-y-2">{phoneEditor}<CallButtons recall /></div>
         )}
-      </div>,
+      </div>
     );
   }
 
@@ -303,14 +370,30 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
     const msg = candidate?.reason === "no_phone"
       ? "No phone number on file for this candidate, so they can't be called."
       : "Move this candidate to the Shortlisted stage to run a voice interview.";
-    return wrap(<p className="text-xs text-[#737373]">{msg}</p>);
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <span className="text-[#404040]"><PhoneIcon size={14} /></span>
+          <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Voice Screening</p>
+        </div>
+        <div className="bg-[#F5F3EE] rounded-xl p-4">
+          <p className="text-xs text-[#404040] leading-relaxed">{msg}</p>
+        </div>
+      </div>
+    );
   }
 
   // Callable / recall, no active call.
-  return wrap(
-    <div className="space-y-2">
-      <p className="text-xs text-[#737373]">Run an AI phone interview with this candidate.</p>
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <span className="text-[#404040]"><PhoneIcon size={14} /></span>
+        <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Voice Screening</p>
+      </div>
+      <div className="bg-[#F5F3EE] rounded-xl p-4">
+        <p className="text-xs text-[#404040] leading-relaxed">Run an AI phone interview with this candidate.</p>
+      </div>
       {scheduling ? <Scheduler /> : <div className="space-y-2">{phoneEditor}<CallButtons recall={candidate?.reason === "recall"} /></div>}
-    </div>,
+    </div>
   );
 }
