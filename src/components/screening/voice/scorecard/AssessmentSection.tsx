@@ -1,13 +1,16 @@
 import type { CallScorecardDetail } from "@/types";
 import { TONE_HEX, criterionTone, partitionMissingElements } from "./scorecardUtils";
 
-function SectionCard({ title, aside, children }: {
+
+
+export function SectionCard({ title, aside, children}: {
   title: string;
   aside?: React.ReactNode;
   children: React.ReactNode;
+
 }) {
   return (
-    <section className="rounded-xl border border-[#E8E5DF] bg-white p-3.5">
+    <section className={`rounded-xl border border-[#E8E5DF] bg-white p-3.5`}>
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <h4 className="text-[10px] font-semibold uppercase tracking-wide text-[#737373]">{title}</h4>
         {aside}
@@ -45,21 +48,21 @@ export function AssessmentSection({ data }: { data: CallScorecardDetail }) {
 
   return (
     <>
-      {data.overall_summary && (
-        <SectionCard title="What the interview showed">
-          <p className="text-xs leading-relaxed text-[#404040]">{data.overall_summary}</p>
-        </SectionCard>
-      )}
+      
+
+      
 
       {(strengths.length > 0 || concerns.length > 0) && (
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {strengths.length > 0 && (
-            <SectionCard title="Demonstrated">
+            // <SectionCard title="Demonstrated">
+            <SectionCard title="Strengths">
               <PointList items={strengths} color={TONE_HEX.positive} />
             </SectionCard>
           )}
           {concerns.length > 0 && (
-            <SectionCard title="Counted against">
+            <SectionCard title="Missing">
+              {/* <SectionCard title="Counted against"> */}
               <PointList items={concerns} color={TONE_HEX.critical} />
             </SectionCard>
           )}
@@ -110,11 +113,10 @@ export function AssessmentSection({ data }: { data: CallScorecardDetail }) {
                       <span className="text-[10px] font-normal text-[#A3A3A3]">/10</span>
                     </span>
                     <span
-                      className={`w-11 shrink-0 text-right text-[10px] font-semibold tabular-nums ${
-                        cat.direction === "positive" ? "text-green-700"
-                        : cat.direction === "negative" ? "text-red-600"
-                        : "text-[#A3A3A3]"
-                      }`}
+                      className={`w-11 shrink-0 text-right text-[10px] font-semibold tabular-nums ${cat.direction === "positive" ? "text-green-700"
+                          : cat.direction === "negative" ? "text-red-600"
+                            : "text-[#A3A3A3]"
+                        }`}
                     >
                       {cat.delta_points >= 0 ? "+" : ""}{cat.delta_points.toFixed(1)}
                     </span>

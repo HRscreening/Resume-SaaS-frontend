@@ -52,6 +52,7 @@ import ResumeDetail from "@/routes/ResumeDetail";
 import EditRubric from "@/modules/screening/routes/EditRubric";
 import VoiceConfigPage from "@/routes/VoiceConfig";
 import VoiceCalls from "@/routes/VoiceCalls";
+import TranscriptPage from "@/routes/TranscriptPage";
 
 
 
@@ -275,6 +276,12 @@ const resumeDetailRoute = createRoute({
   },
 });
 
+const transcriptRoute = createRoute({
+  getParentRoute: () => authOnlyLayoutRoute,
+  path: "/screenings/$id/voice/calls/$callId/transcript",
+  component: TranscriptPage,
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/settings",
@@ -334,6 +341,7 @@ const routeTree = rootRoute.addChildren([
   ]),
   authOnlyLayoutRoute.addChildren([
     resumeDetailRoute,
+    transcriptRoute,
   ]),
   appLayoutRoute.addChildren([
     dashboardRoute,
