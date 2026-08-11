@@ -44,6 +44,12 @@ export default function ScreeningDetail() {
     const [exporting, setExporting] = useState(false);
     const [sourceMode, setSourceMode] = useState(false);
     const [showRubric, setShowRubric] = useState(false);
+
+    useEffect(() => {
+        setOpenAnalysisSheet(null);
+        setOpenInfoSheet(null);
+    },[])
+
     const screeningAnalysisOpen = useAnalysisSheetOpen();
     const infoSheetOpen = useInfoSheetOpen();
     const analysisOpen = screeningAnalysisOpen || infoSheetOpen;

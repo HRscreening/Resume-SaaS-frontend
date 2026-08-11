@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/accordion";
 import { Application } from "@/modules/screening/types/application.type";
 import { resumeUploadService } from "@/lib/services";
+import { toast } from "sonner";
 
 /* ─── external-store (mirrors AnalysisSheet pattern) ─── */
 
@@ -120,15 +121,30 @@ const InfoSheet = ({ candidate, disabled = false }: { candidate: Application, di
   const hasLeadership = (candidate.leadership_pors?.length ?? 0) > 0;
   const hasLanguages = (candidate.languages?.length ?? 0) > 0;
 
+  const [isGeneratingResumeUrl, setIsGeneratingResumeUrl] = useState(false);
+
 
   const handleResumeClick = async (path: string | null) => {
     if (!path) return;
 
-    const url = path.startsWith("http")
-      ? path
-      : await resumeUploadService.generateSignedUrls(path);
+    setIsGeneratingResumeUrl(true);
 
-    window.open(url, "_blank", "noopener,noreferrer");
+    try {
+      
+      const url = path.startsWith("http")
+        ? path
+        : await resumeUploadService.generateSignedUrls(path);
+
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+    catch (error) {
+      console.error("Error generating signed URL for resume:", error);
+      toast.error("Sorry,we couldn't get the resume. Please try again later.");
+    }
+    finally {
+
+      setIsGeneratingResumeUrl(false);
+    }
   };
 
   return (
@@ -206,9 +222,35 @@ const InfoSheet = ({ candidate, disabled = false }: { candidate: Application, di
                 <span
                   onClick={() => handleResumeClick(candidate.resume_url)}
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors cursor-pointer"
                 >
-                  <ExternalLink size={12} />
+                  {isGeneratingResumeUrl ? (
+                    <svg
+                      className="animate-spin h-3 w-3 text-[#C85A17]"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-
+646z"
+                      ></path>
+                    </svg>)
+                    :
+                    <ExternalLink size={12} />
+
+                  }
+
                   Resume
                 </span>
               )}

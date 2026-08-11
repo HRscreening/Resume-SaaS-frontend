@@ -4,12 +4,14 @@ import { useCandidateScreeningDetail } from "@/controllers/screening/getCandidat
 import { VoiceScorePill } from "@/components/screening/voice/VoiceScorePill";
 import { useScreening } from "@/controllers/screening/getScreening";
 import { formatDate } from "@/lib/utils";
+import { resumeUploadService } from "@/lib/services"
+
 
 function getTierLabel(score: number) {
   if (score >= 75) return { label: "Strong Match", color: "text-green-700", bg: "bg-green-50", border: "border-green-200", dot: "#22C55E" };
-  if (score >= 55) return { label: "Potential",    color: "text-yellow-700", bg: "bg-yellow-50", border: "border-yellow-200", dot: "#EAB308" };
-  if (score >= 35) return { label: "Risky",        color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200", dot: "#F97316" };
-  return             { label: "Poor Fit",    color: "text-red-700",   bg: "bg-red-50",    border: "border-red-200",    dot: "#EF4444" };
+  if (score >= 55) return { label: "Potential", color: "text-yellow-700", bg: "bg-yellow-50", border: "border-yellow-200", dot: "#EAB308" };
+  if (score >= 35) return { label: "Risky", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200", dot: "#F97316" };
+  return { label: "Poor Fit", color: "text-red-700", bg: "bg-red-50", border: "border-red-200", dot: "#EF4444" };
 }
 
 function criterionBarColor(score: number) {
@@ -18,15 +20,22 @@ function criterionBarColor(score: number) {
   return "#EF4444";
 }
 
-export default function ResumeDetail() {
+
+
+export default function ResumeDetail({
+
+}
+) {
   const { id, resumeId } = useParams({ strict: false }) as { id: string; resumeId: string };
 
   // Panel layout state
-  const [leftWidth, setLeftWidth]         = useState(42);      // % of body width — analysis panel
-  const [pdfCollapsed, setPdfCollapsed]   = useState(false);   // hide PDF panel
+  const [leftWidth, setLeftWidth] = useState(42);      // % of body width — analysis panel
+  const [pdfCollapsed, setPdfCollapsed] = useState(false);   // hide PDF panel
   const [infoCollapsed, setInfoCollapsed] = useState(false);   // hide analysis panel
   const containerRef = useRef<HTMLDivElement>(null);
-  const dragging     = useRef(false);
+  const dragging = useRef(false);
+
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   // Prevent both panels being collapsed simultaneously — must be before early returns
   useEffect(() => {
@@ -59,6 +68,7 @@ export default function ResumeDetail() {
     document.addEventListener("mouseup", onUp);
   }, []);
 
+
   // Single fetch — /full bundles the resume, score, and signed pdf_url so we
   // skip the extra pdf-url round-trip. The router loader prefetches this same
   // key on hover (defaultPreload: "intent"), so on warm cache the click →
@@ -76,9 +86,32 @@ export default function ResumeDetail() {
     return set;
   }, [screening]);
 
-  const pdfUrl = data?.pdf_url ?? null;
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+
+  async function fetchPdfUrl() {
+    setPdfLoading(true);
+    try {
+      if (!data?.pdf_url) return;
+
+      const fetchPdfUrl = await resumeUploadService.generateSignedUrls(data?.pdf_url);
+      console.log("Fetched signed URL for PDF:", fetchPdfUrl);
+      setPdfUrl(fetchPdfUrl);
+
+    }
+    catch (e) {
+      setPdfUrl(null);
+      console.error("Error generating signed URL for PDF:", e);
+    }
+    finally {
+      setPdfLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchPdfUrl();
+  }, [data?.pdf_url]);
+
 
   useEffect(() => {
     // Only PDFs are rendered from a blob URL; DOCX/Office files go through the
@@ -92,7 +125,7 @@ export default function ResumeDetail() {
         objectUrl = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
         setPdfBlobUrl(objectUrl);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setPdfLoading(false));
     return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [pdfUrl, data?.original_filename]);
@@ -115,11 +148,11 @@ export default function ResumeDetail() {
   }
 
   const resume = data;
-  const score  = data.score;
-  const tier   = getTierLabel(score.overall_score);
+  const score = data.score;
+  const tier = getTierLabel(score.overall_score);
   const initials = (resume.candidate_name ?? resume.original_filename).slice(0, 2).toUpperCase();
   const fileName = resume.original_filename.toLowerCase();
-  const isPdf    = fileName.endsWith(".pdf");
+  const isPdf = fileName.endsWith(".pdf");
   // DOCX/DOC have no native browser renderer, so we embed them through the
   // Microsoft Office Online viewer. It fetches the file server-side, which
   // works because pdf_url is a publicly-reachable signed URL.
@@ -344,7 +377,7 @@ export default function ResumeDetail() {
             title="Drag to resize"
           >
             <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {[0,1,2,3,4].map((i) => <div key={i} className="h-0.5 w-0.5 rounded-full bg-white" />)}
+              {[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-0.5 w-0.5 rounded-full bg-white" />)}
             </div>
           </div>
         )}
@@ -401,8 +434,8 @@ export default function ResumeDetail() {
               {pdfUrl && !isPdf && !isOffice && !pdfLoading && (
                 <div className="flex flex-col items-center justify-center h-full gap-3 text-[#737373]">
                   <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M23 4H10a2 2 0 0 0-2 2v28a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2V13z"/>
-                    <path d="M23 4v9h9M14 22h12M14 28h8"/>
+                    <path d="M23 4H10a2 2 0 0 0-2 2v28a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2V13z" />
+                    <path d="M23 4v9h9M14 22h12M14 28h8" />
                   </svg>
                   <p className="text-sm font-medium text-[#404040]">Cannot preview this file</p>
                   <a href={pdfUrl} target="_blank" rel="noopener noreferrer"
@@ -440,9 +473,9 @@ function CriterionCard({ cs, isNonNegotiable = false }: {
   isNonNegotiable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const pct      = cs.score * 10;
+  const pct = cs.score * 10;
   const barColor = criterionBarColor(cs.score);
-  const failed   = isNonNegotiable && cs.score < 4;
+  const failed = isNonNegotiable && cs.score < 4;
 
   const borderClass = failed
     ? "border-red-400 bg-red-50"
@@ -469,9 +502,8 @@ function CriterionCard({ cs, isNonNegotiable = false }: {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-[#0F0F0F] truncate">{cs.criterion}</span>
             {isNonNegotiable && (
-              <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-semibold ${
-                failed ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
-              }`}>
+              <span className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded font-semibold ${failed ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                }`}>
                 <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor">
                   <path d="M6 1L1 10h10L6 1z" />
                   <rect x="5.5" y="5" width="1" height="3" fill="white" rx="0.5" />
