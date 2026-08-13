@@ -20,7 +20,7 @@ function clamp(n: number, lo: number, hi: number) {
 
 function roundToStep(n: number, step: number) {
   const decimals = step.toString().split(".")[1]?.length ?? 0;
-  return Number(n.toFixed(decimals));
+  return Number(n?.toFixed(decimals));
 }
 
 export function RangeRow({ label, value, min, max, step = 1, onChange, onRemove }: RangeRowProps) {

@@ -122,7 +122,7 @@ export default function TranscriptPage() {
                 className="ml-auto text-lg font-bold tabular-nums"
                 style={{ color: TONE_HEX[tone] }}
               >
-                {data.overall_score.toFixed(0)}
+                {data.overall_score?.toFixed(0)}
                 <span className="text-[11px] font-normal text-[#A3A3A3]">/100</span>
               </span>
             )}

@@ -35,7 +35,7 @@ export function RubricModal({ categories, onClose, onEdit }: RubricModalProps) {
             <div key={cat.name} className="border border-[#E8E5DF] rounded-xl overflow-hidden">
               <div className="px-4 py-3 bg-[#F5F3EE] flex items-center justify-between">
                 <span className="text-sm font-semibold text-[#0F0F0F]">{cat.name}</span>
-                <CategoryImportancePillsViewOnly weight={cat.weight} categoryName={cat.name} key={index}/>
+                {/* <CategoryImportancePillsViewOnly weight={cat.weight} categoryName={cat.name} key={index}/> */}
               </div>
               {cat.subcategories.length > 0 && (
                 <div className="divide-y divide-[#E8E5DF]">

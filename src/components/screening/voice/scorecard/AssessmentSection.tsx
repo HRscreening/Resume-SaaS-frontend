@@ -91,7 +91,7 @@ export function AssessmentSection({ data }: { data: CallScorecardDetail }) {
       {drivers && drivers.categories.length > 0 && (
         <SectionCard
           title="Score by category"
-          aside={<span className="text-[10px] text-[#A3A3A3]">vs {drivers.baseline.toFixed(0)}/10 baseline</span>}
+          aside={<span className="text-[10px] text-[#A3A3A3]">vs {drivers.baseline?.toFixed(0)}/10 baseline</span>}
         >
           <div className="space-y-2">
             {drivers.categories.map((cat) => {
@@ -109,7 +109,7 @@ export function AssessmentSection({ data }: { data: CallScorecardDetail }) {
                       className="w-12 shrink-0 text-right text-xs font-semibold tabular-nums"
                       style={{ color: TONE_HEX[tone] }}
                     >
-                      {cat.avg_score.toFixed(1)}
+                      {cat.avg_score?.toFixed(1)}
                       <span className="text-[10px] font-normal text-[#A3A3A3]">/10</span>
                     </span>
                     <span
@@ -118,7 +118,7 @@ export function AssessmentSection({ data }: { data: CallScorecardDetail }) {
                             : "text-[#A3A3A3]"
                         }`}
                     >
-                      {cat.delta_points >= 0 ? "+" : ""}{cat.delta_points.toFixed(1)}
+                      {cat.delta_points >= 0 ? "+" : ""}{cat.delta_points?.toFixed(1)}
                     </span>
                   </div>
                   <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-[#EAE7DF]">

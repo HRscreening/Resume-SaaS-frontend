@@ -5,7 +5,7 @@ import { TONE_HEX, criterionTone } from "./scorecardUtils";
 // supporting evidence quotes pulled from the transcript.
 export interface VoiceBreakdownItem {
   category?: string | null;
-  // criterion: string;
+  criterion?: string;
   question: string;
   score: number;
   confidence?: "high" | "medium" | "low" | null;
@@ -17,7 +17,7 @@ export function isBreakdownItem(v: unknown): v is VoiceBreakdownItem {
   return (
     typeof v === "object" &&
     v !== null &&
-    typeof (v as VoiceBreakdownItem).question === "string" &&
+    typeof (v as VoiceBreakdownItem).question === "string" || typeof (v as VoiceBreakdownItem).criterion === "string" &&
     typeof (v as VoiceBreakdownItem).score === "number"
   );
 }
@@ -41,7 +41,13 @@ function CriterionRow({ item }: { item: VoiceBreakdownItem }) {
           style={{ backgroundColor: TONE_HEX[tone] }}
         />
         <span className="min-w-0 flex-1">
-          <span className="block text-xs font-medium text-[#0F0F0F]">{item.question}</span>
+          {
+          item.question 
+          ? <span className="block text-xs font-medium text-[#0F0F0F]">{item.question}</span>
+          : 
+          item.criterion && <span className="block text-xs font-medium text-[#0F0F0F]">{item.criterion}</span>
+          
+          }
           {!open && item.explanation && (
             <span className="mt-0.5 block truncate text-[11px] text-[#737373]">{item.explanation}</span>
           )}

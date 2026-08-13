@@ -212,7 +212,8 @@ export function CandidatesTable({
                   </th>
                 )}
                 {!compact && categories.map((cat) => {
-                  const subtitle = `/ 10 · ${cat.weight}%`;
+                  const subtitle = `/ 10 %`;
+                  // const subtitle = `/ 10 · ${cat.weight}%`;
                   const tooltipLabel = (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -220,7 +221,7 @@ export function CandidatesTable({
                       </TooltipTrigger>
                       <TooltipContent side="top">
                         <p className="text-xs font-medium">{cat.name}</p>
-                        <p className="text-[10px] opacity-80">Weight {cat.weight}% · scored out of 10</p>
+                        <p className="text-[10px] opacity-80">scored out of 10</p>
                       </TooltipContent>
                     </Tooltip>
                   );

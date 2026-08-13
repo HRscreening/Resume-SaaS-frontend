@@ -59,7 +59,7 @@ export interface Subcategory {
 
 export interface RubricCategory {
   name: string;
-  weight: number; // 0–100, of overall
+  // weight: number; // 0–100, of overall
   subcategories: Subcategory[];
 }
 

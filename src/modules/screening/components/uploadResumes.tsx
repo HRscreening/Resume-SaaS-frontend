@@ -160,8 +160,8 @@ const UploadResumes = ({screening_id,user_id,setShowUploadMore}:UploadResumesPro
                                     const lower = f.name.toLowerCase();
                                     const kind = lower.endsWith(".zip") ? "ZIP" : lower.endsWith(".pdf") ? "PDF" : "Word";
                                     const sizeStr = f.size > 1024 * 1024
-                                        ? `${(f.size / 1024 / 1024).toFixed(1)} MB`
-                                        : `${(f.size / 1024).toFixed(0)} KB`;
+                                        ? `${(f.size / 1024 / 1024)?.toFixed(1)} MB`
+                                        : `${(f.size / 1024)?.toFixed(0)} KB`;
                                     return (
                                         <div key={`${f.name}_${f.size}_${idx}`} className="flex items-center gap-3 bg-white border border-[#E8E5DF] rounded-xl px-3 py-2">
                                             <div className="h-8 w-8 rounded-lg bg-[#FBF1E7] flex items-center justify-center shrink-0">

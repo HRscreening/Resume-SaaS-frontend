@@ -54,7 +54,7 @@ export default function EditRubric() {
     }
   }, [hydrated, initialCategories]);
 
-  const totalWeight = draft.reduce((s, c) => s + c.weight, 0);
+  // const totalWeight = draft.reduce((s, c) => s + c.weight, 0);
   const dirty = JSON.stringify(draft) !== JSON.stringify(initialCategories);
   const hasEmptySubName = draft.some((c) => c.subcategories.some((s) => !s.name.trim()));
   const canSave = dirty && !hasEmptySubName && !saving;
@@ -194,11 +194,12 @@ export default function EditRubric() {
                   <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: color.dot }} />
                   <h3 className={`text-sm font-bold ${color.text} truncate`}>{cat.name}</h3>
                 </div>
-                <CategoryImportancePills
+
+                {/* <CategoryImportancePills
                   weight={cat.weight}
                   categoryName={cat.name}
                   onChange={(weight) => updateCategoryWeight(catIdx, weight)}
-                />
+                /> */}
               </div>
 
               <div className="bg-white p-4 space-y-3">

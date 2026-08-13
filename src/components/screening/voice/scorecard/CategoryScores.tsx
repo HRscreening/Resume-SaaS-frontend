@@ -15,7 +15,7 @@ export default function CategoryScores({ data }: { data: CallCategoryScore }) {
         {data.score !== null ? (
             <>
                 <span className="text-base font-bold text-[#0F0F0F] mt-2 leading-none">
-                    {data.score.toFixed(1)}
+                    {data.score?.toFixed(1)}
                 </span>
                 <div className="w-14 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden mt-1.5">
                     <div
@@ -50,7 +50,7 @@ export function CategoryScoreCard2({ categories }: { categories: CallCategorySco
                                 className="w-12 shrink-0 text-right text-xs font-semibold tabular-nums"
                                 style={{ color: TONE_HEX[tone] }}
                             >
-                                {cat.score.toFixed(1)}
+                                {cat.score?.toFixed(1)}
                                 <span className="text-[10px] font-normal text-[#A3A3A3]">/10</span>
                             </span>
                            
