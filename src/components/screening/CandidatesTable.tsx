@@ -191,7 +191,7 @@ export function CandidatesTable({
                   </th>
                 )}
                 {!compact && categories.map((cat) => {
-                  const subtitle = `/ 10 · ${cat.weight}%`;
+                  const subtitle = `/ 10 `;
                   const tooltipLabel = (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -199,7 +199,7 @@ export function CandidatesTable({
                       </TooltipTrigger>
                       <TooltipContent side="top">
                         <p className="text-xs font-medium">{cat.name}</p>
-                        <p className="text-[10px] opacity-80">Weight {cat.weight}% · scored out of 10</p>
+                        {/* <p className="text-[10px] opacity-80">Weight {cat.weight}% · scored out of 10</p> */}
                       </TooltipContent>
                     </Tooltip>
                   );
@@ -409,7 +409,7 @@ function CandidateRow({
           <td key={cat.name} className="px-2 py-3 text-center align-middle">
             {score !== null ? (
               <div className="flex flex-col items-center gap-1">
-                <span className="text-xs font-bold text-[#0F0F0F]">{score.toFixed(1)}</span>
+                <span className="text-xs font-bold text-[#0F0F0F]">{score?.toFixed(1)}</span>
                 <div className="w-10 h-1 bg-[#E8E5DF] rounded-full overflow-hidden">
                   <div className="h-full rounded-full bg-[#C85A17]" style={{ width: `${score * 10}%` }} />
                 </div>

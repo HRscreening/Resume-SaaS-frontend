@@ -735,7 +735,7 @@ export default function ScreeningDetail() {
                   <div className="flex flex-wrap gap-2 mb-6">
                     {rubricCategories.map((cat, i) => (
                       <span key={i} className="text-xs px-2.5 py-1 rounded-md border border-[#D4D4D4] bg-[#F5F3EE] font-medium text-[#404040]">
-                        {cat.name} ({cat.weight}%)
+                        {cat.name}
                         {cat.subcategories.length > 0 && (
                           <span className="text-[#A0A0A0] ml-1">· {cat.subcategories.length} sub</span>
                         )}
@@ -815,8 +815,8 @@ export default function ScreeningDetail() {
                                 <p className="text-sm font-medium text-[#0F0F0F] truncate">{f.name}</p>
                                 <p className="text-xs text-[#737373] mt-0.5">
                                   {f.size > 1024 * 1024
-                                    ? `${(f.size / 1024 / 1024).toFixed(1)} MB`
-                                    : `${(f.size / 1024).toFixed(0)} KB`} · {ext}
+                                    ? `${(f.size / 1024 / 1024)?.toFixed(1)} MB`
+                                    : `${(f.size / 1024)?.toFixed(0)} KB`} · {ext}
                                 </p>
                               </div>
                               <button
@@ -930,8 +930,8 @@ export default function ScreeningDetail() {
                           const lower = f.name.toLowerCase();
                           const kind = lower.endsWith(".zip") ? "ZIP" : lower.endsWith(".pdf") ? "PDF" : "Word";
                           const sizeStr = f.size > 1024 * 1024
-                            ? `${(f.size / 1024 / 1024).toFixed(1)} MB`
-                            : `${(f.size / 1024).toFixed(0)} KB`;
+                            ? `${(f.size / 1024 / 1024)?.toFixed(1)} MB`
+                            : `${(f.size / 1024)?.toFixed(0)} KB`;
                           return (
                             <div key={`${f.name}_${f.size}_${idx}`} className="flex items-center gap-3 bg-white border border-[#E8E5DF] rounded-xl px-3 py-2">
                               <div className="h-8 w-8 rounded-lg bg-[#FBF1E7] flex items-center justify-center shrink-0">

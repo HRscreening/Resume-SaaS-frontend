@@ -241,7 +241,7 @@ function CanidateRepositoryTableRow({ candidate, handleRowClick }: CandidateRepo
             <td className="px-3 py-3.5 text-center align-middle">
                 <div className="flex flex-col items-center gap-1">
                     <span className="text-sm font-bold text-[#404040] leading-none">
-                        {avgScore.toFixed(1)}
+                        {avgScore?.toFixed(1)}
                     </span>
                     <div className="w-12 h-1 bg-[#E8E5DF] rounded-full overflow-hidden">
                         <div

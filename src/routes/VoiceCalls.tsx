@@ -176,10 +176,10 @@ export default function VoiceCalls() {
                     )}
                   </td>
                   <td className={`px-4 py-3 text-right font-medium ${scoreColor(c.voice_score)}`}>
-                    {c.voice_score != null ? c.voice_score.toFixed(1) : "—"}
+                    {c.voice_score != null ? c.voice_score?.toFixed(1) : "—"}
                   </td>
                   <td className={`px-4 py-3 text-right ${scoreColor(c.resume_score)}`}>
-                    {c.resume_score != null ? c.resume_score.toFixed(1) : "—"}
+                    {c.resume_score != null ? c.resume_score?.toFixed(1) : "—"}
                   </td>
                   <td className="px-4 py-3 text-[#404040]">{c.recommendation ?? "—"}</td>
                   <td className="px-4 py-3 text-right">

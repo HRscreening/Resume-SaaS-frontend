@@ -91,7 +91,7 @@ export function TierSection({ tier, candidates, collapsed, onToggle, categories,
                     <div className="flex flex-col">
                       <span className="whitespace-nowrap">{cat.name}</span>
                       <span className="font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">(out of 10)</span>
-                      <span className="font-normal text-[#A0A0A0] normal-case tracking-normal">{cat.weight}%</span>
+                      {/* <span className="font-normal text-[#A0A0A0] normal-case tracking-normal">{cat.weight}%</span> */}
                     </div>
                   </th>
                 ))}
@@ -202,7 +202,7 @@ function CandidateRow({ candidate, categories, compact, onPrefetch }: {
           <td key={cat.name} className="px-3 py-3.5 text-center align-middle">
             {catScore !== null ? (
               <div className="flex flex-col items-center gap-1.5">
-                <span className="text-xs font-bold text-[#0F0F0F]">{catScore.toFixed(1)}</span>
+                <span className="text-xs font-bold text-[#0F0F0F]">{catScore?.toFixed(1)}</span>
                 <div className="w-12 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden">
                   <div className="h-full rounded-full bg-[#C85A17]" style={{ width: `${catScore * 10}%` }} />
                 </div>

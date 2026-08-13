@@ -113,7 +113,7 @@ export function CallScorecardDrawer({ screeningId, callId, onClose }: Props) {
               <div className="border border-[#E8E5DF] rounded-xl p-4">
                 <p className="text-xs text-[#737373] mb-1">Voice score</p>
                 <p className={`text-2xl font-bold ${scoreColor(sc.overall_score)}`}>
-                  {sc.overall_score != null ? sc.overall_score.toFixed(1) : "—"}
+                  {sc.overall_score != null ? sc.overall_score?.toFixed(1) : "—"}
                 </p>
                 {sc.recommendation && (
                   <span className={`mt-2 inline-block text-xs px-2 py-0.5 rounded-full border ${recColor[sc.recommendation] ?? ""}`}>
@@ -124,7 +124,7 @@ export function CallScorecardDrawer({ screeningId, callId, onClose }: Props) {
               <div className="border border-[#E8E5DF] rounded-xl p-4">
                 <p className="text-xs text-[#737373] mb-1">Resume score</p>
                 <p className={`text-2xl font-bold ${scoreColor(sc.resume_score)}`}>
-                  {sc.resume_score != null ? sc.resume_score.toFixed(1) : "—"}
+                  {sc.resume_score != null ? sc.resume_score?.toFixed(1) : "—"}
                 </p>
                 <p className="mt-2 text-xs text-[#A3A3A3]">Same 0–100 scale</p>
               </div>

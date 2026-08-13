@@ -34,11 +34,11 @@ export function RubricCategoryCard({
           <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: color.dot }} />
           <h3 className={`text-sm font-bold ${color.text} truncate`}>{category.name}</h3>
         </div>
-        <CategoryImportancePills
+        {/* <CategoryImportancePills
           weight={category.weight}
           categoryName={category.name}
           onChange={onWeightChange}
-        />
+        /> */}
       </div>
 
       {/* Subcategories */}

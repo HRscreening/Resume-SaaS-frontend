@@ -299,7 +299,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
 
             {/* {done && latestCall.voice_score != null && (
             <span className={`text-sm font-bold ${scoreColor(latestCall.voice_score)}`}>
-              {latestCall.voice_score.toFixed(1)} <span className="text-[11px] font-normal text-[#737373]">voice</span>
+              {latestCall.voice_score?.toFixed(1)} <span className="text-[11px] font-normal text-[#737373]">voice</span>
             </span>
           )} */}
 

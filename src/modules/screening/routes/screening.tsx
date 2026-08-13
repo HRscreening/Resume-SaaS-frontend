@@ -11,7 +11,7 @@ import { RubricModal } from "@/components/screening/RubricModal";
 import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-
+import {History} from "lucide-react";
 
 import Applications from "@/modules/screening/tabs/applications"
 import Screening from "@/modules/screening/tabs/screeningTab"
@@ -331,6 +331,25 @@ export default function ScreeningDetail() {
                                             </TooltipTrigger>
                                             {analysisOpen && <TooltipContent><p className="text-xs">Voice round</p></TooltipContent>}
                                         </Tooltip>
+                                        
+                                        {/* Call History button */}
+                                       
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <button
+                                                    onClick={() => navigate({ to: "/screenings/$id/voice/calls", params: { id } })}
+                                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
+                                                >
+                                                    <History size={14}/>
+                                                    {!analysisOpen && "View Calls"}
+                                                </button>
+                                            </TooltipTrigger>
+                                            {analysisOpen && <TooltipContent><p className="text-xs">View Calls</p></TooltipContent>}
+                                        </Tooltip>
+                                        
+                                        
+                                        
+
                                         {/* Export CSV */}
                                         <Tooltip>
                                             <TooltipTrigger asChild>

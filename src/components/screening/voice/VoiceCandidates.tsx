@@ -157,7 +157,7 @@ export function VoiceCandidates({ screeningId }: VoiceCandidatesProps) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right text-[#404040]">
-                    {c.voice_score != null ? c.voice_score.toFixed(1) : "—"}
+                    {c.voice_score != null ? c.voice_score?.toFixed(1) : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {!c.eligible ? (

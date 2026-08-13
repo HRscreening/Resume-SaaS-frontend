@@ -321,7 +321,7 @@ const CandidateAnalysisSheet = ({
                             </div>
                             <div>
                               <span className="text-[10px] text-[#A0A0A0] uppercase font-semibold tracking-wider block">Average</span>
-                              <span className="text-sm font-bold text-[#737373]">{parseFloat(app.screening_avg_score as any).toFixed(1)}<span className="text-[10px] text-[#A0A0A0] font-normal">/100</span></span>
+                              <span className="text-sm font-bold text-[#737373]">{parseFloat(app.screening_avg_score as any)?.toFixed(1)}<span className="text-[10px] text-[#A0A0A0] font-normal">/100</span></span>
                             </div>
                             <div>
                               <span className="text-[10px] text-[#A0A0A0] uppercase font-semibold tracking-wider block">Stage</span>

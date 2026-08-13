@@ -171,7 +171,7 @@ export default function Checkout() {
   const totalLocal = fx ? totalUsd * fx.rate : totalUsd;
 
   const monthlyLabel = `$${monthlyAmount}`;
-  const subtotalLabel = showLocal ? fmtLocal(totalLocal) : `$${totalUsd.toFixed(2)}`;
+  const subtotalLabel = showLocal ? fmtLocal(totalLocal) : `$${totalUsd?.toFixed(2)}`;
   const totalLabel = subtotalLabel;
 
   const fromPricing = search.from === "pricing";
@@ -211,7 +211,7 @@ export default function Checkout() {
               </p>
               {/* {showLocal && (
                 <p className="text-[11px] text-[#A0A0A0] mt-2">
-                  Converted from ${monthlyAmount}/mo at 1 USD = {fx!.rate.toFixed(4)} {localCurrency}
+                  Converted from ${monthlyAmount}/mo at 1 USD = {fx!.rate?.toFixed(4)} {localCurrency}
                   {fx!.fallback ? " (estimated rate)" : ""}
                 </p>
               )} */}

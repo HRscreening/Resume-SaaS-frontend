@@ -140,7 +140,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
       }
       return {
         name: cat.name,
-        weight: cat.weight,
+        // weight: cat.weight,
         score: totalW > 0 ? weighted / totalW : null,
       };
     });
@@ -386,11 +386,11 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                             {cat.name}
                           </p>
                           <p className="text-[10px] text-[#BDB8AE] mt-0.5">(out of 10)</p>
-                          <p className="text-[10px] text-[#A0A0A0]">{cat.weight}%</p>
+                          {/* <p className="text-[10px] text-[#A0A0A0]">{cat.weight}%</p> */}
                           {cat.score !== null ? (
                             <>
                               <span className="text-base font-bold text-[#0F0F0F] mt-2 leading-none">
-                                {cat.score.toFixed(1)}
+                                {cat.score?.toFixed(1)}
                               </span>
                               <div className="w-14 h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden mt-1.5">
                                 <div

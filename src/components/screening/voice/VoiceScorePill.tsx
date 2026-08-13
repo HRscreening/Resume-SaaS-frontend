@@ -36,7 +36,7 @@ export function VoiceScorePill({ screeningId, resumeId }: VoiceScorePillProps) {
     <Link
       to="/screenings/$id/voice/calls"
       params={{ id: screeningId }}
-      title={`Voice interview: ${call.voice_score.toFixed(1)} · ${call.recommendation ?? ""}. Click to review.`}
+      title={`Voice interview: ${call.voice_score?.toFixed(1)} · ${call.recommendation ?? ""}. Click to review.`}
       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-sm font-semibold shrink-0 hover:opacity-80 transition-opacity ${pillStyle(call.voice_score)}`}
     >
       <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
