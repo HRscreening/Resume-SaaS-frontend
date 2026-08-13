@@ -661,10 +661,12 @@ export async function sumbitContactUsForm(
 
 export async function generateQuestionPlan(
   screeningId: string,
+  depth: "screening" | "deep_dive" = "screening",
 ): Promise<import("@/types").GenerateQuestionPlanResponse> {
-  return request(`/api/v1/screenings/${screeningId}/voice/question-plan/generate`, {
-    method: "POST",
-  });
+  return request(
+    `/api/v1/screenings/${screeningId}/voice/question-plan/generate?depth=${depth}`,
+    { method: "POST" },
+  );
 }
 
 export async function getVoiceConfig(

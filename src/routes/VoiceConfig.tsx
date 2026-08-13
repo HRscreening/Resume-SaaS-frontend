@@ -86,7 +86,7 @@ export default function VoiceConfigPage() {
   }, [hydrated, configLoading, configResp]);
 
   const generateMutation = useMutation({
-    mutationFn: () => generateQuestionPlan(id),
+    mutationFn: () => generateQuestionPlan(id, draft.interview_depth ?? "screening"),
     onSuccess: (res) => {
       let hadFacts = false;
       setDraft((d) => {
@@ -263,13 +263,40 @@ export default function VoiceConfigPage() {
               {coveredCount}/{competencies.length} competencies covered
             </p>
           </div>
-          <button
-            onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending}
-            className="h-9 px-4 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-xs font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60"
-          >
-            {generateMutation.isPending ? "Generating…" : "Generate from JD + rubric"}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Screening vs deep-dive: drives question count + technical depth
+                at generation time, and call duration/watchdog on the call. */}
+            <div className="flex rounded-xl border border-[#D4D4D4] overflow-hidden">
+              {([
+                { value: "screening", label: "Screening", hint: "3-4 quick fit questions" },
+                { value: "deep_dive", label: "Deep dive", hint: "5-6 technical, role-level" },
+              ] as const).map((opt) => {
+                const active = (draft.interview_depth ?? "screening") === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    title={opt.hint}
+                    onClick={() => setDraft((d) => ({ ...d, interview_depth: opt.value }))}
+                    className={`h-9 px-3 text-xs font-medium transition-colors ${
+                      active
+                        ? "bg-[#0F0F0F] text-white"
+                        : "bg-white text-[#404040] hover:bg-[#F5F3EE]"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending}
+              className="h-9 px-4 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-xs font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60"
+            >
+              {generateMutation.isPending ? "Generating…" : "Generate from JD + rubric"}
+            </button>
+          </div>
         </div>
 
         <div className="space-y-2.5">
