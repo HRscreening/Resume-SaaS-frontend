@@ -64,7 +64,7 @@ export function AskSourceJobModal({
               onClose();
             }}
           >
-            Cancel
+            Skip
           </Button>
 
           <Button onClick={()=>{
