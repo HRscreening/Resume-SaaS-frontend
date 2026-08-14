@@ -358,6 +358,8 @@ export interface VoiceConfig {
   retry_policy: RetryPolicy;
   max_concurrent_calls_override: number | null;
   qualification?: QualificationConfig | null;
+  /** Screening: 3-4 quick fit questions. Deep dive: 5-6 technical, role-level. */
+  interview_depth?: "screening" | "deep_dive";
 }
 
 export interface VoiceConfigResponse {
