@@ -158,6 +158,9 @@ export function CandidatesTable({
               <col className={compact ? "w-44" : "w-44 sm:w-48"} />
               {!compact && <col className="w-28" />}
               <col className="w-17.5" />
+              {/* Voice screen — same width as Score so the category columns
+                  after it keep their alignment. */}
+              {!compact && <col className="w-17.5" />}
               {!compact && categories.map((cat) => (
                 <col key={cat.name} className="w-22.5" />
               ))}
@@ -209,6 +212,14 @@ export function CandidatesTable({
                   <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
                     <span className="block">Score</span>
                     <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">/ 100</span>
+                  </th>
+                )}
+                {!compact && (
+                  <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
+                    <span className="block">Voice</span>
+                    <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">
+                      screen
+                    </span>
                   </th>
                 )}
                 {!compact && categories.map((cat) => {
@@ -437,6 +448,11 @@ function CandidateRow({
           </div>
         </div>
       </td>
+      {!compact && (
+        <td className="px-2 py-3 text-center align-middle">
+          <VoiceCell candidate={candidate} />
+        </td>
+      )}
       {!compact && categories.map((cat) => {
         const score = getCategoryScore(cat.name);
         return (
@@ -540,3 +556,55 @@ function SkeletonRow({
   );
 }
 
+
+/**
+ * Voice-round outcome for one candidate, at a glance.
+ *
+ * The score alone would mislead: a call still ringing, one that never
+ * connected, and one that produced a real interview are three different states
+ * and only the last has a number worth reading. So the cell shows the STATE
+ * first and the score only once there is one.
+ */
+function VoiceCell({ candidate }: { candidate: RankedCandidate }) {
+  const status = candidate.voice_status ?? null;
+  const score = candidate.voice_score ?? null;
+  const rec = candidate.voice_recommendation ?? null;
+
+  if (!status) {
+    return <span className="text-xs text-[#D4D4D4]" title="No call placed yet">—</span>;
+  }
+
+  if (status !== "ready") {
+    const label: Record<string, string> = {
+      queued: "Queued",
+      calling: "Calling",
+      in_interview: "In call",
+      processing: "Scoring",
+      unreachable: "No answer",
+    };
+    const pending = status === "calling" || status === "in_interview" || status === "processing";
+    return (
+      <span
+        className={`inline-flex items-center gap-1 text-[11px] font-medium ${
+          status === "unreachable" ? "text-amber-700" : "text-[#737373]"
+        }`}
+      >
+        {pending && (
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#C85A17]" aria-hidden="true" />
+        )}
+        {label[status] ?? status}
+      </span>
+    );
+  }
+
+  const tone =
+    rec === "advance" ? "text-green-700" : rec === "reject" ? "text-red-600" : "text-[#0F0F0F]";
+  return (
+    <div className="flex flex-col items-center gap-0.5" title={rec ? `Recommendation: ${rec}` : undefined}>
+      <span className={`text-sm font-bold leading-none ${tone}`}>
+        {score == null ? "—" : Math.round(score)}
+      </span>
+      {rec && <span className="text-[10px] capitalize leading-none text-[#737373]">{rec}</span>}
+    </div>
+  );
+}
