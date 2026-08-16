@@ -40,6 +40,17 @@ export function VoiceScorecardDetails({
     staleTime: 60_000,
   });
 
+  // Two-axis scoring nests its computed roll-up (coverage, rationale, per
+  // category axes) inside grounding_data — it has no column of its own because
+  // this repo's migrations do not run automatically on deploy. Older scorecards
+  // stored a bare array here, hence the shape check.
+  const rollup = useMemo(() => {
+    const g = data?.grounding_data as unknown;
+    return g && !Array.isArray(g) && typeof g === "object"
+      ? (g as { coverage?: number; rationale?: string })
+      : null;
+  }, [data]);
+
   const breakdown = useMemo(
     () => (data?.breakdown ?? []).filter(isBreakdownItem),
     [data],
@@ -61,6 +72,8 @@ export function VoiceScorecardDetails({
   return (
     <div className="space-y-2.5">
       <ScorecardHeader
+        coverage={rollup?.coverage ?? null}
+        rationale={rollup?.rationale ?? null}
         score={data.overall_score}
         recommendation={data.recommendation}
         verdict={q?.verdict}
