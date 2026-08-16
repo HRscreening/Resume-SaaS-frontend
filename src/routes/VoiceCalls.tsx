@@ -168,10 +168,16 @@ export default function VoiceCalls() {
                     {isScheduledPending(c) ? (
                       <>
                         <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
-                          Scheduled
+                          {c.rescheduled_by_candidate ? "Rescheduled" : "Scheduled"}
+                          {c.rescheduled_by_candidate && (c.reschedule_no ?? 0) > 1
+                            ? ` ·  ${c.reschedule_no}${(c.reschedule_no ?? 0) >= 2 ? " (final)" : ""}`
+                            : ""}
                         </span>
                         <div className="text-xs text-[#737373] mt-1">
                           {new Date(c.scheduled_at as string).toLocaleString()}
+                          {c.rescheduled_by_candidate && (
+                            <span className="block text-[11px]">at the candidate&rsquo;s request</span>
+                          )}
                         </div>
                       </>
                     ) : (

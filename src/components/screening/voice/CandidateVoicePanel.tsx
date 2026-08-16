@@ -284,7 +284,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
               {scheduled ? (
                 <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold bg-purple-50 border-purple-200 text-purple-700">
                   <div className="h-2 w-2 rounded-full bg-purple-500" />
-                  Scheduled
+                  {latestCall.rescheduled_by_candidate ? "Rescheduled" : "Scheduled"}
                 </span>
               ) : (
                 <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${chip.cls}`}>
@@ -346,7 +346,21 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
 
         {scheduled && (
           <div className="flex items-center justify-between gap-2 bg-[#F5F3EE] rounded-xl px-4 py-3">
-            <span className="text-xs text-[#404040]">Scheduled for {new Date(latestCall.scheduled_at as string).toLocaleString()}</span>
+            <span className="text-xs text-[#404040]">
+              {latestCall.rescheduled_by_candidate ? "Candidate asked to be called back" : "Scheduled for"}
+              {latestCall.rescheduled_by_candidate ? ": " : " "}
+              {new Date(latestCall.scheduled_at as string).toLocaleString()}
+              {latestCall.rescheduled_by_candidate && latestCall.reschedule_requested_time && (
+                <span className="text-[#737373]"> (&ldquo;{latestCall.reschedule_requested_time}&rdquo;)</span>
+              )}
+              {latestCall.rescheduled_by_candidate && (latestCall.reschedule_no ?? 0) >= 2 && (
+                // The cap is 2: after this the agent stops offering a booking,
+                // so HR needs to know the automatic retries are exhausted.
+                <span className="block mt-0.5 text-[11px] font-medium text-amber-700">
+                  Final reschedule. If they miss this one the assistant will not book another.
+                </span>
+              )}
+            </span>
             <button
               onClick={() => cancelMut.mutate(latestCall.id)}
               disabled={cancelMut.isPending}
