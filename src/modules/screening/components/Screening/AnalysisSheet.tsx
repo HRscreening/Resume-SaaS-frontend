@@ -12,6 +12,7 @@ import {
 import { useCandidateScreeningDetail } from "@/controllers/screening/getCandidateScreeningDetail";
 import InfoTab from "@/modules/screening/components/info_sheet_tab";
 import { CandidateVoicePanel } from "@/components/screening/voice/CandidateVoicePanel";
+import { ShareReportDialog } from "@/components/screening/ShareReportDialog";
 import { useScreening } from "@/controllers/screening/getScreening";
 import { formatDate } from "@/lib/utils";
 import {
@@ -154,6 +155,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
   const tier = score ? getTierLabel(score.overall_score) : null;
 
   const [downloading, setDownloading] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const handleDownloadScorecard = async () => {
     if (!score?.id || downloading) return;
@@ -205,7 +207,11 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
       >
         <SheetHeader className="px-6 pt-6 border-b border-[#E8E5DF] pb-0">
           <SheetTitle className="text-sm font-semibold text-[#0F0F0F]">
-            <div className="flex items-center justify-start gap-1 mt-4">
+            {/* Share sits in the drawer header, not inside the voice panel:
+                the resume report exists for EVERY candidate, so a candidate
+                who has not been called yet must still be shareable. */}
+            <div className="flex items-center justify-between gap-2 mt-4">
+              <div className="flex items-center justify-start gap-1">
               {
                 tabs.map((t: Tab) => (
                   <button
@@ -223,9 +229,33 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                   </button>
                 ))
               }
+              </div>
+              {resume_id && (
+                <button
+                  type="button"
+                  onClick={() => setShareOpen(true)}
+                  title="Email this candidate's resume and voice report as a PDF"
+                  className="mb-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#D4D4D4] px-2.5 py-1 text-xs font-medium text-[#404040] transition-colors hover:bg-[#F5F3EE] hover:text-[#0F0F0F]"
+                >
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor"
+                       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M7 9.5V2M7 2L4.5 4.5M7 2l2.5 2.5M2.5 8.5v2A1.5 1.5 0 004 12h6a1.5 1.5 0 001.5-1.5v-2" />
+                  </svg>
+                  Share
+                </button>
+              )}
             </div>
           </SheetTitle>
         </SheetHeader>
+        {resume_id && (
+          <ShareReportDialog
+            screeningId={screening_id}
+            resumeId={resume_id}
+            candidateName={resume?.candidate_name ?? null}
+            open={shareOpen}
+            onClose={() => setShareOpen(false)}
+          />
+        )}
 
         {/* Loading */}
         {isLoading && (
