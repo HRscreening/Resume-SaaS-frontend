@@ -109,6 +109,11 @@ export interface RankedCandidate {
   category_scores: CategoryScore[];
   overall_summary: string;
   stage?: HiringStage;
+  /** Voice round outcome, so the list shows who screened well without opening
+   *  each drawer. All null when no call was ever placed. */
+  voice_score?: number | null;
+  voice_status?: string | null;
+  voice_recommendation?: string | null;
 }
 
 
@@ -125,6 +130,11 @@ export interface RankedCandidate {
   category_scores: CategoryScore[];
   overall_summary: string;
   stage?: HiringStage;
+  /** Voice round outcome, so the list shows who screened well without opening
+   *  each drawer. All null when no call was ever placed. */
+  voice_score?: number | null;
+  voice_status?: string | null;
+  voice_recommendation?: string | null;
 }
 
 

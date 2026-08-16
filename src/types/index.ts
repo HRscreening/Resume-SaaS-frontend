@@ -202,6 +202,11 @@ export interface RankedCandidate {
   category_scores: CategoryScore[];
   overall_summary: string;
   stage?: HiringStage;
+  /** Voice round outcome, so the list can show who screened well without
+   *  opening each drawer. All null when no call was ever placed. */
+  voice_score?: number | null;
+  voice_status?: CallDisplayStatus | null;
+  voice_recommendation?: string | null;
 }
 
 export interface PaginatedResults {
@@ -358,6 +363,8 @@ export interface VoiceConfig {
   retry_policy: RetryPolicy;
   max_concurrent_calls_override: number | null;
   qualification?: QualificationConfig | null;
+  /** Screening: 3-4 quick fit questions. Deep dive: 5-6 technical, role-level. */
+  interview_depth?: "screening" | "deep_dive";
 }
 
 export interface VoiceConfigResponse {
@@ -401,6 +408,12 @@ export interface CallListItem {
   voice_score: number | null;
   recommendation: string | null;
   is_partial: boolean;
+  /** The candidate asked to be called back and the agent booked this
+   *  call. Distinguishes "the candidate pushed it" from "HR scheduled
+   *  it", which otherwise look identical. */
+  rescheduled_by_candidate?: boolean;
+  reschedule_no?: number;
+  reschedule_requested_time?: string | null;
   resume_score: number | null;
   scheduled_at: string | null;
   started_at: string | null;

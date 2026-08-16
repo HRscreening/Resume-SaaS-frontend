@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { CountryCodeSelect } from "@/components/ui/CountryCodeSelect";
+import { BackLink } from "@/components/layout/BackLink";
 import {
   getScreening,
   getVoiceConfig,
@@ -11,29 +13,8 @@ import {
 import type { Rubric, VoiceConfig, QuestionPlanItem, QualificationConfig } from "@/types";
 import { truncate } from "@/lib/utils";
 
-type CountryCode = {
-  code: string;
-  country: string;
-}
-
-const COUNTRY_CODES: CountryCode[] = [
-  { code: "+91", country: "India" },
-  { code: "+1", country: "United States" },
-  { code: "+44", country: "United Kingdom" },
-  { code: "+61", country: "Australia" },
-  { code: "+81", country: "Japan" },
-  { code: "+49", country: "Germany" },
-  { code: "+33", country: "France" },
-  { code: "+971", country: "UAE" },
-  { code: "+65", country: "Singapore" },
-  { code: "+86", country: "China" },
-  { code: "+7", country: "Russia" },
-  { code: "+27", country: "South Africa" },
-];
-
-
 const DEFAULT_CONFIG: VoiceConfig = {
-  enabled: true,
+  enabled: false,
   question_plan: [],
   hiring_company: "",
   voice: { tts_voice_id: "default", tier: "default" },
@@ -107,7 +88,7 @@ export default function VoiceConfigPage() {
   }, [hydrated, configLoading, configResp]);
 
   const generateMutation = useMutation({
-    mutationFn: () => generateQuestionPlan(id),
+    mutationFn: () => generateQuestionPlan(id, draft.interview_depth ?? "screening"),
     onSuccess: (res) => {
       let hadFacts = false;
       setDraft((d) => {
@@ -142,7 +123,7 @@ export default function VoiceConfigPage() {
     onSuccess: (res) => {
       queryClient.setQueryData(["voice-config", id], res);
       toast.success("Voice round saved");
-      navigate({ to: "/screenings/$id", params: { id }, search: { tab: "Screening" } });
+      navigate({ to: "/screenings/$id", params: { id } });
     },
     onError: (e: unknown) =>
       toast.error(e instanceof Error ? e.message : "Could not save voice config"),
@@ -204,19 +185,37 @@ export default function VoiceConfigPage() {
   }
 
   const coveredCount = new Set(draft.question_plan.map((q) => q.competency_ref)).size;
+  // ── Readiness: what still blocks a first call, surfaced next to the action
+  //    rather than discovered after clicking save.
+  const stepsDone = {
+    company: Boolean(draft.hiring_company?.trim()),
+    questions: draft.question_plan.length > 0,
+  };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-      {/* Header */}
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 pb-28">
+      {/* Back out to the job this round belongs to. The breadcrumb below still
+          shows the full hierarchy; this is the affordance people actually
+          click. */}
+      <BackLink
+        to="/screenings/$id"
+        params={{ id }}
+        search={{ tab: "Screening" }}
+        label="screening"
+        className="mb-2"
+      />
+
+      {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-2 text-xs">
         <Link to="/screenings" className="text-[#737373] hover:text-[#0F0F0F]">Screenings</Link>
         <span className="text-[#D4D4D4]">/</span>
-        <Link to="/screenings/$id" params={{ id }} search={{ tab: "Screening" }} className="text-[#737373] hover:text-[#0F0F0F]">
+        <Link to="/screenings/$id" params={{ id }} className="text-[#737373] hover:text-[#0F0F0F]">
           {truncate(screening.title, 32)}
         </Link>
         <span className="text-[#D4D4D4]">/</span>
         <span className="text-[#404040]">Voice round</span>
       </div>
+
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <div className="flex items-center gap-2.5 mb-1">
@@ -233,7 +232,7 @@ export default function VoiceConfigPage() {
           <p className="text-sm text-[#737373]">
             {isEditing
               ? "This screening already has a voice round. Changes apply to the next call you place."
-              : "Configure the AI phone screen for shortlisted candidates. Questions are scored on the same rubric as resumes."}
+              : "An AI assistant phones shortlisted candidates, asks your questions, and scores the answers."}
           </p>
         </div>
         <Link
@@ -245,21 +244,62 @@ export default function VoiceConfigPage() {
         </Link>
       </div>
 
-      {/* Enable toggle */}
-      {/* <label className="flex items-center gap-3 mb-6 cursor-pointer select-none">
-        <input
-          type="checkbox"
-          checked={draft.enabled}
-          onChange={(e) => setDraft((d) => ({ ...d, enabled: e.target.checked }))}
-          className="h-4 w-4 accent-[#0F0F0F]"
-        />
-        <span className="text-sm font-medium text-[#0F0F0F]">Enable voice round for this screening</span>
-      </label> */}
+      {/* ── 1. Interview type ────────────────────────────────────────────────
+          Promoted to the first decision because it is the most consequential
+          one: it changes how many questions are generated, how technical they
+          are, how long the call runs, and how the answers are scored. */}
+      <Step n={1} title="Interview type" hint="Sets question count, depth and how answers are scored.">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {([
+            {
+              value: "screening",
+              label: "Screening",
+              lead: "3-4 quick questions",
+              body: "Confirms background and basic fit. About 7 to 10 minutes. Scored mainly on whether they understand the work.",
+            },
+            {
+              value: "deep_dive",
+              label: "Deep dive",
+              lead: "5-6 technical questions",
+              body: "Probes real, role-level work. About 12 to 15 minutes. Scored mainly on evidence they have actually done it.",
+            },
+          ] as const).map((opt) => {
+            const active = (draft.interview_depth ?? "screening") === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setDraft((d) => ({ ...d, interview_depth: opt.value }))}
+                className={`rounded-xl border p-3.5 text-left transition-colors ${
+                  active
+                    ? "border-[#0F0F0F] bg-[#0F0F0F] text-white"
+                    : "border-[#D4D4D4] bg-white hover:border-[#0F0F0F]/40"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold">{opt.label}</span>
+                  <span className={`h-3.5 w-3.5 rounded-full border-2 ${
+                    active ? "border-white bg-white" : "border-[#D4D4D4]"
+                  }`} />
+                </div>
+                <p className={`mt-0.5 text-xs font-medium ${active ? "text-white/80" : "text-[#404040]"}`}>
+                  {opt.lead}
+                </p>
+                <p className={`mt-1.5 text-xs leading-relaxed ${active ? "text-white/70" : "text-[#737373]"}`}>
+                  {opt.body}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </Step>
 
-      {/* Hiring company — the agent introduces itself with this. Required: without
-          it the greeting is generic ("the hiring team") and reads as a spam call,
-          so the backend refuses to dial. */}
-      <section className="mb-8">
+      {/* ── 2. Who is calling ────────────────────────────────────────────────
+          Enable + company grouped: both answer "does this round run, and who
+          does the agent say it is calling for". Company is required — without
+          it the greeting reads as a spam call and the backend refuses to dial. */}
+      <Step n={2} title="Who is calling" hint="How the assistant introduces itself on the phone.">
         <label className={labelCls}>
           Hiring company <span className="text-red-600">*</span>
         </label>
@@ -267,30 +307,81 @@ export default function VoiceConfigPage() {
           value={draft.hiring_company ?? ""}
           onChange={(e) => setDraft((d) => ({ ...d, hiring_company: e.target.value }))}
           placeholder="e.g. Acme Corp"
+          aria-invalid={!stepsDone.company}
           className={inputCls}
         />
-        <p className="text-xs text-[#737373] mt-1">
-          The agent says &ldquo;calling from {(draft.hiring_company || "…").trim() || "…"}&rsquo;s hiring team&rdquo;.
-          Calls cannot start until this is set.
+        <p className="mt-1.5 rounded-lg bg-[#F5F3EE] px-3 py-2 text-xs leading-relaxed text-[#404040]">
+          <span className="text-[#737373]">The candidate hears:</span>{" "}
+          &ldquo;Hi, this is Maya, an AI assistant calling from{" "}
+          <span className="font-medium text-[#0F0F0F]">
+            {(draft.hiring_company || "…").trim() || "…"}
+          </span>
+          &rsquo;s hiring team.&rdquo;
         </p>
-      </section>
 
-      {/* Question plan */}
-      <section className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h2 className="text-sm font-semibold text-[#0F0F0F]">Question plan</h2>
-            <p className="text-xs text-[#737373]">
-              {coveredCount}/{competencies.length} competencies covered
-            </p>
-          </div>
+        {/* Enable toggle hidden on uat (PR #22, fix/voice-ui): saving the round
+            is what enables it, so the extra switch read as a second, redundant
+            confirmation. `draft.enabled` is still saved from DEFAULT_CONFIG.
+            Restore this block to give recruiters an explicit off switch. */}
+        {/* <label className="mt-4 flex items-center gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={draft.enabled}
+            onChange={(e) => setDraft((d) => ({ ...d, enabled: e.target.checked }))}
+            className="h-4 w-4 accent-[#0F0F0F]"
+          />
+          <span className="text-sm font-medium text-[#0F0F0F]">
+            Enable voice round for this screening
+          </span>
+        </label> */}
+      </Step>
+
+      {/* ── 3. Questions ─────────────────────────────────────────────────── */}
+      <Step
+        n={3}
+        title="Questions"
+        hint="The assistant asks exactly these, word for word, and probes once when an answer is thin. Click any question to reword it."
+        aside={
+          <span className="text-xs text-[#737373]">
+            {coveredCount}/{competencies.length} competencies
+          </span>
+        }
+      >
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {/* Generation is offered only until the round is finalised. Once a
+              plan has been saved, regenerating would silently discard wording
+              the recruiter curated (and that candidates may already have been
+              asked), so from then on the list is edited, not rebuilt. */}
+          {!(isEditing && draft.question_plan.length > 0) && (
+            <button
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending}
+              className="h-9 px-4 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-xs font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60"
+            >
+              {generateMutation.isPending
+                ? "Generating…"
+                : draft.question_plan.length
+                  ? "Regenerate from JD + rubric"
+                  : "Generate from JD + rubric"}
+            </button>
+          )}
           <button
-            onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending}
-            className="h-9 px-4 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-xs font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60"
+            onClick={addQuestion}
+            className="h-9 px-4 border border-[#D4D4D4] text-xs font-medium text-[#404040] rounded-xl hover:bg-white transition-colors"
           >
-            {generateMutation.isPending ? "Generating…" : "Generate from JD + rubric"}
+            + Add question
           </button>
+          {!isEditing && draft.question_plan.length > 0 && (
+            <span className="text-xs text-[#737373]">
+              Regenerating replaces the list below.
+            </span>
+          )}
+          {isEditing && draft.question_plan.length > 0 && (
+            <span className="text-xs text-[#737373]">
+              Edit the wording below. This plan is live, so it is no longer
+              regenerated from scratch.
+            </span>
+          )}
         </div>
 
         <div className="space-y-2.5">
@@ -303,13 +394,28 @@ export default function VoiceConfigPage() {
                 <span className="mt-0.5 shrink-0 text-xs font-bold tabular-nums text-[#C85A17]">
                   {String(idx + 1).padStart(2, "0")}
                 </span>
+                {/* Styled as an input rather than bare text: a borderless
+                    textarea on a card reads as a label, and recruiters did not
+                    realise the wording was theirs to change. The border stays
+                    faint until hover/focus so a list of ten questions does not
+                    become a wall of boxes. */}
                 <textarea
                   value={q.text}
                   onChange={(e) => updateQuestion(idx, { text: e.target.value })}
                   rows={2}
                   placeholder="Question the agent will ask, word for word"
-                  className="min-h-0 flex-1 resize-none bg-transparent text-sm leading-relaxed text-[#0F0F0F] placeholder:text-[#A3A3A3] focus:outline-none [field-sizing:content]"
+                  aria-label={`Question ${idx + 1} text`}
+                  className="min-h-0 flex-1 resize-none rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm leading-relaxed text-[#0F0F0F] transition-colors placeholder:text-[#A3A3A3] hover:border-[#E8E5DF] hover:bg-[#FAFAF8] focus:border-[#0F0F0F] focus:bg-white focus:outline-none [field-sizing:content]"
                 />
+                <span
+                  aria-hidden="true"
+                  title="Editable"
+                  className="mt-1 shrink-0 text-[#D4D4D4] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-0"
+                >
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9.5 2.5l2 2L5 11l-2.5.5L3 9l6.5-6.5z" />
+                  </svg>
+                </span>
                 <button
                   onClick={() => removeQuestion(idx)}
                   aria-label="Remove question"
@@ -351,132 +457,141 @@ export default function VoiceConfigPage() {
                     }
                     placeholder="comma-separated, guides the follow-up"
                     title="Private notes on what a strong answer mentions — the agent probes once when these are missing, and never reads them aloud"
-                    className="h-7 min-w-0 flex-1 bg-transparent text-xs text-[#404040] placeholder:text-[#C9C5BD] focus:outline-none"
+                    className="h-7 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 text-xs text-[#404040] transition-colors placeholder:text-[#C9C5BD] hover:border-[#E8E5DF] hover:bg-[#FAFAF8] focus:border-[#0F0F0F] focus:bg-white focus:outline-none"
                   />
                 </div>
               </div>
             </div>
           ))}
           {draft.question_plan.length === 0 && (
-            <p className="rounded-xl border border-dashed border-[#E8E5DF] py-4 text-center text-sm text-[#737373]">
-              No questions yet. Generate a plan or add one manually.
+            <p className="rounded-xl border border-dashed border-[#E8E5DF] py-6 text-center text-sm text-[#737373]">
+              No questions yet. Generate a plan from the job description, or add one manually.
             </p>
           )}
         </div>
-        <button
-          onClick={addQuestion}
-          className="mt-3 h-9 px-4 border border-[#D4D4D4] text-xs font-medium text-[#404040] rounded-xl hover:bg-white transition-colors"
-        >
-          + Add question
-        </button>
-      </section>
+      </Step>
 
-      {/* Qualification (discovery pre-screen) */}
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-[#0F0F0F] mb-1">Qualification checks</h2>
-        <p className="text-xs text-[#737373] mb-3">
-          What the screening call qualifies. Budget and band are never spoken to the candidate.
-        </p>
-
-        <div className="space-y-2 mb-4">
+      {/* ── 4. Qualification checks ─────────────────────────────────────────
+          Each toggle reveals only its own fields, so an unused check costs no
+          screen space. */}
+      <Step
+        n={4}
+        title="Qualification checks"
+        hint="Logistics the call captures. Budget and band are never spoken to the candidate."
+      >
+        <div className="space-y-3">
           {([
-            ["ask_compensation", "Ask compensation", "current and expected CTC, asked last"],
-            ["ask_notice", "Ask notice period", "captured, never evaluated aloud"],
-            ["ask_location", "Ask location and work model", "drives the relocation check"],
-          ] as const).map(([key, label, hint]) => (
-            <label key={key} className="flex items-center gap-3 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={draft.qualification?.[key] ?? true}
-                onChange={(e) => setQual({ [key]: e.target.checked })}
-                className="h-4 w-4 accent-[#0F0F0F]"
-              />
-              <span className="text-sm text-[#0F0F0F]">{label}
-                <span className="text-xs text-[#737373] ml-2">{hint}</span></span>
-            </label>
-          ))}
-        </div>
-
-        {(draft.qualification?.ask_compensation ?? true) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className={labelCls}>Budget cap, annual <span className="text-[#737373]">(never shown to candidate)</span></label>
-              <input
-                type="number" min={0}
-                value={draft.qualification?.budget_cap ?? ""}
-                onChange={(e) => setQual({ budget_cap: e.target.value ? Number(e.target.value) : null })}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Negotiation band %</label>
-              <input
-                type="number" min={0} max={100}
-                value={draft.qualification?.budget_band_pct ?? 10}
-                onChange={(e) => setQual({ budget_band_pct: Number(e.target.value) })}
-                className={inputCls}
-              />
-            </div>
-          </div>
-        )}
-
-        {(draft.qualification?.ask_location ?? true) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Work model</label>
-              <select
-                value={draft.qualification?.work_model ?? ""}
-                onChange={(e) => setQual({ work_model: (e.target.value || null) as "remote" | "onsite" | "hybrid" | null })}
-                className={inputCls}
-              >
-                <option value="">Not set</option>
-                <option value="remote">Remote</option>
-                <option value="onsite">Onsite</option>
-                <option value="hybrid">Hybrid</option>
-              </select>
-            </div>
-            {(draft.qualification?.work_model === "onsite" || draft.qualification?.work_model === "hybrid") && (
-              <>
-                <div>
-                  <label className={labelCls}>
-                    Job city <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    value={draft.qualification?.job_city ?? ""}
-                    onChange={(e) => setQual({ job_city: e.target.value || null })}
-                    placeholder="e.g. Bangalore"
-                    aria-invalid={needsJobCity}
-                    className={
-                      needsJobCity
-                        ? inputCls.replace("border-[#D4D4D4]", "border-red-400") + " bg-red-50/40"
-                        : inputCls
-                    }
-                  />
-                  {needsJobCity && (
-                    <p className="mt-1 text-xs text-red-600">
-                      {draft.qualification?.relocation_required
-                        ? "Required: the relocation check needs a city the agent can name."
-                        : "Required for an " + (draft.qualification?.work_model ?? "onsite") + " role: the agent asks whether being based here works."}
-                    </p>
-                  )}
-                </div>
-                <label className="flex items-center gap-3 cursor-pointer select-none sm:col-span-2">
+            ["ask_compensation", "Compensation", "current and expected, asked last"],
+            ["ask_notice", "Notice period", "captured, never evaluated aloud"],
+            ["ask_location", "Location and work model", "drives the relocation check"],
+          ] as const).map(([key, label, hint]) => {
+            const on = draft.qualification?.[key] ?? true;
+            return (
+              <div key={key} className="rounded-xl border border-[#E8E5DF] bg-white">
+                <label className="flex cursor-pointer select-none items-center gap-3 px-3.5 py-3">
                   <input
                     type="checkbox"
-                    checked={draft.qualification?.relocation_required ?? false}
-                    onChange={(e) => setQual({ relocation_required: e.target.checked })}
+                    checked={on}
+                    onChange={(e) => setQual({ [key]: e.target.checked })}
                     className="h-4 w-4 accent-[#0F0F0F]"
                   />
-                  <span className="text-sm text-[#0F0F0F]">Relocation required
-                    <span className="text-xs text-[#737373] ml-2">if the candidate is far and will not relocate, the call ends</span></span>
+                  <span className="text-sm text-[#0F0F0F]">
+                    {label}
+                    <span className="ml-2 text-xs text-[#737373]">{hint}</span>
+                  </span>
                 </label>
-              </>
-            )}
-          </div>
-        )}
+
+                {on && key === "ask_compensation" && (
+                  <div className="grid grid-cols-1 gap-4 border-t border-[#F0EEE8] px-3.5 py-3 sm:grid-cols-2">
+                    <div>
+                      <label className={labelCls}>
+                        Budget cap, annual{" "}
+                        <span className="text-[#737373]">(never shown to candidate)</span>
+                      </label>
+                      <input
+                        type="number" min={0}
+                        value={draft.qualification?.budget_cap ?? ""}
+                        onChange={(e) => setQual({ budget_cap: e.target.value ? Number(e.target.value) : null })}
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Negotiation band %</label>
+                      <input
+                        type="number" min={0} max={100}
+                        value={draft.qualification?.budget_band_pct ?? 10}
+                        onChange={(e) => setQual({ budget_band_pct: Number(e.target.value) })}
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {on && key === "ask_location" && (
+                  <div className="grid grid-cols-1 gap-4 border-t border-[#F0EEE8] px-3.5 py-3 sm:grid-cols-2">
+                    <div>
+                      <label className={labelCls}>Work model</label>
+                      <select
+                        value={draft.qualification?.work_model ?? ""}
+                        onChange={(e) => setQual({ work_model: (e.target.value || null) as "remote" | "onsite" | "hybrid" | null })}
+                        className={inputCls}
+                      >
+                        <option value="">Not set</option>
+                        <option value="remote">Remote</option>
+                        <option value="onsite">Onsite</option>
+                        <option value="hybrid">Hybrid</option>
+                      </select>
+                    </div>
+                    {(draft.qualification?.work_model === "onsite" || draft.qualification?.work_model === "hybrid") && (
+                      <>
+                        <div>
+                          <label className={labelCls}>
+                            Job city <span className="text-red-600">*</span>
+                          </label>
+                          <input
+                            value={draft.qualification?.job_city ?? ""}
+                            onChange={(e) => setQual({ job_city: e.target.value || null })}
+                            placeholder="e.g. Bangalore"
+                            aria-invalid={needsJobCity}
+                            className={
+                              needsJobCity
+                                ? inputCls.replace("border-[#D4D4D4]", "border-red-400") + " bg-red-50/40"
+                                : inputCls
+                            }
+                          />
+                          {needsJobCity && (
+                            <p className="mt-1 text-xs text-red-600">
+                              {draft.qualification?.relocation_required
+                                ? "Required: the relocation check needs a city the agent can name."
+                                : "Required for an " + (draft.qualification?.work_model ?? "onsite") + " role: the agent asks whether being based here works."}
+                            </p>
+                          )}
+                        </div>
+                        <label className="flex items-center gap-3 cursor-pointer select-none sm:col-span-2">
+                          <input
+                            type="checkbox"
+                            checked={draft.qualification?.relocation_required ?? false}
+                            onChange={(e) => setQual({ relocation_required: e.target.checked })}
+                            className="h-4 w-4 accent-[#0F0F0F]"
+                          />
+                          <span className="text-sm text-[#0F0F0F]">Relocation required
+                            <span className="text-xs text-[#737373] ml-2">if the candidate is far and will not relocate, the call ends</span></span>
+                        </label>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
 
         <div className="mt-4">
-          <label className={labelCls}>Role facts the assistant may share</label>
+          <label className={labelCls}>Facts the assistant may share</label>
+          <p className="mb-2 text-xs text-[#737373]">
+            Answers to candidate questions. Anything not listed here gets an honest
+            &ldquo;the recruiter will follow up&rdquo;.
+          </p>
           <div className="space-y-2">
             {(draft.qualification?.role_facts ?? []).map((fact, i) => (
               <div key={i} className="flex gap-2">
@@ -489,7 +604,7 @@ export default function VoiceConfigPage() {
                 <button
                   type="button"
                   onClick={() => setQual({ role_facts: (draft.qualification?.role_facts ?? []).filter((_, j) => j !== i) })}
-                  className="text-xs text-[#737373] px-2"
+                  className="text-xs text-[#737373] px-2 hover:text-red-600"
                 >Remove</button>
               </div>
             ))}
@@ -500,79 +615,132 @@ export default function VoiceConfigPage() {
             >+ Add fact</button>
           </div>
         </div>
-      </section>
+      </Step>
 
-      {/* Call settings — voice/tier, timezone, and retry policy use sensible
-          defaults (see DEFAULT_CONFIG) and are not surfaced to the recruiter. */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-        <div className="max-w-50">
-          <label className={labelCls}>Default country code</label>
-          <select
-            value={draft.default_country_code}
-            onChange={(e) =>
-              setDraft((d) => ({
-                ...d,
-                default_country_code: e.target.value,
-              }))
-            }
-            className={inputCls}
-          >
-            {COUNTRY_CODES.map(({ code,country }) => (
-              <option key={code} value={code}>
-                {code} - {country}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="hidden sm:block" aria-hidden="true" />
-        <div>
-          <label className={labelCls}>Calling window start</label>
-          <input
-            type="time"
-            value={draft.calling_window.start}
-            onChange={(e) => setDraft((d) => ({ ...d, calling_window: { ...d.calling_window, start: e.target.value } }))}
-            className={inputCls}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Calling window end</label>
-          <input
-            type="time"
-            value={draft.calling_window.end}
-            onChange={(e) => setDraft((d) => ({ ...d, calling_window: { ...d.calling_window, end: e.target.value } }))}
-            className={inputCls}
-          />
-        </div>
-      </section>
-
-      {/* Actions */}
-      <div className="border-t border-[#E8E5DF] pt-4">
-        {saveBlockers.length > 0 && (
-          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-            {saveBlockers.map((msg, i) => (
-              <p key={i} className="text-xs leading-relaxed text-amber-800">{msg}</p>
-            ))}
+      {/* ── 5. Call settings — collapsed: sensible defaults, rarely changed ── */}
+      <details className="mb-6 rounded-2xl border border-[#E8E5DF] bg-[#FAFAF8]">
+        <summary className="cursor-pointer list-none px-4 py-3.5 text-sm font-semibold text-[#0F0F0F] marker:content-none">
+          <span className="flex items-center justify-between">
+            Call settings
+            <span className="text-xs font-normal text-[#737373]">
+              {draft.default_country_code} · {draft.calling_window.start}–{draft.calling_window.end}
+            </span>
+          </span>
+        </summary>
+        <div className="grid grid-cols-1 gap-4 border-t border-[#E8E5DF] px-4 py-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className={labelCls} htmlFor="default-country-code">Default country code</label>
+            <CountryCodeSelect
+              id="default-country-code"
+              value={draft.default_country_code}
+              onChange={(next) => setDraft((d) => ({ ...d, default_country_code: next }))}
+            />
+            <p className="mt-1 text-xs text-[#737373]">
+              Used when a candidate&rsquo;s number has no country code. Search by name
+              or by code.
+            </p>
           </div>
-        )}
-        <div className="flex items-center justify-end gap-3">
-          <Link
-            to="/screenings/$id"
-            params={{ id }}
-            search={{ tab: "Screening" }}
-            className="h-9 px-4 flex items-center text-sm font-medium text-[#404040] hover:text-[#0F0F0F]"
-          >
-            Cancel
-          </Link>
-          <button
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || saveBlockers.length > 0}
-            title={saveBlockers.length > 0 ? saveBlockers.join(" ") : undefined}
-            className="h-9 px-5 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {saveMutation.isPending ? "Saving…" : isEditing ? "Save changes" : "Save voice round"}
-          </button>
+          <div>
+            <label className={labelCls}>Calling window start</label>
+            <input
+              type="time"
+              value={draft.calling_window.start}
+              onChange={(e) => setDraft((d) => ({ ...d, calling_window: { ...d.calling_window, start: e.target.value } }))}
+              className={inputCls}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Calling window end</label>
+            <input
+              type="time"
+              value={draft.calling_window.end}
+              onChange={(e) => setDraft((d) => ({ ...d, calling_window: { ...d.calling_window, end: e.target.value } }))}
+              className={inputCls}
+            />
+          </div>
+        </div>
+      </details>
+
+      {/* ── Sticky actions: blockers sit WITH the button that they block, so a
+             disabled save always explains itself without scrolling. */}
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-[#E8E5DF] bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl flex-col gap-2 px-4 py-3 sm:px-6">
+          {saveBlockers.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              {saveBlockers.map((msg, i) => (
+                <p key={i} className="text-xs leading-relaxed text-amber-800">{msg}</p>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-3">
+            <p className="hidden text-xs text-[#737373] sm:block">
+              {stepsDone.company && stepsDone.questions
+                ? `${draft.question_plan.length} question${draft.question_plan.length === 1 ? "" : "s"} · ${
+                    (draft.interview_depth ?? "screening") === "deep_dive" ? "Deep dive" : "Screening"
+                  }`
+                : "Add a hiring company and at least one question to start calling."}
+            </p>
+            <div className="flex items-center gap-3">
+              <Link
+                to="/screenings/$id"
+                params={{ id }}
+                search={{ tab: "Screening" }}
+                className="h-9 px-4 flex items-center text-sm font-medium text-[#404040] hover:text-[#0F0F0F]"
+              >
+                Cancel
+              </Link>
+              <button
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending || saveBlockers.length > 0}
+                title={saveBlockers.length > 0 ? saveBlockers.join(" ") : undefined}
+                className="h-9 px-5 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {saveMutation.isPending ? "Saving…" : isEditing ? "Save changes" : "Save voice round"}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * One numbered configuration step.
+ *
+ * The screen used to be six flat sections of equal visual weight, so the most
+ * consequential choice (interview type) looked exactly as important as the
+ * default country code. Numbering plus card grouping gives the page a reading
+ * order, and each step states what it changes about the call.
+ */
+function Step({
+  n,
+  title,
+  hint,
+  aside,
+  children,
+}: {
+  n: number;
+  title: string;
+  hint?: string;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mb-6 rounded-2xl border border-[#E8E5DF] bg-[#FAFAF8] p-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0F0F0F] text-[10px] font-bold text-white">
+            {n}
+          </span>
+          <div>
+            <h2 className="text-sm font-semibold text-[#0F0F0F]">{title}</h2>
+            {hint && <p className="mt-0.5 text-xs leading-relaxed text-[#737373]">{hint}</p>}
+          </div>
+        </div>
+        {aside}
+      </div>
+      {children}
+    </section>
   );
 }

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cancelScheduledCall, getScreening, listVoiceCalls, triggerVoiceCalls } from "@/lib/api";
 import type { CallDisplayStatus, CallListItem } from "@/types";
+import { BackLink } from "@/components/layout/BackLink";
 import { truncate } from "@/lib/utils";
 import { CallScorecardDrawer } from "@/components/screening/voice/CallScorecardDrawer";
 import { VoiceCandidates } from "@/components/screening/voice/VoiceCandidates";
@@ -87,6 +88,13 @@ export default function VoiceCalls() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <BackLink
+        to="/screenings/$id"
+        params={{ id }}
+        search={{ tab: "Screening" }}
+        label="screening"
+        className="mb-2"
+      />
       <div className="flex items-center gap-2 mb-2 text-xs">
         <Link to="/screenings" className="text-[#737373] hover:text-[#0F0F0F]">Screenings</Link>
         <span className="text-[#D4D4D4]">/</span>
@@ -160,10 +168,16 @@ export default function VoiceCalls() {
                     {isScheduledPending(c) ? (
                       <>
                         <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
-                          Scheduled
+                          {c.rescheduled_by_candidate ? "Rescheduled" : "Scheduled"}
+                          {c.rescheduled_by_candidate && (c.reschedule_no ?? 0) > 1
+                            ? ` ·  ${c.reschedule_no}${(c.reschedule_no ?? 0) >= 2 ? " (final)" : ""}`
+                            : ""}
                         </span>
                         <div className="text-xs text-[#737373] mt-1">
                           {new Date(c.scheduled_at as string).toLocaleString()}
+                          {c.rescheduled_by_candidate && (
+                            <span className="block text-[11px]">at the candidate&rsquo;s request</span>
+                          )}
                         </div>
                       </>
                     ) : (

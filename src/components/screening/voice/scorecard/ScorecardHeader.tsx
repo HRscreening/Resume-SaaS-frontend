@@ -8,6 +8,14 @@ interface ScorecardHeaderProps {
   verdictReason: string | null;
   isPartial: boolean;
   duration: string | null;
+  /** Share of planned questions that produced an answer (0-1). Reported beside
+   *  the score because a high number on thin evidence is not a strong
+   *  interview — declined and unasked questions lower coverage, never the
+   *  score itself. Absent on scorecards produced before two-axis scoring. */
+  coverage?: number | null;
+  /** Why the recommendation landed where it did, computed from ability +
+   *  coverage rather than authored by the model. */
+  rationale?: string | null;
 }
 
 function Badge({ chip, strong = false }: { chip: Chip; strong?: boolean }) {
@@ -30,6 +38,7 @@ function Badge({ chip, strong = false }: { chip: Chip; strong?: boolean }) {
  */
 export function ScorecardHeader({
   score, recommendation, verdict, verdictReason, isPartial, duration,
+  coverage, rationale,
 }: ScorecardHeaderProps) {
   const rec = recommendationChip(recommendation);
   const ver = verdictChip(verdict);
@@ -51,11 +60,25 @@ export function ScorecardHeader({
         <p className="mt-2 text-xs leading-relaxed text-[#404040]">{verdictReason}</p>
       )}
 
+      {rationale && (
+        <p className="mt-2 text-xs leading-relaxed text-[#404040]">{rationale}</p>
+      )}
+
       {score != null && (
         <div className="mt-3">
           <div className="flex items-baseline justify-between">
             <span className="text-[10px] font-semibold uppercase tracking-wide text-[#737373]">
               Interview score
+              {coverage != null && (
+                <span
+                  className={`ml-2 font-normal normal-case tracking-normal ${
+                    coverage < 0.6 ? "text-amber-700" : "text-[#A3A3A3]"
+                  }`}
+                  title="Share of the planned questions the candidate actually answered. A score built on few answers is a weaker signal, however high it is."
+                >
+                  on {Math.round(coverage * 100)}% of questions
+                </span>
+              )}
             </span>
             <span className="text-lg font-bold tabular-nums" style={{ color: TONE_HEX[tone] }}>
               {score?.toFixed(0)}
