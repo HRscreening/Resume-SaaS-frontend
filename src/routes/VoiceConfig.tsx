@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { CountryCodeSelect } from "@/components/ui/CountryCodeSelect";
 import {
   getScreening,
   getVoiceConfig,
@@ -589,15 +590,15 @@ export default function VoiceConfigPage() {
         </summary>
         <div className="grid grid-cols-1 gap-4 border-t border-[#E8E5DF] px-4 py-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className={labelCls}>Default country code</label>
-            <input
+            <label className={labelCls} htmlFor="default-country-code">Default country code</label>
+            <CountryCodeSelect
+              id="default-country-code"
               value={draft.default_country_code}
-              onChange={(e) => setDraft((d) => ({ ...d, default_country_code: e.target.value }))}
-              placeholder="+91"
-              className={inputCls}
+              onChange={(next) => setDraft((d) => ({ ...d, default_country_code: next }))}
             />
             <p className="mt-1 text-xs text-[#737373]">
-              Used when a candidate&rsquo;s number has no country code.
+              Used when a candidate&rsquo;s number has no country code. Search by name
+              or by code.
             </p>
           </div>
           <div>
