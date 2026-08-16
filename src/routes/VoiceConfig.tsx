@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CountryCodeSelect } from "@/components/ui/CountryCodeSelect";
+import { BackLink } from "@/components/layout/BackLink";
 import {
   getScreening,
   getVoiceConfig,
@@ -193,6 +194,17 @@ export default function VoiceConfigPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 pb-28">
+      {/* Back out to the job this round belongs to. The breadcrumb below still
+          shows the full hierarchy; this is the affordance people actually
+          click. */}
+      <BackLink
+        to="/screenings/$id"
+        params={{ id }}
+        search={{ tab: "Screening" }}
+        label="screening"
+        className="mb-2"
+      />
+
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-2 text-xs">
         <Link to="/screenings" className="text-[#737373] hover:text-[#0F0F0F]">Screenings</Link>

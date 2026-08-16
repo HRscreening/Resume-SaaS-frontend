@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/layout/BackLink";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -154,6 +155,13 @@ export default function EditRubric() {
     <div className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-6">
+        <BackLink
+          to="/screenings/$id"
+          params={{ id }}
+          search={{ tab: "Screening" }}
+          label="screening"
+          className="mb-1"
+        />
         <div className="flex items-center gap-2 mb-2 text-xs">
           <Link to="/screenings" className="text-[#737373] hover:text-[#0F0F0F]">Screenings</Link>
           <span className="text-[#D4D4D4]">/</span>
