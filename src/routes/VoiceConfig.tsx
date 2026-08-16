@@ -340,7 +340,7 @@ export default function VoiceConfigPage() {
       <Step
         n={3}
         title="Questions"
-        hint="The assistant asks exactly these, in order, and probes once when an answer is thin."
+        hint="The assistant asks exactly these, word for word, and probes once when an answer is thin. Click any question to reword it."
         aside={
           <span className="text-xs text-[#737373]">
             {coveredCount}/{competencies.length} competencies
@@ -348,26 +348,38 @@ export default function VoiceConfigPage() {
         }
       >
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => generateMutation.mutate()}
-            disabled={generateMutation.isPending}
-            className="h-9 px-4 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-xs font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60"
-          >
-            {generateMutation.isPending
-              ? "Generating…"
-              : draft.question_plan.length
-                ? "Regenerate from JD + rubric"
-                : "Generate from JD + rubric"}
-          </button>
+          {/* Generation is offered only until the round is finalised. Once a
+              plan has been saved, regenerating would silently discard wording
+              the recruiter curated (and that candidates may already have been
+              asked), so from then on the list is edited, not rebuilt. */}
+          {!(isEditing && draft.question_plan.length > 0) && (
+            <button
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending}
+              className="h-9 px-4 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-xs font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60"
+            >
+              {generateMutation.isPending
+                ? "Generating…"
+                : draft.question_plan.length
+                  ? "Regenerate from JD + rubric"
+                  : "Generate from JD + rubric"}
+            </button>
+          )}
           <button
             onClick={addQuestion}
             className="h-9 px-4 border border-[#D4D4D4] text-xs font-medium text-[#404040] rounded-xl hover:bg-white transition-colors"
           >
             + Add question
           </button>
-          {draft.question_plan.length > 0 && (
+          {!isEditing && draft.question_plan.length > 0 && (
             <span className="text-xs text-[#737373]">
               Regenerating replaces the list below.
+            </span>
+          )}
+          {isEditing && draft.question_plan.length > 0 && (
+            <span className="text-xs text-[#737373]">
+              Edit the wording below. This plan is live, so it is no longer
+              regenerated from scratch.
             </span>
           )}
         </div>
@@ -382,13 +394,28 @@ export default function VoiceConfigPage() {
                 <span className="mt-0.5 shrink-0 text-xs font-bold tabular-nums text-[#C85A17]">
                   {String(idx + 1).padStart(2, "0")}
                 </span>
+                {/* Styled as an input rather than bare text: a borderless
+                    textarea on a card reads as a label, and recruiters did not
+                    realise the wording was theirs to change. The border stays
+                    faint until hover/focus so a list of ten questions does not
+                    become a wall of boxes. */}
                 <textarea
                   value={q.text}
                   onChange={(e) => updateQuestion(idx, { text: e.target.value })}
                   rows={2}
                   placeholder="Question the agent will ask, word for word"
-                  className="min-h-0 flex-1 resize-none bg-transparent text-sm leading-relaxed text-[#0F0F0F] placeholder:text-[#A3A3A3] focus:outline-none [field-sizing:content]"
+                  aria-label={`Question ${idx + 1} text`}
+                  className="min-h-0 flex-1 resize-none rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm leading-relaxed text-[#0F0F0F] transition-colors placeholder:text-[#A3A3A3] hover:border-[#E8E5DF] hover:bg-[#FAFAF8] focus:border-[#0F0F0F] focus:bg-white focus:outline-none [field-sizing:content]"
                 />
+                <span
+                  aria-hidden="true"
+                  title="Editable"
+                  className="mt-1 shrink-0 text-[#D4D4D4] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-0"
+                >
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9.5 2.5l2 2L5 11l-2.5.5L3 9l6.5-6.5z" />
+                  </svg>
+                </span>
                 <button
                   onClick={() => removeQuestion(idx)}
                   aria-label="Remove question"
@@ -430,7 +457,7 @@ export default function VoiceConfigPage() {
                     }
                     placeholder="comma-separated, guides the follow-up"
                     title="Private notes on what a strong answer mentions — the agent probes once when these are missing, and never reads them aloud"
-                    className="h-7 min-w-0 flex-1 bg-transparent text-xs text-[#404040] placeholder:text-[#C9C5BD] focus:outline-none"
+                    className="h-7 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 text-xs text-[#404040] transition-colors placeholder:text-[#C9C5BD] hover:border-[#E8E5DF] hover:bg-[#FAFAF8] focus:border-[#0F0F0F] focus:bg-white focus:outline-none"
                   />
                 </div>
               </div>
