@@ -33,7 +33,6 @@ import { jdStorageService } from "@/lib/services/index"
 
 import SearchSchema from "@/modules/screening/types/searchSchema";
 
-const HOME_PAGE_URL = import.meta.env.VITE_HOME_PAGE_URL || "https://hiresort.ai";
 
 
 export const sectionTabs = ["Applications", "Screening"] as const;
@@ -146,7 +145,7 @@ export default function ScreeningDetail() {
     }
 
     const postJob = () => {
-        const postedJobUrl = `${HOME_PAGE_URL}/careers/${id}`;
+        const postedJobUrl = `https://hiresort.ai/careers/${id}`;
 
         // Copy the URL to the clipboard
         navigator.clipboard.writeText(postedJobUrl).then(() => {
