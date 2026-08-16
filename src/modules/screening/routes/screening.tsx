@@ -1,3 +1,4 @@
+import { BackLink } from "@/components/layout/BackLink";
 import { useState, useRef, useEffect,useCallback } from "react";
 import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
 // import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -253,6 +254,10 @@ export default function ScreeningDetail() {
             <div className="px-4 pt-6 pb-4 sm:px-6 sm:pt-8 md:px-8 shrink-0">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4 mb-1">
                     <div>
+                        {/* A job page is reached from the dashboard, the jobs list and
+                            deep links, so "back" points at the jobs list rather than at
+                            browser history. */}
+                        <BackLink to="/screenings" label="jobs" className="mb-1" />
                         <div className="flex items-center gap-2 mb-2 text-xs">
                             <Link to="/screenings" className="text-[#737373] hover:text-[#0F0F0F]">Screenings</Link>
                             <span className="text-[#D4D4D4]">/</span>
