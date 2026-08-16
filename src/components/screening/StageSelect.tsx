@@ -33,11 +33,10 @@ export function StageSelect({ value, stages, onChange, onManage }: StageSelectPr
   const all = sortedStages(stages);
   const currentIdx = meta.index;
 
-  // Stages strictly after current. If candidate sits on Rejected (or an
-  // unknown stage), show the full pipeline so the recruiter can pick again.
+  // Stages without including the current stage, so we don't show a "move to" option for the stage the candidate is already in.
   const forward = currentIdx == null
     ? all
-    : all.filter((s) => s.index > currentIdx);
+    : all.filter((s) => s.index != currentIdx);
 
   useEffect(() => {
     if (!open) return;

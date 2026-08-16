@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect,useCallback } from "react";
 import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
 // import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useScreeningQuery } from "@/modules/screening/hooks/screening/screening.query"
@@ -10,8 +10,18 @@ import { useAnalysisSheetOpen, setOpenAnalysisSheet } from "@/modules/screening/
 import { RubricModal } from "@/components/screening/RubricModal";
 import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import ActionButton from "@/modules/screening/components/shared/ActionButton";
 import { toast } from "sonner";
-import {History} from "lucide-react";
+import {
+    FileText,
+    NotebookPen,
+    Link as Link2,
+    Upload,
+    RotateCcw,
+    Mic,
+    History,
+    Download
+} from "lucide-react";
 
 import Applications from "@/modules/screening/tabs/applications"
 import Screening from "@/modules/screening/tabs/screeningTab"
@@ -23,6 +33,7 @@ import { jdStorageService } from "@/lib/services/index"
 
 import SearchSchema from "@/modules/screening/types/searchSchema";
 
+const HOME_PAGE_URL = import.meta.env.VITE_HOME_PAGE_URL || "https://hiresort.ai";
 
 
 export const sectionTabs = ["Applications", "Screening"] as const;
@@ -37,7 +48,7 @@ export default function ScreeningDetail() {
 
     const currentTab: Sections = search.tab ?? "Applications";
 
-    const navigate = useNavigate({from: "/screenings/$id",});
+    const navigate = useNavigate({ from: "/screenings/$id", });
 
     const { user } = useAuth();
 
@@ -48,7 +59,7 @@ export default function ScreeningDetail() {
     useEffect(() => {
         setOpenAnalysisSheet(null);
         setOpenInfoSheet(null);
-    },[])
+    }, [])
 
     const screeningAnalysisOpen = useAnalysisSheetOpen();
     const infoSheetOpen = useInfoSheetOpen();
@@ -134,15 +145,36 @@ export default function ScreeningDetail() {
         }
     }
 
-    const changeTab = (tab: Sections) => {
+    const postJob = () => {
+        const postedJobUrl = `${HOME_PAGE_URL}/careers/${id}`;
+
+        // Copy the URL to the clipboard
+        navigator.clipboard.writeText(postedJobUrl).then(() => {
+            toast.success("JobPost URL copied to clipboard.Redirecting...");
+            setTimeout(() => {
+                window.open(postedJobUrl, "_blank");
+            }, 1000);
+        }).catch((err) => {
+            console.error("Failed to copy URL to clipboard:", err);
+            toast.error("Something went wrong, Contact support");
+        }
+        );
+
+    }
+
+    const changeTab = useCallback((tab:Sections) => {
+        // setSearchInput("");
+
         navigate({
-            replace: true,
+            to: "/screenings/$id",
+            params: { id:id},
             search: (prev) => ({
-                ...prev,
-                tab,
-            }),
+                tab: tab,
+                saved: prev.saved,
+            }) as never,
+            replace: true,
         });
-    };
+    }, [navigate, id]);
 
     async function handleExport() {
         setExporting(true);
@@ -233,64 +265,25 @@ export default function ScreeningDetail() {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         {screening.jd_url &&
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        disabled={!screening}
-                                        onClick={() => viewJD()}
-                                        className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
-                                    >
-
-                                        <svg
-                                            width="14"
-                                            height="14"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        >
-                                            <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z" />
-                                            <path d="M14 2v5h5" />
-                                            <path d="M9 13h6" />
-                                            <path d="M9 17h4" />
-                                        </svg>
-
-                                        {!analysisOpen && "Job Desc."}
-                                    </button>
-                                </TooltipTrigger>
-                                {analysisOpen && <TooltipContent><p className="text-xs">Job Desc.</p></TooltipContent>}
-                            </Tooltip>
+                            <ActionButton title="Job Desc." description="Job Desc." icon={<FileText size={12} />} compacted={analysisOpen} disabled={!screening} onClick={() => viewJD()} />
                         }
+                        <ActionButton title="Rubric"
+                            icon={<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h3" /></svg>} compacted={analysisOpen} disabled={!screening} onClick={() => setShowRubric(true)} />
 
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <button
-                                    onClick={() => setShowRubric(true)}
-                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
-                                >
-                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h3" /></svg>
-                                    {!analysisOpen && "Rubric"}
-                                </button>
-                            </TooltipTrigger>
-                            {analysisOpen && <TooltipContent><p className="text-xs">Rubric</p></TooltipContent>}
-                        </Tooltip>
+                        <ActionButton title="Post Job"
+                            icon={<Link2 size={12} />} compacted={analysisOpen} disabled={!screening} onClick={() => postJob()} />
+
+
+
+
 
                         {currentTab === "Applications" && (
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        onClick={() => { setShowUploadMore((v) => !v) }}
-                                        className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border text-sm font-medium rounded-xl transition-colors flex items-center gap-2 whitespace-nowrap ${showUploadMore ? "border-[#0F0F0F] bg-[#0F0F0F] text-white" : "border-[#D4D4D4] text-[#404040] hover:bg-white"}`}
-                                    >
-                                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 2v8M3.5 5.5l3.5-3.5 3.5 3.5" /><path d="M2 12h10" /></svg>
-                                        {!analysisOpen && "Add resumes"}
-                                    </button>
-                                </TooltipTrigger>
-                                {analysisOpen && <TooltipContent><p className="text-xs">Add resumes</p></TooltipContent>}
-                            </Tooltip>
-
+                            <ActionButton
+                                title="Add Resumes"
+                                icon={<Upload size={12} />}
+                                compacted={analysisOpen}
+                                onClick={() => { setShowUploadMore((v) => !v) }}
+                            />
                         )}
                         {true && (
                             // {(candidates.length > 0 || filtersMatchedNothing) && (
@@ -299,75 +292,43 @@ export default function ScreeningDetail() {
 
                                 {currentTab === "Screening" && (
                                     <>
-                                        {/* Rubric button */}
-
                                         {/* Rescore button */}
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <button
-                                                    onClick={() => setRescoreMode(true)}
-                                                    disabled={isProcessing || rescoreMode || !hasAnyCandidates}
-                                                    // disabled={isProcessing || rescoreMode || candidates.length === 0}
-                                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed`}
-                                                >
-                                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                                        <path d="M11.5 4.5A5 5 0 1 0 12 9" /><path d="M11.5 1.5v3h-3" />
-                                                    </svg>
-                                                    {!analysisOpen && "Rescore"}
-                                                </button>
-                                            </TooltipTrigger>
-                                            {analysisOpen && <TooltipContent><p className="text-xs">Rescore</p></TooltipContent>}
-                                        </Tooltip>
+                                        <ActionButton
+                                            title="Rescore"
+                                            onClick={() => setRescoreMode(true)}
+                                            disabled={isProcessing || rescoreMode || !hasAnyCandidates}
+                                            icon={<RotateCcw size={12} />}
+                                            compacted={analysisOpen}
+                                        />
+
+
                                         {/* Voice round button */}
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <button
-                                                    onClick={() => navigate({ to: "/screenings/$id/voice", params: { id } })}
-                                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
-                                                >
-                                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5a2 2 0 0 1 2 2v3a2 2 0 1 1-4 0v-3a2 2 0 0 1 2-2z" /><path d="M3 6.5a4 4 0 0 0 8 0M7 10.5v2M5 12.5h4" /></svg>
-                                                    {!analysisOpen && "Voice round"}
-                                                </button>
-                                            </TooltipTrigger>
-                                            {analysisOpen && <TooltipContent><p className="text-xs">Voice round</p></TooltipContent>}
-                                        </Tooltip>
-                                        
+                                        <ActionButton
+                                            title="Voice round"
+                                            onClick={() => navigate({ to: "/screenings/$id/voice", params: { id } })}
+                                            icon={<Mic size={12} />}
+                                            compacted={analysisOpen}
+                                        />
+
                                         {/* Call History button */}
-                                       
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <button
-                                                    onClick={() => navigate({ to: "/screenings/$id/voice/calls", params: { id } })}
-                                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap`}
-                                                >
-                                                    <History size={14}/>
-                                                    {!analysisOpen && "View Calls"}
-                                                </button>
-                                            </TooltipTrigger>
-                                            {analysisOpen && <TooltipContent><p className="text-xs">View Calls</p></TooltipContent>}
-                                        </Tooltip>
-                                        
-                                        
-                                        
+                                        <ActionButton
+                                            title="View Calls"
+                                            onClick={() => navigate({ to: "/screenings/$id/voice/calls", params: { id } })}
+                                            icon={<History size={12} />}
+                                            compacted={analysisOpen}
+                                        />
+
+
 
                                         {/* Export CSV */}
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <button
-                                                    onClick={handleExport}
-                                                    disabled={exporting}
-                                                    // disabled={exporting || candidates.length === 0}
-                                                    className={`h-9 ${analysisOpen ? "px-2.5" : "px-4"} border border-[#D4D4D4] text-xs xl:text-sm font-medium text-[#404040] rounded-xl hover:bg-white transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-60`}
-                                                >
-                                                    {exporting
-                                                        ? <span className="h-3.5 w-3.5 rounded-full border-2 border-[#404040] border-t-transparent animate-spin" />
-                                                        : <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1.5v8M4 7l3 3 3-3" /><path d="M1.5 10.5v1.5a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-1.5" /></svg>
-                                                    }
-                                                    {!analysisOpen && "Export CSV"}
-                                                </button>
-                                            </TooltipTrigger>
-                                            {analysisOpen && <TooltipContent><p className="text-xs">Export CSV</p></TooltipContent>}
-                                        </Tooltip>
+                                        <ActionButton
+                                            title="Export CSV"
+                                            description="Export CSV"
+                                            icon={<Download size={12} />}
+                                            compacted={analysisOpen}
+                                            onClick={handleExport}
+                                            disabled={exporting}
+                                        />
                                     </>
                                 )
                                 }

@@ -16,7 +16,7 @@ import type {
 } from "@/modules/screening/types/screening.type";
 import { useScreeningResultsQuery } from "@/modules/screening/hooks/screening/screening.query"
 
-const SEARCH_DEBOUNCE_MS = 350;
+const SEARCH_DEBOUNCE_MS = 550;
 
 
 
@@ -45,6 +45,30 @@ export function useCandidateQuery(screeningId: string, options: UseCandidateQuer
     // the URL so refreshes / shares restore the typed text.
     const [searchInput, setSearchInput] = useState(urlState.search);
     const debouncedSearch = useDebouncedValue(searchInput, SEARCH_DEBOUNCE_MS);
+
+    useEffect(() => {
+    if (debouncedSearch === urlState.search) return;
+
+    if (debouncedSearch === "") {
+        navigate({
+            to: "/screenings/$id",
+            params: { id: screeningId },
+            search: (prev) => ({
+                ...prev,
+                search: undefined,
+            }) as never,
+            replace: true,
+        });
+        return;
+    }
+
+    
+
+    pushState({
+        ...urlState,
+        search: debouncedSearch,
+    });
+}, [debouncedSearch, urlState, navigate, screeningId]);
 
     // Effective query state combines URL-derived state with the debounced
     // search input. We never write the raw `searchInput` into the URL — only
@@ -94,11 +118,22 @@ export function useCandidateQuery(screeningId: string, options: UseCandidateQuer
 
     const query = useScreeningResultsQuery(screeningId, requestState);
 
+    // function pushState(next: CandidateQueryState) {
+    //     navigate({
+    //         to: "/screenings/$id",
+    //         params: { id: screeningId },
+    //         search: encodeQueryState(next) as never,
+    //         replace: true,
+    //     });
+    // }
     function pushState(next: CandidateQueryState) {
         navigate({
             to: "/screenings/$id",
             params: { id: screeningId },
-            search: encodeQueryState(next) as never,
+            search: (prev) => ({
+                ...prev,
+                ...encodeQueryState(next),
+            }) as never,
             replace: true,
         });
     }
@@ -125,10 +160,21 @@ export function useCandidateQuery(screeningId: string, options: UseCandidateQuer
         [urlState],
     );
     const setSort = useCallback((sort: SortRule[]) => pushState({ ...urlState, sort }), [urlState]);
+    // const clearAll = useCallback(() => {
+    //     setSearchInput("");
+    //     pushState({ ...DEFAULT_QUERY_STATE, limit: limit });
+    // }, [limit]);
     const clearAll = useCallback(() => {
         setSearchInput("");
-        pushState({ ...DEFAULT_QUERY_STATE, limit: limit });
-    }, [limit]);
+        navigate({
+            to: "/screenings/$id",
+            params: { id: screeningId },
+            search: (prev) => ({
+                tab: prev.tab,
+            }) as never,
+            replace: true,
+        });
+    }, [navigate, screeningId]);
 
 
 

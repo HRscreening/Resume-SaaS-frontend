@@ -17,6 +17,7 @@ interface CandidateVoicePanelProps {
   screeningId: string;
   resumeId: string;
   candidateName?: string | null;
+  currentStage?: string | null;
 }
 
 // Call display buckets still moving through the pipeline → keep polling.
@@ -77,7 +78,7 @@ const PhoneIcon = ({ size = 13 }: { size?: number }) => (
  * score once the interview is done. All state comes from the same three queries
  * the /voice/calls page uses (shared cache keys → no duplicate fetches).
  */
-export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: CandidateVoicePanelProps) {
+export function CandidateVoicePanel({ screeningId, resumeId, candidateName,currentStage }: CandidateVoicePanelProps) {
   const queryClient = useQueryClient();
   const [scheduling, setScheduling] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
@@ -98,6 +99,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
     queryFn: () => listCallCandidates(screeningId),
     staleTime: 15_000,
   });
+
 
   const { data: callsResp, isLoading: callsLoading } = useQuery({
     queryKey: ["voice-calls", screeningId],
@@ -389,25 +391,27 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName }: Ca
     );
   }
 
-  // ── No call yet ──────────────────────────────────────────────────────────
-  if (candidate?.reason === "no_phone" || (candidate == null && !latestCall)) {
-    // Not callable: either no phone, or the candidate isn't Shortlisted (the
-    // /candidates endpoint only lists Shortlisted candidates).
-    const msg = candidate?.reason === "no_phone"
-      ? "No phone number on file for this candidate, so they can't be called."
-      : "Move this candidate to the Shortlisted stage to run a voice interview.";
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <span className="text-[#404040]"><PhoneIcon size={14} /></span>
-          <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Voice Screening</p>
-        </div>
-        <div className="bg-[#F5F3EE] rounded-xl p-4">
-          <p className="text-xs text-[#404040] leading-relaxed">{msg}</p>
-        </div>
-      </div>
-    );
-  }
+
+  // ! change the api resoponse ask for isElliblity and reason for this candidate
+  // // ── No call yet ──────────────────────────────────────────────────────────
+  // if (!isShortlisted && (candidate?.reason === "no_phone"  || (candidate == null && !latestCall) ) ) {
+  //   // Not callable: either no phone, or the candidate isn't Shortlisted (the
+  //   // /candidates endpoint only lists Shortlisted candidates).
+  //   const msg = candidate?.reason === "no_phone"
+  //     ? "No phone number on file for this candidate, so they can't be called."
+  //     : "Move this candidate to the Shortlisted stage to run a voice interview.";
+  //   return (
+  //     <div className="space-y-4">
+  //       <div className="flex items-center gap-2">
+  //         <span className="text-[#404040]"><PhoneIcon size={14} /></span>
+  //         <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Voice Screening</p>
+  //       </div>
+  //       <div className="bg-[#F5F3EE] rounded-xl p-4">
+  //         <p className="text-xs text-[#404040] leading-relaxed">{msg}</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   // Callable / recall, no active call.
   return (
