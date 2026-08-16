@@ -751,3 +751,22 @@ export async function getCallArtifacts(
 ): Promise<import("@/types").CallArtifactsResponse> {
   return request(`/api/v1/screenings/${screeningId}/voice/calls/${callId}/artifacts`);
 }
+
+// ─── Share candidate report ────────────────────────────────────────────────
+
+export interface ShareReportResult {
+  sent: string[];
+  failed: string[];
+}
+
+/** Email the candidate's resume + voice report as a PDF attachment. */
+export async function shareCandidateReport(
+  screeningId: string,
+  resumeId: string,
+  body: { emails: string[]; note?: string },
+): Promise<ShareReportResult> {
+  return request(`/api/v1/screenings/${screeningId}/candidates/${resumeId}/share`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
