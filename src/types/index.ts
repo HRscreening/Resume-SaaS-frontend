@@ -202,6 +202,11 @@ export interface RankedCandidate {
   category_scores: CategoryScore[];
   overall_summary: string;
   stage?: HiringStage;
+  /** Voice round outcome, so the list can show who screened well without
+   *  opening each drawer. All null when no call was ever placed. */
+  voice_score?: number | null;
+  voice_status?: CallDisplayStatus | null;
+  voice_recommendation?: string | null;
 }
 
 export interface PaginatedResults {
