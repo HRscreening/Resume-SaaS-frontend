@@ -11,7 +11,6 @@ import {
 } from "@/lib/api";
 import type { CallListItem, CallCandidate, CallDisplayStatus } from "@/types";
 import { VoiceScorecardDetails } from "./VoiceScorecardDetails";
-import { ShareReportDialog } from "@/components/screening/ShareReportDialog";
 import { ExternalLink, Loader2 } from "lucide-react";
 
 interface CandidateVoicePanelProps {
@@ -82,7 +81,6 @@ const PhoneIcon = ({ size = 13 }: { size?: number }) => (
 export function CandidateVoicePanel({ screeningId, resumeId, candidateName,currentStage }: CandidateVoicePanelProps) {
   const queryClient = useQueryClient();
   const [scheduling, setScheduling] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
   // TEMPORARY (2026-07-13): editable dial number. null ⇒ use the candidate's
   // number from their resume; any edit overrides just this call. Remove the
@@ -273,13 +271,6 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
 
     return (
       <div className="space-y-4">
-        <ShareReportDialog
-          screeningId={screeningId}
-          resumeId={resumeId}
-          candidateName={candidateName}
-          open={shareOpen}
-          onClose={() => setShareOpen(false)}
-        />
         {/* Section header */}
 
         <div className="flex flex-row w-full justify-between">
@@ -289,19 +280,10 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
             <p className="text-xs font-semibold text-[#737373] uppercase tracking-wide">Voice Screening</p>
           </div>
 
-          {/* Sharing lives next to the results a recruiter is reading, because
-              that is the moment they decide someone else should see them. */}
-          <button
-            onClick={() => setShareOpen(true)}
-            title="Email this candidate's resume and voice report as a PDF"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[#D4D4D4] px-2.5 py-1 text-xs font-medium text-[#404040] transition-colors hover:bg-white hover:text-[#0F0F0F]"
-          >
-            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor"
-                 strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M7 9.5V2M7 2L4.5 4.5M7 2l2.5 2.5M2.5 8.5v2A1.5 1.5 0 004 12h6a1.5 1.5 0 001.5-1.5v-2" />
-            </svg>
-            Share
-          </button>
+          {/* Sharing is deliberately NOT here. The report covers resume plus
+              voice, so it belongs to the candidate, not to the voice round —
+              it lives once in the drawer header (AnalysisSheet). Mounting it
+              here too put two Share buttons in the same open drawer. */}
 
           {/* Status + Score row */}
           <div className="flex items-center justify-between gap-2">
