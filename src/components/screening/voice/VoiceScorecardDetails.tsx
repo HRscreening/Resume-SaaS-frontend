@@ -56,8 +56,6 @@ export function VoiceScorecardDetails({
     [data],
   );
 
-  console.log("VoiceScorecardDetails data:", breakdown);
-
   if (isLoading) return <p className="text-xs text-[#737373]">Loading interview results…</p>;
   if (isError || !data) {
     return <p className="text-xs text-[#737373]">Could not load the interview results.</p>;
