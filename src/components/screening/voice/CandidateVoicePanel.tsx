@@ -223,7 +223,14 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
     callMut.mutate({ iso: new Date(scheduleAt).toISOString(), phone: phoneValue });
   };
 
-  const CallButtons = ({ recall }: { recall?: boolean }) => (
+  // These are render helpers CALLED as functions, not components rendered as
+  // <Element />. Declaring a component inside the render body gives it a new
+  // function identity every render, so React treats it as a different type,
+  // unmounts the old subtree and mounts a fresh one. That reset the scheduler's
+  // datetime input on the first keystroke and stole its focus, which made the
+  // field impossible to fill in. Calling them inlines the JSX into this
+  // component's tree instead, so the input keeps its DOM node and its focus.
+  const callButtons = (recall?: boolean) => (
     <div className="flex flex-wrap items-center gap-2">
       <button
         onClick={() => callMut.mutate({ phone: phoneValue })}
@@ -243,7 +250,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
     </div>
   );
 
-  const Scheduler = () => (
+  const scheduler = () => (
     <div className="flex flex-col gap-2">
       <label className="text-xs font-medium text-[#404040]">Schedule the interview for</label>
       <input
@@ -390,7 +397,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
 
         {/* Re-call is available once the last attempt is finished (done/unreachable). */}
         {!scheduled && !active && (
-          scheduling ? <Scheduler /> : <div className="space-y-2">{phoneEditor}<CallButtons recall /></div>
+          scheduling ? scheduler() : <div className="space-y-2">{phoneEditor}{callButtons(true)}</div>
         )}
       </div>
     );
@@ -428,7 +435,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
       <div className="bg-[#F5F3EE] rounded-xl p-4">
         <p className="text-xs text-[#404040] leading-relaxed">Run an AI phone interview with this candidate.</p>
       </div>
-      {scheduling ? <Scheduler /> : <div className="space-y-2">{phoneEditor}<CallButtons recall={candidate?.reason === "recall"} /></div>}
+      {scheduling ? scheduler() : <div className="space-y-2">{phoneEditor}{callButtons(candidate?.reason === "recall")}</div>}
     </div>
   );
 }
