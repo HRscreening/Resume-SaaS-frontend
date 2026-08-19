@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { listCallCandidates, triggerVoiceCalls } from "@/lib/api";
 import type { CandidateCallReason } from "@/types";
+import { defaultScheduleValue } from "@/lib/scheduleTime";
 
 const REASON: Record<CandidateCallReason, { label: string; style: string }> = {
   callable: { label: "Callable", style: "bg-green-100 text-green-700" },
@@ -20,16 +21,6 @@ function hasLiveCall(reasons: CandidateCallReason[]): boolean {
 /** `datetime-local` value (local wall-clock, no tz) → ISO 8601 with offset. */
 function localToIso(local: string): string {
   return new Date(local).toISOString();
-}
-
-/** Default the picker to ~1 hour from now, formatted for a datetime-local input. */
-function defaultScheduleValue(): string {
-  const d = new Date(Date.now() + 60 * 60 * 1000);
-  d.setSeconds(0, 0);
-  // Strip the tz/seconds to the "YYYY-MM-DDTHH:MM" shape the input expects,
-  // in the user's local time.
-  const off = d.getTimezoneOffset();
-  return new Date(d.getTime() - off * 60 * 1000).toISOString().slice(0, 16);
 }
 
 interface VoiceCandidatesProps {

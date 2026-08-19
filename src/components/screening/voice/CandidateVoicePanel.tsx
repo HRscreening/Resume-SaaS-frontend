@@ -8,9 +8,11 @@ import {
   listVoiceCalls,
   triggerVoiceCalls,
   cancelScheduledCall,
+  rescheduleVoiceCall,
 } from "@/lib/api";
 import type { CallListItem, CallCandidate, CallDisplayStatus } from "@/types";
 import { VoiceScorecardDetails } from "./VoiceScorecardDetails";
+import { toInputValue, defaultScheduleValue } from "@/lib/scheduleTime";
 import { ExternalLink, Loader2 } from "lucide-react";
 
 interface CandidateVoicePanelProps {
@@ -58,12 +60,6 @@ function formatDuration(seconds: number | null | undefined): string | null {
 }
 
 /** Default the schedule picker to ~1 hour out, in the user's local time. */
-function defaultScheduleValue(): string {
-  const d = new Date(Date.now() + 60 * 60 * 1000);
-  d.setSeconds(0, 0);
-  const off = d.getTimezoneOffset();
-  return new Date(d.getTime() - off * 60 * 1000).toISOString().slice(0, 16);
-}
 
 const PhoneIcon = ({ size = 13 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -82,6 +78,9 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
   const queryClient = useQueryClient();
   const [scheduling, setScheduling] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
+  // Non-null ⇒ the picker is moving THIS existing call rather than booking a
+  // new one. Drives which mutation Confirm fires.
+  const [movingCallId, setMovingCallId] = useState<string | null>(null);
   // TEMPORARY (2026-07-13): editable dial number. null ⇒ use the candidate's
   // number from their resume; any edit overrides just this call. Remove the
   // PhoneEditor + this state to revert to read-only phone display.
@@ -141,6 +140,24 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Could not cancel"),
   });
 
+  // Moving an existing booking, as opposed to creating one. Kept separate from
+  // callMut because it must not create a second call for this candidate — the
+  // old behaviour (cancel, then schedule again) briefly left them with none.
+  const rescheduleMut = useMutation({
+    mutationFn: (vars: { callId: string; iso: string }) =>
+      rescheduleVoiceCall(screeningId, vars.callId, vars.iso),
+    onSuccess: (_res, vars) => {
+      invalidate();
+      setScheduling(false);
+      setMovingCallId(null);
+      toast.success(`Interview moved to ${new Date(vars.iso).toLocaleString()}`);
+    },
+    onError: (e: unknown) =>
+      // The backend 409s once the dispatcher has claimed the call. Say so
+      // plainly: the recruiter's next move is to let it run, not to retry.
+      toast.error(e instanceof Error ? e.message : "Could not move this interview"),
+  });
+
   const isLoading = configLoading || candidatesLoading || callsLoading;
 
   const voiceReady = Boolean(
@@ -151,7 +168,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
   const candidate: CallCandidate | undefined = candidatesResp?.candidates.find((c) => c.resume_id === resumeId);
   // Calls list is newest-first → first match is the latest attempt.
   const latestCall: CallListItem | undefined = callsResp?.calls.find((c) => c.resume_id === resumeId);
-  const busy = callMut.isPending || cancelMut.isPending;
+  const busy = callMut.isPending || cancelMut.isPending || rescheduleMut.isPending;
 
   // TEMPORARY (2026-07-13): the number we'll actually dial. Defaults to the
   // candidate's resume phone; the recruiter can override it for a test call.
@@ -216,11 +233,29 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
     );
   }
 
-  const openScheduler = () => { setScheduleAt(defaultScheduleValue()); setScheduling(true); };
+  const openScheduler = () => {
+    setMovingCallId(null);
+    setScheduleAt(defaultScheduleValue());
+    setScheduling(true);
+  };
+
+  /** Open the same picker prefilled with the booking's current time, so a small
+   *  correction ("half an hour later") is an edit rather than a re-entry. */
+  const openReschedule = (call: CallListItem) => {
+    setMovingCallId(call.id);
+    setScheduleAt(call.scheduled_at ? toInputValue(new Date(call.scheduled_at))
+                                    : defaultScheduleValue());
+    setScheduling(true);
+  };
+
+  const closeScheduler = () => { setScheduling(false); setMovingCallId(null); };
+
   const confirmSchedule = () => {
     if (!scheduleAt) return;
     if (new Date(scheduleAt).getTime() <= Date.now()) { toast.error("Pick a time in the future"); return; }
-    callMut.mutate({ iso: new Date(scheduleAt).toISOString(), phone: phoneValue });
+    const iso = new Date(scheduleAt).toISOString();
+    if (movingCallId) rescheduleMut.mutate({ callId: movingCallId, iso });
+    else callMut.mutate({ iso, phone: phoneValue });
   };
 
   // These are render helpers CALLED as functions, not components rendered as
@@ -252,7 +287,9 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
 
   const scheduler = () => (
     <div className="flex flex-col gap-2">
-      <label className="text-xs font-medium text-[#404040]">Schedule the interview for</label>
+      <label className="text-xs font-medium text-[#404040]">
+        {movingCallId ? "Move the interview to" : "Schedule the interview for"}
+      </label>
       <input
         type="datetime-local"
         value={scheduleAt}
@@ -260,9 +297,9 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
         className="h-8 px-2 border border-[#D4D4D4] rounded-lg text-xs text-[#0F0F0F] focus:outline-none focus:border-[#0F0F0F]"
       />
       <div className="flex gap-2">
-        <button onClick={() => setScheduling(false)} className="h-8 px-3 border border-[#D4D4D4] text-xs font-medium text-[#404040] rounded-lg hover:bg-white">Cancel</button>
+        <button onClick={closeScheduler} className="h-8 px-3 border border-[#D4D4D4] text-xs font-medium text-[#404040] rounded-lg hover:bg-white">Cancel</button>
         <button onClick={confirmSchedule} disabled={busy} className="h-8 px-3 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-xs font-medium rounded-lg hover:bg-[#262626] disabled:opacity-50">
-          {callMut.isPending ? "Scheduling…" : "Confirm"}
+          {rescheduleMut.isPending ? "Moving…" : callMut.isPending ? "Scheduling…" : "Confirm"}
         </button>
       </div>
     </div>
@@ -358,7 +395,13 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
           )}
         </div> */}
 
-        {scheduled && (
+        {/* Moving an existing booking: the picker replaces the summary row, so
+            the recruiter is never looking at the old time while editing it. */}
+        {scheduled && scheduling && movingCallId && (
+          <div className="bg-[#F5F3EE] rounded-xl px-4 py-3">{scheduler()}</div>
+        )}
+
+        {scheduled && !(scheduling && movingCallId) && (
           <div className="flex items-center justify-between gap-2 bg-[#F5F3EE] rounded-xl px-4 py-3">
             <span className="text-xs text-[#404040]">
               {latestCall.rescheduled_by_candidate ? "Candidate asked to be called back" : "Scheduled for"}
@@ -375,13 +418,23 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
                 </span>
               )}
             </span>
-            <button
-              onClick={() => cancelMut.mutate(latestCall.id)}
-              disabled={cancelMut.isPending}
-              className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
-            >
-              {cancelMut.isPending ? "Cancelling…" : "Cancel"}
-            </button>
+            <div className="flex shrink-0 items-center gap-3">
+              <button
+                onClick={() => openReschedule(latestCall)}
+                disabled={busy}
+                className="text-xs font-medium text-[#404040] hover:text-[#0F0F0F] hover:underline disabled:opacity-50"
+              >
+                Change time
+              </button>
+              <span className="h-3 w-px bg-[#E8E5DF]" />
+              <button
+                onClick={() => cancelMut.mutate(latestCall.id)}
+                disabled={busy}
+                className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+              >
+                {cancelMut.isPending ? "Cancelling…" : "Cancel"}
+              </button>
+            </div>
           </div>
         )}
 

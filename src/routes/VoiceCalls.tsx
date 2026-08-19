@@ -8,6 +8,8 @@ import { BackLink } from "@/components/layout/BackLink";
 import { truncate } from "@/lib/utils";
 import { CallScorecardDrawer } from "@/components/screening/voice/CallScorecardDrawer";
 import { VoiceCandidates } from "@/components/screening/voice/VoiceCandidates";
+import { BulkScheduleDialog } from "@/components/screening/voice/BulkScheduleDialog";
+import { UpcomingCallsPanel } from "@/components/screening/voice/UpcomingCallsPanel";
 
 // Buckets that are still moving through the pipeline → keep polling.
 const ACTIVE_DISPLAY: CallDisplayStatus[] = ["queued", "calling", "in_interview", "processing"];
@@ -41,6 +43,7 @@ export default function VoiceCalls() {
   const { id } = useParams({ strict: false }) as { id: string };
   const queryClient = useQueryClient();
   const [openCallId, setOpenCallId] = useState<string | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const { data: screening } = useQuery({
     queryKey: ["screening", id],
@@ -121,6 +124,12 @@ export default function VoiceCalls() {
             Configure
           </Link>
           <button
+            onClick={() => setBulkOpen(true)}
+            className="h-9 px-4 border border-[#D4D4D4] text-xs font-medium text-[#404040] rounded-xl hover:bg-white"
+          >
+            Schedule interviews
+          </button>
+          <button
             onClick={() => triggerMut.mutate()}
             disabled={triggerMut.isPending}
             className="h-9 px-4 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-xs font-medium rounded-xl hover:bg-[#262626] disabled:opacity-60"
@@ -129,6 +138,17 @@ export default function VoiceCalls() {
           </button>
         </div>
       </div>
+
+      <BulkScheduleDialog
+        screeningId={id}
+        open={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+      />
+
+      {/* What is still to come, before the list of what already happened. */}
+      <section className="mb-8">
+        <UpcomingCallsPanel screeningId={id} />
+      </section>
 
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-[#0F0F0F] mb-3">Candidates</h2>

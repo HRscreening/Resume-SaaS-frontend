@@ -715,6 +715,18 @@ export async function cancelScheduledCall(
   });
 }
 
+/** Move a still-scheduled call to a new time. 409 once it has started. */
+export async function rescheduleVoiceCall(
+  screeningId: string,
+  callId: string,
+  scheduledAt: string,
+): Promise<void> {
+  await request(`/api/v1/screenings/${screeningId}/voice/calls/${callId}/schedule`, {
+    method: "PATCH",
+    body: JSON.stringify({ scheduled_at: scheduledAt }),
+  });
+}
+
 export async function listVoiceCalls(
   screeningId: string,
 ): Promise<import("@/types").CallsListResponse> {
