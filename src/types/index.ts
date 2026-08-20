@@ -414,6 +414,12 @@ export interface CallListItem {
   rescheduled_by_candidate?: boolean;
   reschedule_no?: number;
   reschedule_requested_time?: string | null;
+  /** Where the line dropped, when it did. */
+  interruption_stage?: "opening" | "mid_interview" | "closing" | null;
+  /** A continuation call is queued for this interview. */
+  is_resuming?: boolean;
+  resume_attempt?: number;
+  questions_remaining?: number;
   resume_score: number | null;
   scheduled_at: string | null;
   started_at: string | null;

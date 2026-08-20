@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import type { CallListItem, CallCandidate, CallDisplayStatus } from "@/types";
 import { VoiceScorecardDetails } from "./VoiceScorecardDetails";
+import { InterruptionNotice } from "./InterruptionNotice";
 import { toInputValue, defaultScheduleValue } from "@/lib/scheduleTime";
 import { ExternalLink, Loader2 } from "lucide-react";
 
@@ -394,6 +395,8 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
             </>
           )}
         </div> */}
+
+        <InterruptionNotice call={latestCall} />
 
         {/* Moving an existing booking: the picker replaces the summary row, so
             the recruiter is never looking at the old time while editing it. */}

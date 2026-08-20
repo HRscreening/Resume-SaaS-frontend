@@ -138,6 +138,17 @@ export function UpcomingCallsPanel({ screeningId }: UpcomingCallsPanelProps) {
                       <p className="truncate text-xs text-[#0F0F0F]">
                         {call.candidate_name ?? "Unnamed candidate"}
                       </p>
+                      {call.is_resuming && (
+                        // A continuation is not a normal booking: it carries a
+                        // half-finished interview, and cancelling it discards
+                        // the answers already given.
+                        <p className="text-[11px] text-[#B54708]">
+                          Continuing an interrupted interview
+                          {(call.questions_remaining ?? 0) > 0
+                            ? ` — ${call.questions_remaining} question${call.questions_remaining === 1 ? "" : "s"} left`
+                            : ""}
+                        </p>
+                      )}
                       {call.rescheduled_by_candidate && (
                         // Distinguishes a booking the candidate asked for from
                         // one the recruiter set — they mean different things
