@@ -14,7 +14,18 @@ import type { Rubric, VoiceConfig, QuestionPlanItem, QualificationConfig } from 
 import { truncate } from "@/lib/utils";
 
 const DEFAULT_CONFIG: VoiceConfig = {
-  enabled: false,
+  // True because the enable toggle below is hidden: saving the round IS what
+  // enables it. Left at false, a recruiter who configures the round manually
+  // saves enabled:false with no control to change it, and every call is
+  // refused with "voice round not ready" (service.py trigger_calls).
+  //
+  // Matches DEFAULT_VOICE_CONFIG on the server, which the AI-generate path
+  // already uses. The two disagreed, so whether a round worked depended on
+  // which button the recruiter happened to press.
+  //
+  // Enabling does not by itself allow calls: saveBlockers below still require
+  // a hiring company, and a job city when the role is onsite or hybrid.
+  enabled: true,
   question_plan: [],
   hiring_company: "",
   voice: { tts_voice_id: "default", tier: "default" },
