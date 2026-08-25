@@ -1,48 +1,66 @@
-import { useState, useEffect } from "react";
-import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
+import { useState, useEffect, useMemo } from "react";
+import { Link, useParams, } from "@tanstack/react-router";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
-import { useScreeningQuery } from "@/modules/screening/hooks/screening/screening.query"
-import { useSaveScreeningStagesMutation, useChangeCandidateStageMutation } from "@/modules/screening/hooks/screening/stages.query"
-import { useCandidateQuery } from "@/modules/screening/hooks/screening/useCandidateQuery";
-import type { ScreeningListItem, StagesMap, HiringStage } from "@/types";
-import { useAnalysisSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/modules/screening/components/Screening/AnalysisSheet";
+import { useScreening } from "@/modules/screening/hooks/shared/useScreening"
+import { useSaveScreeningStagesMutation, useChangeCandidateStageMutation } from "@/modules/screening/hooks/screening/queries/stages.query"
+import { useCandidateQuery } from "@/modules/screening/hooks/screening/custom/useCandidateQuery";
+import type { StagesMap, HiringStage } from "@/types";
+import { ANALYSIS_SHEET_WIDTH } from "@/modules/screening/components/Screening/AnalysisSheet";
 import { CandidatesTable } from "@/modules/screening/components/Screening/CandidatesTable";
-import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
 import { toast } from "sonner";
-import { useGetBatchesQuery } from "@/modules/screening/hooks/batch.hook";
+import { useGetBatchesQuery } from "@/modules/screening/hooks/shared/batch.hook";
 import ResumeScoringProgress from "@/modules/screening/components/Screening/resumeScoringProgress";
 import { ApplicationQueryKeys } from "@/modules/screening/queryKeys";
-import { useScreeningApplicationsMutation } from "@/modules/screening/hooks/application.hook";
-import {
-    RescoreSelectedCandidatesProvider,
-    useRescoreSelectedCandidates,
-} from "@/modules/screening/hooks/useRescoreSelectedCandidates";
+import { useScreeningApplicationsMutation } from "@/modules/screening/hooks/application/queries/application.hook";
+import {RescoreSelectedCandidatesProvider,useRescoreSelectedCandidates} from "@/modules/screening/hooks/screening/custom/useRescoreSelectedCandidates";
 import type { RankedCandidate, RubricCategory } from "@/types";
 import { DEFAULT_STAGES } from "@/lib/stages";
 import { StagesDialog } from "@/components/screening/StagesDialog";
+import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
+import { ScreeningToolbar } from "@/modules/screening/components/Screening/filters/ScreeningToolbar";
+import { CustomMenuButton } from "@/modules/screening/components/shared/MenuButton"
+import {type ScreeningDetailsSearchParams} from "@/modules/screening/types/searchSchema"
+import { CircleCheck, Archive } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+
+
+const tableOptions = ["All", "Active", "Archived", "Deleted"];
+
+type TableOptions = typeof tableOptions[number];
+
+const options = [
+    { icon: <CircleCheck size={12} />, label: tableOptions[1] },
+    { icon: <Archive size={12} />, label: tableOptions[2] },
+    // { icon: <Trash2 size={12} />, label: tableOptions[3] }
+]
 
 type Sections = "Applications" | "Screening";
 
 const PAGE_SIZE = 30;
 
 interface ScreeningDetailProps {
+    analysisOpen: boolean;
     setCurrentTab: (tab: Sections) => void;
     setSourceMode: (mode: boolean) => void;
     rescoreMode?: boolean;
     setRescoreMode?: (mode: boolean) => void;
 }
 
+
+
 function ScreeningDetailContent({
     setCurrentTab,
     setSourceMode,
     rescoreMode = false,
+    analysisOpen,
     setRescoreMode,
 }: ScreeningDetailProps) {
     const { id } = useParams({ strict: false }) as { id: string };
-    const search = useSearch({ strict: false }) as { saved?: number } & Record<string, unknown>;
+    const { search, setScreenId, setAnalysisTab } = useScreeningDetailsNavigation()
+
     const queryClient = useQueryClient();
-    const navigate = useNavigate();
+
 
     const { data: active_batches } = useGetBatchesQuery(id);
 
@@ -58,30 +76,25 @@ function ScreeningDetailContent({
 
     const [rescoreError, setRescoreError] = useState<string | null>(null);
     const [showStages, setShowStages] = useState(false);
-    const analysisOpen = useAnalysisSheetOpen();
     const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
-    const { data: screening, isLoading, error } = useScreeningQuery(id);
+    const { screening, isPending: isJobDetailsFetching, error } = useScreening(id);
+
     const changeStageMutation = useChangeCandidateStageMutation(id);
     const saveStagesMutation = useSaveScreeningStagesMutation(id, screening!);
+
+
     const candidateQuery = useCandidateQuery(id, { limit: PAGE_SIZE });
 
-    const {
-        state: queryState,
-        searchInput,
-        setSearch,
-        setStage,
-        setMatch,
-        setSort,
-        setOverallRange,
-        setCategoryRange,
-        clearAll,
-        query: resultsQuery,
-    } = candidateQuery;
 
-    const resultsFetching = resultsQuery.isFetching;
-    const pageLoading = resultsQuery.isLoading;
-    const candidates = resultsQuery.data?.pages.flatMap((page) => page.items) ?? [];
+    const { query: ScreeningResultsQuery,setScreenType } = candidateQuery;
+    const { data, isLoading, isFetching, fetchNextPage, isFetchingNextPage, hasNextPage } = ScreeningResultsQuery;
+
+
+
+
+    const candidates = data?.pages.flatMap((page) => page.items) ?? []
+
 
 
 
@@ -150,11 +163,9 @@ function ScreeningDetailContent({
 
 
 
-    async function handleSaveStages(next: StagesMap): Promise<void> {
-        await saveStagesMutation.mutateAsync(next);
-    }
 
-    if (isLoading && !screening) {
+
+    if (isJobDetailsFetching && !screening) {
         return (
             <div className="px-4 pt-6 sm:px-6 sm:pt-8 md:px-8 max-w-5xl mx-auto">
                 <div className="h-7 w-64 bg-[#E8E5DF] rounded animate-pulse mb-3" />
@@ -185,29 +196,11 @@ function ScreeningDetailContent({
         );
     }
 
-    if (pageLoading) {
-        return (
-            <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
-                <span>Loading ...</span>
-            </div>
-        );
-    }
 
-    if (candidates.length === 0 && resultsFetching) {
-        return (
-            <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
-                <span>Loading ...</span>
-            </div>
-        );
-    }
 
     if (
         candidates.length === 0 &&
-        !pageLoading &&
-        !hasActiveFilters(queryState) &&
-        screening.scored_resumes_cnt === 0 &&
+        screening.screened_cnt === 0 &&
         !active_batches?.scoring_batch_ids?.length
     ) {
         return (
@@ -257,7 +250,7 @@ function ScreeningDetailContent({
         });
     }
 
-    const totalCandidates = screening.scored_resumes_cnt ?? 0;
+    const totalCandidates = screening.screened_cnt ?? 0;
 
     return (
         <div>
@@ -268,10 +261,16 @@ function ScreeningDetailContent({
                     ))}
                 </div>
 
+                <div className="my-4 flex items-center justify-between gap-2">
+                    <ScreeningToolbar categories={(screening.rubric as any)?.categories ?? []} candidateQuery={candidateQuery}  stages={stagesMap}/>
+                    <CustomMenuButton selectedOption={search.screenType} options={options} handleOptionClick={(e:TableOptions)=>setScreenType(e as ScreeningDetailsSearchParams["screenType"])}  align="end" />
+                </div>
+
+
                 <div className="overflow-x-auto">
                     {(candidates.length > 0 ||
-                        (pageLoading && totalCandidates > 0) ||
-                        (!showSelectedOnly && hasActiveFilters(queryState))) &&
+                        (totalCandidates > 0) ||
+                        (!showSelectedOnly)) &&
                         (() => {
                             const selectedList = Object.values(selectedDetails)
                                 .filter((c) => selectedCandidates.has(c.resume_id))
@@ -279,43 +278,82 @@ function ScreeningDetailContent({
                             const tableCandidates = showSelectedOnly ? selectedList : candidates;
                             return (
                                 <CandidatesTable
+                                    screening_id={id}
                                     candidates={tableCandidates}
-                                    categories={rubricCategories}
-                                    loading={!showSelectedOnly && pageLoading}
-                                    selectable={rescoreMode}
+
+                                    loading={isLoading}
+                                    hasMore={hasNextPage}
+                                    loadingMore={isFetchingNextPage}
+                                    onLoadMore={fetchNextPage}
+                                    backgGroundFetching={isFetching}
+                                    
+
                                     selectedIds={selectedCandidates}
-                                    onToggle={toggleSelection}
+                                    categories={rubricCategories}
+                                    selectable={rescoreMode}
                                     onTogglePage={togglePage}
-                                    hasMore={resultsQuery.hasNextPage}
-                                    loadingMore={resultsQuery.isFetchingNextPage}
-                                    onLoadMore={resultsQuery.fetchNextPage}
+                                    onToggle={toggleSelection}
+
                                     stages={stagesMap}
                                     onCandidateStageChange={handleCandidateStageChange}
                                     onManageStages={() => setShowStages(true)}
-                                    {...(showSelectedOnly
-                                        ? {}
-                                        : {
-                                            queryState,
-                                            searchInput,
-                                            onSearchChange: setSearch,
-                                            onStageFilterChange: setStage,
-                                            onMatchFilterChange: setMatch,
-                                            onSortChange: setSort,
-                                            onOverallRangeChange: setOverallRange,
-                                            onCategoryRangeChange: setCategoryRange,
-                                            onClearAllFilters: clearAll,
-                                        })}
+
                                 />
                             );
                         })()}
                 </div>
+
+                {/* Skeleton placeholder for the analysis sheet while data is loading.
+                    The real AnalysisSheet mounts inside CandidateRow, so it doesn't
+                    exist until candidate data arrives. This fills the 600px gap. */}
+                {(isLoading || candidates.length === 0) && analysisOpen && (
+                    <Sheet open={true} modal={false}>
+                        <SheetContent
+                            showOverlay={false}
+                            className="!w-full sm:!max-w-[600px] overflow-y-auto p-0 !z-40"
+                        >
+                            {/* Sheet header skeleton */}
+                            <SheetHeader className="px-6 pt-6 pb-4 border-b border-[#E8E5DF]">
+                                <SheetTitle className="text-sm font-semibold text-[#0F0F0F]">
+                                    <div className="flex items-center gap-2 mt-4">
+                                        <div className="h-5 w-16 rounded bg-[#E8E5DF] animate-pulse" />
+                                        <div className="h-5 w-16 rounded bg-[#E8E5DF] animate-pulse" />
+                                        <div className="h-5 w-16 rounded bg-[#E8E5DF] animate-pulse" />
+                                    </div>
+                                </SheetTitle>
+                            </SheetHeader>
+                            {/* Sheet body skeleton */}
+                            <div className="px-6 py-6 space-y-5">
+                                <div className="flex items-start gap-4">
+                                    <div className="h-12 w-12 rounded-full bg-[#E8E5DF] animate-pulse shrink-0" />
+                                    <div className="flex-1 space-y-2">
+                                        <div className="h-5 w-40 rounded bg-[#E8E5DF] animate-pulse" />
+                                        <div className="h-4 w-32 rounded bg-[#F0EDE8] animate-pulse" />
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="h-4 w-full rounded bg-[#F0EDE8] animate-pulse" />
+                                    <div className="h-4 w-5/6 rounded bg-[#F0EDE8] animate-pulse" />
+                                    <div className="h-4 w-3/4 rounded bg-[#F0EDE8] animate-pulse" />
+                                    <div className="h-4 w-full rounded bg-[#F0EDE8] animate-pulse" />
+                                    <div className="h-4 w-2/3 rounded bg-[#F0EDE8] animate-pulse" />
+                                </div>
+                                <div className="space-y-3 pt-4">
+                                    <div className="h-20 w-full rounded-xl bg-[#F5F3EE] animate-pulse" />
+                                    <div className="h-20 w-full rounded-xl bg-[#F5F3EE] animate-pulse" />
+                                    <div className="h-20 w-full rounded-xl bg-[#F5F3EE] animate-pulse" />
+                                </div>
+                            </div>
+                        </SheetContent>
+                    </Sheet>
+                )}
 
 
                 <StagesDialog
                     open={showStages}
                     onClose={() => setShowStages(false)}
                     stages={stagesMap}
-                    onSave={handleSaveStages}
+                    onSave={saveStagesMutation.mutate}
                 />
             </div>
 
@@ -392,6 +430,7 @@ export default function ScreeningDetail({
     setSourceMode,
     rescoreMode,
     setRescoreMode,
+    analysisOpen,
 }: ScreeningDetailProps) {
     const { id } = useParams({ strict: false }) as { id: string };
     return (
@@ -400,6 +439,7 @@ export default function ScreeningDetail({
                 setCurrentTab={setCurrentTab}
                 setSourceMode={setSourceMode}
                 rescoreMode={rescoreMode}
+                analysisOpen={analysisOpen}
                 setRescoreMode={setRescoreMode}
             />
         </RescoreSelectedCandidatesProvider>

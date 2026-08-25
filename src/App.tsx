@@ -5,7 +5,12 @@ import {
   RouterProvider,
   redirect,
   Outlet,
+  stripSearchParams,
+  parseSearchWith,
+  stringifySearchWith,
 } from "@tanstack/react-router";
+import qs from 'query-string'
+
 import { AuthGuard } from "@/components/AuthGuard";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
@@ -13,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { queryClient } from "@/lib/queryClient";
 import {
-  getScreening, getResults, getBatchProgress, getResumeDetailFull,
+  getScreening, getResults, getResumeDetailFull,
 } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -28,7 +33,7 @@ import Onboarding from "@/routes/Onboarding";
 import Terms from "@/routes/Terms";
 import Privacy from "@/routes/Privacy";
 import Dashboard from "@/routes/Dashboard";
-import Screenings from "@/routes/Screenings";
+import Screenings from "@/modules/screening/routes/Screenings";
 import Settings from "@/routes/Settings";
 import Profile from "@/routes/Profile";
 import ChangePassword from "@/routes/ChangePassword";
@@ -46,7 +51,7 @@ import Candidates from "@/routes/NewCandidatePage";
 // import ScreeningDetail from "@/routes/ScreeningDetail"; // Old one
 import ScreeningDetail from "@/modules/screening/routes/screening"; // New one
 import { Sections, sectionTabs } from "@/modules/screening/routes/screening";
-import {searchSchema} from "@/modules/screening/types/searchSchema"; // New one
+import { searchSchema, screeningsSearchSchema, screeningDetailsSearchSchema } from "@/modules/screening/types/searchSchema"; // New one
 
 import ResumeDetail from "@/routes/ResumeDetail";
 import EditRubric from "@/modules/screening/routes/EditRubric";
@@ -208,7 +213,17 @@ const dashboardRoute = createRoute({
 const screeningsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/screenings",
+  validateSearch: screeningsSearchSchema, // Zod schema for search params validation
   component: Screenings,
+
+  search: {
+    middlewares: [
+      stripSearchParams({
+        search: undefined,
+        type: "Active",
+      }),
+    ],
+  },
 });
 
 // const candidatesRoute = createRoute({
@@ -231,13 +246,20 @@ const screeningDetailRoute = createRoute({
   // Fire-and-forget prefetch on Link hover (defaultPreload: "intent").
   // All three queries fire in parallel and populate React Query's cache,
   // so by the time the user clicks, the page renders from warm cache.
-  loader: ({ params }) => {
-    const { id } = params;
-    queryClient.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
-    queryClient.prefetchQuery({ queryKey: ["results", id], queryFn: () => getResults(id) });
-    // queryClient.prefetchQuery({ queryKey: ["batch-progress", id], queryFn: () => getBatchProgress(id) });
+  // loader: ({ params }) => {
+  //   const { id } = params;
+  //   queryClient.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
+  //   queryClient.prefetchQuery({ queryKey: ["results", id], queryFn: () => getResults(id) });
+  //   // queryClient.prefetchQuery({ queryKey: ["batch-progress", id], queryFn: () => getBatchProgress(id) });
+  // },
+  validateSearch: screeningDetailsSearchSchema, // Zod schema for search params validation
+
+  search: {
+    middlewares: [
+      stripSearchParams(screeningDetailsSearchSchema.parse({}))
+    ],
   },
-  validateSearch: searchSchema // Zod schema for search params validation
+
 });
 
 const editRubricRoute = createRoute({

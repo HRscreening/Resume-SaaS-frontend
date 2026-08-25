@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useActiveParsingQuery } from '@/modules/screening/hooks/progress.hook';
+import { useActiveParsingQuery } from '@/modules/screening/hooks/shared/progress.hook';
 import type { ResumeParsingBodyType, EventBodyType } from "@/modules/screening/types/progress.type";
 import type { GetParsingResponseType } from "@/modules/screening/apis/getActiveParsings";
 import type { Application } from "@/modules/screening/types/application.type";
@@ -15,6 +15,8 @@ import {
     AccordionTrigger,
 } from "@/components/ui/accordion";
 import type { InfiniteData } from "@tanstack/react-query";
+import {useScreeningDetailsNavigation} from "@/modules/screening/hooks/shared/useScreeningDetailNavigation"
+import { applicationSearchSchema } from '@/modules/screening/types/searchSchema';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
@@ -45,7 +47,7 @@ export function stageLine(counts: Record<string, number>): string {
 }
 
 const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => {
-
+    
 
     const eventSourceRef = useRef<EventSource | null>(null);
     const { data, isError } = useActiveParsingQuery({ screening_id, batch_id });
@@ -61,6 +63,8 @@ const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => 
         if (!screening_id || !batch_id) return;
         if (eventSourceRef.current) return;
 
+        const {search} = useScreeningDetailsNavigation()
+
         const flushApplications = () => {
             if (pendingApplications.current.length === 0) return;
 
@@ -68,7 +72,7 @@ const ResumeParsingProgress = React.memo(({ screening_id, batch_id }: Props) => 
             pendingApplications.current = [];
 
             queryClient.setQueryData(
-                ApplicationQueryKeys.getApplications(screening_id, 10),
+                ApplicationQueryKeys.getApplications(screening_id, applicationSearchSchema.parse(search)),
                 (oldData: InfiniteData<GetApplicationsResponseType> | undefined) => {
                     if (!oldData) return oldData;
 

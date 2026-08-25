@@ -1,6 +1,6 @@
 import CandidateAnalysisSheet from "@/components/candidates/CandidateAnalysisSheet";
 import { Pagination } from "@/components/screening/Pagination";
-import { MultiSelectPopover } from "@/components/screening/filters/MultiSelectPopover";
+import { MultiSelectPopover } from "@/modules/screening/components/shared/filters/MultiSelectPopover";
 import { getTier } from "@/lib/tier";
 import { ArrowDown, ArrowUp, ArrowUpDown, Briefcase, Search, Sparkles } from "lucide-react";
 import type { CandidateOverview, CandidateDetails,SortField,SortRule } from "@/types/candidate.type";

@@ -20,33 +20,34 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 
-const sheetListeners = new Set<() => void>();
-let openResumeId: string | null = null;
-function subscribe(fn: () => void) {
-  sheetListeners.add(fn);
-  return () => sheetListeners.delete(fn);
-}
-function notify() {
-  sheetListeners.forEach((fn) => fn());
-}
-function getSnapshot() {
-  return openResumeId;
-}
-export function setOpenAnalysisSheet(resume_id: string | null) {
-  if (openResumeId === resume_id) return;
-  openResumeId = resume_id;
-  notify();
-}
-export function toggleAnalysisSheet(resume_id: string) {
-  setOpenAnalysisSheet(openResumeId === resume_id ? null : resume_id);
-}
-export function useAnalysisSheetOpenId(): string | null {
-  return useSyncExternalStore(subscribe, getSnapshot, () => null);
-}
-export function useAnalysisSheetOpen() {
-  return useSyncExternalStore(subscribe, getSnapshot, () => null) !== null;
-}
+// const sheetListeners = new Set<() => void>();
+// let openResumeId: string | null = null;
+// function subscribe(fn: () => void) {
+//   sheetListeners.add(fn);
+//   return () => sheetListeners.delete(fn);
+// }
+// function notify() {
+//   sheetListeners.forEach((fn) => fn());
+// }
+// function getSnapshot() {
+//   return openResumeId;
+// }
+// export function setOpenAnalysisSheet(resume_id: string | null) {
+//   if (openResumeId === resume_id) return;
+//   openResumeId = resume_id;
+//   notify();
+// }
+// export function toggleAnalysisSheet(resume_id: string) {
+//   setOpenAnalysisSheet(openResumeId === resume_id ? null : resume_id);
+// }
+// export function useAnalysisSheetOpenId(): string | null {
+//   return useSyncExternalStore(subscribe, getSnapshot, () => null);
+// }
+// export function useAnalysisSheetOpen() {
+//   return useSyncExternalStore(subscribe, getSnapshot, () => null) !== null;
+// }
 export const ANALYSIS_SHEET_WIDTH = 600;
 
 type AnalysisSheetProps = {
@@ -90,17 +91,25 @@ const tabs: Tab[] = [
 
 
 const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
+
+
   const { id: screening_id } = useParams({ strict: false }) as { id: string };
-  const openId = useAnalysisSheetOpenId();
-  const open = openId === resume_id;
+  const { search, setScreenId,setAnalysisTab } = useScreeningDetailsNavigation();
+
+  const tab = search.analysisTab ?? "scorecard";
+  const open = search.screenId === resume_id;
 
   // Opens on Analysis even though Profile is listed first: the scorecard
   // always has content, whereas Profile renders a "not available" notice
   // for any candidate without an application record.
-  const [tab, SetTab] = useState<TabValue>("scorecard")
+ 
 
   const handleOpenChange = (next: boolean) => {
-    setOpenAnalysisSheet(next ? resume_id : null);
+    if (next) {
+      setScreenId(resume_id);
+    } else {
+      setScreenId(null);
+    }
   };
 
   const {
@@ -109,6 +118,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
     isError,
     error,
   } = useCandidateScreeningDetail(screening_id, resume_id, { enabled: open });
+
 
   const { data: screening } = useScreening(screening_id, {
     enabled: open && !!data,
@@ -217,7 +227,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                   <button
                     key={t.value}
                     type="button"
-                    onClick={() => SetTab(t.value)}
+                    onClick={() => setAnalysisTab(t.value)}
                     disabled={tab === t.value}
                     className={`relative px-3 py-2 text-sm font-semibold transition-colors cursor-pointer
         ${tab === t.value
@@ -505,11 +515,11 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
         }
         {
           tab === "profile" && resume && (<div>
-            {!resume.profile 
-            ? 
-            <div className="px-6 py-10 text-center">
-              Profile not available. Please Contact Support for more information.
-            </div>
+            {!resume.profile
+              ?
+              <div className="px-6 py-10 text-center">
+                Profile not available. Please Contact Support for more information.
+              </div>
               :
               <InfoTab candidate={resume.profile} />
             }

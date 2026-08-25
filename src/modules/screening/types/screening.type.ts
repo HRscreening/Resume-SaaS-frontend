@@ -31,25 +31,58 @@ export interface StageConfig {
 export type StagesMap = Record<string, StageConfig>;
 
 
+// export interface ScreeningListItem {
+//   id: string;
+//   title: string;
+//   total_applications: number;
+//   screened_applications: number;
+//   avg_score: number | null;
+//   last_accessed_at: string | null;
+//   created_at: string;
+//   archived_at?: string | null;
+//   deleted_at?: string | null;
+// }
+
 
 export interface Screening {
   id: string;
-  user_id: string;
   title: string;
-  raw_jd_text: string;
   jd_url: string | null;
   rubric: Rubric | null;
-  status: ScreeningStatus;
-  total_resumes: number;
-  scored_resumes_cnt: number;
-  applications_cnt:number
-  avg_score: number | null;
+  parsed_cnt: number;
+  screened_cnt: number;
   stages?: StagesMap;
   created_at: string;
-  updated_at: string;
-  parsing_batch_ids: string[] | null;
+  last_accessed_at: string | null;
+  archived_at?: string | null;
+  deleted_at?: string | null;
+
 }
 
+// export interface Screening {
+//   id: string;
+//   user_id: string;
+//   title: string;
+//   raw_jd_text: string;
+//   jd_url: string | null;
+//   rubric: Rubric | null;
+//   status: ScreeningStatus;
+//   total_resumes: number;
+//   scored_resumes_cnt: number;
+//   applications_cnt: number
+//   avg_score: number | null;
+//   stages?: StagesMap;
+//   created_at: string;
+//   updated_at: string;
+//   parsing_batch_ids: string[] | null;
+// }
+
+export type SingleProgressBar = {
+  title: string;
+  description?: string;
+  value: number;
+  color: string;
+};
 
 
 
@@ -105,10 +138,13 @@ export interface RankedCandidate {
   candidate_email: string | null;
   candidate_phone: string | null;
   candidate_current_job: string | null;
+  candidate_current_company: string | null;
+  experience_years: number | null;
   overall_score: number;
   category_scores: CategoryScore[];
   overall_summary: string;
   stage?: HiringStage;
+  resume_url?: string | null;
   /** Voice round outcome, so the list shows who screened well without opening
    *  each drawer. All null when no call was ever placed. */
   voice_score?: number | null;

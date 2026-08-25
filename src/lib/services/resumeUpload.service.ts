@@ -1,5 +1,5 @@
 import { StorageService } from "@/lib/services/storage.service";
-import { generateStoragePath,extractExtension,validateResume } from "@/utils/file.utils";
+import { generateStoragePath, extractExtension, validateResume } from "@/utils/file.utils";
 
 
 
@@ -9,13 +9,13 @@ export class ResumeUploadService {
 
     private readonly signedUrlExpiry = 60 * 60; // 1 hour in seconds
 
-    constructor(private readonly storage: StorageService) {}
+    constructor(private readonly storage: StorageService) { }
 
     async uploadResumes(
         files: File[],
         screeningId: string,
         userId: string
-    ): Promise<{fileName: string; path: string}[]> {
+    ): Promise<{ fileName: string; path: string }[]> {
         const allFiles = await this.collectFiles(files);
 
         const preparedFiles = allFiles.map((file) => ({
@@ -35,6 +35,32 @@ export class ResumeUploadService {
 
     async generateSignedUrls(path: string,): Promise<string> {
         return await this.storage.createSignedUrl(path, this.signedUrlExpiry);
+    }
+
+    async downloadResume(path: string, fileName: string): Promise<void> {
+        const signedUrl = await this.storage.createSignedUrl(
+            path,
+            this.signedUrlExpiry
+        );
+
+        const response = await fetch(signedUrl);
+
+        if (!response.ok) {
+            throw new Error("Failed to download resume");
+        }
+
+        const blob = await response.blob();
+
+        const url = URL.createObjectURL(blob);
+
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = fileName;
+        document.body.appendChild(anchor);
+        anchor.click();
+
+        anchor.remove();
+        URL.revokeObjectURL(url);
     }
 
     private async collectFiles(files: File[]): Promise<File[]> {
@@ -97,17 +123,17 @@ export class ResumeUploadService {
     }
 
     private getMimeType(filename: string): string {
-    const extension = filename.split(".").pop()?.toLowerCase();
+        const extension = filename.split(".").pop()?.toLowerCase();
 
-    switch (extension) {
-        case "pdf":
-            return "application/pdf";
-        case "doc":
-            return "application/msword";
-        case "docx":
-            return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        default:
-            return "application/octet-stream";
+        switch (extension) {
+            case "pdf":
+                return "application/pdf";
+            case "doc":
+                return "application/msword";
+            case "docx":
+                return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            default:
+                return "application/octet-stream";
+        }
     }
-}
 }

@@ -1,13 +1,18 @@
-import { getScreening } from "@/lib/api";
+import type {ScreeningsSearchParams,ScreeningSearchParams as ScoredResumeSearchFilterSchema,ApplicationsSearchParams } from "@/modules/screening/types/searchSchema";
 
 
 // --------------------------------- Screening Query Keys ---------------------------------
 export const ScreeningQueryKeys = {
     all: ["screenings"] as const,
 
+    list: ["screenings", "list"] as const,
+
     getScreening: (screeningId: string) =>
         [...ScreeningQueryKeys.all, screeningId] as const,
 
+    screenings: (params?:ScreeningsSearchParams) => [...ScreeningQueryKeys.all, "list",params] as const,
+
+    
 }
 
 
@@ -20,9 +25,9 @@ export const ApplicationQueryKeys = {
 
     getApplications: (
         screeningId: string,
-        limit: number
+        params: ApplicationsSearchParams,
     ) =>
-        [...ApplicationQueryKeys.screening(screeningId), limit] as const,
+        [...ApplicationQueryKeys.screening(screeningId), params] as const,
     };
     
     
@@ -72,7 +77,8 @@ export const ActiveBatchesQueryKeys = {
 
 
 // --------------------------------- Screening Results Query Keys ---------------------------------
-import { CandidateQueryState } from "@/modules/screening/types/screening.type";
+
+
 export const ScreeningResultsQueryKeys = {
     all: ["screeningResults"] as const,
     
@@ -81,7 +87,7 @@ export const ScreeningResultsQueryKeys = {
 
     getScreenings: (
         screeningId: string,
-        params:Omit<CandidateQueryState, "cursor">
+        params:ScoredResumeSearchFilterSchema 
     ) =>
         [...ScreeningResultsQueryKeys.screening(screeningId), params] as const,
 };
