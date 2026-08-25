@@ -1,5 +1,5 @@
-import { useNavigate,useSearch,getRouteApi } from "@tanstack/react-router";
-import type { ScreeningDetailsSearchParams } from "@/modules/screening/types/searchSchema";
+import { useNavigate, useSearch, getRouteApi } from "@tanstack/react-router";
+import { screeningSearchSchema, applicationSearchSchema, type ApplicationsSearchParams, type ScreeningSearchParams, type ScreeningDetailsSearchParams } from "@/modules/screening/types/searchSchema";
 
 
 
@@ -26,7 +26,7 @@ export const useScreeningDetailsNavigation = () => {
         navigate({
             search: (prev) => ({
                 ...prev,
-                appType: type ,
+                appType: type,
             }),
         });
     };
@@ -80,7 +80,16 @@ export const useScreeningDetailsNavigation = () => {
     }
 
 
-    
+    const getScreeningSearchParams = (): ScreeningSearchParams => {
+        return screeningSearchSchema.parse(search);
+    }
+
+    const getApplicationSearchParams = (): ApplicationsSearchParams => {
+        return applicationSearchSchema.parse(search);
+    }
+
+
+
 
 
 
@@ -96,5 +105,9 @@ export const useScreeningDetailsNavigation = () => {
         setAnalysisTab,
         setAppId,
         setScreenId,
+
+        // 
+        getScreeningSearchParams,
+        getApplicationSearchParams,
     };
 };

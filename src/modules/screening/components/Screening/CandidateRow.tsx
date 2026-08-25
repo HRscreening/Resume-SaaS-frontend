@@ -239,9 +239,9 @@ export function CandidateRow({
 }
 
 export function SkeletonRow({
-    categories, compact, selectable,
+    compact, selectable,
 }: {
-    categories: RubricCategory[];
+    categories?: RubricCategory[];
     compact: boolean;
     selectable: boolean;
 }) {
@@ -261,25 +261,21 @@ export function SkeletonRow({
                     </div>
                 </div>
             </td>
-            {!compact && (
-                <td className="px-2 py-3 align-middle">
-                    <div className="h-3 w-20 rounded bg-[#E8E5DF]" />
-                </td>
-            )}
             <td className="px-2 py-3 align-middle">
+                <div className="h-3 w-20 rounded bg-[#E8E5DF]" />
+            </td>
+            <td className="px-2 py-3 align-middle text-center">
+                <div className="h-3 w-8 rounded bg-[#E8E5DF] mx-auto" />
+            </td>
+            <td className="px-2 py-3 align-middle text-center">
                 <div className="flex flex-col items-center gap-1.5">
                     <div className="h-3.5 w-6 rounded bg-[#E8E5DF]" />
                     <div className="h-1 w-10 rounded-full bg-[#F0EDE8]" />
                 </div>
             </td>
-            {!compact && categories.map((cat) => (
-                <td key={cat.name} className="px-2 py-3 align-middle">
-                    <div className="flex flex-col items-center gap-1.5">
-                        <div className="h-3 w-6 rounded bg-[#E8E5DF]" />
-                        <div className="h-1 w-10 rounded-full bg-[#F0EDE8]" />
-                    </div>
-                </td>
-            ))}
+            <td className="px-2 py-3 align-middle text-center">
+                <div className="h-3 w-10 rounded bg-[#E8E5DF] mx-auto" />
+            </td>
             <td className="px-2 py-3 align-middle">
                 <div className="h-7 w-20 rounded-full bg-[#F0EDE8]" />
             </td>

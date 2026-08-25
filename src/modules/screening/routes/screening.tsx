@@ -4,7 +4,7 @@ import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router"
 // import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useScreeningQuery } from "@/modules/screening/hooks/screening/queries/screening.query"
 
-import type { RankedCandidate, RubricCategory } from "@/types";
+import type { RubricCategory } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";
 import { RubricModal } from "@/components/screening/RubricModal";
 import { ActionButton } from "@/modules/screening/components/shared/ActionButton";
@@ -42,7 +42,7 @@ export type Sections = typeof sectionTabs[number];
 export default function ScreeningDetail() {
     const { id } = useParams({ strict: false }) as { id: string };
 
-    const { search, navigate, setTab } = useScreeningDetailsNavigation();
+    const { search, navigate, setTab,getScreeningSearchParams } = useScreeningDetailsNavigation();
 
     const currentTab: Sections = search.tab ?? "Applications";
 
@@ -236,7 +236,7 @@ export default function ScreeningDetail() {
                                             description="Export CSV"
                                             icon={<Download size={12} />}
                                             compacted={analysisOpen}
-                                            onClick={handleExport}
+                                            onClick={()=>handleExport(getScreeningSearchParams())}
                                             disabled={exporting}
                                         />
                                     </>

@@ -1,8 +1,8 @@
-import { request } from "@/lib/api"
+import { request, getAuthHeader, API_BASE, } from "@/lib/api"
 import type { CandidateQueryState, PaginatedResults, RankedCandidate, Screening } from "@/modules/screening/types/screening.type";
-import { buildScreeningQuery,buildScreeningFiltersBody } from "@/modules/screening/utils/queryEncoding";
-import type { ScreeningsSearchParams,ScreeningSearchParams as ScoredResumeSearchFilterSchema } from "@/modules/screening/types/searchSchema";
-
+import { buildScreeningQuery, buildScreeningFiltersBody } from "@/modules/screening/utils/queryEncoding";
+import type { ScreeningsSearchParams, ScreeningSearchParams as ScoredResumeSearchFilterSchema } from "@/modules/screening/types/searchSchema";
+import { clearSessionHint } from "@/lib/sessionHint";
 
 
 export async function listScreenings(
@@ -47,7 +47,42 @@ export async function getScoredResumes(
       method: "POST",
       body: JSON.stringify(body),
     }
-);
+  );
+}
+
+
+
+export async function exportScoredResumes(
+  screeningId: string,
+  params: ScoredResumeSearchFilterSchema,
+): Promise<{ blob: Blob; filename: string | null }> {
+
+  const body = buildScreeningFiltersBody(params);
+
+
+  const authHeaders = await getAuthHeader();
+  const res = await fetch(
+    `${API_BASE}/api/v1/screenings/${screeningId}/export`,
+    {
+      method: "POST",
+      headers: {
+        ...(await getAuthHeader()),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+
+    },
+  );
+  if (!res.ok) {
+    if (res.status === 401) clearSessionHint();
+    throw new Error("Export failed");
+  }
+  const disposition = res.headers.get("Content-Disposition");
+  const match = disposition?.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+  const filename = match ? decodeURIComponent(match[1].trim()) : null;
+  return { blob: await res.blob(), filename };
+
+
 }
 
 
@@ -73,19 +108,19 @@ export async function deleteScreening(screeningId: string): Promise<void> {
 
 // ----------------- Common to both Parsed And Scored Resume APIs(Can me moved to other file if required) -----------------
 
-export async function archiveResume({screeningId,resumeId}:{screeningId: string, resumeId: string}): Promise<void> {
+export async function archiveResume({ screeningId, resumeId }: { screeningId: string, resumeId: string }): Promise<void> {
   return request<void>(`/api/v1/screenings/${screeningId}/archive/${resumeId}`, {
     method: "POST",
   });
 }
 
-export async function unarchiveResume({screeningId,resumeId}:{screeningId: string, resumeId: string}): Promise<void> {
+export async function unarchiveResume({ screeningId, resumeId }: { screeningId: string, resumeId: string }): Promise<void> {
   return request<void>(`/api/v1/screenings/${screeningId}/unarchive/${resumeId}`, {
     method: "POST",
   });
 }
 
-export async function deleteResume({screeningId,resumeId}:{screeningId: string, resumeId: string}): Promise<void> {
+export async function deleteResume({ screeningId, resumeId }: { screeningId: string, resumeId: string }): Promise<void> {
   return request<void>(`/api/v1/screenings/${screeningId}/delete/${resumeId}`, {
     method: "DELETE",
   });

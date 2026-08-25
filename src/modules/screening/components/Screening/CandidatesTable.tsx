@@ -1,4 +1,4 @@
-import type { HiringStage,  RubricCategory, StagesMap } from "@/types";
+import type { HiringStage, RubricCategory, StagesMap } from "@/types";
 import type { RankedCandidate } from "@/modules/screening/types/screening.type";
 import { sortedStages } from "@/lib/stages";
 
@@ -58,7 +58,11 @@ export function CandidatesTable({
   loadingMore,
   onLoadMore
 }: CandidatesTableProps) {
-  const { search, setScreenId, setAnalysisTab, navigate } = useScreeningDetailsNavigation();
+
+  const { search, setScreenId, setAnalysisTab } = useScreeningDetailsNavigation()
+
+  // Derive compact from URL params alone so the table layout is stable on
+  // page reload — even before candidate data has loaded.
   const compact = search.tab === "Screening" && !!search.screenId;
 
   const { ref: loadMoreRef, inView } = useInView({ threshold: 0, rootMargin: "300px", });
@@ -125,10 +129,7 @@ export function CandidatesTable({
         <div className="overflow-x-auto"> */}
       <div className="rounded-2xl border border-[#E8E5DF] bg-white overflow-hidden">
         <div className="max-h-[65vh] overflow-y-auto overflow-x-auto">
-          <table
-            className={`min-w-full w-full text-sm ${loading ? "table-auto" : "table-fixed"
-              }`}
-          >
+          <table className="min-w-full w-full text-sm table-fixed">
 
 
 
@@ -136,28 +137,32 @@ export function CandidatesTable({
               {selectable && <col className="w-10" />}
 
               {/* Candidate */}
-              <col className={compact ? "w-52" : "w-[20%]"} />
+              <col className={compact ? "w-52" : "w-60"} />
 
               {/* Role */}
-              <col className="w-[14%]" />
+              {/* {!compact && */}
+              <col className="w-44" />
+              {/* } */}
 
               {/* Experience */}
-              <col className="w-[8%]" />
+              <col className="w-24" />
 
               {/* Score */}
-              <col className="w-[9%]" />
+              <col className="w-28" />
 
               {/* Voice */}
-              <col className="w-[8%]" />
+              {/* {!compact && */}
+              <col className="w-24" />
+              {/* } */}
 
               {/* Stage */}
-              <col className="w-[11%]" />
+              <col className="w-36" />
 
               {/* Match */}
-              <col className={compact ? "" : "w-[10%]"} />
+              <col className="w-32" />
 
               {/* Action */}
-              {!compact && <col />}
+              {!compact && <col className="w-20" />}
             </colgroup>
 
 
@@ -316,34 +321,3 @@ export function CandidatesTable({
 
 
 
-// <colgroup>
-//             {selectable && <col className="w-10" />}
-
-//             {/* Candidate */}
-//             <col className={compact ? "w-52" : "w-60"} />
-
-//             {/* Role */}
-//             {/* {!compact && */}
-//             <col className="w-44" />
-//             {/* } */}
-
-//             {/* Experience */}
-//             <col className="w-24" />
-
-//             {/* Score */}
-//             <col className="w-28" />
-
-//             {/* Voice */}
-//             {/* {!compact && */}
-//             <col className="w-24" />
-//             {/* } */}
-
-//             {/* Stage */}
-//             <col className="w-36" />
-
-//             {/* Match */}
-//             <col className="w-32" />
-
-//             {/* Action */}
-//             {!compact && <col className="w-20" />}
-//           </colgroup>

@@ -37,6 +37,72 @@ interface DebouncedRangeSliderProps {
 
 const DEBOUNCE_MS = 750;
 
+// function DebouncedRangeSlider({
+//   min,
+//   max,
+//   step = 1,
+//   value,
+//   onChange,
+// }: DebouncedRangeSliderProps) {
+//   const [localValue, setLocalValue] =
+//     useState<[number, number]>(value);
+
+//   const debouncedValue = useDebouncedValue(
+//     localValue,
+//     DEBOUNCE_MS
+//   );
+
+//   const isFirstRender = useRef(true);
+
+//   /*
+//    * Keep local slider state synchronized with
+//    * the URL/search state.
+//    */
+//   useEffect(() => {
+//     setLocalValue(value);
+//   }, [value[0], value[1]]);
+
+//   /*
+//    * Only update URL/search state after the user
+//    * has stopped dragging for DEBOUNCE_MS.
+//    */
+//   useEffect(() => {
+//     if (isFirstRender.current) {
+//       isFirstRender.current = false;
+//       return;
+//     }
+
+//     if (
+//       debouncedValue[0] === value[0] &&
+//       debouncedValue[1] === value[1]
+//     ) {
+//       return;
+//     }
+
+//     onChange(debouncedValue);
+//   }, [
+//     debouncedValue,
+//     value,
+//     onChange,
+//   ]);
+
+//   return (
+//     <Slider
+//       min={min}
+//       max={max}
+//       step={step}
+//       value={localValue}
+//       onValueChange={(next) => {
+//         setLocalValue([
+//           next[0],
+//           next[1],
+//         ]);
+//       }}
+//     />
+//   );
+// }
+
+
 function DebouncedRangeSlider({
   min,
   max,
@@ -53,18 +119,23 @@ function DebouncedRangeSlider({
   );
 
   const isFirstRender = useRef(true);
+  const isDragging = useRef(false);
 
   /*
-   * Keep local slider state synchronized with
-   * the URL/search state.
+   * Sync local state when the parent value changes
+   * externally, but don't fight the slider while
+   * the user is interacting with it.
    */
   useEffect(() => {
+    if (isDragging.current) {
+      return;
+    }
+
     setLocalValue(value);
   }, [value[0], value[1]]);
 
   /*
-   * Only update URL/search state after the user
-   * has stopped dragging for DEBOUNCE_MS.
+   * Debounced update to the parent/search state.
    */
   useEffect(() => {
     if (isFirstRender.current) {
@@ -80,11 +151,7 @@ function DebouncedRangeSlider({
     }
 
     onChange(debouncedValue);
-  }, [
-    debouncedValue,
-    value,
-    onChange,
-  ]);
+  }, [debouncedValue, value, onChange]);
 
   return (
     <Slider
@@ -92,11 +159,14 @@ function DebouncedRangeSlider({
       max={max}
       step={step}
       value={localValue}
+      onPointerDown={() => {
+        isDragging.current = true;
+      }}
+      onPointerUp={() => {
+        isDragging.current = false;
+      }}
       onValueChange={(next) => {
-        setLocalValue([
-          next[0],
-          next[1],
-        ]);
+        setLocalValue([next[0], next[1]]);
       }}
     />
   );

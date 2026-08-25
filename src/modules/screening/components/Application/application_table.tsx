@@ -32,10 +32,12 @@ export function ApplicationTable({
 }: ApplicationTableProps) {
 
     const { search, setAppId } = useScreeningDetailsNavigation();
+    // Derive compact from URL params alone so the table layout is stable on
+    // page reload — even before candidate data has loaded.
     const compact = !!search.appId;
 
     const applicationSearchParams: ApplicationsSearchParams = applicationSearchSchema.parse(search);
-    const { menuOptions: MenuOptions,getRowStatus } = useApplicationActions({ screeningId, applicationSearchParams });
+    const { menuOptions: MenuOptions, getRowStatus } = useApplicationActions({ screeningId, applicationSearchParams });
 
     const { ref: loadMoreRef, inView } = useInView({ threshold: 0, rootMargin: "300px", });
     const { selectedApplications, togglePageSelection } = useSelectedApplications();

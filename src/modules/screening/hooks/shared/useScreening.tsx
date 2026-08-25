@@ -5,8 +5,8 @@ import { ScreeningQueryKeys } from "@/modules/screening/queryKeys"
 import { useScreeningQuery } from "@/modules/screening/hooks/screening/queries/screening.query"
 import { toast } from 'sonner'
 import { jdStorageService } from "@/lib/services"
-import { exportResults } from "@/lib/api";
-
+import { exportScoredResumes } from "@/modules/screening/apis/screenings.api";
+import {ScreeningSearchParams} from "@/modules/screening/types/searchSchema"
 
 export function useScreening(id: string) {
 
@@ -79,11 +79,11 @@ export function useScreening(id: string) {
         }
     }
 
-    async function handleExport() {
+    async function handleExport(params:ScreeningSearchParams) {
         setExporting(true);
         try {
             // const { blob, filename } = await exportResults(id, queryState);
-            const { blob, filename } = await exportResults(id, {});
+            const { blob, filename } = await exportScoredResumes(id,params);
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
