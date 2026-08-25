@@ -109,15 +109,15 @@ export interface Screening {
   parsing_batch_ids: string[] | null;
 }
 
-export interface ScreeningListItem {
-  id: string;
-  title: string;
-  total_applications: number;
-  screened_applications: number;
-  avg_score: number | null;
-  last_accessed_at: string | null;
-  created_at: string;
-}
+// export interface ScreeningListItem {
+//   id: string;
+//   title: string;
+//   total_applications: number;
+//   screened_applications: number;
+//   avg_score: number | null;
+//   last_accessed_at: string | null;
+//   created_at: string;
+// }
 // export interface ScreeningListItem {
 //   id: string;
 //   title: string;
@@ -226,7 +226,7 @@ export interface RangeFilter {
 // Sort fields are either fixed columns ("overall_score", "candidate_name",
 // "stage") or a per-rubric-category score prefixed with "cat:". Backend is
 // expected to parse the prefix and resolve the category by name.
-export type SortField = "overall_score" | "candidate_name" | "stage" | `cat:${string}`;
+export type SortField = "overall_score" | "candidate_name" | "stage" | `cat:${string}` ;
 
 export interface SortRule {
   field: SortField;

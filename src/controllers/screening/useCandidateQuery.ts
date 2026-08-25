@@ -7,8 +7,8 @@ import {
   DEFAULT_QUERY_STATE,
   decodeQueryState,
   encodeQueryState,
-} from "@/components/screening/filters/queryEncoding";
-import { tiersToRange } from "@/components/screening/filters/matchTiers";
+} from "@/modules/screening/components/Screening/filters/queryEncoding";
+import { tiersToRange } from "@/modules/screening/components/Screening/filters/matchTiers";
 import type {
   CandidateQueryState,
   MatchTierId,

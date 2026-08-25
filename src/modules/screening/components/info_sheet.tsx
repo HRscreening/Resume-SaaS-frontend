@@ -29,6 +29,8 @@ import {
 import { Application } from "@/modules/screening/types/application.type";
 import { resumeUploadService } from "@/lib/services";
 import { toast } from "sonner";
+import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
+
 
 /* ─── external-store (mirrors AnalysisSheet pattern) ─── */
 
@@ -89,13 +91,15 @@ export const MAX_VISIBLE_SKILLS = 6;
 
 /* ─── main component ─── */
 
-const InfoSheet = ({ candidate, disabled = false }: { candidate: Application, disabled: boolean }) => {
-  const openId = useAnalysisSheetOpenId();
-  const open = openId === candidate.id;
+const InfoSheet = ({ candidate, open,disabled = false }: { candidate: Application, disabled: boolean,open:boolean }) => {
+
   const [showAllSkills, setShowAllSkills] = useState(false);
+  const {setAppId} = useScreeningDetailsNavigation();
 
   const handleOpenChange = (next: boolean) => {
-    setOpenAnalysisSheet(next ? candidate.id : null);
+    if (!next) {
+      setAppId(null);
+    }
   };
 
   const initials =
@@ -155,13 +159,13 @@ const InfoSheet = ({ candidate, disabled = false }: { candidate: Application, di
           disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
-            handleOpenChange(!open);
+            setAppId(candidate.id);
           }}
-          className={`inline-flex items-center justify-center ${open ? "invisible pointer-events-none" : ""}`}
+          className={`inline-flex items-center cursor-pointer justify-center ${open ? "invisible pointer-events-none" : ""}`}
           aria-label="View candidate info"
           aria-hidden={open}
         >
-          <Eye className="text-[#A0A0A0] hover:text-[#C85A17]" size={16} />
+          <Eye className="text-[#A0A0A0] hover:text-[#C85A17] " size={16} />
         </button>
       </SheetTrigger>
 

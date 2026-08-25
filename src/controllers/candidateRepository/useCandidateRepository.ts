@@ -8,7 +8,7 @@ import {
   decodeQueryState,
   encodeQueryState,
 } from "@/controllers/candidateRepository/queryHelper";
-import { tiersToRange } from "@/components/screening/filters/matchTiers";
+import { tiersToRange } from "@/modules/screening/components/Screening/filters/matchTiers";
 import type {CandidateRepositoryQueryParams,SortRule} from "@/types/candidate.type";
 import type {MatchTierId,RangeFilter} from "@/types";
 

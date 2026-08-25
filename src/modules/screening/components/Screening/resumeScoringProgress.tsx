@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useActiveScoringQuery } from '@/modules/screening/hooks/progress.hook';
+import { useActiveScoringQuery } from '@/modules/screening/hooks/shared/progress.hook';
 import type { ResumeScoringBodyType, EventBodyType } from "@/modules/screening/types/progress.type";
 import type { GetScoringResponseType} from "@/modules/screening/apis/getActiveScorings";
 import type { Application } from "@/modules/screening/types/application.type";

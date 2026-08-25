@@ -1,55 +1,33 @@
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type QueryClient, type InfiniteData } from "@tanstack/react-query";
 import { ApplicationQueryKeys, ResumeParsingQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys } from "@/modules/screening/queryKeys";
 import { getApplications } from "@/modules/screening/apis/getApplications";
 import { screenResume } from "@/modules/screening/apis/screenResumes";
 import { addApplications } from "@/modules/screening/apis/addApplications";
 import { type GetActiveBatchesResponse } from "@/modules/screening/apis/activeBatches";
-
-type GetApplicationsRequestParams = {
-    screening_id: string;
-    page?: number;
-    pageSize?: number;
-    enabled?: boolean;
-};
-
-// export function useApplicationsQuery({
-//     screening_id,
-//     page = 1,
-//     pageSize = 10,
-// }: GetApplicationsRequestParams) {
-//     return useQuery({
-//         queryKey: ApplicationQueryKeys.getApplications(
-//             screening_id,
-//             page,
-//             pageSize
-//         ),
-//         queryFn: () =>
-//             getApplications({
-//                 screening_id,
-//                 page,
-//                 pageSize,
-//             }),
-//         staleTime: 6 * 60 * 60 * 1000, // 6 hours
-//     });
-// }
+import type { ApplicationsSearchParams } from "@/modules/screening/types/searchSchema";
+import type { Application } from "@/modules/screening/types/application.type";
+import type { PaginatedResults } from "@/modules/screening/types/screening.type";
 
 export function useApplicationsInfiniteQuery({
     screening_id,
+    params,
     limit = 10,
 }: {
     screening_id: string;
+    params: ApplicationsSearchParams;
     limit?: number;
 }) {
     return useInfiniteQuery({
         queryKey: ApplicationQueryKeys.getApplications(
             screening_id,
-            limit,
+            params
         ),
         initialPageParam: null as string | null,
 
-        queryFn: ({ pageParam }:{pageParam:string | null }) =>
+        queryFn: ({ pageParam }: { pageParam: string | null }) =>
             getApplications({
                 screening_id,
+                params,
                 cursor: pageParam,
                 limit: limit,
             }),
@@ -153,3 +131,65 @@ export function useAddApplicationsMutation() {
         gcTime: 6 * 60 * 60 * 1000,
     });
 }
+
+
+
+
+
+
+
+
+
+
+// ---------------------------- Application Resune Archive/Unarchive/ Delete Mutations ----------------------------
+function removeApplicationFromListCache(
+    queryClient: QueryClient,
+    params: ApplicationsSearchParams,
+    screeningId: string,
+    resumeId: string
+) {
+    queryClient.setQueryData<InfiniteData<PaginatedResults<Application>, string>>(
+        ApplicationQueryKeys.getApplications(screeningId, params),
+        (oldData) => {
+            if (!oldData) return oldData;
+
+            return {
+                ...oldData,
+                pages: oldData.pages.map((page) => ({
+                    ...page,
+                   items: page.items.filter(
+                        (application) => application.id !== resumeId
+                    ),
+                })),
+            };
+        }
+)}
+
+
+import type { ApplicationActionStatus } from "@/modules/screening/types/application.type";
+export function useApplicationUtility(
+    mutationFn: ({ screeningId, resumeId }: { screeningId: string, resumeId: string }) => Promise<unknown>,
+    params: ApplicationsSearchParams,
+    action:ApplicationActionStatus["action"]
+) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn,
+        mutationKey: ["application", action],
+
+        onSuccess: (_, { screeningId, resumeId }) => {
+            removeApplicationFromListCache(
+                queryClient,
+                params,
+                screeningId,
+                resumeId
+            );
+
+            queryClient.invalidateQueries({
+                queryKey: ApplicationQueryKeys.screening(screeningId),
+            });
+        },
+    });
+}
+

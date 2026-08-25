@@ -1,33 +1,56 @@
 import { useState, useEffect } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { Link, useParams, useNavigate } from "@tanstack/react-router";
 import { ApplicationTable } from "@/modules/screening/components/Application/application_table";
-import data from "../test_data.json"
-
+import { CustomMenuButton } from "@/modules/screening/components/shared/MenuButton";
 import { Application } from "@/modules/screening/types/application.type"
-import { useSelectedApplications, SelectedApplicationsProvider } from "@/modules/screening/hooks/useSelectedApplication";
-import { useApplicationsInfiniteQuery, useScreeningApplicationsMutation } from "@/modules/screening/hooks/application.hook";
+import { useSelectedApplications, SelectedApplicationsProvider } from "@/modules/screening/hooks/application/custom/useSelectedApplication";
+import { useApplicationsInfiniteQuery, useScreeningApplicationsMutation } from "@/modules/screening/hooks/application/queries/application.hook";
 import { toast } from "sonner";
 import ResumeParsingProgress from "@/modules/screening/components/Application/resumeParsingProgress";
-import { useGetBatchesQuery } from "@/modules/screening/hooks/batch.hook";
-
+import { useGetBatchesQuery } from "@/modules/screening/hooks/shared/batch.hook";
+import { ApplicationsToolbar } from "@/modules/screening/components/Application/filters/ApplicationToolbar";
 import { useAnalysisSheetOpen as useInfoSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/modules/screening/components/info_sheet";
+import { type ScreeningDetailsSearchParams } from "@/modules/screening/types/searchSchema";
+import { Archive, CircleCheck, ArchiveRestore, Trash, Trash2 } from 'lucide-react'
+import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
+import { useApplicationQuery } from "@/modules/screening/hooks/application/custom/useApplicationQuery"
 
 const PAGE_SIZE = 30;
 
 
+
+
+const tableOptions = ["All", "Active", "Archived", "Deleted"];
+
+type TableOptions = typeof tableOptions[number];
+
+const options = [
+    { icon: <CircleCheck size={12} />, label: tableOptions[1] },
+    { icon: <Archive size={12} />, label: tableOptions[2] },
+    // { icon: <Trash2 size={12} />, label: tableOptions[3] }
+]
+
 interface ApplicationPageProps {
     screening_id: string;
-    sourceMode:boolean;
-    setSourceMode: (mode:boolean) => void;
+    sourceMode: boolean;
+    setSourceMode: (mode: boolean) => void;
     onTabChange?: (tab: "Applications" | "Screening") => void;
+
 }
 
-export function ApplicationPage({ screening_id, onTabChange,setSourceMode,sourceMode }: ApplicationPageProps) {
+export function ApplicationPage({ screening_id, onTabChange, setSourceMode, sourceMode }: ApplicationPageProps) {
 
-    const [page, setPage] = useState<number>(1);
+    const { search, navigate } = useScreeningDetailsNavigation();
+
     const infoOpen = useInfoSheetOpen();
 
-    const { data, isLoading,isFetching, isError, error, fetchNextPage, isFetchingNextPage, hasNextPage } = useApplicationsInfiniteQuery({ screening_id, limit: PAGE_SIZE });
+
+
+    const ApplicationQuery = useApplicationQuery(screening_id, { limit: PAGE_SIZE });
+    const { query: ApplicationResultsQuery,setType } = ApplicationQuery;
+    const { data, isLoading,isFetching, fetchNextPage, isFetchingNextPage, hasNextPage } = ApplicationResultsQuery;
+
     const { data: active_batches } = useGetBatchesQuery(screening_id);
 
 
@@ -44,21 +67,9 @@ export function ApplicationPage({ screening_id, onTabChange,setSourceMode,source
 
 
 
-    if (isLoading) {
-        return <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
-            <span>Loading Applications...</span>
-        </div>
-    }
 
 
-    if (isError) {
-        return <div>{error.message}</div>;
-    }
 
-    if (!data) {
-        return <div>No data available</div>;
-    }
 
     async function submitScreen() {
         if (selectedApplications.size === 0) {
@@ -89,17 +100,10 @@ export function ApplicationPage({ screening_id, onTabChange,setSourceMode,source
         clearSelection();
     }
 
-    function onPageChange(newPage: number) {
-        setPage(newPage);
-        const startIndex = (newPage - 1) * PAGE_SIZE;
-        const endIndex = startIndex + PAGE_SIZE;
-    }
 
     const hasActiveParsing = (active_batches?.parsing_batch_ids?.length ?? 0) > 0;
-
-
-
     const applications = data?.pages.flatMap(page => page.items) ?? [];
+
 
 
 
@@ -121,20 +125,12 @@ export function ApplicationPage({ screening_id, onTabChange,setSourceMode,source
                 </div>
 
                 <p className="text-sm text-[#737373] text-center">
-                    Applications are being processed and will appear here
-                    automatically.
+                    Applications are being processed and will appear here soon.
                 </p>
             </div>
         );
     }
 
-        
-    if (applications.length === 0 && isFetching) {
-        return <div className="flex items-center justify-center gap-3 py-4 text-sm text-muted-foreground">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
-            <span>Loading Applications...</span>
-        </div>
-    }
 
 
 
@@ -146,59 +142,47 @@ export function ApplicationPage({ screening_id, onTabChange,setSourceMode,source
                 ))}
             </div>
 
-            <div className="flex items-center justify-between">
-                {applications.length > 0 &&
+            <div className="w-full flex items-center gap-4">
+                <div className="flex-1 min-w-0">
+                    <ApplicationsToolbar applicationQuery={ApplicationQuery} />
+                </div>
 
-                    <div className="flex w-full justify-end items-center">
-                        <button
-                            className="my-2 px-3 py-1 rounded-lg bg-[#0F0F0F] text-white text-sm font-medium cursor-pointer"
-                            onClick={() => {
-                                if (!applications || applications.length === 0) {
-                                    toast.error("No candidates available for Screening.");
-                                    return;
-                                }
-                                if (!sourceMode) { setSourceMode(true) }
-                                else exitSourceMode()
-                            }}
-                        >
-                            {sourceMode ? "Cancel" : "Screen Applications"}
-                        </button>
-                    </div>
-                }
+
+                <div className="shrink-0 flex items-center gap-2">
+                    <CustomMenuButton selectedOption={search.appType} options={options} handleOptionClick={(e:TableOptions)=>setType(e as ScreeningDetailsSearchParams["appType"])} />
+                    <button
+                        className="my-2 px-3 py-1 rounded-lg bg-[#0F0F0F] text-white text-sm font-medium cursor-pointer"
+                        disabled={applications.length === 0 || search.appType != "Active"} // Disable if no applications or not on "Active" tab
+                        onClick={() => {
+                            if (!applications || applications.length === 0) {
+                                toast.error("No candidates available for Screening.");
+                                return;
+                            }
+
+                            if (!sourceMode) {
+                                setSourceMode(true);
+                            } else {
+                                exitSourceMode();
+                            }
+                        }}
+                    >
+                        {sourceMode ? "Cancel" : "Screen Applications"}
+                    </button>
+                </div>
             </div>
 
-            {applications.length === 0 ?  
-
-            <div className="flex flex-col items-center justify-center gap-2 py-8">
-                <p className="text-sm text-[#737373]">
-                    No Applications have been uploaded yet.
-                    Upload resumes to get started.
-                </p>
-            </div>
-            
-            :
             <ApplicationTable
-            candidates={applications}
-            selectable={sourceMode}
-            total={PAGE_SIZE}
-                totalPages={10}
-                pageSize={PAGE_SIZE}
-                page={page}
-                showSelectedOnly={showSelectedOnly}
-                onPageChange={onPageChange}
+                candidates={applications}
+                selectable={sourceMode}
                 hasMore={hasNextPage}
+                loading={isLoading}
+                backgGroundFetching={isFetching}
                 loadingMore={isFetchingNextPage}
                 onLoadMore={fetchNextPage}
-                
-                />
-            }
-                
-            {/* Screen mode hint bar */}
-            {/* {sourceMode && applications.length > 0 && (
-                <p className="text-[11px] text-[#737373] -mt-2">
-                <span className="font-medium text-[#404040]">Screen mode</span> · Click rows or checkboxes to select · Shift+Click for range · Ctrl/Cmd+A selects current page · Esc to exit
-                </p>
-            )} */}
+                screeningId={screening_id}
+            />
+
+
 
             {/* Screen action bar — sticky bottom, only in Screen mode */}
             {sourceMode && (() => {
@@ -266,16 +250,16 @@ export function ApplicationPage({ screening_id, onTabChange,setSourceMode,source
 
 interface ApplicationsProps {
     onTabChange?: (tab: "Applications" | "Screening") => void;
-    sourceMode:boolean;
-    setSourceMode: (mode:boolean) => void;
+    sourceMode: boolean;
+    setSourceMode: (mode: boolean) => void;
 }
 
 
-export default function Applications({ onTabChange,sourceMode,setSourceMode }: ApplicationsProps) {
+export default function Applications({ onTabChange, sourceMode, setSourceMode }: ApplicationsProps) {
     const { id: screening_id } = useParams({ strict: false }) as { id: string; };
     return (
         <SelectedApplicationsProvider screening_id={screening_id} >
-            <ApplicationPage screening_id={screening_id} onTabChange={onTabChange}  sourceMode={sourceMode} setSourceMode={setSourceMode}/>
+            <ApplicationPage screening_id={screening_id} onTabChange={onTabChange} sourceMode={sourceMode} setSourceMode={setSourceMode} />
         </SelectedApplicationsProvider>
     );
 }

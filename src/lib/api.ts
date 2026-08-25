@@ -16,7 +16,7 @@ import type {
   HiringStage,
   CandidateQueryState,
 } from "@/types";
-import { toRequestParams } from "@/components/screening/filters/queryEncoding";
+import { toRequestParams } from "@/modules/screening/components/Screening/filters/queryEncoding";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 

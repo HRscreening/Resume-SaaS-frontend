@@ -1,17 +1,13 @@
 import { BackLink } from "@/components/layout/BackLink";
-import { useState, useRef, useEffect,useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
 // import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useScreeningQuery } from "@/modules/screening/hooks/screening/screening.query"
-import { getScreening, exportResults } from "@/lib/api";
-import { useCandidateQuery } from "@/controllers/screening/useCandidateQuery";
+import { useScreeningQuery } from "@/modules/screening/hooks/screening/queries/screening.query"
+
 import type { RankedCandidate, RubricCategory } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";
-import { useAnalysisSheetOpen, setOpenAnalysisSheet } from "@/modules/screening/components/Screening/AnalysisSheet";
 import { RubricModal } from "@/components/screening/RubricModal";
-import { hasActiveFilters } from "@/components/screening/filters/queryEncoding";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import ActionButton from "@/modules/screening/components/shared/ActionButton";
+import { ActionButton } from "@/modules/screening/components/shared/ActionButton";
 import { toast } from "sonner";
 import {
     FileText,
@@ -27,12 +23,13 @@ import {
 import Applications from "@/modules/screening/tabs/applications"
 import Screening from "@/modules/screening/tabs/screeningTab"
 import UploadResumes from "@/modules/screening/components/uploadResumes"
-
+import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 import { useAuth } from "@/hooks/useAuth";
-import { setOpenAnalysisSheet as setOpenInfoSheet, useAnalysisSheetOpen as useInfoSheetOpen } from "@/modules/screening/components/info_sheet";
-import { jdStorageService } from "@/lib/services/index"
 
-import SearchSchema from "@/modules/screening/types/searchSchema";
+import { useScreening } from "@/modules/screening/hooks/shared/useScreening"
+import { useApplicationQuery } from "@/modules/screening/hooks/application/custom/useApplicationQuery";
+
+import ScreeningSkeleton from "@/modules/screening/components/skeletons/ScreeningSkeleton"
 
 
 
@@ -44,26 +41,23 @@ export type Sections = typeof sectionTabs[number];
 
 export default function ScreeningDetail() {
     const { id } = useParams({ strict: false }) as { id: string };
-    const search = useSearch({ strict: false }) as SearchSchema;
+
+    const { search, navigate, setTab } = useScreeningDetailsNavigation();
 
     const currentTab: Sections = search.tab ?? "Applications";
 
-    const navigate = useNavigate({ from: "/screenings/$id", });
+
 
     const { user } = useAuth();
 
-    const [exporting, setExporting] = useState(false);
+
     const [sourceMode, setSourceMode] = useState(false);
     const [showRubric, setShowRubric] = useState(false);
 
-    useEffect(() => {
-        setOpenAnalysisSheet(null);
-        setOpenInfoSheet(null);
-    }, [])
 
-    const screeningAnalysisOpen = useAnalysisSheetOpen();
-    const infoSheetOpen = useInfoSheetOpen();
-    const analysisOpen = screeningAnalysisOpen || infoSheetOpen;
+
+
+    const analysisOpen = (search.screenId != null && search.tab == "Screening") || (search.appId != null && search.tab === "Applications");
 
     // Rescore selection mode — flipped on by the Rescore button in the action
     // row. `selectedIds` is the cross-page basket; pagination / search / filter
@@ -72,32 +66,12 @@ export default function ScreeningDetail() {
 
 
     const [showUploadMore, setShowUploadMore] = useState(false);
-    // Synchronous status hint from the screenings-list cache. Used to gate the
-    // batch-progress query on cold cache so we don't fire a request that 404s
-    // for a draft screening (no batch row exists yet). On warm cache the hint
-    // is reliable; on direct URL paste it's `undefined` and we let the query
-    // fire — a 404 for draft is a rare cost.
 
+    const { screening, isPending: isLoading, error, postJob, viewJD, exporting, handleExport } = useScreening(id);
 
-    const { data: screening, isLoading, error } = useScreeningQuery(id);
-
-
-
-    const batchDone = true; // Temporary override for testing without batch-progress API
-
-    // Backend-driven query state (filters, sort, search, pagination) lives in
-    // the URL via useCandidateQuery. The hook also owns the results query,
-    // so we don't run a separate useQuery here.
-    // const candidateQuery = useCandidateQuery(id, {
-    //     pageSize: PAGE_SIZE,
-    //     pollWhileProcessing: false,
-    //     batchDone,
-    // });
-    // const { state: queryState, query: resultsQuery } = candidateQuery;
-    // const resultsPage = resultsQuery.data;
-    // const candidates = resultsPage?.items ?? [];
-    // const serverTotal = resultsPage?.total ?? 0;
-
+    // Applications are required by this page, so fetch them at page level
+    // and provide the data to the applications table.
+    const ApplicationQuery = useApplicationQuery(id, { limit: 30 });
 
 
     const toastShownRef = useRef(false);
@@ -111,7 +85,7 @@ export default function ScreeningDetail() {
         toastShownRef.current = true;
         toast.success("Rubric saved", { duration: 3500 });
         setRescoreMode(true);
-        const { saved: _saved, ...rest } = search as SearchSchema;
+        const { saved: _saved, ...rest } = search;
         navigate({
             to: "/screenings/$id",
             params: { id },
@@ -120,94 +94,27 @@ export default function ScreeningDetail() {
         });
     }, [search, id, navigate]);
 
-    const totalCandidates = screening?.scored_resumes_cnt ?? 0;
-    const totalApplications = (screening?.applications_cnt ?? 0) + (screening?.scored_resumes_cnt ?? 0);
+    const totalCandidates = screening?.screened_cnt ?? 0;
+    const totalApplications = (screening?.parsed_cnt ?? 0) + (screening?.screened_cnt ?? 0);
     const hasAnyCandidates = totalCandidates > 0;
 
 
-    async function viewJD() {
-        try {
-            const url = screening?.jd_url;
 
-            if (!url) {
-                toast.error("Job description not available");
-                return;
-            }
-            // const signedUrl = await jdStorageService.createSignedUrl(url, 60 * 5);
-            const signedUrl = jdStorageService.getPublicUrl(url);
-            window.open(signedUrl, "_blank");
-        } catch (err) {
-            toast.error(
-                err instanceof Error
-                    ? err.message
-                    : "Failed to view job description"
-            );
-        }
-    }
 
-    const postJob = () => {
-        const postedJobUrl = `https://hiresort.ai/careers/${id}`;
 
-        // Copy the URL to the clipboard
-        navigator.clipboard.writeText(postedJobUrl).then(() => {
-            toast.success("JobPost URL copied to clipboard.Redirecting...");
-            setTimeout(() => {
-                window.open(postedJobUrl, "_blank");
-            }, 1000);
-        }).catch((err) => {
-            console.error("Failed to copy URL to clipboard:", err);
-            toast.error("Something went wrong, Contact support");
-        }
-        );
-
-    }
-
-    const changeTab = useCallback((tab:Sections) => {
-        // setSearchInput("");
-
-        navigate({
-            to: "/screenings/$id",
-            params: { id:id},
-            search: (prev) => ({
-                tab: tab,
-                saved: prev.saved,
-            }) as never,
-            replace: true,
-        });
+    const changeTab = useCallback((tab: Sections) => {
+        setTab(tab);
     }, [navigate, id]);
 
-    async function handleExport() {
-        setExporting(true);
-        try {
-            // const { blob, filename } = await exportResults(id, queryState);
-            const { blob, filename } = await exportResults(id, {});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = filename ?? `${screening?.title ?? "results"}.xlsx`;
-            a.click();
-            URL.revokeObjectURL(url);
-        } catch { /* ignored */ } finally { setExporting(false); }
-    }
+
 
     // Cold-cache first paint: render a lightweight skeleton instead of a
     // full-page spinner. The same screening fetch is in flight in the
     // background — when it lands, the full UI swaps in.
-    if (isLoading && !screening) {
+    if ((isLoading && !screening)) {
+        // console.log("Rendering skeleton for screening detail page", { id });
         return (
-            <div className="px-4 pt-6 sm:px-6 sm:pt-8 md:px-8 max-w-5xl mx-auto">
-                <div className="h-7 w-64 bg-[#E8E5DF] rounded animate-pulse mb-3" />
-                <div className="h-4 w-32 bg-[#E8E5DF] rounded animate-pulse mb-6" />
-                <div className="space-y-3">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="bg-white rounded-2xl border border-[#E8E5DF] p-5">
-                            <div className="h-4 w-40 bg-[#E8E5DF] rounded animate-pulse mb-3" />
-                            <div className="h-3 w-full bg-[#F5F3EE] rounded animate-pulse mb-2" />
-                            <div className="h-3 w-3/4 bg-[#F5F3EE] rounded animate-pulse" />
-                        </div>
-                    ))}
-                </div>
-            </div>
+            <ScreeningSkeleton />
         );
     }
 
@@ -224,8 +131,7 @@ export default function ScreeningDetail() {
         );
     }
 
-    const isDraft = screening.status === "draft";
-    const isProcessing = !isDraft && !["completed", "failed"].includes(screening.status);
+
     const rubricCategories: RubricCategory[] = (screening.rubric as any)?.categories ?? [];
 
     // Backend's `total` is authoritative for pagination. Fall back to the
@@ -300,7 +206,7 @@ export default function ScreeningDetail() {
                                         <ActionButton
                                             title="Rescore"
                                             onClick={() => setRescoreMode(true)}
-                                            disabled={isProcessing || rescoreMode || !hasAnyCandidates}
+                                            disabled={rescoreMode || !hasAnyCandidates}
                                             icon={<RotateCcw size={12} />}
                                             compacted={analysisOpen}
                                         />
@@ -354,8 +260,6 @@ export default function ScreeningDetail() {
                             onClick={() => {
                                 changeTab(tab);
                                 setShowUploadMore(false);
-                                setOpenAnalysisSheet(null);
-                                setOpenInfoSheet(null);
                             }}
                             className={`px-4 py-2 text-sm font-medium rounded-t-lg focus:outline-none ${currentTab === tab ? "bg-[#0F0F0F] text-white" : "bg-[#E8E5DF] text-[#404040] hover:bg-[#D4D4D4]"}`}
                         >
@@ -378,7 +282,7 @@ export default function ScreeningDetail() {
             {/* ----------------------- Tabs ------------------------ */}
             <div className="flex-1 min-h-0 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
                 {currentTab === "Applications" && <Applications onTabChange={changeTab} sourceMode={sourceMode} setSourceMode={setSourceMode} />}
-                {currentTab === "Screening" && <Screening setCurrentTab={changeTab} setSourceMode={setSourceMode} rescoreMode={rescoreMode} setRescoreMode={setRescoreMode} />}
+                {currentTab === "Screening" && <Screening setCurrentTab={changeTab} setSourceMode={setSourceMode} rescoreMode={rescoreMode} setRescoreMode={setRescoreMode} analysisOpen={analysisOpen} />}
             </div>
 
 
@@ -388,13 +292,11 @@ export default function ScreeningDetail() {
                     categories={rubricCategories}
                     onClose={() => setShowRubric(false)}
                     onEdit={
-                        // !isProcessing && candidates.length > 0
-                        !isProcessing
-                            ? () => {
-                                setShowRubric(false);
-                                navigate({ to: "/screenings/$id/rubric", params: { id }, search: (prev) => prev });
-                            }
-                            : undefined
+                        () => {
+                            setShowRubric(false);
+                            navigate({ to: "/screenings/$id/rubric", params: { id }, search: (prev) => prev });
+                        }
+
                     }
                 />
             )}

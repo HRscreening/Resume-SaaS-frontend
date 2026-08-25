@@ -1,41 +1,41 @@
-import { Pagination } from "@/components/screening/Pagination";
 import { useState, useEffect } from "react";
 import { useInView } from "react-intersection-observer";
-
-import { Application } from "@/modules/screening/types/application.type";
+import type { Application } from "@/modules/screening/types/application.type";
 import CandidateRow from "@/modules/screening/components/Application/application_row";
-import { useSelectedApplications } from "@/modules/screening/hooks/useSelectedApplication";
-import { useAnalysisSheetOpen } from "@/modules/screening/components/info_sheet";
-
+import { useSelectedApplications } from "@/modules/screening/hooks/application/custom/useSelectedApplication";
+import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
+import { resumeUploadService } from "@/lib/services/index"
+import { toast } from "sonner";
+import { type ApplicationsSearchParams, applicationSearchSchema } from "@/modules/screening/types/searchSchema"
+import { useApplicationActions } from "@/modules/screening/hooks/application/custom/useApplicationActions";
 
 interface ApplicationTableProps {
-
+    screeningId: string;
     candidates: Application[];
     selectable: boolean;
-    total: number;
-    totalPages: number;
-    pageSize: number;
-    page: number;
-    showSelectedOnly: boolean;
-    onPageChange: (page: number) => void;
+    loading: boolean;
+    backgGroundFetching?: boolean;
     onLoadMore?: () => Promise<unknown>;
     hasMore?: boolean;
     loadingMore?: boolean;
 }
 
 export function ApplicationTable({
+    screeningId,
     candidates,
     selectable = false,
-    pageSize = 10,
-    showSelectedOnly,
-    onPageChange,
+    backgGroundFetching = false,
+    loading,
     hasMore,
     loadingMore,
-    onLoadMore
+    onLoadMore,
 }: ApplicationTableProps) {
 
-    const [loading, setLoading] = useState<boolean>(false);
-    const compact = useAnalysisSheetOpen();
+    const { search, setAppId } = useScreeningDetailsNavigation();
+    const compact = !!search.appId;
+
+    const applicationSearchParams: ApplicationsSearchParams = applicationSearchSchema.parse(search);
+    const { menuOptions: MenuOptions,getRowStatus } = useApplicationActions({ screeningId, applicationSearchParams });
 
     const { ref: loadMoreRef, inView } = useInView({ threshold: 0, rootMargin: "300px", });
     const { selectedApplications, togglePageSelection } = useSelectedApplications();
@@ -45,11 +45,10 @@ export function ApplicationTable({
         if (!inView) return;
         if (!hasMore) return;
         if (loadingMore) return;
-
-        console.log("inView:", inView);
-        console.log("hasMore:", hasMore);
         onLoadMore?.();
     }, [inView, hasMore, loadingMore, onLoadMore]);
+
+
 
     const visibleIds = candidates.map(c => c.id);
 
@@ -62,6 +61,7 @@ export function ApplicationTable({
     const someVisibleSelected =
         visibleIds.some(id => selectedApplications.has(id)) &&
         !allVisibleSelected;
+
 
 
     return (
@@ -106,7 +106,6 @@ export function ApplicationTable({
                                 <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
                                     Current Role
                                 </th>
-
                                 <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
                                     <span className="block">Experience</span>
                                     <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">(yrs)</span>
@@ -133,9 +132,9 @@ export function ApplicationTable({
                         </thead>
 
                         <tbody className="divide-y divide-[#E8E5DF]">
-                            {loading ? (
-                                Array.from({ length: pageSize }).map((_, i) => (
-                                    <SkeletonRow
+                            {loading || (candidates.length == 0 && backgGroundFetching) ? (
+                                Array.from({ length: 10 }).map((_, i) => (
+                                    <ApplicationSkeletonRow
                                         key={`sk-${i}`}
                                         selectable={selectable}
                                         compact={compact}
@@ -154,8 +153,12 @@ export function ApplicationTable({
                                 <CandidateRow
                                     key={c.id}
                                     candidate={c}
-                                    selectable={selectable}
                                     compact={compact}
+                                    selectable={selectable}
+                                    isOpen={search.appId === c.id}
+                                    setAppId={setAppId}
+                                    MenuOptions={MenuOptions}
+                                    processingStatus={getRowStatus(c.id)}
                                 />
                             ))}
                         </tbody>
@@ -179,7 +182,27 @@ export function ApplicationTable({
 }
 
 
-function SkeletonRow({
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function ApplicationSkeletonRow({
     selectable,
     compact,
 }: {
