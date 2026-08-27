@@ -6,8 +6,8 @@ import type {
   Profile,
   UsageResponse,
   Rubric,
-  Screening,
-  ScreeningListItem,
+  // Screening,
+  // ScreeningListItem,
   PaginatedResults,
   BatchProgress,
   Resume,
@@ -16,9 +16,9 @@ import type {
   HiringStage,
   CandidateQueryState,
 } from "@/types";
-import { toRequestParams } from "@/components/screening/filters/queryEncoding";
+import {Screening} from "@/modules/screening/types/screening.type"
 
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+export const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 export async function getAuthHeader(): Promise<Record<string, string>> {
   const token = await getAccessToken();
@@ -378,8 +378,8 @@ export async function downloadJDPdf(
   return { blob: await res.blob(), filename, meta: parseJdGenerateMeta(res) };
 }
 
-export async function listScreenings(): Promise<ScreeningListItem[]> {
-  return request<ScreeningListItem[]>("/api/v1/screenings");
+export async function listScreenings(): Promise<Screening[]> {
+  return request<Screening[]>("/api/v1/screenings");
 }
 
 export async function getScreening(id: string): Promise<Screening> {
@@ -398,10 +398,7 @@ export async function getResults(
   screeningId: string,
   params: CandidateQueryState | { page?: number; page_size?: number } = {},
 ): Promise<PaginatedResults> {
-  const qs =
-    "search" in params || "stage" in params || "sort" in params
-      ? toRequestParams(params as CandidateQueryState)
-      : new URLSearchParams({
+  const qs = new URLSearchParams({
           cursor: String((params as { cursor?: number }).cursor ?? ""),
           limit: String((params as { limit?: number }).limit ?? 10),
         });
@@ -496,35 +493,35 @@ export async function getBatchProgress(screeningId: string): Promise<BatchProgre
 // the full filtered set, not a single page. Returns the binary blob plus the
 // server-suggested filename (from Content-Disposition; null when absent or
 // unexposed cross-origin, so callers fall back).
-export async function exportResults(
-  screeningId: string,
-  params: CandidateQueryState | { page?: number; page_size?: number } = {},
-): Promise<{ blob: Blob; filename: string | null }> {
-  const qs =
-    "search" in params || "stage" in params || "sort" in params
-      ? toRequestParams(params as CandidateQueryState)
-      : new URLSearchParams();
-  qs.delete("page");
-  qs.delete("page_size");
-  const query = qs.toString();
+// export async function exportResults(
+//   screeningId: string,
+//   params: CandidateQueryState | { page?: number; page_size?: number } = {},
+// ): Promise<{ blob: Blob; filename: string | null }> {
+//   const qs =
+//     "search" in params || "stage" in params || "sort" in params
+//       ? toRequestParams(params as CandidateQueryState)
+//       : new URLSearchParams();
+//   qs.delete("page");
+//   qs.delete("page_size");
+//   const query = qs.toString();
 
-  const authHeaders = await getAuthHeader();
-  const res = await fetch(
-    `${API_BASE}/api/v1/screenings/${screeningId}/export${query ? `?${query}` : ""}`,
-    {
-      method: "GET",
-      headers: authHeaders,
-    },
-  );
-  if (!res.ok) {
-    if (res.status === 401) clearSessionHint();
-    throw new Error("Export failed");
-  }
-  const disposition = res.headers.get("Content-Disposition");
-  const match = disposition?.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
-  const filename = match ? decodeURIComponent(match[1].trim()) : null;
-  return { blob: await res.blob(), filename };
-}
+//   const authHeaders = await getAuthHeader();
+//   const res = await fetch(
+//     `${API_BASE}/api/v1/screenings/${screeningId}/export${query ? `?${query}` : ""}`,
+//     {
+//       method: "GET",
+//       headers: authHeaders,
+//     },
+//   );
+//   if (!res.ok) {
+//     if (res.status === 401) clearSessionHint();
+//     throw new Error("Export failed");
+//   }
+//   const disposition = res.headers.get("Content-Disposition");
+//   const match = disposition?.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+//   const filename = match ? decodeURIComponent(match[1].trim()) : null;
+//   return { blob: await res.blob(), filename };
+// }
 
 // Download a single candidate's scorecard. Returns the file blob plus the
 // server-suggested filename (parsed from Content-Disposition; null when the

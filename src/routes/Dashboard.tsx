@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listScreenings, getUsage, getScreening, getResults } from "@/lib/api";
+import { listScreenings, getUsage, getScreening} from "@/lib/api";
 import { useUserKey } from "@/lib/userKey";
 import { formatRelativeDate } from "@/lib/utils";
-import type { ScreeningListItem } from "@/types";
+import type { Screening } from "@/modules/screening/types/screening.type";
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -31,7 +31,6 @@ export default function Dashboard() {
   const qc = useQueryClient();
   function prefetch(id: string) {
     qc.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
-    qc.prefetchQuery({ queryKey: ["results", id], queryFn: () => getResults(id) });
   }
   const { data: screenings = [], isLoading: screeningsLoading } = useQuery({
     queryKey: useUserKey("screenings"),
@@ -50,8 +49,8 @@ export default function Dashboard() {
 
   const recent = screenings.slice(0, 5);
   // const completed = screenings.filter((s: ScreeningListItem) => s.status === "completed").length;
-  const totalApplications = screenings.reduce((sum: number, s: ScreeningListItem) => sum + s.total_applications, 0);
-  const totalResumes = screenings.reduce((sum: number, s: ScreeningListItem) => sum + s.screened_applications, 0);
+  const totalApplications = screenings.reduce((sum: number, s: Screening) => sum + s.parsed_cnt, 0);
+  const totalResumes = screenings.reduce((sum: number, s: Screening) => sum + s.screened_cnt, 0);
 
   return (
     <div className="p-4 sm:p-6 md:p-8 max-w-5xl mx-auto">
@@ -219,7 +218,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <ul className="divide-y divide-[#E8E5DF]">
-            {recent.map((s: ScreeningListItem) => (
+            {recent.map((s: Screening) => (
               <li key={s.id} onMouseEnter={() => prefetch(s.id)}>
                 <Link
                   to="/screenings/$id" params={{ id: s.id }}
@@ -228,16 +227,16 @@ export default function Dashboard() {
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-[#0F0F0F] truncate">{s.title}</p>
                     <p className="text-xs text-[#737373] mt-0.5">
-                      {s.screened_applications + s.total_applications} resumes &middot; {formatRelativeDate(s.created_at)}
+                      {s.screened_cnt + s.parsed_cnt} resumes &middot; {formatRelativeDate(s.created_at)}
                     </p>
                   </div>
                   <div className="flex items-center gap-4 ml-4 shrink-0">
-                    {s.avg_score !== null && (
+                    {/* {s.avg_score !== null && (
                       <span className="text-sm font-semibold text-[#0F0F0F]">
                         {Math.round(s.avg_score)}
                         <span className="text-xs text-[#737373] font-normal"> avg</span>
                       </span>
-                    )}
+                    )} */}
                     {/* <StatusPill status={s.status} /> */}
                   </div>
                 </Link>

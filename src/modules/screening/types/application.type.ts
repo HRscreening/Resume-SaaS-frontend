@@ -96,3 +96,14 @@ export interface Application {
 
   resume_url: string | null;
 }
+
+
+
+
+
+
+
+export type ApplicationActionStatus = {
+    isProcessing: boolean;
+    action: "download" | "archive" | "unarchive" | "delete" | null;
+};

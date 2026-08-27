@@ -6,7 +6,7 @@ import { clearAuthCache } from "@/lib/auth";
 import { getUsage, listScreenings } from "@/lib/api";
 import { useUserKey, userKey } from "@/lib/userKey";
 import { cn } from "@/lib/utils";
-import type { ScreeningListItem, SubscriptionPlan } from "@/types";
+import type { SubscriptionPlan } from "@/types";
 import { User} from "lucide-react"
 
 interface NavItem {
@@ -146,7 +146,9 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
   // Screenings page — so warming it up costs one HTTP roundtrip and benefits
   // every consumer.
   function prefetchScreenings() {
-    queryClient.prefetchQuery({ queryKey: userKey("screenings"), queryFn: listScreenings });
+    // queryClient.prefetchQuery({ queryKey: userKey("screenings"), queryFn: listScreenings });
+    //! Not requuired
+    console.log("Just Chilling............. :), Come and find me if you can");
   }
 
   useEffect(() => {
