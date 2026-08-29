@@ -4,66 +4,70 @@ import {
     useCallback,
     useContext,
     ReactNode,
+    useEffect,
 } from "react";
-import type { RankedCandidate } from "@/modules/screening/types/screening.type";
+import { getLocalStorage, setLocalStorage } from "@/utils/localStorage";
 
-type RescoreSelectedCandidatesContextType = {
+
+
+type SelectedCandidatesContextType = {
     screening_id: string;
+    showSelectedOnly: boolean;
+    setShowSelectedOnly: (value: boolean) => void;
     selectedCandidates: Set<string>;
-    selectedDetails: Record<string, RankedCandidate>;
     lastClickedId: string | null;
     toggleSelection: (
         candidateId: string,
         e?: React.MouseEvent | React.ChangeEvent,
         visibleList?: string[],
-        candidatesList?: RankedCandidate[]
     ) => void;
     togglePageSelection: (
         candidateIds: string[],
         select: boolean,
-        candidatesList?: RankedCandidate[]
     ) => void;
     isSelected: (candidateId: string) => boolean;
     clearSelection: () => void;
-    rememberDetails: (candidates: RankedCandidate[]) => void;
 };
 
-const RescoreSelectedCandidatesContext =
-    createContext<RescoreSelectedCandidatesContextType | null>(null);
+const SelectedCandidatesContext =
+    createContext<SelectedCandidatesContextType | null>(null);
 
-export function RescoreSelectedCandidatesProvider({
+export function SelectedCandidatesProvider({
     screening_id,
     children,
 }: {
     screening_id: string;
     children: ReactNode;
 }) {
-    const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
-    const [selectedDetails, setSelectedDetails] = useState<Record<string, RankedCandidate>>({});
+
+    const storageKey = `job:selected-candidates:${screening_id}`;
+
+     const [showSelectedOnly, setShowSelectedOnly] = useState<boolean>(false);
+    const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(
+        () => {
+            const stored = getLocalStorage<string[]>(storageKey, []);
+            return new Set(stored);
+        }
+    );
+
     const [lastClickedId, setLastClickedId] = useState<string | null>(null);
 
-    const rememberDetails = useCallback((candidates: RankedCandidate[]) => {
-        setSelectedDetails((prev) => {
-            const next = { ...prev };
-            let updated = false;
-            for (const c of candidates) {
-                if (c && !next[c.resume_id]) {
-                    next[c.resume_id] = c;
-                    updated = true;
-                }
-            }
-            return updated ? next : prev;
-        });
-    }, []);
+    // Persist selected candidates to localStorage whenever they change
+    useEffect(() => {
+        setLocalStorage(storageKey, [...selectedCandidates]);
+    }, [selectedCandidates, storageKey]);
+
+
+
+
 
     const toggleSelection = useCallback((
         candidateId: string,
         e?: React.MouseEvent | React.ChangeEvent,
         visibleList?: string[],
-        candidatesList?: RankedCandidate[]
     ) => {
         const me = e as React.MouseEvent | undefined;
-        
+
         setSelectedCandidates((prev) => {
             const next = new Set(prev);
             const addedIds: string[] = [];
@@ -92,15 +96,11 @@ export function RescoreSelectedCandidatesProvider({
                 addedIds.push(candidateId);
             }
 
-            if (addedIds.length > 0 && candidatesList) {
-                const addedCandidates = candidatesList.filter(c => addedIds.includes(c.resume_id));
-                rememberDetails(addedCandidates);
-            }
 
             return next;
         });
         setLastClickedId(candidateId);
-    }, [lastClickedId, rememberDetails]);
+    }, [lastClickedId]);
 
     const isSelected = useCallback(
         (candidateId: string) => selectedCandidates.has(candidateId),
@@ -109,12 +109,12 @@ export function RescoreSelectedCandidatesProvider({
 
     const clearSelection = useCallback(() => {
         setSelectedCandidates(new Set());
-        setSelectedDetails({});
         setLastClickedId(null);
+        setShowSelectedOnly(false);
     }, []);
 
     const togglePageSelection = useCallback(
-        (candidateIds: string[], select: boolean, candidatesList?: RankedCandidate[]) => {
+        (candidateIds: string[], select: boolean) => {
             setSelectedCandidates((prev) => {
                 const next = new Set(prev);
                 const addedIds: string[] = [];
@@ -128,41 +128,41 @@ export function RescoreSelectedCandidatesProvider({
                     }
                 });
 
-                if (addedIds.length > 0 && candidatesList) {
-                    const addedCandidates = candidatesList.filter(c => addedIds.includes(c.resume_id));
-                    rememberDetails(addedCandidates);
-                }
 
                 return next;
             });
+            setLastClickedId(null);
+            setShowSelectedOnly(false);
         },
-        [rememberDetails]
+        []
     );
 
     return (
-        <RescoreSelectedCandidatesContext.Provider
+        <SelectedCandidatesContext.Provider
             value={{
                 screening_id,
+                showSelectedOnly,
+                setShowSelectedOnly,
+
                 selectedCandidates,
-                selectedDetails,
                 lastClickedId,
+
                 toggleSelection,
                 togglePageSelection,
                 isSelected,
                 clearSelection,
-                rememberDetails,
             }}
         >
             {children}
-        </RescoreSelectedCandidatesContext.Provider>
+        </SelectedCandidatesContext.Provider>
     );
 }
 
-export function useRescoreSelectedCandidates() {
-    const context = useContext(RescoreSelectedCandidatesContext);
+export function useSelectedCandidates() {
+    const context = useContext(SelectedCandidatesContext);
     if (!context) {
         throw new Error(
-            "useRescoreSelectedCandidates must be used inside RescoreSelectedCandidatesProvider"
+            "useSelectedCandidates must be used inside SelectedCandidatesProvider"
         );
     }
     return context;

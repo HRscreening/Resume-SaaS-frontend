@@ -17,7 +17,6 @@ export default function ScoreProgressBar({
     overall_score,
 }: ScoreProgressBarProps) {
     return (
-        <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
                     <div className="flex flex-col items-center cursor-pointer">
@@ -67,6 +66,5 @@ export default function ScoreProgressBar({
                     </div>
                 </TooltipContent>
             </Tooltip>
-        </TooltipProvider>
     );
 }

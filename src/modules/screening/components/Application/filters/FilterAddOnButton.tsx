@@ -4,7 +4,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus} from "lucide-react"
+import { Plus } from "lucide-react"
 import type { ApplicationFilterKey } from "@/modules/screening/types/searchSchema"
 import { FILTER_OPTIONS } from "@/modules/screening/components/Application/filters/FilterUtils"
 
@@ -58,6 +58,11 @@ export function FilterAddOnButton({
                 "
                 align={align}
                 sideOffset={6}
+                onCloseAutoFocus={(event) => {
+                    // Don't let Radix restore focus to the trigger — the newly
+                    // opened FilterButton's input should keep focus instead.
+                    event.preventDefault();
+                }}
             >
 
 

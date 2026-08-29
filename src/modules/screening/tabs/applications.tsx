@@ -3,16 +3,15 @@ import { useSearch } from "@tanstack/react-router";
 import { Link, useParams, useNavigate } from "@tanstack/react-router";
 import { ApplicationTable } from "@/modules/screening/components/Application/application_table";
 import { CustomMenuButton } from "@/modules/screening/components/shared/MenuButton";
-import { Application } from "@/modules/screening/types/application.type"
 import { useSelectedApplications, SelectedApplicationsProvider } from "@/modules/screening/hooks/application/custom/useSelectedApplication";
-import { useApplicationsInfiniteQuery, useScreeningApplicationsMutation } from "@/modules/screening/hooks/application/queries/application.hook";
+import {  useScreeningApplicationsMutation } from "@/modules/screening/hooks/application/queries/application.hook";
 import { toast } from "sonner";
 import ResumeParsingProgress from "@/modules/screening/components/Application/resumeParsingProgress";
 import { useGetBatchesQuery } from "@/modules/screening/hooks/shared/batch.hook";
 import { ApplicationsToolbar } from "@/modules/screening/components/Application/filters/ApplicationToolbar";
 import { useAnalysisSheetOpen as useInfoSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/modules/screening/components/info_sheet";
 import { type ScreeningDetailsSearchParams } from "@/modules/screening/types/searchSchema";
-import { Archive, CircleCheck, ArchiveRestore, Trash, Trash2 } from 'lucide-react'
+import { Archive, CircleCheck } from 'lucide-react'
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 import { useApplicationQuery } from "@/modules/screening/hooks/application/custom/useApplicationQuery"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -42,7 +41,7 @@ interface ApplicationPageProps {
 
 export function ApplicationPage({ screening_id, onTabChange, setSourceMode, sourceMode }: ApplicationPageProps) {
 
-    const { search, navigate } = useScreeningDetailsNavigation();
+    const { search } = useScreeningDetailsNavigation();
 
     const infoOpen = useInfoSheetOpen();
 
@@ -143,11 +142,8 @@ export function ApplicationPage({ screening_id, onTabChange, setSourceMode, sour
                 ))}
             </div>
 
-            <div className="w-full flex items-center gap-4">
-                <div className="flex-1 min-w-0">
+            <div className="my-3 w-full flex justify-between items-center gap-4">
                     <ApplicationsToolbar applicationQuery={ApplicationQuery} />
-                </div>
-
 
                 <div className="shrink-0 flex items-center gap-2">
                     <CustomMenuButton selectedOption={search.appType} options={options} handleOptionClick={(e:TableOptions)=>setType(e as ScreeningDetailsSearchParams["appType"])} />

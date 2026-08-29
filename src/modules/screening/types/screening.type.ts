@@ -180,3 +180,21 @@ export interface PaginatedResults<T> {
   next_cursor: string | null;
   has_more: boolean;
 }
+
+
+
+
+
+export type ScreeningActionStatus = {
+    isProcessing: boolean;
+    action: "download" | "archive" | "unarchive" | "delete" | "rescore" | "share" | "export" |null;
+};
+
+
+export type ScoredResumeMutliSelectAction = "rescore" | "share" | "export" | "call" | "change_stage" | "archive" | "unarchive" | "delete";
+
+
+import {ResumeSections} from "./searchSchema";
+export type ResumeSections = (typeof ResumeSections)[number];
+
+
