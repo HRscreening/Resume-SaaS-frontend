@@ -119,7 +119,6 @@ export async function deleteScreening(screeningId: string): Promise<void> {
 export async function archiveResume({ screeningId, resumeId }: { screeningId: string, resumeId: string }): Promise<void> {
   return request<void>(`/api/v1/screenings/${screeningId}/archive/${resumeId}`, {
     method: "POST",
-    body: JSON.stringify({ resume_ids: [resumeId] }),
   });
 }
 
@@ -127,13 +126,14 @@ export async function archiveResume({ screeningId, resumeId }: { screeningId: st
 // Unarchive
 export async function unarchiveResume({ screeningId, resumeId }: { screeningId: string, resumeId: string }): Promise<void> {
   return request<void>(`/api/v1/screenings/${screeningId}/unarchive/${resumeId}`, {
+    method: "POST",
   });
 }
 
 
 // 
 export async function deleteResume({ screeningId, resumeId }: { screeningId: string, resumeId: string }): Promise<void> {
-  return request<void>(`/api/v1/screenings/${screeningId}/delete/${resumeId}`, {
+  return request<void>(`/api/v1/screenings/${screeningId}/delete/${resumeId}`,{
     method: "DELETE",
   });
 }
