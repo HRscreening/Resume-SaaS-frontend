@@ -394,17 +394,6 @@ export async function getScreening(id: string): Promise<Screening> {
 // { page, page_size } object for callers that don't filter/sort. Unknown
 // params on the backend are tolerated by FastAPI, so it is safe to send
 // filter/sort keys ahead of the backend honoring them.
-export async function getResults(
-  screeningId: string,
-  params: CandidateQueryState | { page?: number; page_size?: number } = {},
-): Promise<PaginatedResults> {
-  const qs = new URLSearchParams({
-          cursor: String((params as { cursor?: number }).cursor ?? ""),
-          limit: String((params as { limit?: number }).limit ?? 10),
-        });
-  return request<PaginatedResults>(`/api/v1/screenings/${screeningId}/results?${qs.toString()}`);
-}
-
 export async function getResumeDetail(
   screeningId: string,
   resumeId: string

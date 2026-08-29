@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { queryClient } from "@/lib/queryClient";
 import {
-  getScreening, getResults, getResumeDetailFull,
+  getScreening, getResumeDetailFull,
 } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 
