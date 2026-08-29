@@ -2,7 +2,7 @@ import { BackLink } from "@/components/layout/BackLink";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getScreening, getResults, updateRubric } from "@/lib/api";
+import { getScreening, updateRubric } from "@/lib/api";
 import type { RubricCategory, Subcategory, Rubric, Screening } from "@/types";
 import { truncate } from "@/lib/utils";
 import { CategoryImportancePills } from "@/components/screening/new-screening/CategoryImportancePills";
@@ -25,15 +25,10 @@ export default function EditRubric() {
     queryFn: () => getScreening(id),
   });
 
-  // Only need the candidate count here, not the rows themselves — pull the
-  // first page and rely on the server's `total` for the "re-score N candidates"
-  // copy. Cheaper than fetching the whole list.
-  const { data: resultsPage } = useQuery({
-    queryKey: ["results", id, 1, 1],
-    queryFn: () => getResults(id, { page: 1, page_size: 1 }),
-    enabled: !!screening,
-  });
-  const candidatesCount = resultsPage?.total ?? 0;
+  // The candidate count comes from the screening itself. The results route
+  // moved to cursor pagination in PR #25 and no longer returns a total, so
+  // there is nothing to count there — and this saves a second request.
+  const candidatesCount = screening?.screened_cnt ?? 0;
 
   const initialCategories = useMemo<RubricCategory[]>(
     () => ((screening?.rubric as Rubric | null)?.categories ?? []),
