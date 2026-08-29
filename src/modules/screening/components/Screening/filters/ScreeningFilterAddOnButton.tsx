@@ -4,10 +4,11 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus} from "lucide-react"
+import { useState } from "react";
+import { Plus } from "lucide-react"
 import type { ScreeningFilterKey } from "@/modules/screening/types/searchSchema"
 import { FILTER_OPTIONS } from "@/modules/screening/components/Screening/filters/ScreeningFilterUtils"
-
+import { useSelectedCandidates } from "@/modules/screening/hooks/screening/custom/useSelectedCandidates"
 
 interface FilterButtonProps {
     align?: "start" | "center" | "end";
@@ -21,15 +22,24 @@ export function FilterAddOnButton({
     align = "start"
 }: FilterButtonProps) {
 
+    const { clearSelection } = useSelectedCandidates()
+
     const FILTER_OPTIONS_AVAILABLE = FILTER_OPTIONS.filter((option) => !AlreadyAppliedFilters.includes(option.value))
 
 
     return (
-        <DropdownMenu>
+        <DropdownMenu
+            onOpenChange={(isOpen) => {
+                if (isOpen) {
+                    clearSelection()
+                }
+            }}
+        >
 
 
 
             <DropdownMenuTrigger
+
                 className="
                     h-9 px-1
                     
@@ -58,6 +68,11 @@ export function FilterAddOnButton({
                 "
                 align={align}
                 sideOffset={6}
+                onCloseAutoFocus={(event) => {
+                    // Don't let Radix restore focus to the trigger — the newly
+                    // opened FilterButton's input should keep focus instead.
+                    event.preventDefault();
+                }}
             >
 
 

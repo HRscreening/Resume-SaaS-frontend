@@ -10,6 +10,9 @@ import { CandidateRow, SkeletonRow } from "@/modules/screening/components/Screen
 
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 import { useCandidateQuery } from "@/modules/screening/hooks/screening/custom/useCandidateQuery";
+import { useSelectedCandidates } from "@/modules/screening/hooks/screening/custom/useSelectedCandidates";
+import {useScreeningActions} from "@/modules/screening/hooks/screening/custom/useScreeningActions";
+
 
 interface CandidatesTableProps {
   screening_id: string;
@@ -20,9 +23,7 @@ interface CandidatesTableProps {
   backgGroundFetching?: boolean;
 
   selectable?: boolean;
-  selectedIds?: Set<string>;
-  onToggle?: (id: string, e: React.MouseEvent | React.ChangeEvent) => void;
-  onTogglePage?: (ids: string[], select: boolean) => void;
+
   // Stage configuration for the screening and per-candidate updates.
   stages: StagesMap;
   onCandidateStageChange: (resumeId: string, scoreId: string, next: HiringStage) => void;
@@ -47,9 +48,6 @@ export function CandidatesTable({
   categories,
   loading = false,
   selectable = false,
-  selectedIds,
-  onToggle,
-  onTogglePage,
   stages,
   onCandidateStageChange,
   onManageStages,
@@ -59,8 +57,11 @@ export function CandidatesTable({
   onLoadMore
 }: CandidatesTableProps) {
 
-  const { search, setScreenId, setAnalysisTab } = useScreeningDetailsNavigation()
+  const { search, setScreenId } = useScreeningDetailsNavigation()
 
+  const { selectedCandidates, toggleSelection, togglePageSelection } = useSelectedCandidates();
+  
+  const {menuOptions,getRowStatus} = useScreeningActions({screeningId:screening_id});
   // Derive compact from URL params alone so the table layout is stable on
   // page reload — even before candidate data has loaded.
   const compact = search.tab === "Screening" && !!search.screenId;
@@ -93,25 +94,24 @@ export function CandidatesTable({
 
   const columnCount = 7 + (compact ? 0 : 1) + (selectable ? 1 : 0);
 
-
+  const candidatesSelected = selectedCandidates.size > 0;
   // Header checkbox tri-state — reflects the current page's visible rows.
   const visibleIds = candidates.map((c) => c.resume_id);
-  const visibleSelectedCount = selectable && selectedIds
-    ? visibleIds.filter((id) => selectedIds.has(id)).length
-    : 0;
-  const allVisibleSelected = visibleIds.length > 0 && visibleSelectedCount === visibleIds.length;
-  const someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
+  
+  const visibleSelectedCount = visibleIds.filter((id) =>
+    selectedCandidates.has(id)
+  ).length;
+
+  const allVisibleSelected =
+    visibleIds.length > 0 &&
+    visibleSelectedCount === visibleIds.length;
+
+  const someVisibleSelected =
+    visibleSelectedCount > 0 &&
+    visibleSelectedCount < visibleIds.length;
 
 
 
-  const downloadResume = async (path: string, fileName: string) => {
-    try {
-      await resumeUploadService.downloadResume(path, fileName);
-    } catch (error) {
-      console.error("Error downloading resume:", error);
-      toast.error("Failed to download resume. Please try again.");
-    }
-  };
 
 
   return (
@@ -134,7 +134,7 @@ export function CandidatesTable({
 
 
             <colgroup>
-              {selectable && <col className="w-10" />}
+              <col className="w-6" />
 
               {/* Candidate */}
               <col className={compact ? "w-52" : "w-60"} />
@@ -167,19 +167,30 @@ export function CandidatesTable({
 
 
             <thead className="sticky top-0 z-20 bg-[#F5F3EE]">
-              <tr className="border-b border-[#E8E5DF] bg-[#F5F3EE]">
-                {selectable && (
-                  <th className="px-3 py-2.5 bg-[#F5F3EE]">
+
+
+              <tr className="w-10 border-b border-[#E8E5DF] bg-[#F5F3EE]">
+
+                <th className="px-3 py-2.5 bg-[#F5F3EE]">
+                  {!compact && (candidatesSelected || selectable) &&
                     <input
                       type="checkbox"
                       aria-label={allVisibleSelected ? "Deselect all on this page" : "Select all on this page"}
                       checked={allVisibleSelected}
                       ref={(el) => { if (el) el.indeterminate = someVisibleSelected; }}
-                      onChange={() => onTogglePage?.(visibleIds, !allVisibleSelected)}
-                      className="h-4 w-4 cursor-pointer accent-[#C85A17]"
+                      onChange={() => {
+                       
+                        togglePageSelection(visibleIds, !allVisibleSelected)
+                        
+                      
+                      }}
+                      className="h-3.5 w-3.5 cursor-pointer accent-[#000000]"
                     />
-                  </th>
-                )}
+                  }
+                </th>
+
+
+
                 {/* !Need Reimplementation */}
                 {/* {showToolbar ? (
                   <SortableHeader
@@ -282,19 +293,19 @@ export function CandidatesTable({
                   index={index}
                   key={c.resume_id}
                   candidate={c}
-                  categories={categories}
                   compact={compact}
                   stage={c.stage ?? defaultStage}
                   stages={stages}
                   onStageChange={(s) => onCandidateStageChange(c.resume_id, c.score_id, s)}
                   onManageStages={onManageStages}
                   selectable={selectable}
-                  selected={selectable ? !!selectedIds?.has(c.resume_id) : false}
-                  onToggle={onToggle}
+                  selected={selectedCandidates.has(c.resume_id)}
+                  onToggle={toggleSelection}
                   isOpen={search.screenId === c.resume_id}
                   setScreenId={setScreenId}
-                  setAnalysisTab={setAnalysisTab}
-                  downloadResume={downloadResume}
+
+                  MenuOptions={menuOptions}
+                  processingStatus={getRowStatus(c.resume_id)}
                 />
               ))}
 

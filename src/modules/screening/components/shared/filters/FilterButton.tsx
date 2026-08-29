@@ -55,8 +55,11 @@ export function FilterButton({
      */
     useEffect(() => {
         if (open) {
-            inputRef.current?.focus();
-            inputRef.current?.select();
+            const id = requestAnimationFrame(() => {
+                inputRef.current?.focus();
+                inputRef.current?.select();
+            });
+            return () => cancelAnimationFrame(id);
         }
     }, [open]);
 
@@ -122,7 +125,7 @@ export function FilterButton({
                     bg-[#FBF1E4]
                     pl-3
                     pr-2
-                    text-sm
+                    text-xs
                     transition-colors
                     hover:bg-[#F7E8D4]
                     hover:border-[#E8C695]

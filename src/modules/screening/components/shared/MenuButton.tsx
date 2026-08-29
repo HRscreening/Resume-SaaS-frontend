@@ -39,7 +39,7 @@ export function MenuButton({ options, data = null }: MenuButtonProps) {
                 {options?.map((option, index) => (
                     <DropdownMenuItem
                         key={index}
-                        onClick={() => { option.onClick(data) }}
+                        onClick={() => {console.log("I clicked"); option.onClick(data) }}
                         className="cursor-pointer">
                         {option.icon}
                         <span className="ml-2">{option.label}</span>

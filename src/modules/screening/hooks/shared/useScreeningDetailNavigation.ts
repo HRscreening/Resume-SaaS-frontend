@@ -22,6 +22,8 @@ export const useScreeningDetailsNavigation = () => {
         from: "/screenings/$id"
     });
 
+    
+
     const setAppType = (type: ScreeningDetailsSearchParams["appType"]) => {
         navigate({
             search: (prev) => ({
@@ -87,6 +89,7 @@ export const useScreeningDetailsNavigation = () => {
     const getApplicationSearchParams = (): ApplicationsSearchParams => {
         return applicationSearchSchema.parse(search);
     }
+
 
 
 

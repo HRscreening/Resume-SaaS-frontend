@@ -4,7 +4,7 @@ import type { Application } from "@/modules/screening/types/application.type";
 import CandidateRow from "@/modules/screening/components/Application/application_row";
 import { useSelectedApplications } from "@/modules/screening/hooks/application/custom/useSelectedApplication";
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
-import { resumeUploadService } from "@/lib/services/index"
+import { useScreeningApplicationsMutation } from "@/modules/screening/hooks/application/queries/application.hook";
 import { toast } from "sonner";
 import { type ApplicationsSearchParams, applicationSearchSchema } from "@/modules/screening/types/searchSchema"
 import { useApplicationActions } from "@/modules/screening/hooks/application/custom/useApplicationActions";
@@ -31,7 +31,7 @@ export function ApplicationTable({
     onLoadMore,
 }: ApplicationTableProps) {
 
-    const { search, setAppId } = useScreeningDetailsNavigation();
+    const { search,setAppId } = useScreeningDetailsNavigation();
     // Derive compact from URL params alone so the table layout is stable on
     // page reload — even before candidate data has loaded.
     const compact = !!search.appId;
@@ -39,8 +39,12 @@ export function ApplicationTable({
     const applicationSearchParams: ApplicationsSearchParams = applicationSearchSchema.parse(search);
     const { menuOptions: MenuOptions, getRowStatus } = useApplicationActions({ screeningId, applicationSearchParams });
 
+    
+    const { isPending } = useScreeningApplicationsMutation();
+
+
     const { ref: loadMoreRef, inView } = useInView({ threshold: 0, rootMargin: "300px", });
-    const { selectedApplications, togglePageSelection } = useSelectedApplications();
+    const { selectedApplications, togglePageSelection,toggleSelection } = useSelectedApplications();
 
 
     useEffect(() => {
@@ -51,6 +55,8 @@ export function ApplicationTable({
     }, [inView, hasMore, loadingMore, onLoadMore]);
 
 
+
+    const applicationsSelected = selectedApplications.size > 0;
 
     const visibleIds = candidates.map(c => c.id);
 
@@ -75,7 +81,8 @@ export function ApplicationTable({
                 <div className="max-h-[65vh] overflow-y-auto overflow-x-auto">
                     <table className="w-full text-sm table-fixed">
                         <colgroup>
-                            {selectable && <col className="w-10" />}
+                          
+                            <col className="w-5 px-5" />
                             <col className={compact ? "w-1/2" : "w-44 sm:w-48"} />
                             <col className={compact ? "w-1/2" : "w-40"} />
                             <col className="w-24" />
@@ -87,19 +94,31 @@ export function ApplicationTable({
                         <thead className="sticky top-0 z-20 bg-[#F5F3EE]">
                             <tr className="border-b border-[#E8E5DF] bg-[#F5F3EE]">
 
-                                {selectable && (
-                                    <th className="w-10 px-3 py-2.5 bg-[#F5F3EE]">
+                        
+
+                                <th className="w-10 px-3 py-2.5 bg-[#F5F3EE]">
+                                    {!compact && (applicationsSelected || selectable) && (
                                         <input
                                             type="checkbox"
-                                            aria-label={allVisibleSelected ? "Deselect all on this page" : "Select all on this page"}
+                                            aria-label={
+                                                allVisibleSelected
+                                                    ? "Deselect all on this page"
+                                                    : "Select all on this page"
+                                            }
                                             checked={allVisibleSelected}
-                                            ref={(el) => { if (el) el.indeterminate = someVisibleSelected; }}
+                                            ref={(el) => {
+                                                if (el) el.indeterminate = someVisibleSelected;
+                                            }}
                                             onChange={() =>
-                                                togglePageSelection(visibleApplications, !allVisibleSelected)}
-                                            className="h-4 w-4 cursor-pointer accent-[#C85A17]"
+                                                togglePageSelection(
+                                                    visibleApplications,
+                                                    !allVisibleSelected
+                                                )
+                                            }
+                                            className="h-3.5 w-3.5 cursor-pointer accent-[#000000]"
                                         />
-                                    </th>
-                                )}
+                                    )}
+                                </th>
 
                                 <th className="pl-3 pr-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide sticky left-0 z-10 bg-[#F5F3EE]">
                                     Candidate
@@ -158,6 +177,9 @@ export function ApplicationTable({
                                     compact={compact}
                                     selectable={selectable}
                                     isOpen={search.appId === c.id}
+                                    selected={selectedApplications.has(c.id)}
+                                    toggleSelection={toggleSelection}
+                                    isPending={isPending}
                                     setAppId={setAppId}
                                     MenuOptions={MenuOptions}
                                     processingStatus={getRowStatus(c.id)}

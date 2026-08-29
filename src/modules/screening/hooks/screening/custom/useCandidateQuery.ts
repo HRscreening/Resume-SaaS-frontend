@@ -1,18 +1,13 @@
 // Custom Hook for managing candidate query state in a screening context. It handles URL synchronization, debounced search input, and backend request preparation.
 
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useCallback, useMemo } from "react";
 import { tiersToRange } from "@/modules/screening/components/Screening/filters/matchTiers";
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation"
 import type { ScreeningSearchParams, ScreeningDetailsSearchParams, RangeFilter, ScreeningSortRule, MatchTierId } from "@/modules/screening/types/searchSchema";
 import { screeningSearchSchema, uiSearchSchema, applicationSearchSchema } from "@/modules/screening/types/searchSchema";
 import { useScreeningResultsQuery } from "@/modules/screening/hooks/screening/queries/screening.query"
 import type { ScreeningFilterKey } from "@/modules/screening/types/searchSchema"
-
-
-const SEARCH_DEBOUNCE_MS = 550;
 
 
 

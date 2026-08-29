@@ -73,7 +73,7 @@ export type SortRule<T extends readonly [string, ...string[]]> = z.infer<ReturnT
 
 // ---------------- Common ----------------
 
-const ResumeSections = ["Active", "Archived"] as const;
+export const ResumeSections = ["Active", "Archived"] as const;
 
 
 // UI Search Params only used for navigation and UI state, not sent to backend
