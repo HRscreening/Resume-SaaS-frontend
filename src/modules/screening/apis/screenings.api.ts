@@ -133,7 +133,7 @@ export async function unarchiveResume({ screeningId, resumeId }: { screeningId: 
 
 // 
 export async function deleteResume({ screeningId, resumeId }: { screeningId: string, resumeId: string }): Promise<void> {
-  return request<void>(`/api/v1/screenings/${screeningId}/delete/${resumeId}`,{
+  return request<void>(`/api/v1/screenings/${screeningId}/delete/${resumeId}`, {
     method: "DELETE",
   });
 }
@@ -313,4 +313,32 @@ export async function deleteResumeMulti({ screeningId, resumeIds }: { screeningI
     method: "DELETE",
     body: JSON.stringify(resumeIds),
   });
+}
+
+
+// Screen/Rescore
+import { ResumeScoringBodyType } from "@/modules/screening/types/progress.type";
+export type ScreenResumesResponse = {
+  message?: string;
+  data: ResumeScoringBodyType[];
+  batch_id: string;
+}
+
+export const screenResume = async (
+  { resumeIds, screeningId, isRescore = false }: BaseMultiResumeVariables & { isRescore?: boolean }
+): Promise<ScreenResumesResponse> => {
+  try {
+    const url = isRescore
+      ? `/api/v1/screenings/${screeningId}/screen-applications-new?is_rescore=true`
+      : `/api/v1/screenings/${screeningId}/screen-applications-new`;
+    const res = await request(url, {
+      'method': 'POST',
+      'body': JSON.stringify(resumeIds)
+    });
+
+    // console.log("Screening response:", res); // Log the response for debugging
+    return res as ScreenResumesResponse;
+  } catch (error) {
+    throw error;
+  }
 }

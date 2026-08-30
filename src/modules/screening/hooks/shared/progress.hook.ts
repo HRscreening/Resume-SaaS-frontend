@@ -24,6 +24,7 @@ export function useActiveParsingQuery({
                 batch_id,
             }),
         staleTime: 5 * 60 * 1000, // 5 minutes
+        refetchInterval: 90 * 1000, // 1.5 minute
     });
 }
 
@@ -42,5 +43,6 @@ export function useActiveScoringQuery({
                 batch_id,
             }),
         staleTime: 5 * 60 * 1000, // 5 minutes
+        refetchInterval: 90 * 1000, // 1.5 minute
     });
 }

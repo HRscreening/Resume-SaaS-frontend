@@ -12,7 +12,6 @@ import { toast } from "sonner";
 import { useGetBatchesQuery } from "@/modules/screening/hooks/shared/batch.hook";
 import ResumeScoringProgress from "@/modules/screening/components/Screening/resumeScoringProgress";
 import { ApplicationQueryKeys } from "@/modules/screening/queryKeys";
-import { useScreeningApplicationsMutation } from "@/modules/screening/hooks/application/queries/application.hook";
 import { SelectedCandidatesProvider, useSelectedCandidates } from "@/modules/screening/hooks/screening/custom/useSelectedCandidates";
 import type { RankedCandidate, RubricCategory } from "@/types";
 import { DEFAULT_STAGES } from "@/lib/stages";
@@ -67,7 +66,6 @@ function ScreeningDetailContent({
 
     const { selectedCandidates,showSelectedOnly,clearSelection } = useSelectedCandidates();
 
-    const { mutateAsync: screenResumesMutate, isPending: isRescoringMutation } = useScreeningApplicationsMutation();
     const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
     const [showStages, setShowStages] = useState(false);
 

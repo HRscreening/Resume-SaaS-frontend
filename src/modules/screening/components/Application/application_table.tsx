@@ -4,7 +4,6 @@ import type { Application } from "@/modules/screening/types/application.type";
 import CandidateRow from "@/modules/screening/components/Application/application_row";
 import { useSelectedApplications } from "@/modules/screening/hooks/application/custom/useSelectedApplication";
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
-import { useScreeningApplicationsMutation } from "@/modules/screening/hooks/application/queries/application.hook";
 import { toast } from "sonner";
 import { type ApplicationsSearchParams, applicationSearchSchema } from "@/modules/screening/types/searchSchema"
 import { useApplicationActions } from "@/modules/screening/hooks/application/custom/useApplicationActions";
@@ -40,7 +39,7 @@ export function ApplicationTable({
     const { menuOptions: MenuOptions, getRowStatus } = useApplicationActions({ screeningId, applicationSearchParams });
 
     
-    const { isPending } = useScreeningApplicationsMutation();
+    const isPending  = loading || backgGroundFetching;
 
 
     const { ref: loadMoreRef, inView } = useInView({ threshold: 0, rootMargin: "300px", });

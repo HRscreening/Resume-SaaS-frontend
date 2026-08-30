@@ -19,6 +19,8 @@ import type { StagesMap } from "@/types";
 import { ResumeSections } from "@/modules/screening/types/screening.type"
 import { useMultiScoredResumeUtility, type MultiMutationOptions } from "@/modules/screening/hooks/screening/queries/screening.query"
 import { archiveResumeMulti, deleteResumeMulti, unarchiveResumeMulti, downloadSelectedResumes, callSelectedScreenings, exportSelectedScreenings, rescoreScreenings, changeScreeningsStage, shareScreenings } from "@/modules/screening/apis/screenings.api"
+import { useScoringMutation } from "@/modules/screening/hooks/shared/useScoringMutation"
+import { UtilityButton } from "@/modules/screening/components/shared/MultiSelectUtilityButton"
 
 
 import {
@@ -53,7 +55,7 @@ function getIdsFromSet(set: Set<string>): string[] {
 
 interface CandidateMultiSelectToolBarProps {
   type: ResumeSections,
-  isMultiSelectMode: boolean;
+  isMultiSelectMode?: boolean;
   setIsMultiSelectMode: (value: boolean) => void;
   analysisOpen: boolean;
   stages: StagesMap | undefined | null;
@@ -61,7 +63,7 @@ interface CandidateMultiSelectToolBarProps {
 
 const CandidateMultiSelectToolBar = ({
   type,
-  isMultiSelectMode,
+  isMultiSelectMode = false,
   setIsMultiSelectMode,
   analysisOpen,
   stages
@@ -85,7 +87,7 @@ const CandidateMultiSelectToolBar = ({
   const multiDeleteMutation = useMultiScoredResumeUtility(deleteResumeMulti, TOAST_MESSAGES.DELETE)
   const multiCallMutation = useMultiScoredResumeUtility(callSelectedScreenings)
   const multiExportMutation = useMultiScoredResumeUtility(exportSelectedScreenings, TOAST_MESSAGES.EXPORT)
-  const multiRescoreMutation = useMultiScoredResumeUtility(rescoreScreenings, TOAST_MESSAGES.RESCORE)
+  const multiRescoreMutation = useScoringMutation(TOAST_MESSAGES.RESCORE)
   const multiChangeStageMutation = useMultiScoredResumeUtility(changeScreeningsStage, TOAST_MESSAGES.CHANGE_STAGE)
   const multiShareMutation = useMultiScoredResumeUtility(shareScreenings, TOAST_MESSAGES.SHARE)
 
@@ -162,6 +164,28 @@ const CandidateMultiSelectToolBar = ({
   }
 
 
+  async function handleRescore() {
+    if (selectedCandidates.size === 0) {
+      toast.error("No candidates selected for Screening.");
+      return;
+    }
+
+    try {
+      const resume_ids = getIdsFromSet(selectedCandidates);
+      const res = await multiRescoreMutation.mutateAsync({ screeningId: screening_id, resumeIds: resume_ids,isRescore:true });
+      toast.success(res.message || "Candidates scoring batch started successfully.");
+      closeToolBar()
+    }
+    catch (error) {
+      toast.error("Error Screening candidates. Please try again.");
+    }
+
+
+
+  }
+
+
+
 
 
   // compact mode kicks in once the analysis panel eats up horizontal space
@@ -233,11 +257,7 @@ const CandidateMultiSelectToolBar = ({
 
           <UtilityButton title="Re-score"
 
-            onClick={() => {
-              multiRescoreMutation.mutate(
-                { screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) },
-                { onSuccess: closeToolBar })
-            }}
+            onClick={handleRescore}
             Icon={RefreshCw} compact={compact} isLoading={multiRescoreMutation.isPending} />
 
           <UtilityButton title="Export"
@@ -274,81 +294,6 @@ const CandidateMultiSelectToolBar = ({
 export default CandidateMultiSelectToolBar
 
 
-// UtilityButton — variant-driven, and collapses to icon-only + tooltip in compact mode
-
-interface UtilityButtonProps {
-  title: string;
-  onClick: () => void;
-  disabled?: boolean;
-  isLoading?: boolean;
-  className?: string;
-  Icon?: LucideIcon;
-  variant?: "default" | "primary" | "ghost" | "danger";
-  compact?: boolean;
-}
-
-const VARIANT_STYLES: Record<NonNullable<UtilityButtonProps["variant"]>, string> = {
-  default:
-    "border border-[#D9D6CE] bg-white text-[#3A3A3A] hover:bg-[#F5F3EE] hover:border-[#C9C5BA]",
-  primary:
-    "border border-[#0F0F0F] bg-[#0F0F0F] text-white hover:bg-[#262626]",
-  ghost:
-    "border border-transparent bg-transparent text-[#595959] hover:bg-[#F0EEE8]",
-  danger:
-    "border border-[#F2D6D6] bg-white text-[#C4372B] hover:bg-[#FBEEEE] hover:border-[#E8B8B8]",
-};
-
-function UtilityButton({
-  title,
-  onClick,
-  disabled = false,
-  isLoading = false,
-  className = "",
-  Icon,
-  variant = "default",
-  compact = false,
-}: UtilityButtonProps) {
-  // icon-only compact form needs an icon to render meaningfully; fall back to
-  // showing the label if no icon was passed (e.g. Export without one)
-  const iconOnly = compact && !!Icon;
-
-  const button = (
-    <button
-      onClick={onClick}
-      disabled={disabled || isLoading}
-      aria-label={title}
-      className={`
-        inline-flex items-center justify-center gap-1.5
-        h-9 rounded-xl
-        text-sm font-medium
-        transition-colors
-        cursor-pointer whitespace-nowrap
-        ${iconOnly ? "w-9 px-0" : "px-3.5"}
-        ${VARIANT_STYLES[variant]}
-        ${className}
-        ${disabled || isLoading ? "opacity-50 cursor-not-allowed hover:bg-transparent" : ""}
-      `}
-    >
-      {isLoading ? (
-        <LoadingSpinner />
-      ) : (
-        Icon && <Icon className="w-4 h-4" />
-      )}
-      {!iconOnly && title}
-    </button>
-  )
-
-  if (!iconOnly) return button;
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent side="top">
-        <p>{title}</p>
-      </TooltipContent>
-    </Tooltip>
-  )
-}
 
 
 interface StageSelectButtonProps {

@@ -12,6 +12,8 @@ import { getLocalStorage, setLocalStorage } from "@/utils/localStorage";
 type SelectedApplicationsContextType = {
     screening_id: string;
     selectedApplications: Set<string>;
+    showSelectedOnly: boolean;
+    setShowSelectedOnly: (value: boolean) => void;
     toggleSelection: (applicationId: string) => void;
     isSelected: (applicationId: string) => boolean;
     clearSelection: () => void;
@@ -32,6 +34,7 @@ export function SelectedApplicationsProvider({
     children: ReactNode;
 }) {
 
+    const [showSelectedOnly, setShowSelectedOnly] = useState(false);
     const storageKey = `job:selected-applications:${screening_id}`;
 
     const [selectedApplications, setSelectedApplications] = useState<Set<string>>((
@@ -95,6 +98,8 @@ export function SelectedApplicationsProvider({
             value={{
                 screening_id,
                 selectedApplications,
+                showSelectedOnly,
+                setShowSelectedOnly,
                 toggleSelection,
                 isSelected,
                 clearSelection,
