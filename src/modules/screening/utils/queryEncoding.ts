@@ -149,15 +149,9 @@ export function buildScreeningFiltersBody(
     pors:
       params.sPors || undefined,
 
-    skills:
-      params.sSkills
-        ? JSON.stringify(params.sSkills)
-        : undefined,
+    skills: params.sSkills || undefined,
 
-    lang:
-      params.sLang
-        ? JSON.stringify(params.sLang)
-        : undefined,
+    lang: params.sLang || undefined,
   };
 }
 
@@ -273,11 +267,7 @@ export function buildApplicationFiltersBody(params: ApplicationsSearchParams) {
     certification: params.certification || undefined,
     achivement: params.achivement || undefined,
     pors: params.pors || undefined,
-    skills: params.skills
-      ? JSON.stringify(params.skills)
-      : undefined,
-    lang: params.lang
-      ? JSON.stringify(params.lang)
-      : undefined,
+    skills: params.skills || undefined,
+    lang: params.lang || undefined,
   };
 }
