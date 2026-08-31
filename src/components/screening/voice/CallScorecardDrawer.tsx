@@ -6,7 +6,6 @@ import {
 } from "@/lib/api";
 import { updateCandidateStage } from "@/modules/screening/apis/stages";
 
-import { REJECTED_STAGE } from "@/lib/stages";
 import type { CallScorecardDetail } from "@/types";
 import { VoiceScorecardDetails } from "./VoiceScorecardDetails";
 
@@ -142,13 +141,7 @@ export function CallScorecardDrawer({ screeningId, callId, onClose }: Props) {
                     Advance to {nextStage}
                   </button>
                 )}
-                <button
-                  onClick={() => stageMut.mutate({ scoreId: sc.score_id!, stage: REJECTED_STAGE })}
-                  disabled={stageMut.isPending || sc.stage === REJECTED_STAGE}
-                  className="h-9 px-4 border border-red-300 text-red-700 text-xs font-medium rounded-xl hover:bg-red-50 disabled:opacity-60"
-                >
-                  Reject
-                </button>
+                
                 {sc.stage && <span className="text-xs text-[#737373]">Current stage: {sc.stage}</span>}
               </div>
             )}

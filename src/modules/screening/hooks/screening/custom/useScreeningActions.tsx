@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import { type Option } from "@/modules/screening/components/shared/MenuButton";
 import { resumeUploadService } from "@/lib/services/index";
 
-
 export function useScreeningActions({
     screeningId,
 }: {
@@ -21,7 +20,13 @@ export function useScreeningActions({
 
     const screeningSearchParams = getScreeningSearchParams() as ScreeningSearchParams;
 
+
     const [localActions, setLocalActions] = useState(new Map<string, ScreeningActionStatus["action"]>());
+
+    const [shareCandidate, setShareCandidate] = useState<RankedCandidate | null>(null);
+
+    const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+
 
     // Use localActions to track the status of actions for each application. This allows us to show a loading state for individual rows without affecting the entire table.
     const startLocalAction = (resumeId: string, action: ScreeningActionStatus["action"]) => {
@@ -139,7 +144,10 @@ export function useScreeningActions({
             label: "Share",
             icon:
                 <Share2 size={12} />,
-            onClick: () => { }
+            onClick: (candidate: RankedCandidate) => {
+                setShareCandidate(candidate);
+                setIsShareDialogOpen(true);
+            },
         },
 
     ]
@@ -164,7 +172,7 @@ export function useScreeningActions({
     }
     else if (screenType === "Archived") {
         menuOptions.push({
-            label: "UnArchive",
+            label: "Unarchive",
             icon: <Archive size={12} />,
             onClick: (candidate: RankedCandidate) => {
                 unarchiveMutation.mutate({
@@ -235,5 +243,10 @@ export function useScreeningActions({
     return {
         menuOptions,
         getRowStatus,
+
+        shareCandidate,
+        setShareCandidate,
+        isShareDialogOpen,
+        setIsShareDialogOpen,
     };
 }

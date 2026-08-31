@@ -4,6 +4,9 @@ const InfoSheetSkeleton = () => {
     return (
         <Sheet open={true} modal={false}>
             <SheetContent
+                onOpenAutoFocus={(event) => {
+                    event.preventDefault()
+                }}
                 showOverlay={false}
                 className="!w-full sm:!max-w-[600px] overflow-y-auto p-0 !z-40"
             >

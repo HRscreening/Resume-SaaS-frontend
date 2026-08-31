@@ -24,8 +24,6 @@ import { UtilityButton } from "@/modules/screening/components/shared/MultiSelect
 
 
 import {
-  REJECTED_STAGE,
-  REJECTED_COLOR,
   getStageMeta,
   sortedStages,
   tintColor,
@@ -389,31 +387,6 @@ function StageSelectButton({
             </span>
           </DropdownMenuItem>
         ))}
-
-        <DropdownMenuItem
-          key="Reject"
-          className="
-            h-8 px-2 rounded-lg
-            text-sm text-[#404040]
-            cursor-pointer outline-none
-            hover:bg-[#F5F3EE]
-          "
-          onClick={() => onOptionClick("Rejected")}
-        >
-          <span
-            className="inline-flex items-center gap-1.5 h-6 px-2 rounded-full text-xs font-medium"
-            style={{
-              backgroundColor: tintColor(REJECTED_COLOR),
-              color: shadeColor(REJECTED_COLOR),
-            }}
-          >
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ backgroundColor: REJECTED_COLOR }}
-            />
-            Reject
-          </span>
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

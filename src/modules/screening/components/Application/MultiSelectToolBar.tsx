@@ -5,7 +5,7 @@ import {
   Plus,
   Share2,
   PhoneCall,
-  RefreshCw,
+  ScanSearch,
   FileText,
   Archive,
   ArchiveRestore,
@@ -14,7 +14,8 @@ import {
 import { toast } from 'sonner'
 import { ResumeSections } from "@/modules/screening/types/screening.type"
 import { useMultiApplicationResumeUtility, type MultiMutationOptions } from "@/modules/screening/hooks/application/queries/application.hook"
-import { archiveResumeMulti, deleteResumeMulti, unarchiveResumeMulti, downloadSelectedResumes, callSelectedScreenings, exportSelectedScreenings, rescoreScreenings, changeScreeningsStage, shareScreenings } from "@/modules/screening/apis/screenings.api"
+import { archiveResumeMulti, deleteResumeMulti, unarchiveResumeMulti, downloadSelectedResumes, } from "@/modules/screening/apis/screenings.api"
+import { exportSelectedApplications } from "@/modules/screening/apis/addApplications"
 import { UtilityButton } from "@/modules/screening/components/shared/MultiSelectUtilityButton"
 import {useScoringMutation} from "@/modules/screening/hooks/shared/useScoringMutation"
 
@@ -58,7 +59,7 @@ const CandidateMultiSelectToolBar = ({
   const multiUnarchiveMutation = useMultiApplicationResumeUtility(unarchiveResumeMulti, TOAST_MESSAGES.UNARCHIVE)
   const multiDeleteMutation = useMultiApplicationResumeUtility(deleteResumeMulti, TOAST_MESSAGES.DELETE)
   const multiScoreMutation = useScoringMutation(TOAST_MESSAGES.SCORE)
-  const multiExportMutation = useMultiApplicationResumeUtility(exportSelectedScreenings, TOAST_MESSAGES.EXPORT)
+  const multiExportMutation = useMultiApplicationResumeUtility(exportSelectedApplications, TOAST_MESSAGES.EXPORT)
 
   const closeToolBar = () => {
     setIsMultiSelectMode(false)
@@ -195,7 +196,7 @@ const CandidateMultiSelectToolBar = ({
 
           <UtilityButton title="Screen"
             onClick={submitScreen}
-            Icon={PhoneCall} compact={compact} isLoading={multiScoreMutation.isPending} variant='default' />
+            Icon={ScanSearch} compact={compact} isLoading={multiScoreMutation.isPending} variant='default' />
 
           {(type === "Active" || type === "Archived") && (
             <div className="h-5 w-px bg-[#E5E2DA] mx-1" />

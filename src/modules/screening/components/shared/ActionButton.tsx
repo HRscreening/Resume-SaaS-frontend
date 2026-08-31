@@ -23,7 +23,8 @@ export const ActionButton = ({
 
 
     return (
-        <Tooltip>
+        <Tooltip
+        >
             <TooltipTrigger asChild>
                 <button
                     onClick={onClick}
@@ -61,7 +62,9 @@ export const ActionButton = ({
             </TooltipTrigger>
 
             {compacted && (
-                <TooltipContent>
+                <TooltipContent
+                    autoFocus={false}
+                >
                     <p className="text-xs">{description ?? title}</p>
                 </TooltipContent>
             )}
