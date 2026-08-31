@@ -349,6 +349,8 @@ export interface QualificationConfig {
   role_facts?: string[];
 }
 
+export type InterviewDepth = "screening" | "deep_dive";
+
 export interface VoiceConfig {
   enabled: boolean;
   question_plan: QuestionPlanItem[];
@@ -364,7 +366,7 @@ export interface VoiceConfig {
   max_concurrent_calls_override: number | null;
   qualification?: QualificationConfig | null;
   /** Screening: 3-4 quick fit questions. Deep dive: 5-6 technical, role-level. */
-  interview_depth?: "screening" | "deep_dive";
+  interview_depth?: InterviewDepth;
 }
 
 export interface VoiceConfigResponse {
