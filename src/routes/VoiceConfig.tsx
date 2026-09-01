@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import type { Rubric, VoiceConfig, QuestionPlanItem, QualificationConfig, InterviewDepth } from "@/types";
 import { truncate } from "@/lib/utils";
+import { useIsViewer } from "@/lib/useIsViewer";
 
 const DEFAULT_CONFIG: VoiceConfig = {
   // True because the enable toggle below is hidden: saving the round IS what
@@ -61,6 +62,8 @@ function interviewableCompetencies(rubric: Rubric | null): string[] {
 }
 
 export default function VoiceConfigPage() {
+  // Presentation only; the API refuses viewer writes regardless.
+  const isViewer = useIsViewer();
   const { id } = useParams({ strict: false }) as { id: string };
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -711,14 +714,14 @@ export default function VoiceConfigPage() {
               >
                 Cancel
               </Link>
-              <button
+              {!isViewer && <button
                 onClick={() => saveMutation.mutate()}
                 disabled={saveMutation.isPending || saveBlockers.length > 0}
                 title={saveBlockers.length > 0 ? saveBlockers.join(" ") : undefined}
                 className="h-9 px-5 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {saveMutation.isPending ? "Saving…" : isEditing ? "Save changes" : "Save voice round"}
-              </button>
+              </button>}
             </div>
           </div>
         </div>

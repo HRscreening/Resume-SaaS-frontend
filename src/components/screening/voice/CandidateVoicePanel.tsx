@@ -15,6 +15,7 @@ import { VoiceScorecardDetails } from "./VoiceScorecardDetails";
 import { InterruptionNotice } from "./InterruptionNotice";
 import { toInputValue, defaultScheduleValue } from "@/lib/scheduleTime";
 import { ExternalLink, Loader2 } from "lucide-react";
+import { useIsViewer } from "@/lib/useIsViewer";
 
 interface CandidateVoicePanelProps {
   screeningId: string;
@@ -86,6 +87,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
   // number from their resume; any edit overrides just this call. Remove the
   // PhoneEditor + this state to revert to read-only phone display.
   const [phoneDraft, setPhoneDraft] = useState<string | null>(null);
+  const isViewer = useIsViewer();
   const [editingPhone, setEditingPhone] = useState(false);
 
   const { data: config, isLoading: configLoading } = useQuery({
@@ -192,12 +194,12 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
   ) : (
     <div className="flex items-center gap-2 text-xs text-[#737373]">
       <span>{phoneValue || "No number on file"}</span>
-      <button
+      {!isViewer && <button
         onClick={() => setEditingPhone(true)}
         className="text-[11px] font-medium text-[#0F0F0F] underline underline-offset-2 hover:text-[#C85A17]"
       >
         edit
-      </button>
+      </button>}
     </div>
   );
 
@@ -266,7 +268,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
   // datetime input on the first keystroke and stole its focus, which made the
   // field impossible to fill in. Calling them inlines the JSX into this
   // component's tree instead, so the input keeps its DOM node and its focus.
-  const callButtons = (recall?: boolean) => (
+  const callButtons = (recall?: boolean) => isViewer ? null : (
     <div className="flex flex-wrap items-center gap-2">
       <button
         onClick={() => callMut.mutate({ phone: phoneValue })}

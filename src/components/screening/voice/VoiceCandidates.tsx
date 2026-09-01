@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { listCallCandidates, triggerVoiceCalls } from "@/lib/api";
 import type { CandidateCallReason } from "@/types";
 import { defaultScheduleValue } from "@/lib/scheduleTime";
+import { useIsViewer } from "@/lib/useIsViewer";
 
 const REASON: Record<CandidateCallReason, { label: string; style: string }> = {
   callable: { label: "Callable", style: "bg-green-100 text-green-700" },
@@ -28,6 +29,7 @@ interface VoiceCandidatesProps {
 }
 
 export function VoiceCandidates({ screeningId }: VoiceCandidatesProps) {
+  const isViewer = useIsViewer();
   const queryClient = useQueryClient();
   // resume_id whose inline schedule picker is open, and its chosen local time.
   const [schedulingFor, setSchedulingFor] = useState<string | null>(null);
@@ -180,7 +182,7 @@ export function VoiceCandidates({ screeningId }: VoiceCandidatesProps) {
                           </button>
                         </div>
                       </div>
-                    ) : (
+                    ) : isViewer ? null : (
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => openScheduler(c.resume_id)}

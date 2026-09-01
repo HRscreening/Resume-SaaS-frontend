@@ -10,6 +10,7 @@ import { CallScorecardDrawer } from "@/components/screening/voice/CallScorecardD
 import { VoiceCandidates } from "@/components/screening/voice/VoiceCandidates";
 import { BulkScheduleDialog } from "@/components/screening/voice/BulkScheduleDialog";
 import { UpcomingCallsPanel } from "@/components/screening/voice/UpcomingCallsPanel";
+import { useIsViewer } from "@/lib/useIsViewer";
 
 // Buckets that are still moving through the pipeline → keep polling.
 const ACTIVE_DISPLAY: CallDisplayStatus[] = ["queued", "calling", "in_interview", "processing"];
@@ -40,6 +41,7 @@ function isScheduledPending(c: CallListItem): boolean {
 }
 
 export default function VoiceCalls() {
+  const isViewer = useIsViewer();
   const { id } = useParams({ strict: false }) as { id: string };
   const queryClient = useQueryClient();
   const [openCallId, setOpenCallId] = useState<string | null>(null);
@@ -123,19 +125,23 @@ export default function VoiceCalls() {
           >
             Configure
           </Link>
-          <button
-            onClick={() => setBulkOpen(true)}
-            className="h-9 px-4 border border-[#D4D4D4] text-xs font-medium text-[#404040] rounded-xl hover:bg-white"
-          >
-            Schedule interviews
-          </button>
-          <button
-            onClick={() => triggerMut.mutate()}
-            disabled={triggerMut.isPending}
-            className="h-9 px-4 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-xs font-medium rounded-xl hover:bg-[#262626] disabled:opacity-60"
-          >
-            {triggerMut.isPending ? "Starting…" : "Start screening calls"}
-          </button>
+          {!isViewer && (
+            <>
+              <button
+                onClick={() => setBulkOpen(true)}
+                className="h-9 px-4 border border-[#D4D4D4] text-xs font-medium text-[#404040] rounded-xl hover:bg-white"
+              >
+                Schedule interviews
+              </button>
+              <button
+                onClick={() => triggerMut.mutate()}
+                disabled={triggerMut.isPending}
+                className="h-9 px-4 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-xs font-medium rounded-xl hover:bg-[#262626] disabled:opacity-60"
+              >
+                {triggerMut.isPending ? "Starting…" : "Start screening calls"}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -224,7 +230,7 @@ export default function VoiceCalls() {
                       >
                         Review
                       </button>
-                    ) : isScheduledPending(c) ? (
+                    ) : isScheduledPending(c) && !isViewer ? (
                       <button
                         onClick={() => cancelMut.mutate(c.id)}
                         disabled={cancelMut.isPending && cancelMut.variables === c.id}
