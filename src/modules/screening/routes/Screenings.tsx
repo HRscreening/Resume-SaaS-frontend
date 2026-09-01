@@ -11,12 +11,15 @@ import { useScreeningMutation } from "@/modules/screening/hooks/screening/querie
 import { archiveScreening, unarchiveScreening, deleteScreening } from "@/modules/screening/apis/screenings.api";
 import { ConfirmScreeningDelete } from "@/modules/screening/components/Dialogs/ConfirmScreeningDelete";
 import { ActionButton } from "@/modules/screening/components/shared/ActionButton";
+import { useIsViewer } from "@/lib/useIsViewer";
 
 
 const TableHeader = ["Title", "Applications", "Screened", "Last Accessed", "Action"];
 
 type ScreeningType = "Active" | "Archived" | "Deleted";
 export default function Screenings() {
+  // Presentation only — the API refuses viewer writes regardless.
+  const isViewer = useIsViewer();
 
   const navigate = useNavigate({ from: "/screenings" });
   const searchParams = useSearch({ strict: false }) as ScreeningsSearchParams;
@@ -85,14 +88,14 @@ export default function Screenings() {
         <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">Screenings</h1>
         <div className="flex items-center gap-3">
           <CustomMenuButton selectedOption={params.type} options={options} handleOptionClick={handleOptionClick} />
-          <Link
+          {!isViewer && <Link
             to="/screenings/new"
             className="h-10 px-3 sm:px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center gap-2 shrink-0"
           >
             <Plus size={16} />
             <span className="hidden sm:inline">New screening</span>
             <span className="sm:hidden">New</span>
-          </Link>
+          </Link>}
         </div>
       </div>
 

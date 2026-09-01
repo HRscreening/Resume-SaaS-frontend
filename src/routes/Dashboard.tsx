@@ -4,6 +4,7 @@ import { listScreenings, getUsage, getScreening} from "@/lib/api";
 import { useUserKey } from "@/lib/userKey";
 import { formatRelativeDate } from "@/lib/utils";
 import type { Screening } from "@/modules/screening/types/screening.type";
+import { useIsViewer } from "@/lib/useIsViewer";
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -28,6 +29,8 @@ function StatusPill({ status }: { status: string }) {
 }
 
 export default function Dashboard() {
+  // Presentation only — the API refuses viewer writes regardless.
+  const isViewer = useIsViewer();
   const qc = useQueryClient();
   function prefetch(id: string) {
     qc.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
@@ -59,7 +62,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">Dashboard</h1>
         </div>
-        <Link
+        {!isViewer && <Link
           to="/screenings/new"
           className="h-10 px-3 sm:px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center gap-2 shrink-0"
         >
@@ -68,7 +71,7 @@ export default function Dashboard() {
           </svg>
           <span className="hidden sm:inline">New screening</span>
           <span className="sm:hidden">New</span>
-        </Link>
+        </Link>}
       </div>
 
       {/* Stat cards */}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useIsViewer } from "@/lib/useIsViewer";
 import { createClient } from "@/lib/supabase/client";
 import { clearAuthCache } from "@/lib/auth";
 import { getUsage, listScreenings } from "@/lib/api";
@@ -77,6 +78,7 @@ const ChevronRight = () => (
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: <HomeIcon />, exact: true },
   { href: "/screenings", label: "Jobs", icon: <ListIcon /> },
+  // Creating is a write, so viewers never see this entry (see viewerNavItems).
   { href: "/screenings/new", label: "New Job", icon: <PlusIcon />, exact: true },
   // { href: "/candidates", label: "Candidates", icon: <User size={14} />, exact: true },
 ];
@@ -118,6 +120,7 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const queryClient = useQueryClient();
+  const isViewer = useIsViewer();
 
   const { data: usage } = useQuery({
     queryKey: useUserKey("usage"),
@@ -216,7 +219,7 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
 
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-0.5" aria-label="Sidebar navigation">
-        {navItems.map((item) => {
+        {navItems.filter((item) => !(isViewer && item.href === "/screenings/new")).map((item) => {
           const active = isActive(item);
           // Dashboard and /screenings both consume the screenings list;
           // /screenings/new doesn't strictly need it but prefetching is cheap

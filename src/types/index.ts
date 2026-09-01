@@ -15,6 +15,8 @@ export interface Profile {
   company_name: string | null;
   plan: SubscriptionPlan;
   onboarding_completed: boolean;
+  /** Session is read-only: hide write controls. Server-side guard is the real enforcement. */
+  is_viewer?: boolean;
   stripe_customer_id: string | null;
   created_at: string;
   updated_at: string;
