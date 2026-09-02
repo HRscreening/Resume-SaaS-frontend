@@ -12,17 +12,17 @@ import { toast } from "sonner";
 import { useGetBatchesQuery } from "@/modules/screening/hooks/shared/batch.hook";
 import ResumeScoringProgress from "@/modules/screening/components/Screening/resumeScoringProgress";
 import { ApplicationQueryKeys } from "@/modules/screening/queryKeys";
-import { useScreeningApplicationsMutation } from "@/modules/screening/hooks/application/queries/application.hook";
-import {RescoreSelectedCandidatesProvider,useRescoreSelectedCandidates} from "@/modules/screening/hooks/screening/custom/useRescoreSelectedCandidates";
+import { SelectedCandidatesProvider, useSelectedCandidates } from "@/modules/screening/hooks/screening/custom/useSelectedCandidates";
 import type { RankedCandidate, RubricCategory } from "@/types";
 import { DEFAULT_STAGES } from "@/lib/stages";
 import { StagesDialog } from "@/components/screening/StagesDialog";
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 import { ScreeningToolbar } from "@/modules/screening/components/Screening/filters/ScreeningToolbar";
 import { CustomMenuButton } from "@/modules/screening/components/shared/MenuButton"
-import {type ScreeningDetailsSearchParams} from "@/modules/screening/types/searchSchema"
+import { type ScreeningDetailsSearchParams } from "@/modules/screening/types/searchSchema"
 import { CircleCheck, Archive } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import AnalysisSheetSkeleton from "@/modules/screening/components/Screening/AnalysisSheetSkeleton";
+import CandidateMultiSelectToolBar from "@/modules/screening/components/Screening/CandidateMultiSelectToolBar";
 
 
 const tableOptions = ["All", "Active", "Archived", "Deleted"];
@@ -44,7 +44,7 @@ interface ScreeningDetailProps {
     setCurrentTab: (tab: Sections) => void;
     setSourceMode: (mode: boolean) => void;
     rescoreMode?: boolean;
-    setRescoreMode?: (mode: boolean) => void;
+    setRescoreMode: (mode: boolean) => void;
 }
 
 
@@ -64,19 +64,11 @@ function ScreeningDetailContent({
 
     const { data: active_batches } = useGetBatchesQuery(id);
 
-    const {
-        selectedCandidates,
-        selectedDetails,
-        toggleSelection: hookToggleSelection,
-        togglePageSelection: hookTogglePageSelection,
-        clearSelection,
-    } = useRescoreSelectedCandidates();
+    const { selectedCandidates,showSelectedOnly,clearSelection } = useSelectedCandidates();
 
-    const { mutateAsync: screenResumesMutate, isPending: isRescoringMutation } = useScreeningApplicationsMutation();
-
-    const [rescoreError, setRescoreError] = useState<string | null>(null);
+    const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
     const [showStages, setShowStages] = useState(false);
-    const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+
 
     const { screening, isPending: isJobDetailsFetching, error } = useScreening(id);
 
@@ -87,79 +79,13 @@ function ScreeningDetailContent({
     const candidateQuery = useCandidateQuery(id, { limit: PAGE_SIZE });
 
 
-    const { query: ScreeningResultsQuery,setScreenType } = candidateQuery;
+    const { query: ScreeningResultsQuery, setScreenType } = candidateQuery;
     const { data, isLoading, isFetching, fetchNextPage, isFetchingNextPage, hasNextPage } = ScreeningResultsQuery;
 
 
 
 
     const candidates = data?.pages.flatMap((page) => page.items) ?? []
-
-
-
-
-    async function submitRescore() {
-        if (selectedCandidates.size === 0 || isRescoringMutation) return;
-        setRescoreError(null);
-
-        try {
-            const resume_ids = Array.from(selectedCandidates);
-            const result = await screenResumesMutate({
-                screening_id: id,
-                resume_ids,
-                isRescore: true,
-            });
-            toast.success(result.message || "Candidate rescoring batch started successfully.");
-            exitRescoreMode();
-        } catch (err) {
-            setRescoreError(err instanceof Error ? err.message : "Failed to start rescore");
-        }
-    }
-
-    function exitRescoreMode() {
-        setRescoreMode?.(false);
-        clearSelection();
-        setShowSelectedOnly(false);
-    }
-
-    function toggleSelection(rid: string, e: React.MouseEvent | React.ChangeEvent) {
-        const visibleList = (
-            showSelectedOnly
-                ? Object.values(selectedDetails).filter((c) => selectedCandidates.has(c.resume_id))
-                : candidates
-        ).map((c) => c.resume_id);
-
-        hookToggleSelection(rid, e, visibleList, candidates);
-    }
-
-    function togglePage(ids: string[], select: boolean) {
-        hookTogglePageSelection(ids, select, candidates);
-    }
-
-    // Keyboard shortcuts (active in rescore mode).
-    useEffect(() => {
-        if (!rescoreMode) return;
-        function onKeyDown(e: KeyboardEvent) {
-            const t = e.target as HTMLElement | null;
-            if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-
-            if (e.key === "Escape") {
-                e.preventDefault();
-                if (showSelectedOnly) setShowSelectedOnly(false);
-                else exitRescoreMode();
-            } else if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) {
-                e.preventDefault();
-                const visible = (
-                    showSelectedOnly
-                        ? Object.values(selectedDetails).filter((c) => selectedCandidates.has(c.resume_id))
-                        : candidates
-                ).map((c) => c.resume_id);
-                togglePage(visible, true);
-            }
-        }
-        window.addEventListener("keydown", onKeyDown);
-        return () => window.removeEventListener("keydown", onKeyDown);
-    }, [rescoreMode, showSelectedOnly, selectedCandidates, selectedDetails]);
 
 
 
@@ -261,9 +187,12 @@ function ScreeningDetailContent({
                     ))}
                 </div>
 
-                <div className="my-4 flex items-center justify-between gap-2">
-                    <ScreeningToolbar categories={(screening.rubric as any)?.categories ?? []} candidateQuery={candidateQuery}  stages={stagesMap}/>
-                    <CustomMenuButton selectedOption={search.screenType} options={options} handleOptionClick={(e:TableOptions)=>setScreenType(e as ScreeningDetailsSearchParams["screenType"])}  align="end" />
+                <div className="my-3 flex items-center justify-between gap-2">
+                    <ScreeningToolbar categories={(screening.rubric as any)?.categories ?? []} candidateQuery={candidateQuery} stages={stagesMap} />
+                    <CustomMenuButton selectedOption={search.screenType} options={options} handleOptionClick={(e: TableOptions) => {
+                        setScreenType(e as ScreeningDetailsSearchParams["screenType"]);
+                        clearSelection();
+                        }} align="end" />
                 </div>
 
 
@@ -272,8 +201,8 @@ function ScreeningDetailContent({
                         (totalCandidates > 0) ||
                         (!showSelectedOnly)) &&
                         (() => {
-                            const selectedList = Object.values(selectedDetails)
-                                .filter((c) => selectedCandidates.has(c.resume_id))
+                            const selectedList = candidates
+                                .filter(candidate => selectedCandidates.has(candidate.resume_id))
                                 .sort((a, b) => a.rank - b.rank);
                             const tableCandidates = showSelectedOnly ? selectedList : candidates;
                             return (
@@ -286,13 +215,9 @@ function ScreeningDetailContent({
                                     loadingMore={isFetchingNextPage}
                                     onLoadMore={fetchNextPage}
                                     backgGroundFetching={isFetching}
-                                    
 
-                                    selectedIds={selectedCandidates}
                                     categories={rubricCategories}
                                     selectable={rescoreMode}
-                                    onTogglePage={togglePage}
-                                    onToggle={toggleSelection}
 
                                     stages={stagesMap}
                                     onCandidateStageChange={handleCandidateStageChange}
@@ -307,45 +232,7 @@ function ScreeningDetailContent({
                     The real AnalysisSheet mounts inside CandidateRow, so it doesn't
                     exist until candidate data arrives. This fills the 600px gap. */}
                 {(isLoading || candidates.length === 0) && analysisOpen && (
-                    <Sheet open={true} modal={false}>
-                        <SheetContent
-                            showOverlay={false}
-                            className="!w-full sm:!max-w-[600px] overflow-y-auto p-0 !z-40"
-                        >
-                            {/* Sheet header skeleton */}
-                            <SheetHeader className="px-6 pt-6 pb-4 border-b border-[#E8E5DF]">
-                                <SheetTitle className="text-sm font-semibold text-[#0F0F0F]">
-                                    <div className="flex items-center gap-2 mt-4">
-                                        <div className="h-5 w-16 rounded bg-[#E8E5DF] animate-pulse" />
-                                        <div className="h-5 w-16 rounded bg-[#E8E5DF] animate-pulse" />
-                                        <div className="h-5 w-16 rounded bg-[#E8E5DF] animate-pulse" />
-                                    </div>
-                                </SheetTitle>
-                            </SheetHeader>
-                            {/* Sheet body skeleton */}
-                            <div className="px-6 py-6 space-y-5">
-                                <div className="flex items-start gap-4">
-                                    <div className="h-12 w-12 rounded-full bg-[#E8E5DF] animate-pulse shrink-0" />
-                                    <div className="flex-1 space-y-2">
-                                        <div className="h-5 w-40 rounded bg-[#E8E5DF] animate-pulse" />
-                                        <div className="h-4 w-32 rounded bg-[#F0EDE8] animate-pulse" />
-                                    </div>
-                                </div>
-                                <div className="space-y-3">
-                                    <div className="h-4 w-full rounded bg-[#F0EDE8] animate-pulse" />
-                                    <div className="h-4 w-5/6 rounded bg-[#F0EDE8] animate-pulse" />
-                                    <div className="h-4 w-3/4 rounded bg-[#F0EDE8] animate-pulse" />
-                                    <div className="h-4 w-full rounded bg-[#F0EDE8] animate-pulse" />
-                                    <div className="h-4 w-2/3 rounded bg-[#F0EDE8] animate-pulse" />
-                                </div>
-                                <div className="space-y-3 pt-4">
-                                    <div className="h-20 w-full rounded-xl bg-[#F5F3EE] animate-pulse" />
-                                    <div className="h-20 w-full rounded-xl bg-[#F5F3EE] animate-pulse" />
-                                    <div className="h-20 w-full rounded-xl bg-[#F5F3EE] animate-pulse" />
-                                </div>
-                            </div>
-                        </SheetContent>
-                    </Sheet>
+                    <AnalysisSheetSkeleton />
                 )}
 
 
@@ -357,73 +244,22 @@ function ScreeningDetailContent({
                 />
             </div>
 
-            {rescoreMode &&
-                (() => {
-                    const totalSelected = selectedCandidates.size;
-                    const onPageCount = candidates.filter((c) => selectedCandidates.has(c.resume_id)).length;
-                    return (
-                        <div
-                            className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#E8E5DF] bg-white/95 backdrop-blur px-6 py-3 flex items-center justify-between gap-4 transition-[padding] duration-200 ease-out"
-                            style={{ paddingRight: analysisOpen ? ANALYSIS_SHEET_WIDTH + 24 : 24 }}
-                        >
-                            <div className="flex items-center gap-4 flex-wrap">
-                                <span className="text-sm font-semibold text-[#0F0F0F]">
-                                    {totalSelected} selected
-                                    {!showSelectedOnly && totalSelected > 0 && (
-                                        <span className="font-normal text-[#737373] ml-1.5">
-                                            ({onPageCount} on this page)
-                                        </span>
-                                    )}
-                                </span>
-                                <label
-                                    className={`flex items-center gap-2 text-xs ${totalSelected === 0 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-                                        } text-[#404040]`}
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={showSelectedOnly}
-                                        disabled={totalSelected === 0}
-                                        onChange={(e) => setShowSelectedOnly(e.target.checked)}
-                                        className="h-3.5 w-3.5 accent-[#C85A17]"
-                                    />
-                                    Show selected only
-                                </label>
-                                {rescoreError && <span className="text-xs text-red-600">{rescoreError}</span>}
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                                <button
-                                    onClick={exitRescoreMode}
-                                    disabled={isRescoringMutation}
-                                    className="h-9 px-4 text-sm font-medium text-[#404040] border border-[#D4D4D4] rounded-xl hover:bg-[#F5F3EE] disabled:opacity-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={clearSelection}
-                                    disabled={totalSelected === 0 || isRescoringMutation}
-                                    className="h-9 px-4 text-sm font-medium text-[#404040] border border-[#D4D4D4] rounded-xl hover:bg-[#F5F3EE] disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Clear all
-                                </button>
-                                <button
-                                    onClick={submitRescore}
-                                    disabled={totalSelected === 0 || isRescoringMutation}
-                                    className="h-9 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
-                                >
-                                    {isRescoringMutation && (
-                                        <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                                    )}
-                                    {isRescoringMutation
-                                        ? "Starting…"
-                                        : `Rescore ${totalSelected} candidate${totalSelected === 1 ? "" : "s"}`}
-                                </button>
-                            </div>
-                        </div>
-                    );
-                })()}
+
+
+            <CandidateMultiSelectToolBar
+            isMultiSelectMode={isMultiSelectMode}
+                analysisOpen={analysisOpen}
+                setIsMultiSelectMode={setRescoreMode}
+                stages={screening.stages}
+                type={search.screenType}
+            />
         </div>
     );
 }
+
+
+
+
 
 export default function ScreeningDetail({
     setCurrentTab,
@@ -432,9 +268,9 @@ export default function ScreeningDetail({
     setRescoreMode,
     analysisOpen,
 }: ScreeningDetailProps) {
-    const { id } = useParams({ strict: false }) as { id: string };
+    const { id, } = useParams({ strict: false }) as { id: string };
     return (
-        <RescoreSelectedCandidatesProvider screening_id={id}>
+        <SelectedCandidatesProvider screening_id={id} >
             <ScreeningDetailContent
                 setCurrentTab={setCurrentTab}
                 setSourceMode={setSourceMode}
@@ -442,6 +278,6 @@ export default function ScreeningDetail({
                 analysisOpen={analysisOpen}
                 setRescoreMode={setRescoreMode}
             />
-        </RescoreSelectedCandidatesProvider>
+        </SelectedCandidatesProvider>
     );
 }

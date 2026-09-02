@@ -79,14 +79,17 @@ function removeScreeningFromListCache(
   );
 }
 
+import { ScreeningActionStatus, ScoredResumeMutliSelectAction } from "@/modules/screening/types/screening.type"
 export function useScoredResumeUtility(
   mutationFn: ({ screeningId, resumeId }: { screeningId: string, resumeId: string }) => Promise<unknown>,
-  params: ScoredResumeSearchFilterSchema
+  params: ScoredResumeSearchFilterSchema,
+  action: ScreeningActionStatus["action"]
 ) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn,
+    mutationKey: ["screening", action],
 
     onSuccess: (_, { screeningId, resumeId }) => {
       removeScreeningFromListCache(
@@ -102,6 +105,57 @@ export function useScoredResumeUtility(
     },
   });
 }
+
+
+import { toast } from "sonner"
+
+type BaseMultiResumeVariables = {
+  screeningId: string;
+  resumeIds: string[];
+};
+
+export type MultiMutationOptions = {
+  successMessage?: string;
+  errorMessage?: string;
+};
+
+export function useMultiScoredResumeUtility<
+  TVariables extends BaseMultiResumeVariables = BaseMultiResumeVariables,
+  TData = unknown,
+>(
+  mutationFn: (variables: TVariables) => Promise<TData>,
+  options?: MultiMutationOptions,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn,
+
+    onSuccess: (_, { screeningId }) => {
+      queryClient.invalidateQueries({
+        queryKey: ScreeningResultsQueryKeys.screening(screeningId),
+      });
+
+      if (options?.successMessage) {
+        toast.success(options.successMessage)
+      }
+    },
+
+    onError: (_, { screeningId }) => {
+      if (options?.successMessage) {
+        toast.success(options.errorMessage)
+      }
+    }
+
+
+  });
+
+
+}
+
+
+
+
 
 
 

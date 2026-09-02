@@ -75,30 +75,11 @@ export function ScreeningToolbar({
 
   return (
     <>
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-col items-start gap-2">
 
 
-        {/* Filter Chips */}
+
         <div className="flex flex-wrap items-center gap-1.5">
-
-          {filtersToRender.map((key) => (
-            <FilterButton
-              key={key}
-              label={getFilterLabel(key)}
-              value={(state[key] ?? "") as string}
-              onChange={(value) =>
-                candidateQuery.setFilter(key, value)
-              }
-              initiallyOpen={key === newFilter}
-              onRemove={() => {
-                candidateQuery.setFilter(key, undefined);
-
-                if (key === newFilter) {
-                  setNewFilter(null);
-                }
-              }}
-            />
-          ))}
 
           <AddNewFilterDropDown handleFilterSelect={setNewFilter} AlreadyAppliedFilters={filtersToRender} />
           <ExperienceRangeSelector setExperienceRange={candidateQuery.setExperience} initialRange={candidateQuery.state.sExp} />
@@ -144,6 +125,30 @@ export function ScreeningToolbar({
 
         </div>
 
+        {/* Filter Chips */}
+        <div className="flex flex-wrap items-center gap-1.5">
+
+
+          {filtersToRender.map((key) => (
+            <FilterButton
+              key={key}
+              label={getFilterLabel(key)}
+              value={(state[key] ?? "") as string}
+              onChange={(value) =>
+                candidateQuery.setFilter(key, value)
+              }
+              initiallyOpen={key === newFilter}
+              onRemove={() => {
+                candidateQuery.setFilter(key, undefined);
+
+                if (key === newFilter) {
+                  setNewFilter(null);
+                }
+              }}
+            />
+          ))}
+
+        </div>
 
 
 

@@ -121,7 +121,7 @@ export function useApplicationActions({
     }
     else if (appType === "Archived") {
         menuOptions.push({
-            label: "UnArchive",
+            label: "Unarchive",
             icon: <Archive size={12} />,
             onClick: (application) => {
                 unarchiveMutation.mutate({

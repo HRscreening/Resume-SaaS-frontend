@@ -6,15 +6,21 @@ export interface StageEntry {
   index: number;
 }
 
-export const REJECTED_STAGE = "Rejected";
-export const REJECTED_COLOR = "#EF4444";
+// export const REJECTED_STAGE = "Rejected";
+// export const REJECTED_COLOR = "#EF4444";
 
 export const DEFAULT_STAGES: StagesMap = {
-  Applied:     { color: "#A0AEC0", index: 1 },
-  Shortlisted: { color: "#63B3ED", index: 2 },
-  Interviewed: { color: "#4299E1", index: 3 },
-  Offered:     { color: "#48BB78", index: 4 },
+  Rejected:      { color: "#EF4444", index: 1 },
+  Applied:       { color: "#94A3B8", index: 2 },
+  Shortlisted:  { color: "#38BDF8", index: 3 },
+  "Voice Screened": { color: "#14B8A6", index: 4 },
+  "Round 1":     { color: "#6366F1", index: 5 },
+  "Round 2":     { color: "#8B5CF6", index: 6 },
+  Offered:       { color: "#F59E0B", index: 7 },
+  Hired:         { color: "#22C55E", index: 8 },
 };
+
+
 
 // Notion-style soft palette for the color picker.
 export const STAGE_PALETTE = [
@@ -53,7 +59,6 @@ export function getStageMeta(
   stages: StagesMap | undefined,
 ): { color: string; index: number | null } {
   if (!stage) return { color: "#A0AEC0", index: null };
-  if (stage === REJECTED_STAGE) return { color: REJECTED_COLOR, index: null };
   const cfg = stages?.[stage];
   if (cfg) return { color: cfg.color, index: cfg.index };
   return { color: "#A0AEC0", index: null };

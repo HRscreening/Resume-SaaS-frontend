@@ -148,7 +148,6 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
   function prefetchScreenings() {
     // queryClient.prefetchQuery({ queryKey: userKey("screenings"), queryFn: listScreenings });
     //! Not requuired
-    console.log("Just Chilling............. :), Come and find me if you can");
   }
 
   useEffect(() => {

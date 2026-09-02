@@ -203,14 +203,7 @@ export default function ScreeningDetail() {
                                 {currentTab === "Screening" && (
                                     <>
                                         {/* Rescore button */}
-                                        <ActionButton
-                                            title="Rescore"
-                                            onClick={() => setRescoreMode(true)}
-                                            disabled={rescoreMode || !hasAnyCandidates}
-                                            icon={<RotateCcw size={12} />}
-                                            compacted={analysisOpen}
-                                        />
-
+                                       
 
                                         {/* Voice round button */}
                                         <ActionButton
@@ -230,15 +223,6 @@ export default function ScreeningDetail() {
 
 
 
-                                        {/* Export CSV */}
-                                        <ActionButton
-                                            title="Export CSV"
-                                            description="Export CSV"
-                                            icon={<Download size={12} />}
-                                            compacted={analysisOpen}
-                                            onClick={()=>handleExport(getScreeningSearchParams())}
-                                            disabled={exporting}
-                                        />
                                     </>
                                 )
                                 }
@@ -280,7 +264,7 @@ export default function ScreeningDetail() {
             }
 
             {/* ----------------------- Tabs ------------------------ */}
-            <div className="flex-1 min-h-0 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
+            <div className="flex-1 min-h-0 flex flex-col px-4 sm:px-6 md:px-8 gap-4">
                 {currentTab === "Applications" && <Applications onTabChange={changeTab} sourceMode={sourceMode} setSourceMode={setSourceMode} />}
                 {currentTab === "Screening" && <Screening setCurrentTab={changeTab} setSourceMode={setSourceMode} rescoreMode={rescoreMode} setRescoreMode={setRescoreMode} analysisOpen={analysisOpen} />}
             </div>

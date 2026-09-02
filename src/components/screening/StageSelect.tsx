@@ -2,8 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { StagesMap, HiringStage } from "@/types";
 import {
-  REJECTED_STAGE,
-  REJECTED_COLOR,
   getStageMeta,
   sortedStages,
   tintColor,
@@ -160,22 +158,7 @@ export function StageSelect({ value, stages, onChange, onManage }: StageSelectPr
                 </button>
               </li>
             ))}
-            <li className="my-1 h-px bg-[#E8E5DF]" />
-            <li>
-              <button
-                type="button"
-                onClick={() => pick(REJECTED_STAGE)}
-                className="w-full flex items-center gap-2 px-1.5 py-1 rounded-md hover:bg-red-50 transition-colors text-left"
-              >
-                <span
-                  className="inline-flex items-center gap-1.5 h-6 px-2 rounded-full text-xs font-medium"
-                  style={{ backgroundColor: tintColor(REJECTED_COLOR), color: shadeColor(REJECTED_COLOR) }}
-                >
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: REJECTED_COLOR }} />
-                  Reject
-                </span>
-              </button>
-            </li>
+           
           </ul>
 
           {onManage && (

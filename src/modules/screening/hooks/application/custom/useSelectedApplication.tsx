@@ -4,11 +4,16 @@ import {
     useCallback,
     useContext,
     ReactNode,
+    useEffect,
 } from "react";
+import { getLocalStorage, setLocalStorage } from "@/utils/localStorage";
+
 
 type SelectedApplicationsContextType = {
     screening_id: string;
     selectedApplications: Set<string>;
+    showSelectedOnly: boolean;
+    setShowSelectedOnly: (value: boolean) => void;
     toggleSelection: (applicationId: string) => void;
     isSelected: (applicationId: string) => boolean;
     clearSelection: () => void;
@@ -28,8 +33,23 @@ export function SelectedApplicationsProvider({
     screening_id: string;
     children: ReactNode;
 }) {
-    const [selectedApplications, setSelectedApplications] = useState<Set<string>>(new Set());
-    
+
+    const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+    const storageKey = `job:selected-applications:${screening_id}`;
+
+    const [selectedApplications, setSelectedApplications] = useState<Set<string>>((
+        () => {
+            const stored = getLocalStorage<string[]>(storageKey, []);
+            return new Set(stored);
+        }
+    ));
+
+    // Persist selected candidates to localStorage whenever they change
+    useEffect(() => {
+        setLocalStorage(storageKey, [...selectedApplications]);
+    }, [selectedApplications, storageKey]);
+
+
     const toggleSelection = useCallback((applicationId: string) => {
         setSelectedApplications(prev => {
             const next = new Set(prev);
@@ -78,6 +98,8 @@ export function SelectedApplicationsProvider({
             value={{
                 screening_id,
                 selectedApplications,
+                showSelectedOnly,
+                setShowSelectedOnly,
                 toggleSelection,
                 isSelected,
                 clearSelection,

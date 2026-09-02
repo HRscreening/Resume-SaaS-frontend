@@ -14,7 +14,7 @@ export default function ProgressBar({ items }: ProgressBarProps) {
     const total = items.reduce((sum, item) => sum + item.value, 0);
 
     return (
-        <TooltipProvider>
+
             <Tooltip>
                 <TooltipTrigger asChild>
                     <div className="flex h-1.5 w-20 overflow-hidden rounded-full bg-muted cursor-pointer">
@@ -63,6 +63,5 @@ export default function ProgressBar({ items }: ProgressBarProps) {
                     </div>
                 </TooltipContent>
             </Tooltip>
-        </TooltipProvider>
     );
 }

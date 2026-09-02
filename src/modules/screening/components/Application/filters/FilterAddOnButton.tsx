@@ -4,9 +4,10 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Plus} from "lucide-react"
+import { Plus } from "lucide-react"
 import type { ApplicationFilterKey } from "@/modules/screening/types/searchSchema"
 import { FILTER_OPTIONS } from "@/modules/screening/components/Application/filters/FilterUtils"
+import { useSelectedApplications } from "@/modules/screening/hooks/application/custom/useSelectedApplication"
 
 
 interface FilterButtonProps {
@@ -21,11 +22,18 @@ export function FilterAddOnButton({
     align = "start"
 }: FilterButtonProps) {
 
+    const { clearSelection } = useSelectedApplications()
     const FILTER_OPTIONS_AVAILABLE = FILTER_OPTIONS.filter((option) => !AlreadyAppliedFilters.includes(option.value))
 
 
     return (
-        <DropdownMenu>
+        <DropdownMenu
+            onOpenChange={(isOpen) => {
+                if (isOpen) {
+                    clearSelection()
+                }
+            }}
+        >
 
 
 
@@ -58,6 +66,11 @@ export function FilterAddOnButton({
                 "
                 align={align}
                 sideOffset={6}
+                onCloseAutoFocus={(event) => {
+                    // Don't let Radix restore focus to the trigger — the newly
+                    // opened FilterButton's input should keep focus instead.
+                    event.preventDefault();
+                }}
             >
 
 

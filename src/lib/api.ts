@@ -15,6 +15,7 @@ import type {
   StagesMap,
   HiringStage,
   CandidateQueryState,
+  InterviewDepth,
 } from "@/types";
 import {Screening} from "@/modules/screening/types/screening.type"
 
@@ -649,7 +650,7 @@ export async function sumbitContactUsForm(
 
 export async function generateQuestionPlan(
   screeningId: string,
-  depth: "screening" | "deep_dive" = "screening",
+  depth: InterviewDepth = "screening",
 ): Promise<import("@/types").GenerateQuestionPlanResponse> {
   return request(
     `/api/v1/screenings/${screeningId}/voice/question-plan/generate?depth=${depth}`,

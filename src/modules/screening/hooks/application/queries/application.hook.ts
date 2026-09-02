@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type QueryClient, type InfiniteData } from "@tanstack/react-query";
 import { ApplicationQueryKeys, ResumeParsingQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys } from "@/modules/screening/queryKeys";
 import { getApplications } from "@/modules/screening/apis/getApplications";
-import { screenResume } from "@/modules/screening/apis/screenResumes";
 import { addApplications } from "@/modules/screening/apis/addApplications";
 import { type GetActiveBatchesResponse } from "@/modules/screening/apis/activeBatches";
 import type { ApplicationsSearchParams } from "@/modules/screening/types/searchSchema";
@@ -36,57 +35,6 @@ export function useApplicationsInfiniteQuery({
             lastPage.has_more ? lastPage.next_cursor : undefined,
 
         staleTime: 6 * 60 * 60 * 1000,
-    });
-}
-
-export function useScreeningApplicationsMutation() {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: screenResume,
-
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({
-                queryKey: ApplicationQueryKeys.screening(
-                    variables.screening_id
-                ),
-            });
-            // Invalidate screening details query so processing accordion updates
-            // queryClient.invalidateQueries({
-            //     queryKey: ["screening", variables.screening_id],
-            // });
-            // queryClient.invalidateQueries({
-            //     queryKey: ["batch-progress", variables.screening_id],
-            // });
-
-            // console.log("Screening applications successful:", data);
-
-            if (data?.batch_id && data.data?.length) {
-                queryClient.setQueryData(
-                    ActiveBatchesQueryKeys.screening(variables.screening_id),
-                    (old: GetActiveBatchesResponse | undefined) => {
-                        if (!old) return old;
-                        return {
-                            ...old,
-                            scoring_batch_ids: [...(old.scoring_batch_ids || []), data.batch_id],
-                        };
-                    }
-                );
-
-                queryClient.setQueryData(
-                    ResumeScoringQueryKeys.getActiveScorings(
-                        variables.screening_id,
-                        data.batch_id
-                    ),
-                    {
-                        total: data.data.length,
-                        resumes: data.data,
-                    }
-                );
-            }
-        },
-
-        gcTime: 6 * 60 * 60 * 1000,
     });
 }
 
@@ -193,3 +141,53 @@ export function useApplicationUtility(
     });
 }
 
+
+
+
+
+type BaseMultiResumeVariables = {
+  screeningId: string;
+  resumeIds: string[];
+};
+
+export type MultiMutationOptions = {
+  successMessage?: string;
+  errorMessage?: string;
+};
+
+
+import { toast } from "sonner"
+
+export function useMultiApplicationResumeUtility<
+  TVariables extends BaseMultiResumeVariables = BaseMultiResumeVariables,
+  TData = unknown,
+>(
+  mutationFn: (variables: TVariables) => Promise<TData>,
+  options?: MultiMutationOptions,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn,
+
+    onSuccess: (_, { screeningId }) => {
+      queryClient.invalidateQueries({
+        queryKey: ApplicationQueryKeys.screening(screeningId),
+      });
+
+      if (options?.successMessage) {
+        toast.success(options.successMessage)
+      }
+    },
+
+    onError: (_, { screeningId }) => {
+      if (options?.successMessage) {
+        toast.success(options.errorMessage)
+      }
+    }
+
+
+  });
+
+
+}

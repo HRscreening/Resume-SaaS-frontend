@@ -10,7 +10,7 @@ import {
   saveVoiceConfig,
   generateQuestionPlan,
 } from "@/lib/api";
-import type { Rubric, VoiceConfig, QuestionPlanItem, QualificationConfig } from "@/types";
+import type { Rubric, VoiceConfig, QuestionPlanItem, QualificationConfig, InterviewDepth } from "@/types";
 import { truncate } from "@/lib/utils";
 
 const DEFAULT_CONFIG: VoiceConfig = {
@@ -99,7 +99,7 @@ export default function VoiceConfigPage() {
   }, [hydrated, configLoading, configResp]);
 
   const generateMutation = useMutation({
-    mutationFn: () => generateQuestionPlan(id, draft.interview_depth ?? "screening"),
+    mutationFn: (depth: InterviewDepth) => generateQuestionPlan(id, depth),
     onSuccess: (res) => {
       let hadFacts = false;
       setDraft((d) => {
@@ -281,7 +281,18 @@ export default function VoiceConfigPage() {
                 key={opt.value}
                 type="button"
                 aria-pressed={active}
-                onClick={() => setDraft((d) => ({ ...d, interview_depth: opt.value }))}
+                onClick={() => {
+                  if (active || generateMutation.isPending) return;
+                  setDraft((d) => ({ ...d, interview_depth: opt.value }));
+                  // Screening and deep dive differ in question count and kind,
+                  // so a plan generated for the other depth is stale the moment
+                  // the type changes. Only regenerate once a plan exists —
+                  // before that there is nothing to bring in line, and the
+                  // recruiter has not asked for questions yet.
+                  if ((draft.question_plan?.length ?? 0) > 0) {
+                    generateMutation.mutate(opt.value);
+                  }
+                }}
                 className={`rounded-xl border p-3.5 text-left transition-colors ${
                   active
                     ? "border-[#0F0F0F] bg-[#0F0F0F] text-white"
@@ -365,7 +376,7 @@ export default function VoiceConfigPage() {
               asked), so from then on the list is edited, not rebuilt. */}
           {!(isEditing && draft.question_plan.length > 0) && (
             <button
-              onClick={() => generateMutation.mutate()}
+              onClick={() => generateMutation.mutate(draft.interview_depth ?? "screening")}
               disabled={generateMutation.isPending}
               className="h-9 px-4 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-xs font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60"
             >
