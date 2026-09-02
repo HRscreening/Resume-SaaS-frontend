@@ -11,7 +11,11 @@ let role: AccountRole = "owner";
 export function setAccountRole(r: AccountRole | undefined): void { role = r ?? "owner"; }
 export function accountRole(): AccountRole { return role; }
 
-// Mirrors READ_ONLY_ROUTES in backend app/api/deps.py. Server decides on drift.
+// Loosely mirrors READ_ONLY_ROUTES in backend app/api/deps.py, with one
+// deliberate difference: the backend list excludes /api/session-hint/clear
+// because that route is unauthenticated and runs at logout, so it never
+// reaches the permission check. It stays in this client allow-list only so
+// clearSessionHint() never throws for a viewer. Server decides on drift.
 const READ_ONLY_POST = [
   /\/results(\?|$)/, /\/get-applications(\?|$)/, /\/file-url(\?|$)/,
   /\/export(\?|$)/, /\/export-selected(\?|$)/, /\/export\/applications\/selected(\?|$)/,
