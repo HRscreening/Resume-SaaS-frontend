@@ -6,6 +6,13 @@
 export type SubscriptionPlan = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE" | "PLUS";
 export type PlanType = SubscriptionPlan;
 
+export type AccountRole = "owner" | "viewer";
+export interface ActiveAccount {
+  owner_id: string;
+  owner_name: string | null;
+  role: AccountRole;
+}
+
 export interface Profile {
   id: string;
   email: string;
@@ -16,6 +23,7 @@ export interface Profile {
   plan: SubscriptionPlan;
   onboarding_completed: boolean;
   stripe_customer_id: string | null;
+  active_account?: ActiveAccount;
   created_at: string;
   updated_at: string;
 }
