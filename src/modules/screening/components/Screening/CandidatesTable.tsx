@@ -13,6 +13,7 @@ import { useCandidateQuery } from "@/modules/screening/hooks/screening/custom/us
 import { useSelectedCandidates } from "@/modules/screening/hooks/screening/custom/useSelectedCandidates";
 import { useScreeningActions } from "@/modules/screening/hooks/screening/custom/useScreeningActions";
 import { ShareReportDialog } from "@/modules/screening/components/Dialogs/ShareReportDialog";
+import { useAccount } from "@/hooks/useAccount";
 
 interface CandidatesTableProps {
   screening_id: string;
@@ -58,6 +59,7 @@ export function CandidatesTable({
 }: CandidatesTableProps) {
 
   const { search, setScreenId } = useScreeningDetailsNavigation()
+  const { canWrite } = useAccount();
 
   const { selectedCandidates, toggleSelection, togglePageSelection } = useSelectedCandidates();
 
@@ -328,7 +330,7 @@ export function CandidatesTable({
 
 
       </div>
-      {isShareDialogOpen && shareCandidate && (
+      {canWrite && isShareDialogOpen && shareCandidate && (
         <ShareReportDialog
         screeningId={screening_id}
           candidateName={shareCandidate.candidate_name}

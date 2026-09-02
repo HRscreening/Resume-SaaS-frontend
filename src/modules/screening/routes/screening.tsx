@@ -25,6 +25,7 @@ import Screening from "@/modules/screening/tabs/screeningTab"
 import UploadResumes from "@/modules/screening/components/uploadResumes"
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useAccount } from "@/hooks/useAccount";
 
 import { useScreening } from "@/modules/screening/hooks/shared/useScreening"
 import { useApplicationQuery } from "@/modules/screening/hooks/application/custom/useApplicationQuery";
@@ -49,6 +50,7 @@ export default function ScreeningDetail() {
 
 
     const { user } = useAuth();
+    const { canWrite } = useAccount();
 
 
     const [sourceMode, setSourceMode] = useState(false);
@@ -259,7 +261,7 @@ export default function ScreeningDetail() {
             {
                 showUploadMore &&
                 <div className="my-4 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
-                    <UploadResumes screening_id={id} user_id={user?.id ?? ""} setShowUploadMore={setShowUploadMore} />
+                    {canWrite && <UploadResumes screening_id={id} user_id={user?.id ?? ""} setShowUploadMore={setShowUploadMore} />}
                 </div>
             }
 

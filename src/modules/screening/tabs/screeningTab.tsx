@@ -23,6 +23,7 @@ import { type ScreeningDetailsSearchParams } from "@/modules/screening/types/sea
 import { CircleCheck, Archive } from "lucide-react";
 import AnalysisSheetSkeleton from "@/modules/screening/components/Screening/AnalysisSheetSkeleton";
 import CandidateMultiSelectToolBar from "@/modules/screening/components/Screening/CandidateMultiSelectToolBar";
+import { useAccount } from "@/hooks/useAccount";
 
 
 const tableOptions = ["All", "Active", "Archived", "Deleted"];
@@ -57,6 +58,7 @@ function ScreeningDetailContent({
     setRescoreMode,
 }: ScreeningDetailProps) {
     const { id } = useParams({ strict: false }) as { id: string };
+    const { canWrite } = useAccount();
     const { search, setScreenId, setAnalysisTab } = useScreeningDetailsNavigation()
 
     const queryClient = useQueryClient();
@@ -221,7 +223,7 @@ function ScreeningDetailContent({
 
                                     stages={stagesMap}
                                     onCandidateStageChange={handleCandidateStageChange}
-                                    onManageStages={() => setShowStages(true)}
+                                    onManageStages={canWrite ? () => setShowStages(true) : () => {}}
 
                                 />
                             );

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { listCallCandidates, triggerVoiceCalls } from "@/lib/api";
 import type { CandidateCallReason } from "@/types";
 import { defaultScheduleValue } from "@/lib/scheduleTime";
+import { useAccount } from "@/hooks/useAccount";
 
 const REASON: Record<CandidateCallReason, { label: string; style: string }> = {
   callable: { label: "Callable", style: "bg-green-100 text-green-700" },
@@ -28,6 +29,7 @@ interface VoiceCandidatesProps {
 }
 
 export function VoiceCandidates({ screeningId }: VoiceCandidatesProps) {
+  const { canWrite } = useAccount();
   const queryClient = useQueryClient();
   // resume_id whose inline schedule picker is open, and its chosen local time.
   const [schedulingFor, setSchedulingFor] = useState<string | null>(null);
@@ -155,7 +157,7 @@ export function VoiceCandidates({ screeningId }: VoiceCandidatesProps) {
                       <span className="text-xs text-[#A3A3A3]">
                         {c.reason === "in_progress" ? "In progress" : "Not callable"}
                       </span>
-                    ) : isOpen ? (
+                    ) : !canWrite ? null : isOpen ? (
                       <div className="flex flex-col items-end gap-2">
                         <input
                           type="datetime-local"

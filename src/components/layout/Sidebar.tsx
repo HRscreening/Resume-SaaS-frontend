@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { clearAuthCache } from "@/lib/auth";
 import { getUsage, listScreenings } from "@/lib/api";
 import { useUserKey, userKey } from "@/lib/userKey";
+import { useAccount } from "@/hooks/useAccount";
 import { cn } from "@/lib/utils";
 import type { SubscriptionPlan } from "@/types";
 import { User} from "lucide-react"
@@ -109,6 +110,7 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
   const location = useLocation();
   const pathname = location.pathname;
   const navigate = useNavigate();
+  const { canWrite, ownerName, role } = useAccount();
 
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
@@ -192,6 +194,7 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
     return pathname.startsWith(item.href);
   }
 
+  const visibleNavItems = canWrite ? navItems : navItems.filter((item) => item.href !== "/screenings/new");
   const initials = getInitials(displayName, email);
   const planLabel = usage ? PLAN_LABEL[usage.plan] : null;
   const used = usage?.resumes_processed ?? 0;
@@ -216,7 +219,7 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
 
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-0.5" aria-label="Sidebar navigation">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const active = isActive(item);
           // Dashboard and /screenings both consume the screenings list;
           // /screenings/new doesn't strictly need it but prefetching is cheap
@@ -263,6 +266,9 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
                 <p className="text-sm font-semibold text-[#0F0F0F] truncate leading-tight">
                   {displayName ?? email ?? "—"}
                 </p>
+                {role !== "owner" && (
+                  <p className="text-xs text-[#737373] truncate">Viewing: {ownerName ?? "linked account"}</p>
+                )}
                 {planLabel && (
                   <p className="text-xs text-[#737373] truncate leading-tight mt-0.5">
                     {planLabel}
@@ -367,6 +373,9 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
             <p className="text-sm font-semibold text-[#0F0F0F] truncate leading-tight">
               {displayName ?? email ?? "—"}
             </p>
+            {role !== "owner" && (
+              <p className="text-xs text-[#737373] truncate">Viewing: {ownerName ?? "linked account"}</p>
+            )}
             {planLabel && (
               <p className="text-[11px] text-[#737373] truncate leading-tight mt-0.5">
                 {planLabel}

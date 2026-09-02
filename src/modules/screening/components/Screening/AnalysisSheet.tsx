@@ -21,6 +21,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
+import { useAccount } from "@/hooks/useAccount";
 
 // const sheetListeners = new Set<() => void>();
 // let openResumeId: string | null = null;
@@ -94,6 +95,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
 
 
   const { id: screening_id } = useParams({ strict: false }) as { id: string };
+  const { canWrite } = useAccount();
   const { search, setScreenId,setAnalysisTab } = useScreeningDetailsNavigation();
 
   const tab = search.analysisTab ?? "scorecard";
@@ -240,7 +242,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                 ))
               }
               </div>
-              {resume_id && (
+              {canWrite && resume_id && (
                 <button
                   type="button"
                   onClick={() => setShareOpen(true)}

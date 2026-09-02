@@ -4,6 +4,7 @@ import { listScreenings, getUsage, getScreening} from "@/lib/api";
 import { useUserKey } from "@/lib/userKey";
 import { formatRelativeDate } from "@/lib/utils";
 import type { Screening } from "@/modules/screening/types/screening.type";
+import { useAccount } from "@/hooks/useAccount";
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -28,6 +29,7 @@ function StatusPill({ status }: { status: string }) {
 }
 
 export default function Dashboard() {
+  const { canWrite } = useAccount();
   const qc = useQueryClient();
   function prefetch(id: string) {
     qc.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
@@ -59,16 +61,18 @@ export default function Dashboard() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">Dashboard</h1>
         </div>
-        <Link
-          to="/screenings/new"
-          className="h-10 px-3 sm:px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center gap-2 shrink-0"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <path d="M7 1.5v11M1.5 7h11"/>
-          </svg>
-          <span className="hidden sm:inline">New screening</span>
-          <span className="sm:hidden">New</span>
-        </Link>
+        {canWrite && (
+          <Link
+            to="/screenings/new"
+            className="h-10 px-3 sm:px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center gap-2 shrink-0"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M7 1.5v11M1.5 7h11"/>
+            </svg>
+            <span className="hidden sm:inline">New screening</span>
+            <span className="sm:hidden">New</span>
+          </Link>
+        )}
       </div>
 
       {/* Stat cards */}
@@ -209,12 +213,14 @@ export default function Dashboard() {
             </div>
             <p className="text-sm font-medium text-[#404040] mb-1">No screenings yet</p>
             <p className="text-xs text-[#737373] mb-4">Upload your first batch of resumes to get started.</p>
-            <Link
-              to="/screenings/new"
-              className="inline-flex items-center h-9 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-lg hover:bg-[#1C1C1C] transition-colors"
-            >
-              Create first screening
-            </Link>
+            {canWrite && (
+              <Link
+                to="/screenings/new"
+                className="inline-flex items-center h-9 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-lg hover:bg-[#1C1C1C] transition-colors"
+              >
+                Create first screening
+              </Link>
+            )}
           </div>
         ) : (
           <ul className="divide-y divide-[#E8E5DF]">
