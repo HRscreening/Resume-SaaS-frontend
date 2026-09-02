@@ -92,7 +92,7 @@ export function useApplicationActions({
                 startLocalAction(application.id, "download");
 
                 try {
-                    await resumeUploadService.downloadResume(application.resume_url, application.candidate_name);
+                    await resumeUploadService.downloadResume(application.resume_url, application.candidate_name, screeningId);
                 } catch (error) {
                     console.error("Error downloading resume:", error);
                     toast.error("Failed to download resume. Please try again.");

@@ -1,4 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
+import { useParams } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
 import {
   Eye,
@@ -95,6 +96,7 @@ const InfoSheet = ({ candidate, open,disabled = false }: { candidate: Applicatio
 
   const [showAllSkills, setShowAllSkills] = useState(false);
   const {setAppId} = useScreeningDetailsNavigation();
+  const { id: screening_id } = useParams({ strict: false }) as { id: string };
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
@@ -137,7 +139,7 @@ const InfoSheet = ({ candidate, open,disabled = false }: { candidate: Applicatio
       
       const url = path.startsWith("http")
         ? path
-        : await resumeUploadService.generateSignedUrls(path);
+        : await resumeUploadService.generateSignedUrls(path, screening_id);
 
       window.open(url, "_blank", "noopener,noreferrer");
     }

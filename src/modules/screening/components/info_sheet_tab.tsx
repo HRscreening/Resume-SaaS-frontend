@@ -1,4 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
+import { useParams } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
 import {
   Eye,
@@ -31,6 +32,7 @@ import { resumeUploadService } from "@/lib/services";
 const InfoTab = ({ candidate }: { candidate: Application }) => {
 
   const [showAllSkills, setShowAllSkills] = useState(false);
+  const { id: screening_id } = useParams({ strict: false }) as { id: string };
 
   const initials =
     candidate.candidate_name
@@ -61,7 +63,7 @@ const InfoTab = ({ candidate }: { candidate: Application }) => {
 
     const url = path.startsWith("http")
       ? path
-      : await resumeUploadService.generateSignedUrls(path);
+      : await resumeUploadService.generateSignedUrls(path, screening_id);
 
     window.open(url, "_blank", "noopener,noreferrer");
   };

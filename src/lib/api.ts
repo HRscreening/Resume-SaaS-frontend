@@ -464,6 +464,24 @@ export async function getResumePdfUrl(
 }
 
 /**
+ * Mints a signed Storage URL for a resume file via the backend, which
+ * verifies ownership/membership and that `path` sits under the owner's
+ * `{owner_id}/{screening_id}/` prefix before signing with the service key.
+ * Replaces minting signed URLs client-side with the caller's own JWT, which
+ * a viewer's JWT can no longer do once the bucket policy is scoped per-user.
+ */
+export async function getResumeFileUrl(
+  screeningId: string,
+  path: string
+): Promise<string> {
+  const r = await request<{ url: string }>(
+    `/api/v1/screenings/${screeningId}/file-url`,
+    { method: "POST", body: JSON.stringify({ path }) }
+  );
+  return r.url;
+}
+
+/**
  * Combined resume detail + signed PDF URL in a single round-trip. Used by
  * the resume-detail route loader to avoid the dependent-fetch waterfall the
  * component would otherwise create (detail → screening → pdf-url).
