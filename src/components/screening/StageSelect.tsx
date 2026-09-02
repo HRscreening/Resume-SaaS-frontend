@@ -16,12 +16,15 @@ interface StageSelectProps {
   // beside the chip and is also wired to the dropdown's "Edit stages"
   // footer affordance.
   onManage?: () => void;
+  // Read-only viewers: the pill still shows the current stage, but it
+  // cannot be clicked to move the candidate.
+  disabled?: boolean;
 }
 
 // Notion-style stage pill. Click the pill to open the dropdown that lists
 // only the stages with an index greater than the current candidate's stage,
 // plus a sticky "Reject" action at the bottom.
-export function StageSelect({ value, stages, onChange, onManage }: StageSelectProps) {
+export function StageSelect({ value, stages, onChange, onManage, disabled = false }: StageSelectProps) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -103,17 +106,20 @@ export function StageSelect({ value, stages, onChange, onManage }: StageSelectPr
       <button
         ref={triggerRef}
         type="button"
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        disabled={disabled}
+        onClick={(e) => { e.stopPropagation(); if (disabled) return; setOpen((v) => !v); }}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-medium transition-all hover:brightness-95"
+        className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-medium transition-all ${
+          disabled ? "cursor-not-allowed opacity-70" : "hover:brightness-95"
+        }`}
         style={{ backgroundColor: tintColor(meta.color), color: shadeColor(meta.color) }}
       >
         <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: meta.color }} />
         <span className="truncate max-w-[110px]">{value}</span>
       </button>
 
-      {onManage && (
+      {onManage && !disabled && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onManage(); }}
@@ -161,7 +167,7 @@ export function StageSelect({ value, stages, onChange, onManage }: StageSelectPr
            
           </ul>
 
-          {onManage && (
+          {onManage && !disabled && (
             <div className="border-t border-[#E8E5DF] mt-1">
               <button
                 type="button"

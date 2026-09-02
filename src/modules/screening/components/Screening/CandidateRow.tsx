@@ -19,7 +19,8 @@ interface CandidateRowProps {
     stage: HiringStage;
     stages: StagesMap;
     onStageChange: (s: HiringStage) => void;
-    onManageStages: () => void;
+    onManageStages?: () => void;
+    disableStageChange?: boolean;
     selectable: boolean;
     selected: boolean;
     onToggle?: (id: string, e: React.MouseEvent | React.ChangeEvent) => void;
@@ -32,7 +33,7 @@ export function CandidateRow({
     screening_id,
     MenuOptions,
     processingStatus,
-    candidate, compact, stage, stages, onStageChange, onManageStages,
+    candidate, compact, stage, stages, onStageChange, onManageStages, disableStageChange = false,
     selectable, selected, onToggle,
     index, isOpen, setScreenId
 }: CandidateRowProps) {
@@ -160,7 +161,7 @@ export function CandidateRow({
                 {/* )} */}
 
                 <td className="px-2 py-3 align-middle" onClick={(e) => e.stopPropagation()}>
-                    <StageSelect value={stage} stages={stages} onChange={onStageChange} onManage={onManageStages} />
+                    <StageSelect value={stage} stages={stages} onChange={onStageChange} onManage={onManageStages} disabled={disableStageChange} />
                 </td>
                 <td className="px-2 py-3 align-middle">
                     <span

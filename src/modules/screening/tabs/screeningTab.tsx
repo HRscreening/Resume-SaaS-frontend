@@ -223,7 +223,7 @@ function ScreeningDetailContent({
 
                                     stages={stagesMap}
                                     onCandidateStageChange={handleCandidateStageChange}
-                                    onManageStages={canWrite ? () => setShowStages(true) : () => {}}
+                                    onManageStages={canWrite ? () => setShowStages(true) : undefined}
 
                                 />
                             );
