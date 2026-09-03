@@ -386,7 +386,7 @@ export default function VoiceConfigPage() {
               plan has been saved, regenerating would silently discard wording
               the recruiter curated (and that candidates may already have been
               asked), so from then on the list is edited, not rebuilt. */}
-          {!(isEditing && draft.question_plan.length > 0) && (
+          {canWrite && !(isEditing && draft.question_plan.length > 0) && (
             <button
               onClick={() => generateMutation.mutate(draft.interview_depth ?? "screening")}
               disabled={generateMutation.isPending}
@@ -399,12 +399,12 @@ export default function VoiceConfigPage() {
                   : "Generate from JD + rubric"}
             </button>
           )}
-          <button
+          {canWrite && <button
             onClick={addQuestion}
             className="h-9 px-4 border border-[#D4D4D4] text-xs font-medium text-[#404040] rounded-xl hover:bg-white transition-colors"
           >
             + Add question
-          </button>
+          </button>}
           {!isEditing && draft.question_plan.length > 0 && (
             <span className="text-xs text-[#737373]">
               Regenerating replaces the list below.
@@ -442,7 +442,7 @@ export default function VoiceConfigPage() {
                   disabled={!canWrite}
                   className="min-h-0 flex-1 resize-none rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm leading-relaxed text-[#0F0F0F] transition-colors placeholder:text-[#A3A3A3] hover:border-[#E8E5DF] hover:bg-[#FAFAF8] focus:border-[#0F0F0F] focus:bg-white focus:outline-none [field-sizing:content]"
                 />
-                <span
+                {canWrite && <span
                   aria-hidden="true"
                   title="Editable"
                   className="mt-1 shrink-0 text-[#D4D4D4] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-0"
@@ -450,8 +450,8 @@ export default function VoiceConfigPage() {
                   <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9.5 2.5l2 2L5 11l-2.5.5L3 9l6.5-6.5z" />
                   </svg>
-                </span>
-                <button
+                </span>}
+                {canWrite && <button
                   onClick={() => removeQuestion(idx)}
                   aria-label="Remove question"
                   title="Remove question"
@@ -460,7 +460,7 @@ export default function VoiceConfigPage() {
                   <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                     <path d="M2 2l8 8M10 2l-8 8" />
                   </svg>
-                </button>
+                </button>}
               </div>
               <div className="mt-2 flex flex-col gap-2 border-t border-[#F0EEE8] px-3.5 py-2 sm:flex-row sm:items-center">
                 <select
@@ -645,18 +645,18 @@ export default function VoiceConfigPage() {
                   className={inputCls}
                   placeholder="e.g. Hybrid, 3 days in office"
                 />
-                <button
+                {canWrite && <button
                   type="button"
                   onClick={() => setQual({ role_facts: (draft.qualification?.role_facts ?? []).filter((_, j) => j !== i) })}
                   className="text-xs text-[#737373] px-2 hover:text-red-600"
-                >Remove</button>
+                >Remove</button>}
               </div>
             ))}
-            <button
+            {canWrite && <button
               type="button"
               onClick={() => setQual({ role_facts: [...(draft.qualification?.role_facts ?? []), ""] })}
               className="text-xs text-[#0F0F0F] font-medium"
-            >+ Add fact</button>
+            >+ Add fact</button>}
           </div>
         </div>
       </Step>
