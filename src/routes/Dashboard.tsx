@@ -85,7 +85,7 @@ export default function Dashboard() {
           { label: "Total Applications", value: screeningsLoading ? "\u2014" : totalApplications + totalResumes },
           { label: "Resumes Screened", value: screeningsLoading ? "\u2014" : totalResumes },
           {
-            label: unlimited ? "Resumes processed" : isFree ? "Trial usage" : "Monthly usage",
+            label: unlimited ? "Resumes this month" : isFree ? "Trial usage" : "Monthly usage",
             value: !usage
               ? "\u2014"
               : usage.quota_limit != null
