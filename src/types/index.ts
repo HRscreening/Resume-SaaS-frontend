@@ -6,6 +6,13 @@
 export type SubscriptionPlan = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE" | "PLUS";
 export type PlanType = SubscriptionPlan;
 
+export type AccountRole = "owner" | "viewer";
+export interface ActiveAccount {
+  owner_id: string;
+  owner_name: string | null;
+  role: AccountRole;
+}
+
 export interface Profile {
   id: string;
   email: string;
@@ -16,6 +23,7 @@ export interface Profile {
   plan: SubscriptionPlan;
   onboarding_completed: boolean;
   stripe_customer_id: string | null;
+  active_account?: ActiveAccount;
   created_at: string;
   updated_at: string;
 }
@@ -349,6 +357,8 @@ export interface QualificationConfig {
   role_facts?: string[];
 }
 
+export type InterviewDepth = "screening" | "deep_dive";
+
 export interface VoiceConfig {
   enabled: boolean;
   question_plan: QuestionPlanItem[];
@@ -364,7 +374,7 @@ export interface VoiceConfig {
   max_concurrent_calls_override: number | null;
   qualification?: QualificationConfig | null;
   /** Screening: 3-4 quick fit questions. Deep dive: 5-6 technical, role-level. */
-  interview_depth?: "screening" | "deep_dive";
+  interview_depth?: InterviewDepth;
 }
 
 export interface VoiceConfigResponse {

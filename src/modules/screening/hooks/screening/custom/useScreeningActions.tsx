@@ -110,7 +110,7 @@ export function useScreeningActions({
                 startLocalAction(candidate.resume_id, "download");
 
                 try {
-                    await resumeUploadService.downloadResume(candidate.resume_url, candidate.candidate_name ?? "Resume");
+                    await resumeUploadService.downloadResume(candidate.resume_url, candidate.candidate_name ?? "Resume", screeningId);
                 } catch (error) {
                     console.error("Error downloading resume:", error);
                     toast.error("Failed to download resume. Please try again.");

@@ -18,6 +18,7 @@ import { archiveResumeMulti, deleteResumeMulti, unarchiveResumeMulti, downloadSe
 import { exportSelectedApplications } from "@/modules/screening/apis/addApplications"
 import { UtilityButton } from "@/modules/screening/components/shared/MultiSelectUtilityButton"
 import {useScoringMutation} from "@/modules/screening/hooks/shared/useScoringMutation"
+import { useAccount } from "@/hooks/useAccount"
 
 
 
@@ -43,6 +44,7 @@ const CandidateMultiSelectToolBar = ({
 }: CandidateMultiSelectToolBarProps) => {
 
   const { screening_id, selectedApplications, clearSelection, showSelectedOnly, setShowSelectedOnly } = useSelectedApplications()
+  const { canWrite } = useAccount()
 
   const [isResumeDownloading, setIsResumeDownloading] = useState(false)
 
@@ -194,18 +196,20 @@ const CandidateMultiSelectToolBar = ({
           {/* <UtilityButton title="Share" onClick={() => { multiShareMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedApplications) }, { onSuccess: closeToolBar }) }} Icon={Share2} compact={compact} isLoading={multiShareMutation.isPending} /> */}
 
 
-          <UtilityButton title="Screen"
-            onClick={submitScreen}
-            Icon={ScanSearch} compact={compact} isLoading={multiScoreMutation.isPending} variant='default' />
+          {canWrite && (
+            <UtilityButton title="Screen"
+              onClick={submitScreen}
+              Icon={ScanSearch} compact={compact} isLoading={multiScoreMutation.isPending} variant='default' />
+          )}
 
-          {(type === "Active" || type === "Archived") && (
+          {canWrite && (type === "Active" || type === "Archived") && (
             <div className="h-5 w-px bg-[#E5E2DA] mx-1" />
           )}
 
-          {type === "Active" && (
+          {canWrite && type === "Active" && (
             <UtilityButton title="Archive" onClick={() => { multiArchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedApplications) }, { onSuccess: closeToolBar }) }} Icon={Archive} variant="danger" compact={compact} isLoading={multiArchiveMutation.isPending} />
           )}
-          {type === "Archived" && (
+          {canWrite && type === "Archived" && (
             <>
               <UtilityButton title="Unarchive" onClick={() => { multiUnarchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedApplications) }, { onSuccess: closeToolBar }) }} Icon={ArchiveRestore} compact={compact} isLoading={multiUnarchiveMutation.isPending} />
               <UtilityButton title="Delete" onClick={() => { multiDeleteMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedApplications) }, { onSuccess: closeToolBar }) }} Icon={Trash2} variant="danger" compact={compact} isLoading={multiDeleteMutation.isPending} />

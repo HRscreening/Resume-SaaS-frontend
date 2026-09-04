@@ -1,5 +1,6 @@
 import { StorageService } from "@/lib/services/storage.service";
 import { generateStoragePath, extractExtension, validateResume } from "@/utils/file.utils";
+import { getResumeFileUrl } from "@/lib/api";
 
 
 
@@ -33,15 +34,12 @@ export class ResumeUploadService {
     }
 
 
-    async generateSignedUrls(path: string,): Promise<string> {
-        return await this.storage.createSignedUrl(path, this.signedUrlExpiry);
+    async generateSignedUrls(path: string, screeningId: string): Promise<string> {
+        return await getResumeFileUrl(screeningId, path);
     }
 
-    async downloadResume(path: string, fileName: string): Promise<void> {
-        const signedUrl = await this.storage.createSignedUrl(
-            path,
-            this.signedUrlExpiry
-        );
+    async downloadResume(path: string, fileName: string, screeningId: string): Promise<void> {
+        const signedUrl = await getResumeFileUrl(screeningId, path);
 
         const response = await fetch(signedUrl);
 

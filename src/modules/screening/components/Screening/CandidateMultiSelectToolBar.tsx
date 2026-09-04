@@ -25,6 +25,8 @@ import { useScoringMutation } from "@/modules/screening/hooks/shared/useScoringM
 import { UtilityButton } from "@/modules/screening/components/shared/MultiSelectUtilityButton"
 import MultiShareDialog from "@/modules/screening/components/shared/MultiShareDialog";
 import { useNavigate } from "@tanstack/react-router"
+import { useAccount } from "@/hooks/useAccount"
+
 
 import {
   getStageMeta,
@@ -72,6 +74,7 @@ const CandidateMultiSelectToolBar = ({
 
   const navigate = useNavigate()
   const { screening_id, selectedCandidates, clearSelection, showSelectedOnly, setShowSelectedOnly } = useSelectedCandidates()
+  const { canWrite } = useAccount()
 
   const [isResumeDownloading, setIsResumeDownloading] = useState(false)
 
@@ -285,7 +288,7 @@ const CandidateMultiSelectToolBar = ({
         <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto scrollbar-hide">
           <UtilityButton title="Cancel" onClick={cancelMultiSelectMode} variant="ghost" compact={compact} />
 
-          {stages && Object.keys(stages).length > 0 &&
+          {canWrite && stages && Object.keys(stages).length > 0 &&
             <StageSelectButton
               onOptionClick={(newStage) => {
                 multiChangeStageMutation.mutate({
@@ -303,12 +306,11 @@ const CandidateMultiSelectToolBar = ({
             />
           }
 
-          {/* <UtilityButton title="Re-score"
 
-            onClick={handleRescore}
-            Icon={RefreshCw} compact={compact} isLoading={multiRescoreMutation.isPending} /> */}
+          {canWrite && (
+             <RescoreButton options={RescoreOptions} isLoading={multiRescoreMutation.isPending} stages={stages ?? {}} compact={compact} />
+          )}
 
-          <RescoreButton options={RescoreOptions} isLoading={multiRescoreMutation.isPending} stages={stages ?? {}} compact={compact} />
 
           <UtilityButton title="Export"
             onClick={handleExport}
@@ -320,16 +322,18 @@ const CandidateMultiSelectToolBar = ({
           <UtilityButton title="Share" onClick={() => setIsShareDialogOpen(true)} Icon={Share2} compact={compact} isLoading={multiShareMutation.isPending} />
 
 
-          <UtilityButton title="AI Call" onClick={handleCall} Icon={PhoneCall} compact={compact} isLoading={multiCallMutation.isPending} />
+          {canWrite && (
+            <UtilityButton title="AI Call" onClick={handleCall} Icon={PhoneCall} compact={compact} isLoading={multiCallMutation.isPending} />
+          )}
 
-          {(type === "Active" || type === "Archived") && (
+          {canWrite && (type === "Active" || type === "Archived") && (
             <div className="h-5 w-px bg-[#E5E2DA] mx-1" />
           )}
 
-          {type === "Active" && (
+          {canWrite && type === "Active" && (
             <UtilityButton title="Archive" onClick={() => { multiArchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar }) }} Icon={Archive} variant="danger" compact={compact} isLoading={multiArchiveMutation.isPending} />
           )}
-          {type === "Archived" && (
+          {canWrite && type === "Archived" && (
             <>
               <UtilityButton title="Unarchive" onClick={() => { multiUnarchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar }) }} Icon={ArchiveRestore} compact={compact} isLoading={multiUnarchiveMutation.isPending} />
               <UtilityButton title="Delete" onClick={() => { multiDeleteMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar }) }} Icon={Trash2} variant="danger" compact={compact} isLoading={multiDeleteMutation.isPending} />

@@ -29,6 +29,7 @@ import type { StagesMap, HiringStage } from "@/types";
 import { StageSelect } from "@/components/screening/StageSelect";
 import { getTier } from "@/lib/tier";
 import { tintColor, shadeColor } from "@/lib/stages";
+import { useAccount } from "@/hooks/useAccount";
 
 type CandidateAnalysisSheetProps = {
   candidate: CandidateOverview | null;
@@ -56,6 +57,7 @@ const CandidateAnalysisSheet = ({
   applications,
   onStageChange,
 }: CandidateAnalysisSheetProps) => {
+  const { canWrite } = useAccount();
   const [activeTab, setActiveTab] = useState<'details' | 'applications'>('details');
   const [expandedAppId, setExpandedAppId] = useState<string | null>(null);
   const [showAllSkills, setShowAllSkills] = useState(false);
@@ -367,6 +369,7 @@ const CandidateAnalysisSheet = ({
                                 value={app.stage as HiringStage}
                                 stages={CANDIDATE_STAGES}
                                 onChange={(next) => onStageChange(app.score_id, next)}
+                                disabled={!canWrite}
                               />
                             </div>
                           </div>

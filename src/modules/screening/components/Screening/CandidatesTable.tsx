@@ -13,6 +13,7 @@ import { useCandidateQuery } from "@/modules/screening/hooks/screening/custom/us
 import { useSelectedCandidates } from "@/modules/screening/hooks/screening/custom/useSelectedCandidates";
 import { useScreeningActions } from "@/modules/screening/hooks/screening/custom/useScreeningActions";
 import { ShareReportDialog } from "@/modules/screening/components/Dialogs/ShareReportDialog";
+import { useAccount } from "@/hooks/useAccount";
 
 interface CandidatesTableProps {
   screening_id: string;
@@ -27,7 +28,7 @@ interface CandidatesTableProps {
   // Stage configuration for the screening and per-candidate updates.
   stages: StagesMap;
   onCandidateStageChange: (resumeId: string, scoreId: string, next: HiringStage) => void;
-  onManageStages: () => void;
+  onManageStages?: () => void;
   // Filter / sort / search state. When provided, the toolbar + chips render
   // and column headers become sortable. Optional so callers in selection
   // ("show selected only") views can still render the table without filters.
@@ -58,10 +59,16 @@ export function CandidatesTable({
 }: CandidatesTableProps) {
 
   const { search, setScreenId } = useScreeningDetailsNavigation()
+  const { canWrite } = useAccount();
 
   const { selectedCandidates, toggleSelection, togglePageSelection } = useSelectedCandidates();
 
   const { menuOptions, getRowStatus,isShareDialogOpen,shareCandidate,setIsShareDialogOpen } = useScreeningActions({ screeningId: screening_id });
+  // Per-row "..." menu mixes read items (ScoreCard/Profile/Voice/Resume/Expand)
+  // with write items wired to live mutations or dialogs (Rescore/Share/Archive/
+  // Unarchive/Delete). A viewer only gets the read items.
+  const WRITE_MENU_LABELS = new Set(["Rescore", "Share", "Archive", "Unarchive", "Delete"]);
+  const visibleMenuOptions = canWrite ? menuOptions : menuOptions.filter((o) => !WRITE_MENU_LABELS.has(o.label));
   // Derive compact from URL params alone so the table layout is stable on
   // page reload — even before candidate data has loaded.
   const compact = search.tab === "Screening" && !!search.screenId;
@@ -299,14 +306,15 @@ export function CandidatesTable({
                     stage={c.stage ?? defaultStage}
                     stages={stages}
                     onStageChange={(s) => onCandidateStageChange(c.resume_id, c.score_id, s)}
-                    onManageStages={onManageStages}
+                    onManageStages={canWrite ? onManageStages : undefined}
+                    disableStageChange={!canWrite}
                     selectable={selectable}
                     selected={selectedCandidates.has(c.resume_id)}
                     onToggle={toggleSelection}
                     isOpen={search.screenId === c.resume_id}
                     setScreenId={setScreenId}
 
-                    MenuOptions={menuOptions}
+                    MenuOptions={visibleMenuOptions}
                     processingStatus={getRowStatus(c.resume_id)}
                   />
                 ))}
@@ -328,7 +336,7 @@ export function CandidatesTable({
 
 
       </div>
-      {isShareDialogOpen && shareCandidate && (
+      {canWrite && isShareDialogOpen && shareCandidate && (
         <ShareReportDialog
         screeningId={screening_id}
           candidateName={shareCandidate.candidate_name}

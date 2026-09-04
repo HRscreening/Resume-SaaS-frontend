@@ -25,6 +25,7 @@ import Screening from "@/modules/screening/tabs/screeningTab"
 import UploadResumes from "@/modules/screening/components/uploadResumes"
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useAccount } from "@/hooks/useAccount";
 
 import { useScreening } from "@/modules/screening/hooks/shared/useScreening"
 import { useApplicationQuery } from "@/modules/screening/hooks/application/custom/useApplicationQuery";
@@ -49,6 +50,7 @@ export default function ScreeningDetail() {
 
 
     const { user } = useAuth();
+    const { canWrite } = useAccount();
 
 
     const [sourceMode, setSourceMode] = useState(false);
@@ -180,14 +182,14 @@ export default function ScreeningDetail() {
                         <ActionButton title="Rubric"
                             icon={<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h3" /></svg>} compacted={analysisOpen} disabled={!screening} onClick={() => setShowRubric(true)} />
 
-                        <ActionButton title="Post Job"
-                            icon={<Link2 size={12} />} compacted={analysisOpen} disabled={!screening} onClick={() => postJob()} />
+                        {canWrite && <ActionButton title="Post Job"
+                            icon={<Link2 size={12} />} compacted={analysisOpen} disabled={!screening} onClick={() => postJob()} />}
 
 
 
 
 
-                        {currentTab === "Applications" && (
+                        {currentTab === "Applications" && canWrite && (
                             <ActionButton
                                 title="Add Resumes"
                                 icon={<Upload size={12} />}
@@ -259,7 +261,7 @@ export default function ScreeningDetail() {
             {
                 showUploadMore &&
                 <div className="my-4 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
-                    <UploadResumes screening_id={id} user_id={user?.id ?? ""} setShowUploadMore={setShowUploadMore} />
+                    {canWrite && <UploadResumes screening_id={id} user_id={user?.id ?? ""} setShowUploadMore={setShowUploadMore} />}
                 </div>
             }
 
@@ -276,11 +278,12 @@ export default function ScreeningDetail() {
                     categories={rubricCategories}
                     onClose={() => setShowRubric(false)}
                     onEdit={
-                        () => {
-                            setShowRubric(false);
-                            navigate({ to: "/screenings/$id/rubric", params: { id }, search: (prev) => prev });
-                        }
-
+                        canWrite
+                            ? () => {
+                                setShowRubric(false);
+                                navigate({ to: "/screenings/$id/rubric", params: { id }, search: (prev) => prev });
+                            }
+                            : undefined
                     }
                 />
             )}

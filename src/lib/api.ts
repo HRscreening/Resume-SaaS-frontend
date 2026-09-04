@@ -1,4 +1,5 @@
 import { getAccessToken } from "@/lib/auth";
+import { assertWritable, setAccountRole } from "@/lib/accountSession";
 import { clearSessionHint } from "@/lib/sessionHint";
 import { createClient } from "@/lib/supabase/client";
 import { detectCurrency } from "@/lib/currency";
@@ -15,6 +16,7 @@ import type {
   StagesMap,
   HiringStage,
   CandidateQueryState,
+  InterviewDepth,
 } from "@/types";
 import {Screening} from "@/modules/screening/types/screening.type"
 
@@ -44,6 +46,7 @@ export async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  assertWritable(path, options.method);
   const authHeaders = await getAuthHeader();
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -72,6 +75,7 @@ export async function requestFormData<T>(
   formData: FormData,
   options: Omit<RequestInit, "body"> = {}
 ): Promise<T> {
+  assertWritable(path, options.method ?? "POST");
   const authHeaders = await getAuthHeader();
 
   const res = await fetch(`${API_BASE}${path}`, {
@@ -100,7 +104,9 @@ export async function requestFormData<T>(
 // ─── User ─────────────────────────────────────────────────────────────────────
 
 export async function getProfile(): Promise<Profile> {
-  return request<Profile>("/api/user/profile");
+  const profile = await request<Profile>("/api/user/profile");
+  setAccountRole(profile.active_account?.role);
+  return profile;
 }
 
 export async function updateProfile(
@@ -192,6 +198,7 @@ export async function uploadResumesToJob(
     }
   }
 
+  assertWritable("/api/screenings/ID/upload", "POST");
   const res = await fetch(`${API_BASE}/api/screenings/${screeningId}/upload`, {
     method: "POST",
     headers: buildUploadHeaders(authHeaders, idempotencyKey),
@@ -216,6 +223,7 @@ export async function addResumesToJob(
       formData.append("files", f);
     }
   }
+  assertWritable("/api/screenings/ID/add-resumes", "POST");
   const res = await fetch(`${API_BASE}/api/screenings/${screeningId}/add-resumes`, {
     method: "POST",
     headers: buildUploadHeaders(authHeaders, idempotencyKey),
@@ -228,6 +236,7 @@ export async function parseJDFile(file: File): Promise<{ text: string; char_coun
   const authHeaders = await getAuthHeader();
   const formData = new FormData();
   formData.append("file", file);
+  assertWritable("/api/screenings/parse-jd-file", "POST");
   const res = await fetch(`${API_BASE}/api/screenings/parse-jd-file`, {
     method: "POST",
     headers: authHeaders,
@@ -310,6 +319,7 @@ export async function generateJDStream(
   onChunk: (fullText: string) => void,
 ): Promise<JdGenerateMeta> {
   const authHeaders = await getAuthHeader();
+  assertWritable("/api/v1/screenings/generate-jd/stream", "POST");
   const res = await fetch(`${API_BASE}/api/v1/screenings/generate-jd/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders },
@@ -361,6 +371,7 @@ export async function downloadJDPdf(
   body: { jd_details: JdGenerateInput; user_input: string; current_Jd: string },
 ): Promise<{ blob: Blob; filename: string | null; meta: JdGenerateMeta }> {
   const authHeaders = await getAuthHeader();
+  assertWritable("/api/v1/screenings/download-generate-jd", "POST");
   const res = await fetch(`${API_BASE}/api/v1/screenings/download-generate-jd`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders },
@@ -450,6 +461,24 @@ export async function getResumePdfUrl(
   return request<{ url: string; filename: string }>(
     `/api/screenings/${screeningId}/results/${resumeId}/pdf-url`
   );
+}
+
+/**
+ * Mints a signed Storage URL for a resume file via the backend, which
+ * verifies ownership/membership and that `path` sits under the owner's
+ * `{owner_id}/{screening_id}/` prefix before signing with the service key.
+ * Replaces minting signed URLs client-side with the caller's own JWT, which
+ * a viewer's JWT can no longer do once the bucket policy is scoped per-user.
+ */
+export async function getResumeFileUrl(
+  screeningId: string,
+  path: string
+): Promise<string> {
+  const r = await request<{ url: string }>(
+    `/api/v1/screenings/${screeningId}/file-url`,
+    { method: "POST", body: JSON.stringify({ path }) }
+  );
+  return r.url;
 }
 
 /**
@@ -649,7 +678,7 @@ export async function sumbitContactUsForm(
 
 export async function generateQuestionPlan(
   screeningId: string,
-  depth: "screening" | "deep_dive" = "screening",
+  depth: InterviewDepth = "screening",
 ): Promise<import("@/types").GenerateQuestionPlanResponse> {
   return request(
     `/api/v1/screenings/${screeningId}/voice/question-plan/generate?depth=${depth}`,

@@ -7,6 +7,7 @@ import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/
 import { toast } from "sonner";
 import { type ApplicationsSearchParams, applicationSearchSchema } from "@/modules/screening/types/searchSchema"
 import { useApplicationActions } from "@/modules/screening/hooks/application/custom/useApplicationActions";
+import { useAccount } from "@/hooks/useAccount";
 
 interface ApplicationTableProps {
     screeningId: string;
@@ -30,13 +31,19 @@ export function ApplicationTable({
     onLoadMore,
 }: ApplicationTableProps) {
 
+    const { canWrite } = useAccount();
     const { search,setAppId } = useScreeningDetailsNavigation();
     // Derive compact from URL params alone so the table layout is stable on
     // page reload — even before candidate data has loaded.
     const compact = !!search.appId;
 
     const applicationSearchParams: ApplicationsSearchParams = applicationSearchSchema.parse(search);
-    const { menuOptions: MenuOptions, getRowStatus } = useApplicationActions({ screeningId, applicationSearchParams });
+    const { menuOptions, getRowStatus } = useApplicationActions({ screeningId, applicationSearchParams });
+    // Per-row "..." menu mixes read items (Resume download) with write items
+    // wired to live mutations (Archive/Unarchive/Delete). A viewer only gets
+    // the read items.
+    const WRITE_MENU_LABELS = new Set(["Archive", "Unarchive", "Delete"]);
+    const MenuOptions = canWrite ? menuOptions : menuOptions.filter((o) => !WRITE_MENU_LABELS.has(o.label));
 
     
     const isPending  = loading || backgGroundFetching;
