@@ -6,6 +6,7 @@ import { detectCurrency } from "@/lib/currency";
 import type {
   Profile,
   UsageResponse,
+  Counter,
   Rubric,
   // Screening,
   // ScreeningListItem,
@@ -131,6 +132,11 @@ export async function completeOnboarding(data: {
 
 export async function getUsage(): Promise<UsageResponse> {
   return request<UsageResponse>("/api/user/usage");
+}
+
+export async function getScreeningUsage(screeningId: string): Promise<Counter[]> {
+  const r = await request<{ counters: Counter[] }>(`/api/v1/screenings/${screeningId}/usage`);
+  return r.counters;
 }
 
 export async function deleteAccount(): Promise<void> {

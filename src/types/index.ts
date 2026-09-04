@@ -3,7 +3,7 @@
 // BUSINESS is a legacy label retained in the DB enum so older rows
 // written before the BUSINESS → PLUS rename still deserialize cleanly.
 // New writes use PLUS.
-export type SubscriptionPlan = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE" | "PLUS";
+export type SubscriptionPlan = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE" | "PLUS" | "UNLIMITED";
 export type PlanType = SubscriptionPlan;
 
 export type AccountRole = "owner" | "viewer";
@@ -28,14 +28,22 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface Counter {
+  key: string;
+  label: string;
+  value: number;
+}
+
 export interface UsageResponse {
   resumes_processed: number;
   resumes_scored: number;
   screenings_created: number;
-  quota_limit: number;
-  quota_remaining: number;
+  quota_limit: number | null;
+  quota_remaining: number | null;
   plan: SubscriptionPlan;
   month: string;
+  unlimited?: boolean;
+  totals?: Counter[];
 }
 
 // Plan catalog — fetched from GET /api/billing/plans. Single source of

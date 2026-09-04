@@ -88,6 +88,7 @@ const PLAN_LABEL: Record<SubscriptionPlan, string> = {
   PLUS: "Plus",
   BUSINESS: "Plus",
   ENTERPRISE: "Enterprise",
+  UNLIMITED: "Unlimited",
 };
 
 function getInitials(name: string | null | undefined, email: string | null | undefined): string {

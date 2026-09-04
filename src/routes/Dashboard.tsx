@@ -95,7 +95,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quota-exhausted banner — shown when usage has reached or passed the limit */}
-      {usage && usage.quota_limit > 0 && usage.resumes_processed >= usage.quota_limit && (
+      {usage && usage.quota_limit != null && usage.quota_limit > 0 && usage.resumes_processed >= usage.quota_limit && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 flex flex-col sm:flex-row sm:items-start gap-3">
           <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#DC2626" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -136,7 +136,7 @@ export default function Dashboard() {
           <div className="h-2 w-full bg-[#E8E5DF] rounded-full" />
         </div>
       )}
-      {usage && (
+      {usage && usage.quota_limit != null && (
         <div className="bg-white rounded-xl border border-[#E8E5DF] p-5 mb-8">
           <div className="flex items-center justify-between mb-3">
             <div>

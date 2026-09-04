@@ -299,7 +299,7 @@ function BillingPanel() {
               </button>
             )}
           </div>
-          {usage && (
+          {usage && usage.quota_limit != null && (
             <div className="sm:text-right sm:min-w-[100px]">
               <p className="text-xs text-[#737373] mb-1">
                 {planKey === "FREE" ? "Free quota used" : "This month"}
