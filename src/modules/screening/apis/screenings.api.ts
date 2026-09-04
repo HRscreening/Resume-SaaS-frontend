@@ -165,17 +165,22 @@ export async function rescoreScreenings(
 
 //Share
 export async function shareScreenings(
-  { screeningId, resumeIds }: BaseMultiResumeVariables
+  { screeningId, resumeIds,emails,note }: BaseMultiResumeVariables & { emails: string[]; note?: string }
 ): Promise<void> {
-  // To be
-  // return request(
-  //   `/api/v1/scores/${screeningId}/share`,
-  //   {
-  //     method: "POST",
-  //     body: JSON.stringify(body ?? {}),
-  //   },
-  // );
-  setTimeout(() => { }, 1500)
+
+  const body = {
+    emails: emails ?? [],
+    note: note || null,
+    resume_ids: resumeIds ?? [],
+  }
+
+  return request(
+    `/api/v1/screenings/${screeningId}/share-report`,
+    {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+    },
+  );
 }
 
 // Export 
