@@ -12,6 +12,8 @@ import {
   Archive,
   ArchiveRestore,
   Trash2,
+  CirclePlay,
+  ClipboardPenLine
 } from 'lucide-react'
 import LoadingSpinner from '@/modules/screening/components/shared/LoadingSpinner'
 import { toast } from 'sonner'
@@ -21,7 +23,8 @@ import { useMultiScoredResumeUtility, type MultiMutationOptions } from "@/module
 import { archiveResumeMulti, deleteResumeMulti, unarchiveResumeMulti, downloadSelectedResumes, callSelectedScreenings, exportSelectedScreenings, rescoreScreenings, changeScreeningsStage, shareScreenings } from "@/modules/screening/apis/screenings.api"
 import { useScoringMutation } from "@/modules/screening/hooks/shared/useScoringMutation"
 import { UtilityButton } from "@/modules/screening/components/shared/MultiSelectUtilityButton"
-
+import MultiShareDialog from "@/modules/screening/components/shared/MultiShareDialog";
+import { useNavigate } from "@tanstack/react-router"
 
 import {
   getStageMeta,
@@ -67,9 +70,12 @@ const CandidateMultiSelectToolBar = ({
   stages
 }: CandidateMultiSelectToolBarProps) => {
 
+  const navigate = useNavigate()
   const { screening_id, selectedCandidates, clearSelection, showSelectedOnly, setShowSelectedOnly } = useSelectedCandidates()
 
   const [isResumeDownloading, setIsResumeDownloading] = useState(false)
+
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
 
   function cancelMultiSelectMode() {
@@ -93,6 +99,28 @@ const CandidateMultiSelectToolBar = ({
     setIsMultiSelectMode(false)
     clearSelection()
   }
+
+  const RescoreOptions: RescoreOption[] = [
+    {
+      label: "Edit Rubric",
+      onClick: () => {
+        navigate({
+          to: "/screenings/$id/rubric",
+          params: {
+            id: screening_id,
+          },
+        search: (prev) => prev,
+        });
+      },
+      icon: ClipboardPenLine,
+    },
+    {
+      label: "Continue",
+      onClick: handleRescore,
+      icon: CirclePlay,
+    },
+  ];
+
 
 
   async function handleExport() {
@@ -161,6 +189,28 @@ const CandidateMultiSelectToolBar = ({
 
   }
 
+  async function handleShare(emails: string[], note?: string) {
+
+    try {
+
+      const resumeIds = getIdsFromSet(selectedCandidates)
+
+      if (resumeIds.length === 0) {
+        toast.error("No candidates selected for Screening.");
+        return;
+      }
+
+      const res = await multiShareMutation.mutateAsync({ screeningId: screening_id, resumeIds: resumeIds, emails, note }, { onSuccess: closeToolBar });
+      setIsShareDialogOpen(false);
+    }
+    catch {
+      toast.error("Failed to share resumes");
+    }
+
+
+  }
+
+
 
   async function handleRescore() {
     if (selectedCandidates.size === 0) {
@@ -170,7 +220,7 @@ const CandidateMultiSelectToolBar = ({
 
     try {
       const resume_ids = getIdsFromSet(selectedCandidates);
-      const res = await multiRescoreMutation.mutateAsync({ screeningId: screening_id, resumeIds: resume_ids,isRescore:true });
+      const res = await multiRescoreMutation.mutateAsync({ screeningId: screening_id, resumeIds: resume_ids, isRescore: true });
       toast.success(res.message || "Candidates scoring batch started successfully.");
       closeToolBar()
     }
@@ -253,10 +303,12 @@ const CandidateMultiSelectToolBar = ({
             />
           }
 
-          <UtilityButton title="Re-score"
+          {/* <UtilityButton title="Re-score"
 
             onClick={handleRescore}
-            Icon={RefreshCw} compact={compact} isLoading={multiRescoreMutation.isPending} />
+            Icon={RefreshCw} compact={compact} isLoading={multiRescoreMutation.isPending} /> */}
+
+          <RescoreButton options={RescoreOptions} isLoading={multiRescoreMutation.isPending} stages={stages ?? {}} compact={compact} />
 
           <UtilityButton title="Export"
             onClick={handleExport}
@@ -265,7 +317,7 @@ const CandidateMultiSelectToolBar = ({
 
           <UtilityButton title="Resume" onClick={handleResumeDownload} Icon={Download} compact={compact} isLoading={isResumeDownloading} />
 
-          {/* <UtilityButton title="Share" onClick={() => { multiShareMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar }) }} Icon={Share2} compact={compact} isLoading={multiShareMutation.isPending} /> */}
+          <UtilityButton title="Share" onClick={() => setIsShareDialogOpen(true)} Icon={Share2} compact={compact} isLoading={multiShareMutation.isPending} />
 
 
           <UtilityButton title="AI Call" onClick={handleCall} Icon={PhoneCall} compact={compact} isLoading={multiCallMutation.isPending} />
@@ -283,6 +335,18 @@ const CandidateMultiSelectToolBar = ({
               <UtilityButton title="Delete" onClick={() => { multiDeleteMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar }) }} Icon={Trash2} variant="danger" compact={compact} isLoading={multiDeleteMutation.isPending} />
             </>
           )}
+
+          {
+            isShareDialogOpen && selectedCandidates.size > 0 && (
+              <MultiShareDialog
+                open={isShareDialogOpen}
+                onClose={() => setIsShareDialogOpen(false)}
+                onShare={handleShare}
+                isPending={multiShareMutation.isPending}
+              />
+            )
+          }
+
         </div>
       </div>
     </div>
@@ -389,6 +453,108 @@ function StageSelectButton({
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+
+interface RescoreOption {
+  icon?: LucideIcon;
+  label: string;
+  onClick: () => void;
+}
+
+
+interface RescoreButtonProps {
+  options: RescoreOption[],
+  isLoading?: boolean;
+  className?: string;
+  disabled?: boolean;
+  stages: StagesMap;
+  compact?: boolean;
+}
+function RescoreButton({
+  options,
+  isLoading,
+  className = "",
+  disabled = false,
+  compact = false,
+}: RescoreButtonProps) {
+
+
+  const trigger = (
+    <DropdownMenuTrigger
+      disabled={disabled || isLoading}
+      className={`
+        inline-flex items-center justify-center gap-1.5
+        h-9 rounded-xl
+        text-sm font-medium
+        border border-[#D9D6CE] bg-white text-[#3A3A3A] hover:bg-[#F5F3EE] hover:border-[#C9C5BA]
+        transition-colors cursor-pointer whitespace-nowrap
+        ${compact ? "w-9 px-0" : "px-3.5"}
+        ${className}
+        ${disabled || isLoading ? "opacity-50 cursor-not-allowed" : ""}
+      `}
+    >
+      <RefreshCw size={14} />
+      {!compact && <span>Re-Score</span>}
+    </DropdownMenuTrigger>
+  )
+
+  return (
+    <DropdownMenu>
+      {compact ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+          <TooltipContent side="top">
+            <p>ReScore</p>
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        trigger
+      )}
+
+      <DropdownMenuContent
+        className="
+          w-44
+          p-1.5
+          rounded-lg
+          border border-[#E5E5E5]
+          bg-white
+          shadow-lg
+        "
+        align="center"
+        sideOffset={6}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+        }}
+      >
+        {
+          options.map((option) => (
+            <DropdownMenuItem
+              className="
+              h-8 px-2 rounded-lg
+              text-sm text-[#404040]
+              cursor-pointer outline-none
+              hover:bg-[#F5F3EE]
+            "
+              onClick={() => {
+                option.onClick()
+              }}
+            >
+              {
+                option.icon && <option.icon size={14} className="mr-2" />
+              }
+              {option.label}
+
+
+            </DropdownMenuItem>
+
+          ))
+        }
+
+
+      </DropdownMenuContent >
+    </DropdownMenu >
   );
 }
 
