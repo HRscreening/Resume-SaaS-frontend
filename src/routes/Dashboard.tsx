@@ -84,7 +84,11 @@ export default function Dashboard() {
           { label: "Resumes Screened", value: screeningsLoading ? "\u2014" : totalResumes },
           {
             label: isFree ? "Trial usage" : "Monthly usage",
-            value: usage ? `${usage.resumes_processed} / ${usage.quota_limit}` : "\u2014",
+            value: !usage
+              ? "\u2014"
+              : usage.quota_limit != null
+                ? `${usage.resumes_processed} / ${usage.quota_limit}`
+                : `${usage.resumes_processed}`,
           },
         ].map((stat) => (
           <div key={stat.label} className="bg-white rounded-xl border border-[#E8E5DF] p-5">
