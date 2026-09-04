@@ -203,7 +203,7 @@ const CandidateMultiSelectToolBar = ({
         return;
       }
 
-      const res = await multiShareMutation.mutateAsync({ screeningId: screening_id, resumeIds: resumeIds, emails, note });
+      const res = await multiShareMutation.mutateAsync({ screeningId: screening_id, resumeIds: resumeIds, emails, note },{ onSuccess: closeToolBar });
       setIsShareDialogOpen(false);
     }
     catch {
