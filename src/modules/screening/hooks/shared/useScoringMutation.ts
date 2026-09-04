@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type QueryClient, type InfiniteData } from "@tanstack/react-query";
-import { ApplicationQueryKeys, ResumeParsingQueryKeys, ScreeningResultsQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys } from "@/modules/screening/queryKeys";
+import { ApplicationQueryKeys, ResumeParsingQueryKeys, ScreeningResultsQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys, ScreeningUsageQueryKeys } from "@/modules/screening/queryKeys";
 import { type GetActiveBatchesResponse } from "@/modules/screening/apis/activeBatches";
 import { screenResume } from "@/modules/screening/apis/screenings.api"
 
@@ -42,7 +42,14 @@ export function useScoringMutation(
                     variables.screeningId,
                 ),
             });
-          
+
+            // Scoring a resume changes resumes_scored for this job.
+            queryClient.invalidateQueries({
+                queryKey: ScreeningUsageQueryKeys.screening(
+                    variables.screeningId,
+                ),
+            });
+
 
             // console.log("Screening applications successful:", data);
 

@@ -5,6 +5,7 @@ import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query";
 import { useScreeningQuery } from "@/modules/screening/hooks/screening/queries/screening.query"
 import { getScreeningUsage } from "@/lib/api";
+import { ScreeningUsageQueryKeys } from "@/modules/screening/queryKeys";
 
 import type { RubricCategory } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";
@@ -80,7 +81,7 @@ export default function ScreeningDetail() {
     // Per-job counters (e.g. resumes screened, voice calls made). Shown for
     // every account, not just unlimited ones — these are counts, not limits.
     const { data: screeningUsage = [] } = useQuery({
-        queryKey: ["screening-usage", id],
+        queryKey: ScreeningUsageQueryKeys.screening(id),
         queryFn: () => getScreeningUsage(id),
         enabled: !!id,
         staleTime: 30_000,

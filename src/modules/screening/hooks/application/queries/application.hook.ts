@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type QueryClient, type InfiniteData } from "@tanstack/react-query";
-import { ApplicationQueryKeys, ResumeParsingQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys } from "@/modules/screening/queryKeys";
+import { ApplicationQueryKeys, ResumeParsingQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys, ScreeningUsageQueryKeys } from "@/modules/screening/queryKeys";
 import { getApplications } from "@/modules/screening/apis/getApplications";
 import { addApplications } from "@/modules/screening/apis/addApplications";
 import { type GetActiveBatchesResponse } from "@/modules/screening/apis/activeBatches";
@@ -47,6 +47,13 @@ export function useAddApplicationsMutation() {
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({
                 queryKey: ApplicationQueryKeys.screening(
+                    variables.screening_id
+                ),
+            });
+
+            // New resumes were added, so resumes_processed changed for this job.
+            queryClient.invalidateQueries({
+                queryKey: ScreeningUsageQueryKeys.screening(
                     variables.screening_id
                 ),
             });

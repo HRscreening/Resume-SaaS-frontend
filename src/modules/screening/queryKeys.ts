@@ -76,6 +76,21 @@ export const ActiveBatchesQueryKeys = {
 
 
 
+// --------------------------------- Screening Usage Query Keys ---------------------------------
+// Per-job counters (resumes processed, resumes scored, voice calls made) shown
+// in the screening detail header. Not nested under ScreeningQueryKeys.all
+// because no existing write path invalidates that prefix on the writes that
+// actually change these counters (see queryKeys used at the resume-upload,
+// scoring, and application-mutation call sites) — this key is invalidated
+// explicitly at each of those sites instead.
+export const ScreeningUsageQueryKeys = {
+    all: ["screening-usage"] as const,
+
+    screening: (screeningId: string) =>
+        [...ScreeningUsageQueryKeys.all, screeningId] as const,
+};
+
+
 // --------------------------------- Screening Results Query Keys ---------------------------------
 
 
