@@ -5,23 +5,32 @@ import { getProfile, getUsage, getPlans, deleteAccount, cancelSubscription } fro
 import { clearAuthCache } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { useUserKey } from "@/lib/userKey";
+import { useUsage } from "@/hooks/useUsage";
 import { cn } from "@/lib/utils";
 import type { SubscriptionPlan } from "@/types";
 
 
-type TabKey = "general" | "account" | "privacy" | "billing" | "capabilities" | "connectors";
+type TabKey = "general" | "account" | "privacy" | "billing" | "usage" | "capabilities" | "connectors";
 
-const TABS: { key: TabKey; label: string }[] = [
-  // { key: "general", label: "General" },
-  { key: "account", label: "Account" },
-  // { key: "privacy", label: "Privacy" },
-  { key: "billing", label: "Billing" },
-  // { key: "capabilities", label: "Capabilities" },
-  // { key: "connectors", label: "Connectors" },
-];
+const BILLING_TAB: { key: TabKey; label: string } = { key: "billing", label: "Billing" };
+const USAGE_TAB: { key: TabKey; label: string } = { key: "usage", label: "Usage" };
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabKey>("account");
+  const { unlimited } = useUsage();
+
+  // Unlimited accounts have no subscription to bill and no quota to hit, so
+  // the Billing tab (plan, price, cancel action) is swapped for a plain
+  // Usage tab (all-time counters, no upgrade prompt). Ordinary accounts keep
+  // the Billing tab unchanged.
+  const TABS: { key: TabKey; label: string }[] = [
+    // { key: "general", label: "General" },
+    { key: "account", label: "Account" },
+    // { key: "privacy", label: "Privacy" },
+    unlimited ? USAGE_TAB : BILLING_TAB,
+    // { key: "capabilities", label: "Capabilities" },
+    // { key: "connectors", label: "Connectors" },
+  ];
 
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8 md:px-8 md:py-10 max-w-5xl mx-auto">
@@ -60,6 +69,7 @@ export default function Settings() {
           {activeTab === "account" && <AccountPanel />}
           {activeTab === "privacy" && <ComingSoon title="Privacy" />}
           {activeTab === "billing" && <BillingPanel />}
+          {activeTab === "usage" && <UsagePanel />}
           {activeTab === "capabilities" && <ComingSoon title="Capabilities" />}
           {activeTab === "connectors" && <ComingSoon title="Connectors" />}
         </div>
@@ -235,6 +245,37 @@ function Row({ label, action }: { label: string; action: React.ReactNode }) {
     <div className="flex items-center justify-between gap-4 px-5 py-4">
       <p className="text-sm font-medium text-[#0F0F0F]">{label}</p>
       <div className="shrink-0">{action}</div>
+    </div>
+  );
+}
+
+/**
+ * Usage panel for unlimited accounts — replaces BillingPanel. There is no
+ * plan, no price, no progress bar and no cancel/upgrade action because
+ * there is no subscription or quota to act on. Just the account-wide
+ * all-time counters.
+ */
+function UsagePanel() {
+  const { totals, isLoading } = useUsage();
+
+  return (
+    <div>
+      <h2 className="text-xl font-bold text-[#0F0F0F] mb-6">Usage</h2>
+
+      <div className="bg-white rounded-2xl border border-[#E8E5DF] divide-y divide-[#E8E5DF]">
+        {isLoading ? (
+          <div className="px-5 py-4 text-sm text-[#737373]">Loading usage…</div>
+        ) : totals.length === 0 ? (
+          <div className="px-5 py-4 text-sm text-[#737373]">No usage recorded yet.</div>
+        ) : (
+          totals.map((counter) => (
+            <div key={counter.key} className="flex items-center justify-between gap-4 px-5 py-4">
+              <p className="text-sm font-medium text-[#0F0F0F]">{counter.label}</p>
+              <p className="text-sm font-semibold text-[#0F0F0F] tabular-nums">{counter.value}</p>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { clearAuthCache } from "@/lib/auth";
 import { getUsage, listScreenings } from "@/lib/api";
 import { useUserKey, userKey } from "@/lib/userKey";
 import { useAccount } from "@/hooks/useAccount";
+import { useUsage } from "@/hooks/useUsage";
 import { cn } from "@/lib/utils";
 import type { SubscriptionPlan } from "@/types";
 import { User} from "lucide-react"
@@ -112,6 +113,7 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = location.pathname;
   const navigate = useNavigate();
   const { canWrite, ownerName, role } = useAccount();
+  const { unlimited, totals } = useUsage();
 
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
@@ -270,7 +272,7 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
                 {role !== "owner" && (
                   <p className="text-xs text-[#737373] truncate">Viewing: {ownerName ?? "linked account"}</p>
                 )}
-                {planLabel && (
+                {!unlimited && planLabel && (
                   <p className="text-xs text-[#737373] truncate leading-tight mt-0.5">
                     {planLabel}
                   </p>
@@ -282,7 +284,7 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
             </Link>
 
             {/* Usage progress (HireSort-specific) */}
-            {usage && limit > 0 && (
+            {!unlimited && usage && limit > 0 && (
               <div className="px-4 pb-3">
                 <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="text-[#737373]">{isFree ? "Resumes used" : "Resumes this month"}</span>
@@ -300,25 +302,40 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
               </div>
             )}
 
+            {/* Unlimited accounts have no quota to show a bar for — list the
+                all-time counters as plain lines instead. */}
+            {unlimited && totals.length > 0 && (
+              <div className="px-4 pb-3 space-y-1">
+                {totals.map((counter) => (
+                  <div key={counter.key} className="flex items-center justify-between text-xs">
+                    <span className="text-[#737373]">{counter.label}</span>
+                    <span className="font-semibold text-[#0F0F0F] tabular-nums">{counter.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="h-px bg-[#E8E5DF]" />
 
             <div className="py-1.5">
-              <Link
-                to="/upgrade"
-                onClick={onNavigate}
-                // hash="billing"
-                className="flex items-center justify-between gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
-              >
-                <span className="flex items-center gap-3">
-                  <StarIcon />
-                  Upgrade plan
-                </span>
-                {isFree && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-                    New
+              {!unlimited && (
+                <Link
+                  to="/upgrade"
+                  onClick={onNavigate}
+                  // hash="billing"
+                  className="flex items-center justify-between gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+                >
+                  <span className="flex items-center gap-3">
+                    <StarIcon />
+                    Upgrade plan
                   </span>
-                )}
-              </Link>
+                  {isFree && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                      New
+                    </span>
+                  )}
+                </Link>
+              )}
               <Link
                 to="/profile"
                 onClick={onNavigate}
@@ -377,7 +394,7 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
             {role !== "owner" && (
               <p className="text-xs text-[#737373] truncate">Viewing: {ownerName ?? "linked account"}</p>
             )}
-            {planLabel && (
+            {!unlimited && planLabel && (
               <p className="text-[11px] text-[#737373] truncate leading-tight mt-0.5">
                 {planLabel}
               </p>

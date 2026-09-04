@@ -5,6 +5,7 @@ import { useUserKey } from "@/lib/userKey";
 import { formatRelativeDate } from "@/lib/utils";
 import type { Screening } from "@/modules/screening/types/screening.type";
 import { useAccount } from "@/hooks/useAccount";
+import { useUsage } from "@/hooks/useUsage";
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -30,6 +31,7 @@ function StatusPill({ status }: { status: string }) {
 
 export default function Dashboard() {
   const { canWrite } = useAccount();
+  const { unlimited } = useUsage();
   const qc = useQueryClient();
   function prefetch(id: string) {
     qc.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
@@ -83,7 +85,7 @@ export default function Dashboard() {
           { label: "Total Applications", value: screeningsLoading ? "\u2014" : totalApplications + totalResumes },
           { label: "Resumes Screened", value: screeningsLoading ? "\u2014" : totalResumes },
           {
-            label: isFree ? "Trial usage" : "Monthly usage",
+            label: unlimited ? "Resumes processed" : isFree ? "Trial usage" : "Monthly usage",
             value: !usage
               ? "\u2014"
               : usage.quota_limit != null

@@ -1,8 +1,10 @@
 import { BackLink } from "@/components/layout/BackLink";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router";
-// import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+// import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useScreeningQuery } from "@/modules/screening/hooks/screening/queries/screening.query"
+import { getScreeningUsage } from "@/lib/api";
 
 import type { RubricCategory } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";
@@ -74,6 +76,15 @@ export default function ScreeningDetail() {
     // Applications are required by this page, so fetch them at page level
     // and provide the data to the applications table.
     const ApplicationQuery = useApplicationQuery(id, { limit: 30 });
+
+    // Per-job counters (e.g. resumes screened, voice calls made). Shown for
+    // every account, not just unlimited ones — these are counts, not limits.
+    const { data: screeningUsage = [] } = useQuery({
+        queryKey: ["screening-usage", id],
+        queryFn: () => getScreeningUsage(id),
+        enabled: !!id,
+        staleTime: 30_000,
+    });
 
 
     const toastShownRef = useRef(false);
@@ -174,6 +185,15 @@ export default function ScreeningDetail() {
                         <p className="text-sm text-[#737373] mt-0.5">
                             {totalApplications} resumes · Created {formatDate(screening.created_at)}
                         </p>
+                        {screeningUsage.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                                {screeningUsage.map((counter) => (
+                                    <span key={counter.key} className="text-xs text-[#737373]">
+                                        {counter.label}: <span className="font-medium text-[#404040]">{counter.value}</span>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         {screening.jd_url &&
