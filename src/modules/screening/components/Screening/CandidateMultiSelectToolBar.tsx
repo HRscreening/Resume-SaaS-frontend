@@ -126,7 +126,7 @@ const CandidateMultiSelectToolBar = ({
   async function handleExport() {
     try {
       // const { blob, filename } = await exportResults(id, queryState);
-      const { blob, filename } = await multiExportMutation.mutateAsync({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar });
+      const { blob, filename } = await multiExportMutation.mutateAsync({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -200,7 +200,7 @@ const CandidateMultiSelectToolBar = ({
         return;
       }
 
-      const res = await multiShareMutation.mutateAsync({ screeningId: screening_id, resumeIds: resumeIds, emails, note }, { onSuccess: closeToolBar });
+      const res = await multiShareMutation.mutateAsync({ screeningId: screening_id, resumeIds: resumeIds, emails, note });
       setIsShareDialogOpen(false);
     }
     catch {
@@ -337,7 +337,7 @@ const CandidateMultiSelectToolBar = ({
           )}
 
           {
-            isShareDialogOpen && selectedCandidates.size > 0 && (
+            selectedCandidates.size > 0 && (
               <MultiShareDialog
                 open={isShareDialogOpen}
                 onClose={() => setIsShareDialogOpen(false)}
