@@ -319,7 +319,12 @@ const CandidateMultiSelectToolBar = ({
 
           <UtilityButton title="Resume" onClick={handleResumeDownload} Icon={Download} compact={compact} isLoading={isResumeDownloading} />
 
-          <UtilityButton title="Share" onClick={() => setIsShareDialogOpen(true)} Icon={Share2} compact={compact} isLoading={multiShareMutation.isPending} />
+          {/* Sharing emails candidate data out of the account, so it is a write
+              action even though it changes no row. The server already refuses it
+              for a read-only viewer; hiding it keeps the button from failing. */}
+          {canWrite && (
+            <UtilityButton title="Share" onClick={() => setIsShareDialogOpen(true)} Icon={Share2} compact={compact} isLoading={multiShareMutation.isPending} />
+          )}
 
 
           {canWrite && (
