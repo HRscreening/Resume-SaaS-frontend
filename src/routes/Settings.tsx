@@ -5,23 +5,44 @@ import { getProfile, getUsage, getPlans, deleteAccount, cancelSubscription } fro
 import { clearAuthCache } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { useUserKey } from "@/lib/userKey";
+import { useUsage } from "@/hooks/useUsage";
 import { cn } from "@/lib/utils";
 import type { SubscriptionPlan } from "@/types";
 
 
-type TabKey = "general" | "account" | "privacy" | "billing" | "capabilities" | "connectors";
+type TabKey = "general" | "account" | "privacy" | "billing" | "usage" | "capabilities" | "connectors";
 
-const TABS: { key: TabKey; label: string }[] = [
-  // { key: "general", label: "General" },
-  { key: "account", label: "Account" },
-  // { key: "privacy", label: "Privacy" },
-  { key: "billing", label: "Billing" },
-  // { key: "capabilities", label: "Capabilities" },
-  // { key: "connectors", label: "Connectors" },
-];
+const BILLING_TAB: { key: TabKey; label: string } = { key: "billing", label: "Billing" };
+const USAGE_TAB: { key: TabKey; label: string } = { key: "usage", label: "Usage" };
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabKey>("account");
+  const { unlimited } = useUsage();
+
+  // useUsage() reports unlimited: false while the usage query is loading, so
+  // a user who clicks "Billing" in that window (or when the request errors)
+  // can leave activeTab stuck at "billing" after unlimited flips true. The
+  // Billing tab button already disappears at that point (see TABS below),
+  // but activeTab is plain state, so the stored value does not follow it.
+  // Derive the effective tab instead of syncing state in an effect: an
+  // unlimited account is never actually on "billing", so both the nav
+  // highlight and the content pane read effectiveTab, which redirects to
+  // the Usage tab whenever that mismatch occurs. Ordinary accounts have
+  // unlimited === false, so effectiveTab always equals activeTab for them.
+  const effectiveTab: TabKey = activeTab === "billing" && unlimited ? "usage" : activeTab;
+
+  // Unlimited accounts have no subscription to bill and no quota to hit, so
+  // the Billing tab (plan, price, cancel action) is swapped for a plain
+  // Usage tab (all-time counters, no upgrade prompt). Ordinary accounts keep
+  // the Billing tab unchanged.
+  const TABS: { key: TabKey; label: string }[] = [
+    // { key: "general", label: "General" },
+    { key: "account", label: "Account" },
+    // { key: "privacy", label: "Privacy" },
+    unlimited ? USAGE_TAB : BILLING_TAB,
+    // { key: "capabilities", label: "Capabilities" },
+    // { key: "connectors", label: "Connectors" },
+  ];
 
   return (
     <div className="px-4 py-6 sm:px-6 sm:py-8 md:px-8 md:py-10 max-w-5xl mx-auto">
@@ -34,7 +55,7 @@ export default function Settings() {
         <nav className="md:w-48 md:shrink-0 -mx-4 md:mx-0">
           <ul className="flex md:flex-col gap-1 md:gap-0 md:space-y-1 overflow-x-auto px-4 md:px-0 pb-1 md:pb-0">
             {TABS.map((tab) => {
-              const active = activeTab === tab.key;
+              const active = effectiveTab === tab.key;
               return (
                 <li key={tab.key} className="shrink-0 md:shrink">
                   <button
@@ -56,12 +77,13 @@ export default function Settings() {
 
         {/* Content pane */}
         <div className="flex-1 min-w-0">
-          {activeTab === "general" && <ComingSoon title="General" />}
-          {activeTab === "account" && <AccountPanel />}
-          {activeTab === "privacy" && <ComingSoon title="Privacy" />}
-          {activeTab === "billing" && <BillingPanel />}
-          {activeTab === "capabilities" && <ComingSoon title="Capabilities" />}
-          {activeTab === "connectors" && <ComingSoon title="Connectors" />}
+          {effectiveTab === "general" && <ComingSoon title="General" />}
+          {effectiveTab === "account" && <AccountPanel />}
+          {effectiveTab === "privacy" && <ComingSoon title="Privacy" />}
+          {effectiveTab === "billing" && !unlimited && <BillingPanel />}
+          {effectiveTab === "usage" && <UsagePanel />}
+          {effectiveTab === "capabilities" && <ComingSoon title="Capabilities" />}
+          {effectiveTab === "connectors" && <ComingSoon title="Connectors" />}
         </div>
       </div>
     </div>
@@ -239,6 +261,38 @@ function Row({ label, action }: { label: string; action: React.ReactNode }) {
   );
 }
 
+/**
+ * Usage panel for unlimited accounts — replaces BillingPanel. There is no
+ * plan, no price, no progress bar and no cancel/upgrade action because
+ * there is no subscription or quota to act on. Just the account-wide
+ * all-time counters.
+ */
+function UsagePanel() {
+  const { totals, isLoading } = useUsage();
+
+  return (
+    <div>
+      <h2 className="text-xl font-bold text-[#0F0F0F] mb-1">Usage</h2>
+      <p className="text-xs text-[#737373] mb-6">All time totals for your account.</p>
+
+      <div className="bg-white rounded-2xl border border-[#E8E5DF] divide-y divide-[#E8E5DF]">
+        {isLoading ? (
+          <div className="px-5 py-4 text-sm text-[#737373]">Loading usage…</div>
+        ) : totals.length === 0 ? (
+          <div className="px-5 py-4 text-sm text-[#737373]">No usage recorded yet.</div>
+        ) : (
+          totals.map((counter) => (
+            <div key={counter.key} className="flex items-center justify-between gap-4 px-5 py-4">
+              <p className="text-sm font-medium text-[#0F0F0F]">{counter.label}</p>
+              <p className="text-sm font-semibold text-[#0F0F0F] tabular-nums">{counter.value}</p>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 function BillingPanel() {
   const queryClient = useQueryClient();
   const profileQuery = useQuery({ queryKey: useUserKey("profile"), queryFn: getProfile, staleTime: 60_000 });
@@ -299,7 +353,7 @@ function BillingPanel() {
               </button>
             )}
           </div>
-          {usage && (
+          {usage && usage.quota_limit != null && (
             <div className="sm:text-right sm:min-w-[100px]">
               <p className="text-xs text-[#737373] mb-1">
                 {planKey === "FREE" ? "Free quota used" : "This month"}

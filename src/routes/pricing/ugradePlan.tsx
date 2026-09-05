@@ -64,6 +64,7 @@ const PLAN_DESCRIPTIONS: Record<SubscriptionPlan, string> = {
     BUSINESS: 'Built for teams that hire regularly and need faster, higher-volume screening.',
     PRO: 'Designed for high-volume hiring teams that need scale, flexibility, and greater control over screening workflows.',
     ENTERPRISE: 'Built for large organizations that need advanced security, customization, and dedicated support at scale.',
+    UNLIMITED: 'Built for teams that need unrestricted screening volume with no monthly quota.',
 };
 
 const PLAN_ORDER: SubscriptionPlan[] = ['FREE', 'PLUS', 'PRO', 'ENTERPRISE'];

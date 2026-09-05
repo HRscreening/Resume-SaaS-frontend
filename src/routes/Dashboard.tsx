@@ -4,6 +4,8 @@ import { listScreenings, getUsage, getScreening} from "@/lib/api";
 import { useUserKey } from "@/lib/userKey";
 import { formatRelativeDate } from "@/lib/utils";
 import type { Screening } from "@/modules/screening/types/screening.type";
+import { useAccount } from "@/hooks/useAccount";
+import { useUsage } from "@/hooks/useUsage";
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -28,6 +30,8 @@ function StatusPill({ status }: { status: string }) {
 }
 
 export default function Dashboard() {
+  const { canWrite } = useAccount();
+  const { unlimited } = useUsage();
   const qc = useQueryClient();
   function prefetch(id: string) {
     qc.prefetchQuery({ queryKey: ["screening", id], queryFn: () => getScreening(id) });
@@ -59,16 +63,18 @@ export default function Dashboard() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">Dashboard</h1>
         </div>
-        <Link
-          to="/screenings/new"
-          className="h-10 px-3 sm:px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center gap-2 shrink-0"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <path d="M7 1.5v11M1.5 7h11"/>
-          </svg>
-          <span className="hidden sm:inline">New screening</span>
-          <span className="sm:hidden">New</span>
-        </Link>
+        {canWrite && (
+          <Link
+            to="/screenings/new"
+            className="h-10 px-3 sm:px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center gap-2 shrink-0"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M7 1.5v11M1.5 7h11"/>
+            </svg>
+            <span className="hidden sm:inline">New screening</span>
+            <span className="sm:hidden">New</span>
+          </Link>
+        )}
       </div>
 
       {/* Stat cards */}
@@ -79,8 +85,12 @@ export default function Dashboard() {
           { label: "Total Applications", value: screeningsLoading ? "\u2014" : totalApplications + totalResumes },
           { label: "Resumes Screened", value: screeningsLoading ? "\u2014" : totalResumes },
           {
-            label: isFree ? "Trial usage" : "Monthly usage",
-            value: usage ? `${usage.resumes_processed} / ${usage.quota_limit}` : "\u2014",
+            label: unlimited ? "Resumes this month" : isFree ? "Trial usage" : "Monthly usage",
+            value: !usage
+              ? "\u2014"
+              : usage.quota_limit != null
+                ? `${usage.resumes_processed} / ${usage.quota_limit}`
+                : `${usage.resumes_processed}`,
           },
         ].map((stat) => (
           <div key={stat.label} className="bg-white rounded-xl border border-[#E8E5DF] p-5">
@@ -91,7 +101,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quota-exhausted banner — shown when usage has reached or passed the limit */}
-      {usage && usage.quota_limit > 0 && usage.resumes_processed >= usage.quota_limit && (
+      {usage && usage.quota_limit != null && usage.quota_limit > 0 && usage.resumes_processed >= usage.quota_limit && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 flex flex-col sm:flex-row sm:items-start gap-3">
           <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#DC2626" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -132,7 +142,7 @@ export default function Dashboard() {
           <div className="h-2 w-full bg-[#E8E5DF] rounded-full" />
         </div>
       )}
-      {usage && (
+      {usage && usage.quota_limit != null && (
         <div className="bg-white rounded-xl border border-[#E8E5DF] p-5 mb-8">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -209,12 +219,14 @@ export default function Dashboard() {
             </div>
             <p className="text-sm font-medium text-[#404040] mb-1">No screenings yet</p>
             <p className="text-xs text-[#737373] mb-4">Upload your first batch of resumes to get started.</p>
-            <Link
-              to="/screenings/new"
-              className="inline-flex items-center h-9 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-lg hover:bg-[#1C1C1C] transition-colors"
-            >
-              Create first screening
-            </Link>
+            {canWrite && (
+              <Link
+                to="/screenings/new"
+                className="inline-flex items-center h-9 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-lg hover:bg-[#1C1C1C] transition-colors"
+              >
+                Create first screening
+              </Link>
+            )}
           </div>
         ) : (
           <ul className="divide-y divide-[#E8E5DF]">

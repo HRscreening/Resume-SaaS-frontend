@@ -5,7 +5,7 @@ import type { GetScoringResponseType} from "@/modules/screening/apis/getActiveSc
 import type { Application } from "@/modules/screening/types/application.type";
 import { PendingResumeRow } from '@/modules/screening/components/shared/ProcessingResumeRow';
 import { queryClient } from '@/lib/queryClient';
-import { ApplicationQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys,ScreeningResultsQueryKeys } from '@/modules/screening/queryKeys';
+import { ApplicationQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys,ScreeningResultsQueryKeys, ScreeningUsageQueryKeys } from '@/modules/screening/queryKeys';
 import type { GetActiveBatchesResponse } from '@/modules/screening/apis/activeBatches';
 import {
     Accordion,
@@ -85,6 +85,8 @@ const ResumeScoringProgress = React.memo(({ screening_id, batch_id }: Props) => 
                 queryClient.invalidateQueries({ queryKey: ScreeningResultsQueryKeys.screening(screening_id) });
                 queryClient.invalidateQueries({ queryKey: ApplicationQueryKeys.screening(screening_id) });
                 queryClient.invalidateQueries({ queryKey: ResumeScoringQueryKeys.getActiveScorings(screening_id, batch_id) });
+                // A scoring batch just finished, so resumes_scored changed for this job.
+                queryClient.invalidateQueries({ queryKey: ScreeningUsageQueryKeys.screening(screening_id) });
                 queryClient.setQueryData(
                     ActiveBatchesQueryKeys.screening(screening_id),
                     (old: GetActiveBatchesResponse | undefined) => {

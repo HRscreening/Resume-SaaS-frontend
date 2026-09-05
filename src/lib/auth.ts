@@ -12,6 +12,7 @@
  */
 import { createClient } from "@/lib/supabase/client";
 import { setSessionHint, clearSessionHint } from "@/lib/sessionHint";
+import { setAccountRole } from "@/lib/accountSession";
 import type { Session, User } from "@supabase/supabase-js";
 
 const TOKEN_REFRESH_MARGIN_S = 60; // refresh 60s before expiry
@@ -119,8 +120,13 @@ export function isAuthenticated(): boolean {
 
 /**
  * Clear the cached session (call on sign-out).
+ *
+ * Also resets the latched account role. Without this, an owner signing in
+ * right after a viewer signs out (same tab) would inherit the viewer's
+ * hidden controls until the next profile refetch lands.
  */
 export function clearAuthCache(): void {
   _cachedSession = null;
   clearSessionHint();
+  setAccountRole(undefined);
 }

@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { EllipsisVertical } from "lucide-react";
 import {
   Eye,
@@ -18,8 +19,44 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { Button } from "@/components/ui/Button";
+import { useAccount } from "@/hooks/useAccount";
+
+interface CandidateMenuOption {
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  destructive?: boolean;
+}
+
+// Read items (View Profile/Download Resume) mixed with write items (Share/
+// Add Note/Star/Flag/Archive/Delete). A viewer only gets the read items,
+// matching the filtering pattern in
+// src/modules/screening/components/Screening/CandidatesTable.tsx.
+const menuOptions: CandidateMenuOption[] = [
+  { label: "View Profile", icon: Eye },
+  { label: "Share Candidate", icon: Share2 },
+  { label: "Download Resume", icon: Download },
+  { label: "Add Note", icon: FileText },
+  { label: "Star Candidate", icon: Star },
+  { label: "Flag Candidate", icon: Flag },
+  { label: "Archive", icon: Archive },
+  { label: "Delete", icon: Trash2, destructive: true },
+];
+
+const WRITE_MENU_LABELS = new Set([
+  "Share Candidate",
+  "Add Note",
+  "Star Candidate",
+  "Flag Candidate",
+  "Archive",
+  "Delete",
+]);
 
 export default function MenuItems() {
+  const { canWrite } = useAccount();
+  const visibleMenuOptions = canWrite
+    ? menuOptions
+    : menuOptions.filter((o) => !WRITE_MENU_LABELS.has(o.label));
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -33,45 +70,15 @@ export default function MenuItems() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem>
-          <Eye className="mr-2 h-4 w-4" />
-          View Profile
-        </DropdownMenuItem>
-
-        <DropdownMenuItem>
-          <Share2 className="mr-2 h-4 w-4" />
-          Share Candidate
-        </DropdownMenuItem>
-
-        <DropdownMenuItem>
-          <Download className="mr-2 h-4 w-4" />
-          Download Resume
-        </DropdownMenuItem>
-
-        <DropdownMenuItem>
-          <FileText className="mr-2 h-4 w-4" />
-          Add Note
-        </DropdownMenuItem>
-
-        <DropdownMenuItem>
-          <Star className="mr-2 h-4 w-4" />
-          Star Candidate
-        </DropdownMenuItem>
-
-        <DropdownMenuItem>
-          <Flag className="mr-2 h-4 w-4" />
-          Flag Candidate
-        </DropdownMenuItem>
-
-        <DropdownMenuItem>
-          <Archive className="mr-2 h-4 w-4" />
-          Archive
-        </DropdownMenuItem>
-
-        <DropdownMenuItem className="text-destructive focus:text-destructive">
-          <Trash2 className="mr-2 h-4 w-4" />
-          Delete
-        </DropdownMenuItem>
+        {visibleMenuOptions.map(({ label, icon: Icon, destructive }) => (
+          <DropdownMenuItem
+            key={label}
+            className={destructive ? "text-destructive focus:text-destructive" : undefined}
+          >
+            <Icon className="mr-2 h-4 w-4" />
+            {label}
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

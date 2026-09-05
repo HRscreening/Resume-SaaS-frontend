@@ -15,6 +15,7 @@ import { VoiceScorecardDetails } from "./VoiceScorecardDetails";
 import { InterruptionNotice } from "./InterruptionNotice";
 import { toInputValue, defaultScheduleValue } from "@/lib/scheduleTime";
 import { ExternalLink, Loader2 } from "lucide-react";
+import { useAccount } from "@/hooks/useAccount";
 
 interface CandidateVoicePanelProps {
   screeningId: string;
@@ -76,6 +77,7 @@ const PhoneIcon = ({ size = 13 }: { size?: number }) => (
  * the /voice/calls page uses (shared cache keys → no duplicate fetches).
  */
 export function CandidateVoicePanel({ screeningId, resumeId, candidateName,currentStage }: CandidateVoicePanelProps) {
+  const { canWrite } = useAccount();
   const queryClient = useQueryClient();
   const [scheduling, setScheduling] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
@@ -192,12 +194,14 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
   ) : (
     <div className="flex items-center gap-2 text-xs text-[#737373]">
       <span>{phoneValue || "No number on file"}</span>
-      <button
-        onClick={() => setEditingPhone(true)}
-        className="text-[11px] font-medium text-[#0F0F0F] underline underline-offset-2 hover:text-[#C85A17]"
-      >
-        edit
-      </button>
+      {canWrite && (
+        <button
+          onClick={() => setEditingPhone(true)}
+          className="text-[11px] font-medium text-[#0F0F0F] underline underline-offset-2 hover:text-[#C85A17]"
+        >
+          edit
+        </button>
+      )}
     </div>
   );
 
@@ -421,23 +425,25 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
                 </span>
               )}
             </span>
-            <div className="flex shrink-0 items-center gap-3">
-              <button
-                onClick={() => openReschedule(latestCall)}
-                disabled={busy}
-                className="text-xs font-medium text-[#404040] hover:text-[#0F0F0F] hover:underline disabled:opacity-50"
-              >
-                Change time
-              </button>
-              <span className="h-3 w-px bg-[#E8E5DF]" />
-              <button
-                onClick={() => cancelMut.mutate(latestCall.id)}
-                disabled={busy}
-                className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
-              >
-                {cancelMut.isPending ? "Cancelling…" : "Cancel"}
-              </button>
-            </div>
+            {canWrite && (
+              <div className="flex shrink-0 items-center gap-3">
+                <button
+                  onClick={() => openReschedule(latestCall)}
+                  disabled={busy}
+                  className="text-xs font-medium text-[#404040] hover:text-[#0F0F0F] hover:underline disabled:opacity-50"
+                >
+                  Change time
+                </button>
+                <span className="h-3 w-px bg-[#E8E5DF]" />
+                <button
+                  onClick={() => cancelMut.mutate(latestCall.id)}
+                  disabled={busy}
+                  className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                >
+                  {cancelMut.isPending ? "Cancelling…" : "Cancel"}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -453,7 +459,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
 
         {/* Re-call is available once the last attempt is finished (done/unreachable). */}
         {!scheduled && !active && (
-          scheduling ? scheduler() : <div className="space-y-2">{phoneEditor}{callButtons(true)}</div>
+          scheduling ? scheduler() : <div className="space-y-2">{phoneEditor}{canWrite && callButtons(true)}</div>
         )}
       </div>
     );
@@ -491,7 +497,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
       <div className="bg-[#F5F3EE] rounded-xl p-4">
         <p className="text-xs text-[#404040] leading-relaxed">Run an AI phone interview with this candidate.</p>
       </div>
-      {scheduling ? scheduler() : <div className="space-y-2">{phoneEditor}{callButtons(candidate?.reason === "recall")}</div>}
+      {scheduling ? scheduler() : <div className="space-y-2">{phoneEditor}{canWrite && callButtons(candidate?.reason === "recall")}</div>}
     </div>
   );
 }

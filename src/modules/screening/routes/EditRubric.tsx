@@ -6,6 +6,7 @@ import { getScreening, updateRubric } from "@/lib/api";
 import type { RubricCategory, Subcategory, Rubric, Screening } from "@/types";
 import { truncate } from "@/lib/utils";
 import { CategoryImportancePills } from "@/components/screening/new-screening/CategoryImportancePills";
+import { useAccount } from "@/hooks/useAccount";
 
 const CATEGORY_COLORS = [
   { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", dot: "#3B82F6" },
@@ -19,6 +20,7 @@ export default function EditRubric() {
   const { id } = useParams({ strict: false }) as { id: string };
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { canWrite } = useAccount();
 
   const { data: screening, isLoading } = useQuery({
     queryKey: ["screening", id],
@@ -53,7 +55,7 @@ export default function EditRubric() {
   // const totalWeight = draft.reduce((s, c) => s + c.weight, 0);
   const dirty = JSON.stringify(draft) !== JSON.stringify(initialCategories);
   const hasEmptySubName = draft.some((c) => c.subcategories.some((s) => !s.name.trim()));
-  const canSave = dirty && !hasEmptySubName && !saving;
+  const canSave = canWrite && dirty && !hasEmptySubName && !saving;
 
   function updateCategoryWeight(catIdx: number, weight: number) {
     setDraft((prev) => prev.map((c, i) => (i === catIdx ? { ...c, weight } : c)));
@@ -359,13 +361,15 @@ export default function EditRubric() {
               >
                 Cancel
               </div>
-              <button
-                onClick={() => setConfirmOpen(true)}
-                disabled={!canSave}
-                className="h-10 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                Save rubric
-              </button>
+              {canWrite && (
+                <button
+                  onClick={() => setConfirmOpen(true)}
+                  disabled={!canSave}
+                  className="h-10 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Save rubric
+                </button>
+              )}
             </div>
           </div>
         )}
