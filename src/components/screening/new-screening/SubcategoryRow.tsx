@@ -14,22 +14,30 @@ export function SubcategoryRow({ subcategory: sub, onChange, onRemove }: Subcate
   return (
     <div className={`rounded-xl p-3.5 border ${sub.is_non_negotiable ? "border-red-300 bg-red-50/40" : "border-[#E8E5DF]"}`}>
       {/* Badges */}
-      {(sub.is_non_negotiable || sub.is_external_context) && (
-        <div className="flex items-center gap-1.5 mb-2">
-          {sub.is_non_negotiable && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
-              <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><polygon points="4,0 8,8 0,8"/></svg>
-              Must Have
-            </span>
-          )}
-          {sub.is_external_context && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">
-              <svg width="9" height="9" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 1.5C6 4 5 6 5 8s1 4 3 6.5M8 1.5C10 4 11 6 11 8s-1 4-3 6.5M1.5 8h13"/></svg>
-              External Signal
-            </span>
-          )}
-        </div>
-      )}
+      <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => onChange({ is_non_negotiable: !sub.is_non_negotiable })}
+          className={`flex flex-row items-center gap-2 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${sub.is_non_negotiable
+            ? "bg-red-100 text-red-700 border-red-200"
+            : "bg-white text-[#A0A0A0] border-[#E8E5DF] hover:border-red-200 hover:text-red-600"
+            }`}
+        >
+          <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><polygon points="4,0 8,8 0,8" /></svg>
+          Must Have
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange({ is_external_context: !sub.is_external_context })}
+          className={`text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${sub.is_external_context
+            ? "bg-blue-50 text-blue-600 border-blue-200"
+            : "bg-white text-[#A0A0A0] border-[#E8E5DF] hover:border-blue-200 hover:text-blue-600"
+            }`}
+        >
+          External Signal
+        </button>
+      </div>
+
       {/* Mobile: stack inputs on top, weight+delete controls below (so the name
           input gets the full row width instead of being squeezed to ~90 px by
           the right-side cluster). sm+ keeps the original side-by-side. */}
@@ -48,8 +56,8 @@ export function SubcategoryRow({ subcategory: sub, onChange, onRemove }: Subcate
             />
             {!sub.is_external_context && (
               <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#0F0F0F] group-hover:text-[#0F0F0F] group-focus-within:text-[#C85A17] transition-colors" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 1.5L14.5 5 5 14.5 1.5 14.5 1.5 11z"/>
-                <path d="M9 3.5L12.5 7"/>
+                <path d="M11 1.5L14.5 5 5 14.5 1.5 14.5 1.5 11z" />
+                <path d="M9 3.5L12.5 7" />
               </svg>
             )}
           </div>
@@ -66,8 +74,8 @@ export function SubcategoryRow({ subcategory: sub, onChange, onRemove }: Subcate
               className="w-full text-xs text-[#737373] bg-[#FAFAF8] border border-[#D4D4D4] rounded-md pl-2.5 pr-7 py-1.5 hover:border-[#737373] hover:bg-white focus:border-[#C85A17] focus:bg-white focus:ring-1 focus:ring-[#C85A17]/20 focus:outline-none transition-colors resize-none"
             />
             <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-2 text-[#0F0F0F] group-hover:text-[#0F0F0F] group-focus-within:text-[#C85A17] transition-colors" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 1.5L14.5 5 5 14.5 1.5 14.5 1.5 11z"/>
-              <path d="M9 3.5L12.5 7"/>
+              <path d="M11 1.5L14.5 5 5 14.5 1.5 14.5 1.5 11z" />
+              <path d="M9 3.5L12.5 7" />
             </svg>
           </div>
         </div>
@@ -82,9 +90,8 @@ export function SubcategoryRow({ subcategory: sub, onChange, onRemove }: Subcate
                   type="button"
                   onClick={() => onChange({ weight: lvl })}
                   title={IMPORTANCE_LABELS[lvl - 1]}
-                  className={`h-7 w-7 sm:h-6 sm:w-6 rounded-md text-xs font-bold transition-colors ${
-                    lvl <= sub.weight ? "bg-[#0F0F0F] text-white" : "bg-[#F0EDE8] text-[#A0A0A0] hover:bg-[#E8E5DF]"
-                  }`}
+                  className={`h-7 w-7 sm:h-6 sm:w-6 rounded-md text-xs font-bold transition-colors ${lvl <= sub.weight ? "bg-[#0F0F0F] text-white" : "bg-[#F0EDE8] text-[#A0A0A0] hover:bg-[#E8E5DF]"
+                    }`}
                 >
                   {lvl}
                 </button>
