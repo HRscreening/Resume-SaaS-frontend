@@ -51,8 +51,11 @@ export type ScreeningsSearchParams = z.infer<typeof screeningsSearchSchema>;
 
 
 export const DEFAULT_MIN = 0;
-export const DEFAULT_MAX = 20;
-export const DEFAULT_RANGE: RangeFilter = { min: 0, max: 20 };
+// Upper bound of the experience slider, and therefore the widest range it can
+// express. At 20 this silently hid every candidate with a longer career, which
+// on senior roles is most of them.
+export const DEFAULT_MAX = 50;
+export const DEFAULT_RANGE: RangeFilter = { min: DEFAULT_MIN, max: DEFAULT_MAX };
 
 export const rangeFilterSchema = z.object({
   min: z.number().optional(),

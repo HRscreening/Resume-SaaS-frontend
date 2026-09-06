@@ -1,5 +1,22 @@
 import { ScreeningSearchParams as ScoredResumeSearchFilterSchema, ApplicationsSearchParams } from "@/modules/screening/types/searchSchema";
 import { Application } from "../types/application.type";
+import { DEFAULT_MIN, DEFAULT_MAX } from "@/modules/screening/types/searchSchema";
+import type { RangeFilter } from "@/modules/screening/types/searchSchema";
+
+/**
+ * The experience range is always present, because the schema gives it a
+ * default so the slider has something to render. Sending it regardless turns
+ * a slider nobody touched into a filter: the full range is the absence of a
+ * filter, so it must not reach the API.
+ */
+function experienceFilter(range?: RangeFilter): RangeFilter | undefined {
+  if (!range) return undefined;
+  // Either bound being absent is itself an open end.
+  const min = range.min ?? DEFAULT_MIN;
+  const max = range.max ?? DEFAULT_MAX;
+  const coversEverything = min <= DEFAULT_MIN && max >= DEFAULT_MAX;
+  return coversEverything ? undefined : range;
+}
 
 const DEFAULT_LIMIT: number = 30;
 
@@ -122,8 +139,7 @@ export function buildScreeningFiltersBody(
 
     type: params.screenType,
 
-    exp:
-      params.sExp || undefined,
+    exp: experienceFilter(params.sExp),
 
     current_role:
       params.sCurrentRole || undefined,
@@ -257,7 +273,7 @@ export function buildApplicationFiltersBody(params: ApplicationsSearchParams) {
       ? params.appSort
       : undefined,
 
-    exp: params.appExperience || undefined,
+    exp: experienceFilter(params.appExperience),
 
     current_role: params.appCurrentRole || undefined,
     current_company: params.appCurrentCompany || undefined,
