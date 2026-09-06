@@ -4,6 +4,8 @@ import { RubricCategoryCard } from "./RubricCategoryCard";
 import { AskSourceJobModal } from "./AskSourcingModal";
 
 
+
+
 interface RubricReviewStepProps {
   rubric: Rubric;
   onCategoryWeightChange: (catIdx: number, weight: number) => void;
@@ -29,6 +31,8 @@ export function RubricReviewStep({
 }: RubricReviewStepProps) {
 
   const [showSourcingModal, setShowSourcingModal] = useState(false);
+
+  
  
 
   return (
@@ -72,7 +76,10 @@ export function RubricReviewStep({
           ← Back
         </button>
         <button
-          onClick={()=>setShowSourcingModal(true)}
+          onClick={()=>{
+            if(rubric.job_market_scope == "non_india"){onSave(false); return;}
+            setShowSourcingModal(true);
+          }}
           disabled={saving}
           className="flex-1 h-10 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
         >

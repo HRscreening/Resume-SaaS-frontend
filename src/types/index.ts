@@ -85,6 +85,8 @@ export interface Rubric {
   source: "AI" | "MANUAL" | "COMBINED";
   domain?: string;
   seniority_level?: string;
+  job_category?: string;
+  job_market_scope?: string;
 }
 
 // Keep for backward compat with score breakdown
