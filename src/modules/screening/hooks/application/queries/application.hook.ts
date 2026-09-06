@@ -34,7 +34,19 @@ export function useApplicationsInfiniteQuery({
         getNextPageParam: (lastPage) =>
             lastPage.has_more ? lastPage.next_cursor : undefined,
 
-        staleTime: 6 * 60 * 60 * 1000,
+        // Applications arrive on their own: a resume joins this list the moment
+        // the parse worker finishes it, with nothing in the UI to trigger a
+        // refetch. This was 6 hours, which froze the list at whatever had
+        // finished parsing when the page loaded. In production a job holding 44
+        // resumes rendered 3, because only 3 had parsed at load and the other 26
+        // landed a minute later. The header counts come from other queries with
+        // shorter stale times, so they moved on and disagreed with the list.
+        //
+        // ResumeParsingProgress invalidates this key when a batch completes, but
+        // only while it is mounted; parsing that finishes with no batch on screen
+        // reaches the list solely through this timeout. 30s matches the per-job
+        // usage counters on the same screen (screening.tsx).
+        staleTime: 30_000,
     });
 }
 
