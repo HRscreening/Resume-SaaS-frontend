@@ -336,6 +336,9 @@ export interface QuestionPlanItem {
   text: string;
   competency_ref: string;
   expected_signals: string[];
+  // Hindi wording, filled in by the server when the job is set to Hindi and
+  // editable here. Absent for English jobs.
+  text_hi?: string | null;
 }
 
 export interface VoiceSettings {
@@ -369,6 +372,8 @@ export interface QualificationConfig {
 
 export type InterviewDepth = "screening" | "deep_dive";
 
+export type InterviewLanguage = "en" | "hi";
+
 export interface VoiceConfig {
   enabled: boolean;
   question_plan: QuestionPlanItem[];
@@ -377,7 +382,9 @@ export interface VoiceConfig {
   // generic and read as a spam call).
   hiring_company?: string | null;
   voice: VoiceSettings;
-  language: "en";
+  // Language the interview is conducted in. Read when each call is placed, so
+  // changing it affects calls dialled afterwards, not one already running.
+  language: InterviewLanguage;
   calling_window: CallingWindow;
   default_country_code: string;
   retry_policy: RetryPolicy;
