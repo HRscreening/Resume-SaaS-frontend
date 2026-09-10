@@ -124,7 +124,7 @@ export function CandidatesTable({
   return (
     <>
 
-      <div className="space-y-4">
+      <div className="space-y-4 mb-7">
 
 
         {/* Table.

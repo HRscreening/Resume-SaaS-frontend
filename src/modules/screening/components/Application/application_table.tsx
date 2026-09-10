@@ -79,7 +79,7 @@ export function ApplicationTable({
 
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 mb-7">
             {/* Table */}
             {/* <div className="rounded-2xl border border-[#E8E5DF] bg-white overflow-hidden">
                 <div className="overflow-x-auto"> */}
