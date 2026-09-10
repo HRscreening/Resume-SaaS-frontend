@@ -328,11 +328,77 @@ export default function VoiceConfigPage() {
         </div>
       </Step>
 
+      {/* ── Interview language ───────────────────────────────────────────────
+          Read when each call is placed, so changing it here affects calls
+          dialled afterwards and never one already in progress. Switching to
+          Hindi translates the questions on save; the recruiter reviews and can
+          correct that wording before anyone is called. */}
+      <Step
+        n={2}
+        title="Interview language"
+        hint="The language the agent speaks. Applies to calls placed after you save."
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          {([
+            {
+              value: "en" as const,
+              label: "English",
+              lead: "Default",
+              body: "The agent asks your questions as written and the transcript is in English.",
+            },
+            {
+              value: "hi" as const,
+              label: "Hindi",
+              lead: "Natural Hinglish",
+              body: "The agent speaks Hindi, keeping technical terms in English. Transcript is Hindi; scores and reports stay English.",
+            },
+          ]).map((opt) => {
+            const active = (draft.language ?? "en") === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                aria-pressed={active}
+                disabled={!canWrite}
+                onClick={() => {
+                  if (active) return;
+                  setDraft((d) => ({ ...d, language: opt.value }));
+                }}
+                className={`rounded-xl border p-3.5 text-left transition-colors ${
+                  active
+                    ? "border-[#0F0F0F] bg-[#0F0F0F] text-white"
+                    : "border-[#D4D4D4] bg-white hover:border-[#0F0F0F]/40"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold">{opt.label}</span>
+                  <span className={`h-3.5 w-3.5 rounded-full border-2 ${
+                    active ? "border-white bg-white" : "border-[#D4D4D4]"
+                  }`} />
+                </div>
+                <p className={`mt-0.5 text-xs font-medium ${active ? "text-white/80" : "text-[#404040]"}`}>
+                  {opt.lead}
+                </p>
+                <p className={`mt-1.5 text-xs leading-relaxed ${active ? "text-white/70" : "text-[#737373]"}`}>
+                  {opt.body}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+        {(draft.language ?? "en") === "hi" && (
+          <p className="mt-3 text-xs leading-relaxed text-[#737373]">
+            Your questions are translated when you save. Review the Hindi below and
+            edit anything that reads wrong: that wording is what the agent asks.
+          </p>
+        )}
+      </Step>
+
       {/* ── 2. Who is calling ────────────────────────────────────────────────
           Enable + company grouped: both answer "does this round run, and who
           does the agent say it is calling for". Company is required — without
           it the greeting reads as a spam call and the backend refuses to dial. */}
-      <Step n={2} title="Who is calling" hint="How the assistant introduces itself on the phone.">
+      <Step n={3} title="Who is calling" hint="How the assistant introduces itself on the phone.">
         <label className={labelCls}>
           Hiring company <span className="text-red-600">*</span>
         </label>
@@ -372,7 +438,7 @@ export default function VoiceConfigPage() {
 
       {/* ── 3. Questions ─────────────────────────────────────────────────── */}
       <Step
-        n={3}
+        n={4}
         title="Questions"
         hint="The assistant asks exactly these, word for word, and probes once when an answer is thin. Click any question to reword it."
         aside={
@@ -442,6 +508,23 @@ export default function VoiceConfigPage() {
                   disabled={!canWrite}
                   className="min-h-0 flex-1 resize-none rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm leading-relaxed text-[#0F0F0F] transition-colors placeholder:text-[#A3A3A3] hover:border-[#E8E5DF] hover:bg-[#FAFAF8] focus:border-[#0F0F0F] focus:bg-white focus:outline-none [field-sizing:content]"
                 />
+                {/* The wording actually spoken on a Hindi call. Shown beside
+                    the English so the recruiter can see what was translated
+                    and fix it: this is the text the agent reads out, and a
+                    mistranslation is otherwise invisible until someone reads a
+                    transcript. Empty until the config is saved once. */}
+                {(draft.language ?? "en") === "hi" && (
+                  <textarea
+                    value={q.text_hi ?? ""}
+                    onChange={(e) => updateQuestion(idx, { text_hi: e.target.value })}
+                    rows={2}
+                    placeholder="Hindi wording — filled in when you save"
+                    aria-label={`Question ${idx + 1} in Hindi`}
+                    lang="hi"
+                    disabled={!canWrite}
+                    className="min-h-0 flex-1 resize-none rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm leading-relaxed text-[#404040] transition-colors placeholder:text-[#A3A3A3] hover:border-[#E8E5DF] hover:bg-[#FAFAF8] focus:border-[#0F0F0F] focus:bg-white focus:outline-none [field-sizing:content]"
+                  />
+                )}
                 {canWrite && <span
                   aria-hidden="true"
                   title="Editable"
@@ -512,7 +595,7 @@ export default function VoiceConfigPage() {
           Each toggle reveals only its own fields, so an unused check costs no
           screen space. */}
       <Step
-        n={4}
+        n={5}
         title="Qualification checks"
         hint="Logistics the call captures. Budget and band are never spoken to the candidate."
       >

@@ -10,7 +10,7 @@ export function AskSourceJobModal({
   onClose,
 }: SourcingModalProps) {
 
-  const [isChecked, setIsChecked] = useState<boolean>(true);
+  const [isChecked, setIsChecked] = useState<boolean>(false);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
@@ -54,6 +54,8 @@ export function AskSourceJobModal({
             </span>
           </label>
         </div>
+
+        
 
         {/* Actions */}
         <div className="mt-8 flex justify-end gap-3">

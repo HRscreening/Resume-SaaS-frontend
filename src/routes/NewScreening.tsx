@@ -140,7 +140,14 @@ export default function NewScreening() {
       data.append("raw_jd_text", jdText);
       data.append("rubric", JSON.stringify(rubric));
       data.append("source_job", sourceJob ? "true" : "false");
-      
+      if (rubric.job_category) {
+        data.append("job_category", rubric.job_category);
+      }
+      if (rubric.job_market_scope) {
+        data.append("job_market_scope", rubric.job_market_scope);
+      }
+
+
       if (jdFile) {
         data.append("jd_file", jdFile, jdFile.name);
       }

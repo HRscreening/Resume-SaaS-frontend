@@ -184,7 +184,7 @@ export default function ScreeningDetail() {
                         </div>
                         <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">{screening.title}</h1>
                         <p className="text-sm text-[#737373] mt-0.5">
-                            {totalApplications} resumes · Created {formatDate(screening.created_at)}
+                             Created {formatDate(screening.created_at)}
                         </p>
                         {screeningUsage.length > 0 && (
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
@@ -259,7 +259,7 @@ export default function ScreeningDetail() {
             </div>
 
             {/* ---------------- Tab Options---------------------- */}
-            <div className="flex flex-row w-full px-4 sm:px-6 md:px-8 gap-2">
+            <div className="flex flex-row w-full px-4  sm:px-6 md:px-8 gap-2">
                 {
                     sectionTabs.map((tab) => (
                         <button

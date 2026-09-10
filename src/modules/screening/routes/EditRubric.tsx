@@ -221,17 +221,18 @@ export default function EditRubric() {
                       <button
                         type="button"
                         onClick={() => updateSub(catIdx, subIdx, { is_non_negotiable: !sub.is_non_negotiable })}
-                        className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border transition-colors ${sub.is_non_negotiable
+                        className={`flex flex-row items-center gap-2 cursor-pointer text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border transition-colors ${sub.is_non_negotiable
                           ? "bg-red-100 text-red-700 border-red-200"
                           : "bg-white text-[#A0A0A0] border-[#E8E5DF] hover:border-red-200 hover:text-red-600"
                           }`}
                       >
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor"><polygon points="4,0 8,8 0,8" /></svg>
                         Must Have
                       </button>
                       <button
                         type="button"
                         onClick={() => updateSub(catIdx, subIdx, { is_external_context: !sub.is_external_context })}
-                        className={`text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full border transition-colors ${sub.is_external_context
+                        className={`cursor-pointer text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full border transition-colors ${sub.is_external_context
                           ? "bg-blue-50 text-blue-600 border-blue-200"
                           : "bg-white text-[#A0A0A0] border-[#E8E5DF] hover:border-blue-200 hover:text-blue-600"
                           }`}
