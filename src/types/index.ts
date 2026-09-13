@@ -414,7 +414,12 @@ export type CallStatus =
   | "COMPLETED" | "QUEUED_FOR_SCORING" | "SCORING" | "SCORED" | "ERROR";
 
 export type CallDisplayStatus =
-  | "queued" | "calling" | "in_interview" | "processing" | "ready" | "unreachable";
+  | "queued" | "calling" | "in_interview" | "processing" | "ready"
+  // The candidate said they are not going ahead. Distinct from "ready": the
+  // interview stopped early by their choice, so there is no competency score
+  // and the job is not waiting on anything.
+  | "withdrawn"
+  | "unreachable";
 
 export type RecordingStatus = "none" | "processing" | "ready" | "failed";
 
