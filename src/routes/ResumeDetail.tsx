@@ -93,7 +93,7 @@ export default function ResumeDetail({
     setPdfLoading(true);
     try {
       if (!data?.pdf_url) return;
-
+      console.log("Generating signed URL for PDF:", data.pdf_url);
       const fetchPdfUrl = await resumeUploadService.generateSignedUrls(data?.pdf_url, id);
       console.log("Fetched signed URL for PDF:", fetchPdfUrl);
       setPdfUrl(fetchPdfUrl);

@@ -10,7 +10,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useCandidateScreeningDetail } from "@/controllers/screening/getCandidateScreeningDetail";
-import InfoTab from "@/modules/screening/components/info_sheet_tab";
+import InfoTab from "@/modules/screening/components/Screening/profileTab";
 import { CandidateVoicePanel } from "@/components/screening/voice/CandidateVoicePanel";
 import { useScreening } from "@/controllers/screening/getScreening";
 import { formatDate } from "@/lib/utils";

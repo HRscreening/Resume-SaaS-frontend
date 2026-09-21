@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { resumeUploadService } from '@/lib/services'
 import { queryClient } from '@/lib/queryClient'
-import {toast} from "sonner"
+import { toast } from "sonner"
 import { useAddApplicationsMutation } from '@/modules/screening/hooks/application/queries/application.hook'
 
 interface UploadResumesProps {
@@ -10,7 +10,7 @@ interface UploadResumesProps {
     setShowUploadMore: (show: boolean) => void;
 }
 
-const UploadResumes = ({screening_id,user_id,setShowUploadMore}:UploadResumesProps) => {
+const UploadResumes = ({ screening_id, user_id, setShowUploadMore }: UploadResumesProps) => {
     const [draftFiles, setDraftFiles] = useState<File[]>([]);
     const [uploading, setUploading] = useState(false);
     const [uploadStep, setUploadStep] = useState(0);
@@ -19,10 +19,10 @@ const UploadResumes = ({screening_id,user_id,setShowUploadMore}:UploadResumesPro
     const [uploadMoreFiles, setUploadMoreFiles] = useState<File[]>([]);
     const [uploadMoreDragActive, setUploadMoreDragActive] = useState(false);
     const uploadMoreFileInputRef = useRef<HTMLInputElement>(null);
-      const [dragActive, setDragActive] = useState(false);
+    const [dragActive, setDragActive] = useState(false);
 
 
-      const {mutateAsync:UploadResumes,isSuccess:isUploadDone,isPending:isUploading} = useAddApplicationsMutation()
+    const { mutateAsync: UploadResumes, isSuccess: isUploadDone, isPending: isUploading } = useAddApplicationsMutation()
 
     function pickResumeFiles(
         picked: FileList | File[] | null,
@@ -34,10 +34,14 @@ const UploadResumes = ({screening_id,user_id,setShowUploadMore}:UploadResumesPro
         const zips = arr.filter((f) => f.name.toLowerCase().endsWith(".zip"));
         const docs = arr.filter((f) => {
             const n = f.name.toLowerCase();
-            return n.endsWith(".pdf") || n.endsWith(".docx");
+            return (
+                n.endsWith(".pdf") ||
+                n.endsWith(".doc") ||
+                n.endsWith(".docx")
+            );
         });
         if (zips.length > 0 && docs.length > 0) {
-            setUploadError("Drop either a single ZIP or one-or-more PDF/DOCX files — not both.");
+            setUploadError("Drop either a single ZIP or one-or-more PDF/DOCX/DOC files — not both.");
             return;
         }
         if (zips.length > 1) {
@@ -50,7 +54,7 @@ const UploadResumes = ({screening_id,user_id,setShowUploadMore}:UploadResumesPro
             return;
         }
         if (docs.length === 0) {
-            setUploadError("Unsupported file type. Use ZIP, PDF, or DOCX.");
+            setUploadError("Unsupported file type. Use ZIP, PDF, DOC or DOCX.");
             return;
         }
         setUploadError(null);
@@ -124,7 +128,7 @@ const UploadResumes = ({screening_id,user_id,setShowUploadMore}:UploadResumesPro
                     <div>
                         <div className="flex items-center gap-2">
                             <h2 className="text-base font-semibold text-[#0F0F0F]">Add resumes</h2>
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F0EDE8] border border-[#D4D4D4] text-xs font-semibold text-[#404040] tracking-wide">.ZIP · .PDF · .DOCX</span>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#F0EDE8] border border-[#D4D4D4] text-xs font-semibold text-[#404040] tracking-wide">.ZIP · .PDF · .DOC · .DOCX</span>
                         </div>
                         <p className="text-xs text-[#737373] mt-1">Upload a ZIP archive or one-or-more PDF/DOCX files. New resumes are scored and re-ranked against all existing candidates.</p>
                     </div>
@@ -136,7 +140,7 @@ const UploadResumes = ({screening_id,user_id,setShowUploadMore}:UploadResumesPro
                 {uploadError && (
                     <div className="mt-3 mb-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">{uploadError}</div>
                 )}
-                <input ref={uploadMoreFileInputRef} type="file" accept=".zip,.pdf,.docx" multiple className="hidden"
+                <input ref={uploadMoreFileInputRef} type="file" accept=".zip,.pdf,.doc,.docx" multiple className="hidden"
                     onChange={(e) => { acceptUploadMoreFiles(e.target.files); e.target.value = ""; }} />
                 <div className="mt-4">
                     {uploadMoreFiles.length > 0 ? (
@@ -206,7 +210,7 @@ const UploadResumes = ({screening_id,user_id,setShowUploadMore}:UploadResumesPro
                                 </div>
                                 <p className="text-sm font-medium text-[#0F0F0F] mb-1">Drop files here</p>
                                 <p className="text-xs text-[#737373]">or click to browse</p>
-                                <p className="text-xs font-semibold text-[#A0A0A0] mt-2 uppercase tracking-wide">ZIP archive · or one-or-more PDF/DOCX</p>
+                                <p className="text-xs font-semibold text-[#A0A0A0] mt-2 uppercase tracking-wide">ZIP archive · or one-or-more PDF/DOC/DOCX</p>
                             </div>
 
                             {/* Mobile tap-to-pick. Same uploadMoreFileInputRef. */}

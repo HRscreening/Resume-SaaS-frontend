@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import ResumeParsingProgress from "@/modules/screening/components/Application/resumeParsingProgress";
 import { useGetBatchesQuery } from "@/modules/screening/hooks/shared/batch.hook";
 import { ApplicationsToolbar } from "@/modules/screening/components/Application/filters/ApplicationToolbar";
-import InfoSheet, { useAnalysisSheetOpen as useInfoSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/modules/screening/components/info_sheet";
+import InfoSheet, { useAnalysisSheetOpen as useInfoSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/modules/screening/components/Application/InfoSheet";
 import { type ScreeningDetailsSearchParams } from "@/modules/screening/types/searchSchema";
 import { Archive, CircleCheck } from 'lucide-react'
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
