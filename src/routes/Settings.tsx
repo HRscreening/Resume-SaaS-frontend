@@ -342,7 +342,7 @@ function BillingPanel() {
             <p className="text-sm text-[#737373]">
               {planKey === "FREE"
                 ? `Free · ${(usage?.quota_limit ?? planInfo?.max_resumes_per_month ?? 50).toLocaleString()} resumes`
-                : `${planInfo ? `$${planInfo.price_monthly_usd}/mo` : "—"} · ${(usage?.quota_limit ?? planInfo?.max_resumes_per_month ?? 0).toLocaleString()} resumes/month`}
+                : `${planInfo?.price_label ?? "—"} · ${(usage?.quota_limit ?? planInfo?.max_resumes_per_month ?? 0).toLocaleString()} resume analyses${planInfo?.quota_period === "monthly" ? "/month" : " total"}`}
             </p>
             {profile?.plan !== "FREE" && !showCancelConfirm && (
               <button

@@ -161,15 +161,21 @@ export default function Checkout() {
     );
   }
 
-  const monthlyAmount = cycle === "yearly" ? planSpec.yearly_price_monthly_usd : planSpec.price_monthly_usd;
+  // A plan the catalog prices as null is contact-sales and never reaches
+  // here — the enterprise branch above returns first.
+  const monthlyAmount =
+    (cycle === "yearly" ? planSpec.yearly_price_monthly_usd : planSpec.price_monthly_usd) ?? 0;
   const totalUsd = cycle === "yearly" ? monthlyAmount * 12 : monthlyAmount;
 
   // Plans are priced in USD; India pays the rupee equivalent at today's rate.
   const billedInRupees = quote?.currency === "INR";
-  const monthlyLabel = `$${monthlyAmount}`;
+  // Yearly rates carry cents ($39.20); monthly ones don't ($49).
+  const monthlyLabel = Number.isInteger(monthlyAmount)
+    ? `$${monthlyAmount}`
+    : `$${monthlyAmount.toFixed(2)}`;
   const totalLabel = quote
     ? formatMoney(quote.amount_major, quote.currency)
-    : `$${totalUsd?.toFixed(2)}`;
+    : `$${totalUsd.toFixed(2)}`;
 
   const cannotPay = !!quote && !quote.payable;
   const quoteError = quoteQuery.error instanceof Error ? quoteQuery.error.message : null;
@@ -207,7 +213,8 @@ export default function Checkout() {
                 <p className="text-2xl font-extrabold text-[#0F0F0F]">{monthlyLabel}<span className="text-sm font-normal text-[#737373]">/mo</span></p>
               </div>
               <p className="text-xs text-[#737373]">
-                {planSpec.max_resumes_per_month.toLocaleString()} resumes/month · billed {cycle}
+                {planSpec.max_resumes_per_month.toLocaleString()} resume analyses
+                {planSpec.quota_period === "monthly" ? "/month" : " total"} · billed {cycle}
               </p>
               {billedInRupees && quote?.fx_rate && (
                 <p className="text-[11px] text-[#A0A0A0] mt-2">

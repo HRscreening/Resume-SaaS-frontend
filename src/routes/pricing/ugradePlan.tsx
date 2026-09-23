@@ -74,10 +74,29 @@ const PLAN_SLUG: Record<'PLUS' | 'PRO', 'plus' | 'pro'> = {
     PRO: 'pro',
 };
 
-function formatPrice(plan: PlanSpec, isYearly: boolean): string {
-    if (plan.key === 'ENTERPRISE') return 'Custom';
+/**
+ * A plan the catalog gives no USD price is contact-sales. Keyed off the
+ * payload rather than off a plan name, so adding a custom-priced tier needs
+ * no change here.
+ */
+function isCustomPriced(plan: PlanSpec, isYearly: boolean): boolean {
     const amount = isYearly ? plan.yearly_price_monthly_usd : plan.price_monthly_usd;
-    return `$${amount}`;
+    return amount === undefined || amount === null;
+}
+
+function formatPrice(plan: PlanSpec, isYearly: boolean): string {
+    if (isCustomPriced(plan, isYearly)) return 'Custom';
+    const amount = (isYearly ? plan.yearly_price_monthly_usd : plan.price_monthly_usd) as number;
+    // Yearly rates carry cents ($39.20); monthly ones don't ($49). Rendering
+    // the raw number would print "$39.2".
+    return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
+}
+
+/** "billed at $470.40/year" — the annual total behind a monthly yearly rate. */
+function formatAnnualTotal(plan: PlanSpec): string | null {
+    const monthly = plan.yearly_price_monthly_usd;
+    if (monthly === undefined || monthly === null || monthly === 0) return null;
+    return `billed at $${(monthly * 12).toFixed(2)}/year`;
 }
 
 const Pricing = () => {
@@ -247,10 +266,13 @@ const Pricing = () => {
                             <div className={planNameClass}>{plan.display_name}</div>
                             <div className="mb-1.5 flex items-baseline gap-1">
                                 <PriceAmount amount={formatPrice(plan, isYearly)} />
-                                {!isEnterprise && <span className="text-sm text-[#a0a0a0]">/month</span>}
+                                {!isCustomPriced(plan, isYearly) && (
+                                    <span className="text-sm text-[#a0a0a0]">/month</span>
+                                )}
                             </div>
                             <p className={planDescClass}>
-                                {PLAN_DESCRIPTIONS[plan.key]} {isPaidYearly && '(billed yearly)'}
+                                {PLAN_DESCRIPTIONS[plan.key]}{' '}
+                                {isPaidYearly && `(${formatAnnualTotal(plan) ?? 'billed yearly'})`}
                             </p>
                             <ul className="mb-7 flex flex-1 list-none flex-col gap-2.5">
                                 {plan.display_features.map((f, i) => (
