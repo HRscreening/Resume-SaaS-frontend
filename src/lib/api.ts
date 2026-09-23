@@ -2,7 +2,7 @@ import { getAccessToken } from "@/lib/auth";
 import { assertWritable, setAccountRole } from "@/lib/accountSession";
 import { clearSessionHint } from "@/lib/sessionHint";
 import { createClient } from "@/lib/supabase/client";
-import { detectCurrency } from "@/lib/currency";
+import { detectBillingCurrency, type BillingCurrency } from "@/lib/currency";
 import type {
   Profile,
   UsageResponse,
@@ -614,33 +614,59 @@ export async function getPlans(): Promise<import("@/types").PlanSpec[]> {
   return res.plans;
 }
 
-export interface FxRate {
-  base: string;
-  currency: string;
-  rate: number;
-  fallback: boolean;
-}
-
-export async function getFxRate(): Promise<FxRate> {
-  const currency = detectCurrency();
-  console.log(`Creating Razorpay order with currency: ${currency}`);
-  return request<FxRate>(`/api/billing/fx-rate?currency=${encodeURIComponent(currency)}`);
-}
-
-
-export async function createRazorpayOrder({plan,cycle}:{
+/** What checkout will actually charge, straight from the server. */
+export interface BillingQuote {
   plan: string;
-  cycle: "monthly" | "yearly"
-}): Promise<{
+  cycle: "monthly" | "yearly";
+  /** "USD" everywhere, "INR" in India. Never anything else. */
+  currency: BillingCurrency;
+  /** Minor units (cents or paise) — what Razorpay is handed. */
+  amount_minor: number;
+  /** Major units — what the customer reads. */
+  amount_major: number;
+  /** The canonical list price, always USD. */
+  usd_amount: number;
+  /** USD→INR rate applied, null when billing in USD. */
+  fx_rate: number | null;
+  /** False when we cannot take this payment (e.g. international not enabled). */
+  payable: boolean;
+  unavailable_reason: string | null;
+}
+
+export async function getBillingQuote({
+  plan,
+  cycle,
+}: {
+  plan: string;
+  cycle: "monthly" | "yearly";
+}): Promise<BillingQuote> {
+  const currency = detectBillingCurrency();
+  return request<BillingQuote>(
+    `/api/billing/quote?plan=${encodeURIComponent(plan)}&cycle=${cycle}` +
+      `&currency=${encodeURIComponent(currency)}`,
+  );
+}
+
+export interface RazorpayOrder extends BillingQuote {
   order_id: string;
+  /** Razorpay's echo of amount_minor. */
   amount: number;
-  currency: string;
   key_id: string;
-}> {
-  const currency = detectCurrency();
-  console.log(`Creating Razorpay order with currency: ${currency}`);
-  return request(
-    `/api/billing/razorpay/order?plan=${plan}&cycle=${cycle}&currency=${encodeURIComponent(currency)}`,
+}
+
+export async function createRazorpayOrder({
+  plan,
+  cycle,
+}: {
+  plan: string;
+  cycle: "monthly" | "yearly";
+}): Promise<RazorpayOrder> {
+  // The currency is a hint: the server decides what it may mean, and
+  // computes the amount itself. Nothing price-bearing is sent from here.
+  const currency = detectBillingCurrency();
+  return request<RazorpayOrder>(
+    `/api/billing/razorpay/order?plan=${encodeURIComponent(plan)}&cycle=${cycle}` +
+      `&currency=${encodeURIComponent(currency)}`,
     { method: "POST" },
   );
 }
@@ -649,7 +675,8 @@ export async function verifyRazorpayPayment(data: {
   razorpay_order_id: string;
   razorpay_payment_id: string;
   razorpay_signature: string;
-  plan: string;
+  /** Advisory only — the server grants the plan recorded on the order. */
+  plan?: string;
 }): Promise<{ success: boolean; plan: string }> {
   return request("/api/billing/razorpay/verify", {
     method: "POST",

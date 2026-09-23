@@ -1,159 +1,29 @@
-// Detect the user's currency client-side. The backend (Railway) doesn't
-// receive geo headers, so we infer it here.
+// Which currency this visitor is billed in.
 //
-// Strategy: IANA timezone first (reflects the OS clock setting, which tracks
-// physical location), then fall back to the browser locale's region.
+// We bill in two currencies: INR in India, USD everywhere else. Prices are
+// denominated in USD; the rupee amount is the USD price converted at the
+// live rate, which the backend computes (GET /api/billing/quote). Nothing
+// here does money arithmetic — it only answers "is this browser in India",
+// because the server can't tell: Railway injects no geo headers.
+//
+// This is a hint, not an instruction. The backend treats it as one: it can
+// select INR and nothing else. Historically this file returned any of ~50
+// currencies and the backend charged that number as rupees, so a $25 plan
+// billed a US card ₹25.
 
-const REGION_TO_CURRENCY: Record<string, string> = {
-  IN: "INR",
-  US: "USD",
-  CA: "CAD",
-  GB: "GBP",
-  AU: "AUD",
-  NZ: "NZD",
-  JP: "JPY",
-  CN: "CNY",
-  HK: "HKD",
-  SG: "SGD",
-  MY: "MYR",
-  ID: "IDR",
-  TH: "THB",
-  PH: "PHP",
-  VN: "VND",
-  KR: "KRW",
-  TW: "TWD",
-  AE: "AED",
-  SA: "SAR",
-  IL: "ILS",
-  TR: "TRY",
-  RU: "RUB",
-  UA: "UAH",
-  ZA: "ZAR",
-  NG: "NGN",
-  KE: "KES",
-  EG: "EGP",
-  BR: "BRL",
-  MX: "MXN",
-  AR: "ARS",
-  CL: "CLP",
-  CO: "COP",
-  PE: "PEN",
-  CH: "CHF",
-  NO: "NOK",
-  SE: "SEK",
-  DK: "DKK",
-  PL: "PLN",
-  CZ: "CZK",
-  HU: "HUF",
-  RO: "RON",
-  BG: "BGN",
-  PK: "PKR",
-  BD: "BDT",
-  LK: "LKR",
-  NP: "NPR",
-};
+export type BillingCurrency = "USD" | "INR";
 
-const EURO_REGIONS = new Set([
-  "AT", "BE", "CY", "DE", "EE", "ES", "FI", "FR", "GR", "HR", "IE", "IT",
-  "LT", "LU", "LV", "MT", "NL", "PT", "SI", "SK",
-]);
+// The IANA zones that mean India. "Calcutta" is the deprecated alias, still
+// reported by older systems.
+const INDIA_TIMEZONES = new Set(["Asia/Kolkata", "Asia/Calcutta"]);
 
-// IANA timezone → ISO 3166-1 alpha-2 region. Covers the cities/zones most
-// users actually hit. Unknown zones fall through to locale-based detection.
-const TIMEZONE_TO_REGION: Record<string, string> = {
-  // South Asia
-  "Asia/Kolkata": "IN",
-  "Asia/Calcutta": "IN",
-  "Asia/Karachi": "PK",
-  "Asia/Dhaka": "BD",
-  "Asia/Colombo": "LK",
-  "Asia/Kathmandu": "NP",
-  // East / Southeast Asia
-  "Asia/Tokyo": "JP",
-  "Asia/Shanghai": "CN",
-  "Asia/Hong_Kong": "HK",
-  "Asia/Singapore": "SG",
-  "Asia/Kuala_Lumpur": "MY",
-  "Asia/Jakarta": "ID",
-  "Asia/Bangkok": "TH",
-  "Asia/Manila": "PH",
-  "Asia/Ho_Chi_Minh": "VN",
-  "Asia/Seoul": "KR",
-  "Asia/Taipei": "TW",
-  // Middle East
-  "Asia/Dubai": "AE",
-  "Asia/Riyadh": "SA",
-  "Asia/Jerusalem": "IL",
-  "Asia/Tel_Aviv": "IL",
-  "Europe/Istanbul": "TR",
-  // Europe (non-euro)
-  "Europe/London": "GB",
-  "Europe/Zurich": "CH",
-  "Europe/Oslo": "NO",
-  "Europe/Stockholm": "SE",
-  "Europe/Copenhagen": "DK",
-  "Europe/Warsaw": "PL",
-  "Europe/Prague": "CZ",
-  "Europe/Budapest": "HU",
-  "Europe/Bucharest": "RO",
-  "Europe/Sofia": "BG",
-  "Europe/Moscow": "RU",
-  "Europe/Kiev": "UA",
-  "Europe/Kyiv": "UA",
-  // Europe (eurozone — sample; region map handles EUR)
-  "Europe/Berlin": "DE",
-  "Europe/Paris": "FR",
-  "Europe/Madrid": "ES",
-  "Europe/Rome": "IT",
-  "Europe/Amsterdam": "NL",
-  "Europe/Brussels": "BE",
-  "Europe/Vienna": "AT",
-  "Europe/Dublin": "IE",
-  "Europe/Helsinki": "FI",
-  "Europe/Lisbon": "PT",
-  "Europe/Athens": "GR",
-  // Africa
-  "Africa/Johannesburg": "ZA",
-  "Africa/Lagos": "NG",
-  "Africa/Nairobi": "KE",
-  "Africa/Cairo": "EG",
-  // Americas
-  "America/New_York": "US",
-  "America/Chicago": "US",
-  "America/Denver": "US",
-  "America/Los_Angeles": "US",
-  "America/Phoenix": "US",
-  "America/Anchorage": "US",
-  "Pacific/Honolulu": "US",
-  "America/Toronto": "CA",
-  "America/Vancouver": "CA",
-  "America/Edmonton": "CA",
-  "America/Halifax": "CA",
-  "America/Sao_Paulo": "BR",
-  "America/Mexico_City": "MX",
-  "America/Argentina/Buenos_Aires": "AR",
-  "America/Santiago": "CL",
-  "America/Bogota": "CO",
-  "America/Lima": "PE",
-  // Oceania
-  "Australia/Sydney": "AU",
-  "Australia/Melbourne": "AU",
-  "Australia/Brisbane": "AU",
-  "Australia/Perth": "AU",
-  "Australia/Adelaide": "AU",
-  "Pacific/Auckland": "NZ",
-};
-
-function regionToCurrency(region: string): string {
-  if (EURO_REGIONS.has(region)) return "EUR";
-  return REGION_TO_CURRENCY[region] ?? "USD";
-}
+const INDIA_REGION = "IN";
 
 function regionFromTimezone(): string | undefined {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (!tz) return undefined;
-    return TIMEZONE_TO_REGION[tz];
+    return INDIA_TIMEZONES.has(tz) ? INDIA_REGION : undefined;
   } catch {
     return undefined;
   }
@@ -173,8 +43,28 @@ function regionFromLocale(): string | undefined {
   }
 }
 
-export function detectCurrency(): string {
-  const region = regionFromTimezone() ?? regionFromLocale();
-  if (!region) return "USD";
-  return regionToCurrency(region);
+/**
+ * The currency to ask the backend to price in. Timezone first — it tracks
+ * the OS clock, which tracks where the machine actually is — then the
+ * locale's region as a fallback.
+ */
+export function detectBillingCurrency(): BillingCurrency {
+  if (regionFromTimezone() === INDIA_REGION) return "INR";
+  if (regionFromLocale() === INDIA_REGION) return "INR";
+  return "USD";
+}
+
+/** Format a major-unit amount in the currency it was quoted in. */
+export function formatMoney(amount: number, currency: BillingCurrency | string): string {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      // Rupee amounts are always whole (the backend rounds up to the rupee);
+      // dollar amounts want cents when they have them.
+      maximumFractionDigits: currency === "INR" ? 0 : 2,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount}`;
+  }
 }
