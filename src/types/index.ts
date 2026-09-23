@@ -47,17 +47,28 @@ export interface UsageResponse {
 }
 
 // Plan catalog — fetched from GET /api/billing/plans. Single source of
-// truth lives in backend/app/core/quota.py PLAN_LIMITS.
+// truth lives in backend/app/core/plan.py PLAN_SPECS. display_features are
+// f-strings off the numeric fields below, so a plan can't advertise a cap
+// it doesn't enforce.
 export interface PlanSpec {
   key: SubscriptionPlan;
   display_name: string;
+  /** Absent on ENTERPRISE, which is priced in INR and sold as contact-sales. */
   price_monthly_usd: number;
   yearly_price_monthly_usd: number;
+  price_monthly_inr?: number;
+  price_label: string;
+  yearly_price_label: string;
   razorpay_amount_paise: number;
   max_resumes_per_month: number;
   max_batch_size: number;
   max_screenings: number;
+  /** Simultaneous live voice calls, not a monthly quota. */
+  max_concurrent_calls: number;
   data_retention_days: number;
+  /** "lifetime" for the FREE trial allowance, "monthly" for paid plans. */
+  quota_period: "lifetime" | "monthly";
+  scoring_models: string[];
   export_formats: string[];
   api_access: boolean;
   display_features: string[];
