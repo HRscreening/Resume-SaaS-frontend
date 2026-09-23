@@ -2,7 +2,7 @@ import type { Application, ApplicationActionStatus } from "@/modules/screening/t
 import { useSelectedApplications } from "@/modules/screening/hooks/application/custom/useSelectedApplication";
 import ProcessingOverlay from "@/modules/screening/components/shared/RowProcessingOverlay"
 import { MenuButton, type Option } from "@/modules/screening/components/shared/MenuButton";
-import InfoSheet from "@/modules/screening/components/info_sheet";
+import InfoSheet from "@/modules/screening/components/Application/InfoSheet";
 
 interface CandidateRowProps {
     candidate: Application;

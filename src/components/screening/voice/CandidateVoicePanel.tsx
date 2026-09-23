@@ -42,6 +42,7 @@ function statusBadge(s: CallDisplayStatus): { label: string; cls: string } {
     case "in_interview": return { label: "In interview", cls: "bg-indigo-50 border-indigo-200 text-indigo-700" };
     case "processing": return { label: "Processing", cls: "bg-violet-50 border-violet-200 text-violet-700" };
     case "ready": return { label: "Completed", cls: "bg-green-50 border-green-200 text-green-700" };
+    case "withdrawn": return { label: "Withdrew", cls: "bg-rose-50 border-rose-200 text-rose-700" };
     case "unreachable": return { label: "Unreachable", cls: "bg-amber-50 border-amber-200 text-amber-700" };
     default: return { label: s, cls: "bg-slate-50 border-slate-200 text-slate-700" };
   }
@@ -314,7 +315,12 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
   if (latestCall) {
     const chip = statusBadge(latestCall.display_status);
     const scheduled = isScheduledPending(latestCall);
-    const done = latestCall.display_status === "ready";
+    const withdrew = latestCall.display_status === "withdrawn";
+    // "Finished" for layout purposes: a withdrawn call has a transcript and a
+    // scorecard row (qualification facts, no competency score), so it gets the
+    // same affordances as a completed one. `done` alone still gates the green
+    // dot, which would misread as a clean pass.
+    const done = latestCall.display_status === "ready" || withdrew;
     const active = ACTIVE.includes(latestCall.display_status) && !scheduled;
     const duration = formatDuration(latestCall.duration_seconds);
 
@@ -344,7 +350,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
                 </span>
               ) : (
                 <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${chip.cls}`}>
-                  <div className="h-2 w-2 rounded-full" style={{ backgroundColor: done ? "#22C55E" : "#A3A3A3" }} />
+                  <div className="h-2 w-2 rounded-full" style={{ backgroundColor: withdrew ? "#E11D48" : done ? "#22C55E" : "#A3A3A3" }} />
                   {chip.label}
                 </span>
               )}
@@ -352,6 +358,12 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
                 <span className="text-[11px] text-amber-700 font-medium">partial</span>
               )}
             </div>
+
+            {latestCall.display_detail && (
+              <p className={`text-[11px] ${withdrew ? "text-rose-700" : "text-[#737373]"}`}>
+                {latestCall.display_detail}
+              </p>
+            )}
 
             {/* {done && latestCall.voice_score != null && (
             <span className={`text-sm font-bold ${scoreColor(latestCall.voice_score)}`}>

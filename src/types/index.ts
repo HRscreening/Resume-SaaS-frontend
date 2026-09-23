@@ -47,17 +47,38 @@ export interface UsageResponse {
 }
 
 // Plan catalog — fetched from GET /api/billing/plans. Single source of
-// truth lives in backend/app/core/quota.py PLAN_LIMITS.
+// truth lives in backend/app/core/plan.py PLAN_SPECS. display_features are
+// f-strings off the numeric fields below, so a plan can't advertise a cap
+// it doesn't enforce.
 export interface PlanSpec {
   key: SubscriptionPlan;
   display_name: string;
-  price_monthly_usd: number;
-  yearly_price_monthly_usd: number;
+  /** Absent on ENTERPRISE, which is custom-priced and sold as contact-sales. */
+  price_monthly_usd?: number;
+  yearly_price_monthly_usd?: number;
+  price_monthly_inr?: number;
+  price_label: string;
+  yearly_price_label: string;
   razorpay_amount_paise: number;
   max_resumes_per_month: number;
   max_batch_size: number;
+  /** "Active roles": live screenings held at once, not a monthly allowance. */
   max_screenings: number;
+  /** Voice screening calls per allowance period. */
+  max_voice_calls_per_month: number;
+  /** AI job-description generations per allowance period. */
+  max_jd_creations_per_month: number;
+  /** Simultaneous live voice calls, not a monthly quota. */
+  max_concurrent_calls: number;
   data_retention_days: number;
+  /**
+   * "lifetime" for the Free trial (allowances are totals that never refill)
+   * or "monthly" for paid plans (reset each calendar month, no rollover).
+   * The backend derives display_features from this, so never restate the
+   * cadence in the UI — render the feature strings verbatim.
+   */
+  quota_period: "lifetime" | "monthly";
+  scoring_models: string[];
   export_formats: string[];
   api_access: boolean;
   display_features: string[];
@@ -414,7 +435,12 @@ export type CallStatus =
   | "COMPLETED" | "QUEUED_FOR_SCORING" | "SCORING" | "SCORED" | "ERROR";
 
 export type CallDisplayStatus =
-  | "queued" | "calling" | "in_interview" | "processing" | "ready" | "unreachable";
+  | "queued" | "calling" | "in_interview" | "processing" | "ready"
+  // The candidate said they are not going ahead. Distinct from "ready": the
+  // interview stopped early by their choice, so there is no competency score
+  // and the job is not waiting on anything.
+  | "withdrawn"
+  | "unreachable";
 
 export type RecordingStatus = "none" | "processing" | "ready" | "failed";
 

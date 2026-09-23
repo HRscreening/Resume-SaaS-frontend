@@ -21,6 +21,7 @@ const DISPLAY: Record<CallDisplayStatus, { label: string; style: string }> = {
   in_interview: { label: "In interview", style: "bg-indigo-100 text-indigo-700" },
   processing: { label: "Processing", style: "bg-violet-100 text-violet-700" },
   ready: { label: "Ready", style: "bg-green-100 text-green-700" },
+  withdrawn: { label: "Withdrew", style: "bg-rose-100 text-rose-700" },
   unreachable: { label: "Unreachable", style: "bg-amber-100 text-amber-700" },
 };
 
