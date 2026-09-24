@@ -6,6 +6,7 @@ import { formatRelativeDate } from "@/lib/utils";
 import type { Screening } from "@/modules/screening/types/screening.type";
 import { useAccount } from "@/hooks/useAccount";
 import { useUsage } from "@/hooks/useUsage";
+import { QuotaMeter } from "@/components/usage/QuotaMeter";
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -142,46 +143,37 @@ export default function Dashboard() {
           <div className="h-2 w-full bg-[#E8E5DF] rounded-full" />
         </div>
       )}
-      {usage && usage.quota_limit != null && (
+      {usage && (usage.quota_limit != null || usage.voice_calls_limit != null) && (
         <div className="bg-white rounded-xl border border-[#E8E5DF] p-5 mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-sm font-medium text-[#0F0F0F]">{isFree ? "Trial quota" : "Monthly quota"}</p>
-              <p className="text-xs text-[#737373] mt-0.5">
-                {usage.resumes_processed} of {usage.quota_limit} resumes used
-              </p>
-            </div>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium text-[#0F0F0F]">
+              {isFree ? "Trial usage" : "This month"}
+            </p>
             <span className="text-xs font-medium px-2 py-1 bg-[#F5F3EE] rounded-md text-[#404040]">
               {usage.plan}
             </span>
           </div>
-          <div className="h-2 w-full bg-[#E8E5DF] rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                usage.quota_limit > 0 && usage.resumes_processed / usage.quota_limit >= 1
-                  ? "bg-red-500"
-                  : usage.quota_limit > 0 && usage.resumes_processed / usage.quota_limit >= 0.8
-                    ? "bg-amber-500"
-                    : "bg-[#0F0F0F]"
-              }`}
-              style={{ width: `${usage.quota_limit > 0 ? Math.min(100, Math.round((usage.resumes_processed / usage.quota_limit) * 100)) : 0}%` }}
+          <div className="space-y-4">
+            {/* `month` is the resume bucket key: LIFETIME means a one-time
+                trial allowance that never comes back, so the meter says
+                "in your trial" rather than "this month". */}
+            <QuotaMeter
+              label="Resume analyses"
+              noun="resumes"
+              used={usage.resumes_processed}
+              limit={usage.quota_limit}
+              refillsMonthly={usage.month !== "LIFETIME"}
+              canUpgrade={usage.plan !== "ENTERPRISE"}
+            />
+            <QuotaMeter
+              label="Voice calls"
+              noun="voice calls"
+              used={usage.voice_calls_made ?? 0}
+              limit={usage.voice_calls_limit ?? null}
+              refillsMonthly={usage.voice_calls_period !== "lifetime"}
+              canUpgrade={usage.plan !== "ENTERPRISE"}
             />
           </div>
-          {usage.quota_limit > 0
-            && usage.resumes_processed / usage.quota_limit >= 0.8
-            && usage.resumes_processed < usage.quota_limit && (
-              <p className="mt-3 text-xs text-[#C85A17]">
-                Running low — {Math.max(0, usage.quota_limit - usage.resumes_processed)} resumes left{isFree ? " in your trial" : " this month"}.{" "}
-                {usage.plan !== "ENTERPRISE" ? (
-                  <>
-                    <Link to="/settings" hash="billing" className="underline font-medium">Upgrade your plan</Link>{" "}
-                    to keep screening.
-                  </>
-                ) : (
-                  <>Quota refreshes on the 1st.</>
-                )}
-              </p>
-            )}
         </div>
       )}
 

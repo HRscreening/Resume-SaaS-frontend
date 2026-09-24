@@ -7,6 +7,7 @@ import { getUsage, listScreenings } from "@/lib/api";
 import { useUserKey, userKey } from "@/lib/userKey";
 import { useAccount } from "@/hooks/useAccount";
 import { useUsage } from "@/hooks/useUsage";
+import { meterColor, usedRatio } from "@/components/usage/QuotaMeter";
 import { cn } from "@/lib/utils";
 import type { SubscriptionPlan } from "@/types";
 import { User} from "lucide-react"
@@ -202,8 +203,12 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
   const planLabel = usage ? PLAN_LABEL[usage.plan] : null;
   const used = usage?.resumes_processed ?? 0;
   const limit = usage?.quota_limit ?? 0;
-  const usedPct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   const isFree = usage?.plan === "FREE";
+  const voiceUsed = usage?.voice_calls_made ?? 0;
+  const voiceLimit = usage?.voice_calls_limit ?? 0;
+  // Voice carries its own cadence: on Free the calls refill monthly even
+  // though the resume allowance never does.
+  const voiceRefills = usage?.voice_calls_period !== "lifetime";
 
   return (
     <div className="flex flex-col h-full">
@@ -283,22 +288,47 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
               </span>
             </Link>
 
-            {/* Usage progress (HireSort-specific) */}
-            {!unlimited && usage && limit > 0 && (
-              <div className="px-4 pb-3">
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="text-[#737373]">{isFree ? "Resumes used" : "Resumes this month"}</span>
-                  <span className="font-semibold text-[#0F0F0F] tabular-nums">{used} / {limit}</span>
-                </div>
-                <div className="h-1.5 w-full bg-[#F0EDE8] rounded-full overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all",
-                      usedPct >= 90 ? "bg-red-500" : usedPct >= 70 ? "bg-amber-500" : "bg-[#0F0F0F]",
-                    )}
-                    style={{ width: `${usedPct}%` }}
-                  />
-                </div>
+            {/* Usage progress (HireSort-specific). Colours come from the same
+                helpers the dashboard meters use — this block used to warn at
+                70%/90% while the dashboard warned at 80%/100%, so the same
+                account could look amber in one place and neutral in the
+                other. */}
+            {!unlimited && usage && (limit > 0 || voiceLimit > 0) && (
+              <div className="px-4 pb-3 space-y-2.5">
+                {limit > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-[#737373]">
+                        {usage.month === "LIFETIME" ? "Resumes used" : "Resumes this month"}
+                      </span>
+                      <span className="font-semibold text-[#0F0F0F] tabular-nums">{used} / {limit}</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-[#F0EDE8] rounded-full overflow-hidden">
+                      <div
+                        className={cn("h-full rounded-full transition-all", meterColor(used, limit))}
+                        style={{ width: `${Math.round(usedRatio(used, limit) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {voiceLimit > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-[#737373]">
+                        {voiceRefills ? "Voice calls this month" : "Voice calls used"}
+                      </span>
+                      <span className="font-semibold text-[#0F0F0F] tabular-nums">
+                        {voiceUsed} / {voiceLimit}
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-[#F0EDE8] rounded-full overflow-hidden">
+                      <div
+                        className={cn("h-full rounded-full transition-all", meterColor(voiceUsed, voiceLimit))}
+                        style={{ width: `${Math.round(usedRatio(voiceUsed, voiceLimit) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
