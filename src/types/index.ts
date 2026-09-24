@@ -44,6 +44,20 @@ export interface UsageResponse {
   month: string;
   unlimited?: boolean;
   totals?: Counter[];
+  /**
+   * Voice calls placed in the current allowance period, counted from the call
+   * records — the same count that refuses the next dial, so this is never a
+   * different number from what the backend enforces.
+   */
+  voice_calls_made?: number;
+  /** Null when the plan has no cap. */
+  voice_calls_limit?: number | null;
+  voice_calls_remaining?: number | null;
+  /**
+   * Cadence of the VOICE allowance specifically. It can differ from the resume
+   * cadence on the same plan: Free's 50 analyses never refill, its 3 calls do.
+   */
+  voice_calls_period?: "monthly" | "lifetime";
 }
 
 // Plan catalog — fetched from GET /api/billing/plans. Single source of
