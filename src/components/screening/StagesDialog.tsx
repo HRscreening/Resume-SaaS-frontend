@@ -42,12 +42,12 @@ interface StagesDialogProps {
   open: boolean;
   onClose: () => void;
   stages: StagesMap;
-  onSave: (next: StagesMap) => Promise<void> | void;
+  onSave: (next: StagesMap) => Promise<string> | void;
+  isSaving: boolean;
 }
 
-export function StagesDialog({ open, onClose, stages, onSave }: StagesDialogProps) {
+export function StagesDialog({ open, onClose, stages, onSave,isSaving }: StagesDialogProps) {
   const [draft, setDraft] = useState<DraftRow[]>(() => seedDraft(stages));
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Row index that should auto-focus its name input on next render. Used to
   // jump focus into a freshly-added stage so the user can start typing
@@ -128,14 +128,11 @@ export function StagesDialog({ open, onClose, stages, onSave }: StagesDialogProp
     }
 
 
-    setSaving(true);
     try {
       await onSave(reindex(draft.map((d, i) => ({ ...d, name: d.name.trim(), index: i + 1 }))));
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save stages");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -200,6 +197,7 @@ export function StagesDialog({ open, onClose, stages, onSave }: StagesDialogProp
           <button
             type="button"
             onClick={addStage}
+            disabled={draft.length >= 20 || isSaving}
             className="mt-2 w-full flex items-center justify-center gap-1.5 h-9 rounded-lg border border-dashed border-[#D4D4D4] text-xs font-medium text-[#737373] hover:border-[#A0A0A0] hover:text-[#0F0F0F] hover:bg-[#FAFAF8] transition-colors"
           >
             <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -215,7 +213,7 @@ export function StagesDialog({ open, onClose, stages, onSave }: StagesDialogProp
             <button
               type="button"
               onClick={onClose}
-              disabled={saving}
+              disabled={isSaving}
               className="h-8 px-3 text-xs font-medium text-[#404040] border border-[#D4D4D4] rounded-lg hover:bg-white disabled:opacity-50"
             >
               Cancel
@@ -223,10 +221,10 @@ export function StagesDialog({ open, onClose, stages, onSave }: StagesDialogProp
             <button
               type="button"
               onClick={save}
-              disabled={saving}
+              disabled={isSaving}
               className="h-8 px-3 bg-[#0F0F0F] text-white text-xs font-medium rounded-lg hover:bg-[#1C1C1C] disabled:opacity-60 flex items-center gap-1.5"
             >
-              {saving && <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+              {isSaving && <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />}
               Save changes
             </button>
           </div>

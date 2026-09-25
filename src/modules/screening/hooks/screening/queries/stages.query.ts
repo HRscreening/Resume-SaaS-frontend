@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { saveScreeningStages, updateCandidateStage } from "@/modules/screening/apis/stages";
 import type { StagesMap, Screening, HiringStage } from "@/modules/screening/types/screening.type";
 import { ScreeningResultsQueryKeys } from "@/modules/screening/queryKeys";
+import  {ScreeningQueryKeys} from "@/modules/screening/queryKeys"
 
 
 export function useChangeCandidateStageMutation(screeningId: string) {
@@ -71,19 +72,19 @@ export function useSaveScreeningStagesMutation(id: string, screening: Screening)
     return useMutation({
         mutationFn: (next: StagesMap) => saveScreeningStages(id, next),
         onMutate: async (next) => {
-            await queryClient.cancelQueries({ queryKey: ["screening", id] });
-            const prev = queryClient.getQueryData<typeof screening>(["screening", id]);
+            await queryClient.cancelQueries({ queryKey: ScreeningQueryKeys.getScreening(id) });
+            const prev = queryClient.getQueryData<typeof screening>(ScreeningQueryKeys.getScreening(id));
             queryClient.setQueryData(
-                ["screening", id],
+                ScreeningQueryKeys.getScreening(id),
                 (old: typeof screening) => (old ? { ...old, stages: next } : old),
             );
             return { prev };
         },
         onError: (_err, _next, ctx) => {
-            if (ctx?.prev) queryClient.setQueryData(["screening", id], ctx.prev);
+            if (ctx?.prev) queryClient.setQueryData(ScreeningQueryKeys.getScreening(id), ctx.prev);
         },
         onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ["screening", id] });
+            queryClient.invalidateQueries({ queryKey: ScreeningQueryKeys.getScreening(id)});
         },
     });
 }
