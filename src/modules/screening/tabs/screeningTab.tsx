@@ -242,7 +242,8 @@ function ScreeningDetailContent({
                     open={showStages}
                     onClose={() => setShowStages(false)}
                     stages={stagesMap}
-                    onSave={saveStagesMutation.mutate}
+                    onSave={saveStagesMutation.mutateAsync}
+                    isSaving={saveStagesMutation.isPending}
                 />
             </div>
 
