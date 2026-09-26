@@ -735,6 +735,37 @@ export async function saveVoiceConfig(
   });
 }
 
+// ─── Round 1 browser interview (recruiter config + invites) ───────────────
+
+export async function getInterviewConfig(
+  screeningId: string,
+): Promise<import("@/types").InterviewConfigResponse> {
+  return request(`/api/v1/screenings/${screeningId}/interview/config`);
+}
+
+export async function saveInterviewConfig(
+  screeningId: string,
+  config: import("@/types").InterviewConfig,
+): Promise<import("@/types").InterviewConfigResponse> {
+  return request(`/api/v1/screenings/${screeningId}/interview/config`, {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}
+
+/** Invite every listed candidate to the Round 1 interview. Candidates not at
+ * the configured entry stage, or already completed/scored, come back in the
+ * response's `skipped` list rather than as an error. */
+export async function createInterviewInvites(
+  screeningId: string,
+  resumeIds: string[],
+): Promise<import("@/types").InterviewInviteResponse> {
+  return request(`/api/v1/screenings/${screeningId}/interview/invites`, {
+    method: "POST",
+    body: JSON.stringify({ resume_ids: resumeIds }),
+  });
+}
+
 // ─── Voice calls + scorecards (Phase 2) ────────────────────────────────────
 
 export async function triggerVoiceCalls(

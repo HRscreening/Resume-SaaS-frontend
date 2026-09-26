@@ -20,7 +20,8 @@ import {
     RotateCcw,
     Mic,
     History,
-    Download
+    Download,
+    Video
 } from "lucide-react";
 
 import Applications from "@/modules/screening/tabs/applications"
@@ -233,6 +234,14 @@ export default function ScreeningDetail() {
                                             title="Voice round"
                                             onClick={() => navigate({ to: "/screenings/$id/voice", params: { id } })}
                                             icon={<Mic size={12} />}
+                                            compacted={analysisOpen}
+                                        />
+
+                                        {/* Interview round button (Round 1 browser interview) */}
+                                        <ActionButton
+                                            title="Interview round"
+                                            onClick={() => navigate({ to: "/screenings/$id/interview", params: { id } })}
+                                            icon={<Video size={12} />}
                                             compacted={analysisOpen}
                                         />
 

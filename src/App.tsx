@@ -56,6 +56,7 @@ import { searchSchema, screeningsSearchSchema, screeningDetailsSearchSchema } fr
 
 import ResumeDetail from "@/routes/ResumeDetail";
 import EditRubric from "@/modules/screening/routes/EditRubric";
+import InterviewConfigPage from "@/modules/screening/routes/InterviewConfig";
 import VoiceConfigPage from "@/routes/VoiceConfig";
 import VoiceCalls from "@/routes/VoiceCalls";
 import TranscriptPage from "@/routes/TranscriptPage";
@@ -284,6 +285,15 @@ const voiceConfigRoute = createRoute({
   component: VoiceConfigPage,
 });
 
+// Recruiter-facing config for the Round 1 browser interview. Authenticated,
+// unlike /interview/$token below (the candidate's link) — it belongs beside
+// the other screening routes, not off rootRoute.
+const interviewConfigRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings/$id/interview",
+  component: InterviewConfigPage,
+});
+
 const voiceCallsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/screenings/$id/voice/calls",
@@ -384,6 +394,7 @@ const routeTree = rootRoute.addChildren([
     screeningDetailRoute,
     editRubricRoute,
     voiceConfigRoute,
+    interviewConfigRoute,
     voiceCallsRoute,
     settingsRoute,
     profileRoute,
