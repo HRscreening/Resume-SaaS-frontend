@@ -4,12 +4,15 @@ import {
   Room,
   RoomEvent,
   Track,
+  type Participant,
   type RemoteTrack,
   type RemoteTrackPublication,
   type RemoteParticipant,
 } from "livekit-client";
 
 import type { InterviewJoinGrant } from "@/lib/interviewApi";
+import CaptionPane from "./CaptionPane";
+import { useLiveCaptions } from "./useLiveCaptions";
 
 // The candidate's LiveKit participant identity is always this literal string
 // (minted server-side by mint_candidate_token — see backend service.join()).
@@ -21,6 +24,28 @@ type CallState = "connecting" | "connected" | "reconnecting" | "disconnected";
 
 type RoomError = { kind: "mic" | "connection"; message: string };
 
+const CAPTIONS_PREFERENCE_KEY = "hiresort.interview.captionsEnabled";
+
+// localStorage throws outright in some privacy modes. A thrown caption
+// preference must never take down the interview, so every access is
+// wrapped and falls back to "captions on" (the default a candidate expects).
+function readCaptionsPreference(): boolean {
+  try {
+    return window.localStorage.getItem(CAPTIONS_PREFERENCE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function writeCaptionsPreference(enabled: boolean): void {
+  try {
+    window.localStorage.setItem(CAPTIONS_PREFERENCE_KEY, String(enabled));
+  } catch {
+    // Nothing to recover: the toggle still works for this session, it just
+    // will not be remembered next time.
+  }
+}
+
 interface InterviewRoomProps {
   grant: InterviewJoinGrant;
   // Resolves once a fresh grant has been applied to props, or rejects (the
@@ -31,10 +56,9 @@ interface InterviewRoomProps {
 // The live call. Owns the LiveKit Room instance end to end: connects on
 // mount, tears down completely on unmount (a leaked Room keeps the mic hot
 // and keeps the agent sitting in an empty room for its 5-minute
-// empty_timeout), and renders the states a candidate will actually hit.
-//
-// Deliberately minimal beyond that: no captions, no in-call chrome. Later
-// tasks extend this component rather than replace it.
+// empty_timeout), and renders the states a candidate will actually hit, plus
+// the live caption panes. Deliberately minimal beyond that: no other in-call
+// chrome. Later tasks extend this component rather than replace it.
 export default function InterviewRoom({ grant, onRejoin }: InterviewRoomProps) {
   const roomRef = useRef<Room | null>(null);
   const audioElsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
@@ -42,11 +66,35 @@ export default function InterviewRoom({ grant, onRejoin }: InterviewRoomProps) {
   const [callState, setCallState] = useState<CallState>("connecting");
   const [error, setError] = useState<RoomError | null>(null);
   const [rejoining, setRejoining] = useState(false);
+  // Mirrors roomRef in state: the captions hook needs a value that changes
+  // reference (and re-renders) on every connect/reconnect, which a ref alone
+  // does not give us.
+  const [activeRoom, setActiveRoom] = useState<Room | null>(null);
+  const [activeSpeakerIds, setActiveSpeakerIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [captionsEnabled, setCaptionsEnabled] = useState(() => readCaptionsPreference());
+
+  const { agent: agentCaptions, candidate: candidateCaptions } = useLiveCaptions(
+    activeRoom,
+    CANDIDATE_IDENTITY,
+  );
+  const candidateSpeaking = activeSpeakerIds.has(CANDIDATE_IDENTITY);
+  const agentSpeaking = [...activeSpeakerIds].some((id) => id !== CANDIDATE_IDENTITY);
+
+  function handleToggleCaptions() {
+    setCaptionsEnabled((prev) => {
+      const next = !prev;
+      writeCaptionsPreference(next);
+      return next;
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
     const room = new Room({ adaptiveStream: true, dynacast: true });
     roomRef.current = room;
+    setActiveRoom(room);
 
     function attachRemoteAudio(track: RemoteTrack, sid: string) {
       if (track.kind !== Track.Kind.Audio) return;
@@ -92,11 +140,16 @@ export default function InterviewRoom({ grant, onRejoin }: InterviewRoomProps) {
       if (!cancelled) setCallState("connected");
     }
 
+    function handleActiveSpeakersChanged(speakers: Participant[]) {
+      if (!cancelled) setActiveSpeakerIds(new Set(speakers.map((p) => p.identity)));
+    }
+
     room.on(RoomEvent.TrackSubscribed, handleTrackSubscribed);
     room.on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
     room.on(RoomEvent.Disconnected, handleDisconnected);
     room.on(RoomEvent.Reconnecting, handleReconnecting);
     room.on(RoomEvent.Reconnected, handleReconnected);
+    room.on(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakersChanged);
 
     async function connect() {
       setError(null);
@@ -136,10 +189,13 @@ export default function InterviewRoom({ grant, onRejoin }: InterviewRoomProps) {
       room.off(RoomEvent.Disconnected, handleDisconnected);
       room.off(RoomEvent.Reconnecting, handleReconnecting);
       room.off(RoomEvent.Reconnected, handleReconnected);
+      room.off(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakersChanged);
       room.disconnect();
       audioElsRef.current.forEach((el) => el.remove());
       audioElsRef.current.clear();
       roomRef.current = null;
+      setActiveRoom(null);
+      setActiveSpeakerIds(new Set());
     };
     // grant.token changes on every rejoin (a fresh grant is minted each
     // time), which is exactly when this effect must tear down the old Room
@@ -235,11 +291,46 @@ export default function InterviewRoom({ grant, onRejoin }: InterviewRoomProps) {
           Reconnecting…
         </div>
       )}
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4 py-8">
         <div className="flex items-center gap-2 text-[#404040]">
           <Mic className="h-4 w-4" />
           <p className="text-sm">You are connected. The interview is in progress.</p>
         </div>
+
+        <button
+          type="button"
+          onClick={handleToggleCaptions}
+          className="text-xs font-medium text-[#404040] underline underline-offset-2 hover:text-[#0F0F0F]"
+        >
+          {captionsEnabled ? "Hide captions" : "Show captions"}
+        </button>
+
+        {captionsEnabled && (
+          // Interviewer first, candidate's own pane second: the candidate
+          // follows the question in the interviewer's pane and only glances
+          // at their own to confirm they were heard.
+          <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            <CaptionPane
+              title="Interviewer"
+              lines={agentCaptions}
+              speaking={agentSpeaking}
+              emptyText="The interviewer's words will appear here."
+            />
+            <div className="flex flex-col gap-2">
+              <CaptionPane
+                title="You"
+                lines={candidateCaptions}
+                speaking={candidateSpeaking}
+                emptyText="Your words will appear here as you speak."
+              />
+              <p className="text-xs text-[#737373] px-1">
+                These captions are produced automatically and may contain mistakes. There
+                is no need to correct them out loud: the interviewer hears you, not the
+                captions.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
