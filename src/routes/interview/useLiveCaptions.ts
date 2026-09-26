@@ -61,17 +61,40 @@ export function useLiveCaptions(room: Room | null, localIdentity: string) {
       // from this file alone, so keep this comment if you touch the logic.
       const appendMode = !isLocal;
       const id = reader.info.attributes?.[ATTR_SEGMENT] ?? reader.info.id;
+      let streamFinal = false;
 
-      for await (const chunk of reader) {
-        const final = reader.info.attributes?.[ATTR_FINAL] === "true";
-        setLines((prev) => upsertLine(prev, id, chunk, final, appendMode));
+      try {
+        for await (const chunk of reader) {
+          streamFinal = reader.info.attributes?.[ATTR_FINAL] === "true";
+          setLines((prev) => upsertLine(prev, id, chunk, streamFinal, appendMode));
+        }
+      } catch {
+        // The transport tore down (room disconnect, unmount) while this
+        // stream was still being read. LiveKit invokes text-stream handlers
+        // fire-and-forget, so an uncaught throw here becomes an unhandled
+        // promise rejection rather than a graceful stop. There is nothing
+        // candidate-facing to show for a teardown mid-utterance: drop the
+        // partial stream quietly and leave the line as it last rendered.
+        return;
       }
-      // The stream closing is the only reliable end-of-segment signal: the
-      // final attribute is read per chunk, and the chunk that actually
-      // settles the text may not itself carry it.
-      setLines((prev) =>
-        prev.map((line) => (line.id === id ? { ...line, final: true } : line)),
-      );
+
+      // This stream has closed. Only promote the line to final if THIS
+      // stream's own attribute said so: forcing final on every close is
+      // correct for the agent's one continuous delta stream, but wrong if a
+      // speaker's utterance instead arrives as several streams sharing one
+      // segment id (e.g. each interim revision republished as its own
+      // stream) -- an earlier, non-final stream closing would otherwise
+      // settle the line solid, and the next revision's first chunk
+      // (final=false) would un-settle it, flickering on every revision.
+      // Leaving the line's existing final state untouched when this stream
+      // never declared itself final means a provider that never sets the
+      // attribute leaves the line dimmed rather than flickering -- an
+      // accepted, visually mild tradeoff.
+      if (streamFinal) {
+        setLines((prev) =>
+          prev.map((line) => (line.id === id ? { ...line, final: true } : line)),
+        );
+      }
     };
 
     room.registerTextStreamHandler(TOPIC, handler);
