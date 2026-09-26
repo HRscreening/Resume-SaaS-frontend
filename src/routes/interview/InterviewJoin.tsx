@@ -3,7 +3,12 @@ import { useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Mic } from "lucide-react";
 
-import { getInterviewBrief, joinInterview, type InterviewJoinGrant } from "@/lib/interviewApi";
+import {
+  getInterviewBrief,
+  joinInterview,
+  InterviewNetworkError,
+  type InterviewJoinGrant,
+} from "@/lib/interviewApi";
 import InterviewRoom from "@/routes/interview/InterviewRoom";
 
 const RECORDING_DISCLOSURE =
@@ -16,7 +21,7 @@ const RECORDING_DISCLOSURE =
 export default function InterviewJoin() {
   const { token } = useParams({ strict: false }) as { token: string };
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error, isFetching, refetch } = useQuery({
     queryKey: ["interview", token],
     queryFn: () => getInterviewBrief(token),
     retry: false,
@@ -37,6 +42,10 @@ export default function InterviewJoin() {
       setGrant(nextGrant);
       return nextGrant;
     } catch (err) {
+      // joinInterview only ever throws InterviewApiError (the server's own
+      // detail: "already completed", "not valid") or InterviewNetworkError
+      // ("could not reach the server") — both carry a candidate-safe
+      // .message, never a raw fetch/browser exception string.
       const message =
         err instanceof Error ? err.message : "Could not join the interview. Please try again.";
       setJoinError(message);
@@ -63,6 +72,20 @@ export default function InterviewJoin() {
   }
 
   if (isError) {
+    // A transport failure (offline, DNS, dropped connection) never reached
+    // the server, so it says nothing about whether the link is valid.
+    // Blaming the link here would be both false and a dead end.
+    if (error instanceof InterviewNetworkError) {
+      return (
+        <Centered>
+          <div className="max-w-sm text-center">
+            <p className="text-sm text-[#404040] mb-4">{error.message}</p>
+            <TryAgainButton onClick={() => refetch()} loading={isFetching} />
+          </div>
+        </Centered>
+      );
+    }
+    // A real 404: the link itself does not resolve. No retry helps.
     return (
       <Centered>
         <p className="text-sm text-[#404040] max-w-sm text-center">
@@ -110,6 +133,19 @@ function Centered({ children }: { children: React.ReactNode }) {
     >
       {children}
     </div>
+  );
+}
+
+function TryAgainButton({ onClick, loading }: { onClick: () => void; loading: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className="h-10 px-5 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors disabled:opacity-40 disabled:pointer-events-none inline-flex items-center gap-2"
+    >
+      {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+      Try again
+    </button>
   );
 }
 
