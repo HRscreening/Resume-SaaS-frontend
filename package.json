@@ -24,6 +24,7 @@
     "date-fns": "^4.4.0",
     "framer-motion": "^12.38.0",
     "jszip": "^3.10.1",
+    "livekit-client": "^2.22.3",
     "lucide-react": "^1.16.0",
     "query-string": "^9.5.0",
     "radix-ui": "^1.4.3",

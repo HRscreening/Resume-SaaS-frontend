@@ -32,6 +32,7 @@ import AuthCallback from "@/routes/AuthCallback";
 import Onboarding from "@/routes/Onboarding";
 import Terms from "@/routes/Terms";
 import Privacy from "@/routes/Privacy";
+import InterviewJoin from "@/routes/interview/InterviewJoin";
 import Dashboard from "@/routes/Dashboard";
 import Screenings from "@/modules/screening/routes/Screenings";
 import Settings from "@/routes/Settings";
@@ -184,6 +185,15 @@ const privacyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/privacy",
   component: Privacy,
+});
+
+// Candidate-facing route: no HireSort account exists behind it, so it hangs
+// directly off rootRoute like termsRoute/privacyRoute above — no AuthGuard,
+// no AppLayout. Never nest this under appLayoutRoute or authOnlyLayoutRoute.
+const interviewJoinRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/interview/$token",
+  component: InterviewJoin,
 });
 
 const appLayoutRoute = createRoute({
@@ -356,6 +366,7 @@ const routeTree = rootRoute.addChildren([
   onboardingRoute,
   termsRoute,
   privacyRoute,
+  interviewJoinRoute,
   appLayoutNoSidebarRoute.addChildren([
     upgradePlanRoute,
     contactUsRoute,
