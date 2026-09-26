@@ -10,7 +10,11 @@ import {
   type RemoteParticipant,
 } from "livekit-client";
 
-import type { InterviewJoinGrant } from "@/lib/interviewApi";
+import {
+  InterviewApiError,
+  InterviewRetryableError,
+  type InterviewJoinGrant,
+} from "@/lib/interviewApi";
 import CaptionPane from "./CaptionPane";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { useElapsedTime } from "./useElapsedTime";
@@ -23,7 +27,11 @@ export const CANDIDATE_IDENTITY = "candidate";
 
 type CallState = "connecting" | "connected" | "reconnecting" | "disconnected";
 
-type RoomError = { kind: "mic" | "connection"; message: string };
+// `message` is shown to the candidate only when `fromServer` is set. A
+// LiveKit or getUserMedia failure puts a raw browser string in there
+// ("could not establish signal connection"), which is not copy a candidate
+// should ever read; the server's own details are written for them.
+type RoomError = { kind: "mic" | "connection"; message: string; fromServer?: boolean };
 
 const CAPTIONS_PREFERENCE_KEY = "hiresort.interview.captionsEnabled";
 
@@ -56,6 +64,10 @@ interface InterviewRoomProps {
   // Resolves once a fresh grant has been applied to props, or rejects (the
   // rejection is what drives the "could not rejoin" error state below).
   onRejoin: () => Promise<unknown>;
+  // Re-describes the session: true once the server considers the interview
+  // finished. Used to tell the agent ending the interview apart from the
+  // candidate dropping out of it, which look identical from the browser.
+  onCheckCompleted: () => Promise<boolean>;
 }
 
 // The live call. Owns the LiveKit Room instance end to end: connects on
@@ -64,7 +76,12 @@ interface InterviewRoomProps {
 // empty_timeout), and renders the states a candidate will actually hit, plus
 // the live caption panes. Deliberately minimal beyond that: no other in-call
 // chrome. Later tasks extend this component rather than replace it.
-export default function InterviewRoom({ grant, durationMinutes, onRejoin }: InterviewRoomProps) {
+export default function InterviewRoom({
+  grant,
+  durationMinutes,
+  onRejoin,
+  onCheckCompleted,
+}: InterviewRoomProps) {
   const roomRef = useRef<Room | null>(null);
   const audioElsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
 
@@ -79,6 +96,10 @@ export default function InterviewRoom({ grant, durationMinutes, onRejoin }: Inte
   // callState === "disconnected", which also covers an accidental drop and
   // offers a Rejoin button — ending on purpose is final, with no rejoin.
   const [completed, setCompleted] = useState(false);
+  // True while the post-disconnect brief re-fetch is in flight. Without it
+  // the candidate sees "You have left the interview." flash up for the
+  // duration of that request at the end of every normal interview.
+  const [checkingIfFinished, setCheckingIfFinished] = useState(false);
   // Mirrors roomRef in state: the captions hook needs a value that changes
   // reference (and re-renders) on every connect/reconnect, which a ref alone
   // does not give us.
@@ -87,6 +108,16 @@ export default function InterviewRoom({ grant, durationMinutes, onRejoin }: Inte
     () => new Set(),
   );
   const [captionsEnabled, setCaptionsEnabled] = useState(() => readCaptionsPreference());
+
+  // Held in a ref so the connect effect below keeps its [grant] deps: the
+  // parent re-creates this callback on every render, and depending on it
+  // would tear down and rebuild the LiveKit Room mid-interview.
+  const checkCompletedRef = useRef(onCheckCompleted);
+  checkCompletedRef.current = onCheckCompleted;
+  // Set when the candidate ends the interview themselves. The Disconnected
+  // event that follows needs no round trip to the server: we already know
+  // what happened, and the completion screen is already up.
+  const endedByCandidateRef = useRef(false);
 
   const { agent: agentCaptions, candidate: candidateCaptions } = useLiveCaptions(
     activeRoom,
@@ -143,7 +174,31 @@ export default function InterviewRoom({ grant, durationMinutes, onRejoin }: Inte
     }
 
     function handleDisconnected() {
-      if (!cancelled) setCallState("disconnected");
+      if (cancelled) return;
+      setCallState("disconnected");
+      if (endedByCandidateRef.current) return;
+      // The most-travelled ending of all: the agent finished, end_call
+      // deleted the room, and the browser learns about it as a bare
+      // Disconnected event that looks exactly like a dropped connection. A
+      // page refresh lands here too (CLIENT_INITIATED is one of LiveKit's
+      // default close reasons, so refreshing finalises the session). Asking
+      // the server which it was is the only way to tell them apart, and
+      // getting it wrong shows a finished candidate an error screen with a
+      // Rejoin button that can only 409.
+      setCheckingIfFinished(true);
+      checkCompletedRef.current()
+        .then((isCompleted) => {
+          if (cancelled) return;
+          if (isCompleted) setCompleted(true);
+        })
+        .catch(() => {
+          // Could not ask. Fall through to today's behaviour: assume the
+          // candidate genuinely dropped, because offering a Rejoin that
+          // might 409 beats stranding someone whose interview is still live.
+        })
+        .finally(() => {
+          if (!cancelled) setCheckingIfFinished(false);
+        });
     }
 
     function handleReconnecting() {
@@ -261,6 +316,7 @@ export default function InterviewRoom({ grant, durationMinutes, onRejoin }: Inte
     // so this is the real, irreversible end of the interview for the
     // candidate — the completion screen below reflects that, not a "you can
     // rejoin" state.
+    endedByCandidateRef.current = true;
     roomRef.current?.disconnect();
     setCompleted(true);
   }
@@ -272,9 +328,21 @@ export default function InterviewRoom({ grant, durationMinutes, onRejoin }: Inte
       // On success the parent hands down a new grant, which re-triggers the
       // connect effect above via its [grant.url, grant.token] deps.
     } catch (err) {
+      // 409 means the session finished between the disconnect and this
+      // click. That is a completed interview, not a failure the candidate
+      // can do anything about, so it gets the completion screen rather than
+      // an error with a button that will 409 again.
+      if (err instanceof InterviewApiError && err.status === 409) {
+        setCompleted(true);
+        return;
+      }
+      // A 503 (LiveKit down, or a misconfigured deployment) is retryable but
+      // has nothing to do with the candidate's connection, so it shows the
+      // server's own plain-language reason above the same Retry control.
       setError({
         kind: "connection",
         message: err instanceof Error ? err.message : "Could not rejoin the interview.",
+        fromServer: err instanceof InterviewRetryableError,
       });
     } finally {
       setRejoining(false);
@@ -326,10 +394,24 @@ export default function InterviewRoom({ grant, durationMinutes, onRejoin }: Inte
       <Centered>
         <div className="max-w-sm text-center">
           <p className="text-sm text-[#404040] mb-4">
-            We could not connect you to the interview. Check your internet connection and
-            try again.
+            {error.fromServer
+              ? error.message
+              : "We could not connect you to the interview. Check your internet connection and try again."}
           </p>
           <RetryButton onClick={handleRejoin} label="Retry" loading={rejoining} />
+        </div>
+      </Centered>
+    );
+  }
+
+  // Still asking the server whether the interview finished. Neither the
+  // completion screen nor the left-the-interview screen is honest yet.
+  if (callState === "disconnected" && checkingIfFinished) {
+    return (
+      <Centered>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-[#737373]" />
+          <p className="text-sm text-[#737373]">Finishing up.</p>
         </div>
       </Centered>
     );

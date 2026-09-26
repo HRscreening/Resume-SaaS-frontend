@@ -21,7 +21,7 @@ export type InterviewJoinGrant = {
 
 // The server answered, just not with success: a real 404 ("link not valid")
 // or 409 ("already completed"). The candidate's link genuinely is what the
-// message says it is — no retry helps.
+// message says it is, and no retry helps.
 export class InterviewApiError extends Error {
   readonly status: number;
   constructor(status: number, detail: string) {
@@ -31,13 +31,29 @@ export class InterviewApiError extends Error {
   }
 }
 
+// Something transient went wrong and the candidate's link may be perfectly
+// fine, so the UI must offer a retry rather than blame the link. The two
+// subclasses differ only in how far the request got; every caller that just
+// needs "is this worth retrying" should test against this base.
+export class InterviewRetryableError extends Error {}
+
 // The request never reached the server at all (offline, DNS failure, dropped
-// connection mid-flight). This is recoverable: the candidate's link may be
-// perfectly fine, so the UI must offer a retry rather than blame the link.
-export class InterviewNetworkError extends Error {
+// connection mid-flight).
+export class InterviewNetworkError extends InterviewRetryableError {
   constructor() {
     super("We could not reach the server. Check your connection and try again.");
     this.name = "InterviewNetworkError";
+  }
+}
+
+// The server answered 503: it reached us, it just could not start the
+// interview right now (LiveKit unreachable, or a misconfigured deployment).
+// Carries the server's own candidate-facing detail, which already says to
+// wait a moment and try again.
+export class InterviewUnavailableError extends InterviewRetryableError {
+  constructor(detail: string) {
+    super(detail);
+    this.name = "InterviewUnavailableError";
   }
 }
 
@@ -50,15 +66,24 @@ async function publicRequest<T>(path: string, init: RequestInit = {}): Promise<T
     });
   } catch {
     // fetch() itself throws (rather than resolving with a bad status) only
-    // for transport-level failures — never for a server's 4xx/5xx response.
+    // for transport-level failures, never for a server's 4xx/5xx response.
     throw new InterviewNetworkError();
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new InterviewApiError(
-      res.status,
-      typeof body?.detail === "string" ? body.detail : "Something went wrong.",
-    );
+    const detail =
+      typeof body?.detail === "string" ? body.detail : "Something went wrong.";
+    // 503 is the backend's deliberate "try again shortly" (an infrastructure
+    // failure during join), as opposed to the 404 that means the link itself
+    // is dead. Anything else 5xx has no candidate-safe detail to show, so it
+    // gets the generic retryable copy rather than a raw server message.
+    if (res.status === 503) throw new InterviewUnavailableError(detail);
+    if (res.status >= 500) {
+      throw new InterviewUnavailableError(
+        "We could not start your interview just now. Please wait a moment and try again.",
+      );
+    }
+    throw new InterviewApiError(res.status, detail);
   }
   return res.json() as Promise<T>;
 }

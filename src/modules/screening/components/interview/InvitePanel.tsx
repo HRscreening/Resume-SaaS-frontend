@@ -75,7 +75,7 @@ export function InvitePanel({
       await navigator.clipboard.writeText(url);
       toast.success("Link copied");
     } catch {
-      toast.error("Could not copy — copy it manually");
+      toast.error("Could not copy the link: copy it manually");
     }
   };
 
@@ -174,8 +174,8 @@ export function InvitePanel({
 
       {skipped.length > 0 && (
         <p className="mt-3 text-xs leading-relaxed text-[#737373]">
-          Skipped: {skipped.map((rid) => nameFor(rid)).join(", ")} — not at &ldquo;{entryStage}&rdquo;,
-          or already completed an interview.
+          Skipped: {skipped.map((rid) => nameFor(rid)).join(", ")}. Not at &ldquo;{entryStage}
+          &rdquo;, or already completed an interview.
         </p>
       )}
     </section>

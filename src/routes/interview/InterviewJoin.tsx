@@ -6,13 +6,17 @@ import { Loader2, Mic } from "lucide-react";
 import {
   getInterviewBrief,
   joinInterview,
-  InterviewNetworkError,
+  InterviewRetryableError,
   type InterviewJoinGrant,
 } from "@/lib/interviewApi";
 import InterviewRoom from "@/routes/interview/InterviewRoom";
 
+// Describes only what the browser round actually does. Audio recording is
+// deliberately gated off for browser sessions (nothing writes
+// audio_recording_url), so claiming it here was false in the one piece of
+// copy whose accuracy is the entire point.
 const RECORDING_DISCLOSURE =
-  "This interview is conducted by an AI interviewer. Your audio is recorded and a written transcript is made, so the hiring team can review your answers. Live captions of both voices appear on screen while you talk. Nothing is shared outside the hiring team for this role.";
+  "This interview is conducted by an AI interviewer. A written transcript of the conversation is made, so the hiring team can review your answers. Your audio is not recorded. Live captions of both voices appear on screen while you talk. Nothing is shared outside the hiring team for this role.";
 
 // Candidate holds an HMAC-signed invite link with no HireSort account behind
 // it. This route sits directly off rootRoute (see App.tsx) with no AuthGuard
@@ -43,8 +47,9 @@ export default function InterviewJoin() {
       return nextGrant;
     } catch (err) {
       // joinInterview only ever throws InterviewApiError (the server's own
-      // detail: "already completed", "not valid") or InterviewNetworkError
-      // ("could not reach the server") — both carry a candidate-safe
+      // detail: "already completed", "not valid") or an
+      // InterviewRetryableError ("could not reach the server", "could not
+      // start your interview just now"). All of them carry a candidate-safe
       // .message, never a raw fetch/browser exception string.
       const message =
         err instanceof Error ? err.message : "Could not join the interview. Please try again.";
@@ -53,6 +58,16 @@ export default function InterviewJoin() {
     } finally {
       setJoining(false);
     }
+  }
+
+  // Re-describes the session so InterviewRoom can tell the two kinds of
+  // disconnect apart. The usual ending of an interview is the AGENT calling
+  // end_call, which deletes the room and reaches the browser as a plain
+  // Disconnected event, indistinguishable from the candidate's wifi dying.
+  // The brief is the existing, already-deployed way to ask which it was.
+  async function checkCompleted(): Promise<boolean> {
+    const brief = await getInterviewBrief(token);
+    return brief.already_completed;
   }
 
   // Once the server has minted a grant, InterviewRoom owns the LiveKit Room
@@ -66,7 +81,12 @@ export default function InterviewJoin() {
   // expected to occur.
   if (grant && data) {
     return (
-      <InterviewRoom grant={grant} durationMinutes={data.duration_minutes} onRejoin={handleJoin} />
+      <InterviewRoom
+        grant={grant}
+        durationMinutes={data.duration_minutes}
+        onRejoin={handleJoin}
+        onCheckCompleted={checkCompleted}
+      />
     );
   }
 
@@ -80,9 +100,10 @@ export default function InterviewJoin() {
 
   if (isError) {
     // A transport failure (offline, DNS, dropped connection) never reached
-    // the server, so it says nothing about whether the link is valid.
-    // Blaming the link here would be both false and a dead end.
-    if (error instanceof InterviewNetworkError) {
+    // the server, and a 503 reached it but found the infrastructure down.
+    // Neither says anything about whether the link is valid, so blaming the
+    // link here would be both false and a dead end.
+    if (error instanceof InterviewRetryableError) {
       return (
         <Centered>
           <div className="max-w-sm text-center">
@@ -241,7 +262,7 @@ function PreJoinScreen({
   );
 }
 
-// Level threshold above which we consider the mic "confirmed working" —
+// Level threshold above which we consider the mic "confirmed working":
 // picked to catch ordinary speech and typing-adjacent room noise while
 // ignoring near-silence from a muted or broken input device.
 const MIC_LEVEL_THRESHOLD = 4;

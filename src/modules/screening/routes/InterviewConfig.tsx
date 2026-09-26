@@ -15,14 +15,21 @@ import { truncate } from "@/lib/utils";
 import { useAccount } from "@/hooks/useAccount";
 import { sortedStages } from "@/lib/stages";
 
+// What the round actually runs. The agent always builds plan_for("interview")
+// (50 minutes of segments) under a fixed 65-minute watchdog; neither
+// target_minutes nor cap_minutes is read by anything on the way there. They
+// are still persisted, and target_minutes is what the candidate is told on
+// the pre-join screen, so the UI pins them to the truth rather than letting a
+// recruiter set a number that only ever misinforms the candidate.
+const FIXED_TIMING = { target_minutes: 50, cap_minutes: 65 } as const;
+
 const DEFAULT_CONFIG: InterviewConfig = {
   // Derived from the question plan at save time (see `effectiveEnabled`
   // below), never set directly by a control here — the API refuses an
   // enabled config with an empty plan, so the UI never offers that state.
   enabled: false,
   mode: "open",
-  target_minutes: 50,
-  cap_minutes: 60,
+  ...FIXED_TIMING,
   question_plan: [],
   hiring_company: "",
   voice: { tts_voice_id: "default", tier: "default" },
@@ -97,7 +104,9 @@ export default function InterviewConfigPage() {
   useEffect(() => {
     if (hydrated || configLoading) return;
     const saved = configResp?.config;
-    setDraft({ ...DEFAULT_CONFIG, ...(saved ?? {}) });
+    // FIXED_TIMING last: a config saved before the timing controls were
+    // retired may carry a target the round cannot honour.
+    setDraft({ ...DEFAULT_CONFIG, ...(saved ?? {}), ...FIXED_TIMING });
     setIsEditing(Boolean(saved?.enabled && (saved.question_plan?.length ?? 0) > 0));
     setHydrated(true);
   }, [hydrated, configLoading, configResp]);
@@ -125,10 +134,11 @@ export default function InterviewConfigPage() {
   const effectiveEnabled = draft.mode === "open" && draft.question_plan.length > 0;
 
   const saveMutation = useMutation({
-    mutationFn: () => saveInterviewConfig(id, { ...draft, enabled: effectiveEnabled }),
+    mutationFn: () =>
+      saveInterviewConfig(id, { ...draft, ...FIXED_TIMING, enabled: effectiveEnabled }),
     onSuccess: (res) => {
       queryClient.setQueryData(["interview-config", id], res);
-      setDraft(res.config);
+      setDraft({ ...res.config, ...FIXED_TIMING });
       setIsEditing(true);
       toast.success("Interview round saved");
     },
@@ -266,32 +276,22 @@ export default function InterviewConfigPage() {
       </Step>
 
       {/* ── 2. Timing ───────────────────────────────────────────────────── */}
-      <Step n={2} title="Timing" hint="How long the interview aims to run, and the hard ceiling it may never pass.">
+      <Step n={2} title="Timing" hint="How long the interview runs, and the hard ceiling it may never pass.">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelCls}>Target minutes</label>
-            <input
-              type="number" min={10} max={120}
-              value={draft.target_minutes}
-              onChange={(e) => setDraft((d) => ({ ...d, target_minutes: Number(e.target.value) }))}
-              disabled={!canWrite}
-              className={inputCls}
-            />
+            <p className={labelCls}>Target</p>
+            <p className="text-sm text-[#0F0F0F]">{FIXED_TIMING.target_minutes} minutes</p>
           </div>
           <div>
-            <label className={labelCls}>Cap minutes</label>
-            <input
-              type="number" min={10} max={180}
-              value={draft.cap_minutes}
-              onChange={(e) => setDraft((d) => ({ ...d, cap_minutes: Number(e.target.value) }))}
-              disabled={!canWrite}
-              className={inputCls}
-            />
+            <p className={labelCls}>Hard cap</p>
+            <p className="text-sm text-[#0F0F0F]">{FIXED_TIMING.cap_minutes} minutes</p>
           </div>
         </div>
-        {draft.target_minutes > draft.cap_minutes && (
-          <p className="mt-1.5 text-xs text-red-600">Target minutes cannot exceed the cap.</p>
-        )}
+        <p className="mt-2 text-xs text-[#737373]">
+          This round runs a fixed {FIXED_TIMING.target_minutes}-minute plan, so these are
+          not adjustable yet. The candidate is told the same {FIXED_TIMING.target_minutes}{" "}
+          minutes before they join.
+        </p>
       </Step>
 
       {/* ── 3. Who is interviewing ──────────────────────────────────────── */}
@@ -310,7 +310,7 @@ export default function InterviewConfigPage() {
       <Step
         n={4}
         title="Questions"
-        hint="Expected answer and grading notes are scorer-only — the agent never reads them aloud."
+        hint="Expected answer and grading notes are scorer-only: the agent never reads them aloud."
         aside={
           <span className="text-xs text-[#737373]">
             {new Set(draft.question_plan.map((q) => q.competency_ref)).size}/{competencies.length} competencies
