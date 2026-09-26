@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, Mic } from "lucide-react";
 
 import { getInterviewBrief, joinInterview, type InterviewJoinGrant } from "@/lib/interviewApi";
+import InterviewRoom from "@/routes/interview/InterviewRoom";
 
 const RECORDING_DISCLOSURE =
   "This interview is conducted by an AI interviewer. Your audio is recorded and a written transcript is made, so the hiring team can review your answers. Live captions of both voices appear on screen while you talk. Nothing is shared outside the hiring team for this role.";
@@ -25,29 +26,32 @@ export default function InterviewJoin() {
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
 
-  async function handleJoin() {
+  // Returns the grant (or throws) so InterviewRoom's Rejoin button can react
+  // to a failed rejoin, not just the initial Join click below, which reads
+  // joinError off state instead of awaiting this promise.
+  async function handleJoin(): Promise<InterviewJoinGrant> {
     setJoining(true);
     setJoinError(null);
     try {
       const nextGrant = await joinInterview(token);
       setGrant(nextGrant);
+      return nextGrant;
     } catch (err) {
-      setJoinError(
-        err instanceof Error ? err.message : "Could not join the interview. Please try again.",
-      );
+      const message =
+        err instanceof Error ? err.message : "Could not join the interview. Please try again.";
+      setJoinError(message);
+      throw err instanceof Error ? err : new Error(message);
     } finally {
       setJoining(false);
     }
   }
 
-  // InterviewRoom (the live call) lands in a later change; for now a
-  // successful join just confirms the grant was minted.
+  // Once the server has minted a grant, InterviewRoom owns the LiveKit Room
+  // instance for the rest of the call. Rejoin (after a disconnect) just
+  // calls handleJoin again: joining is idempotent server-side, so a fresh
+  // grant resumes the same session rather than starting over.
   if (grant) {
-    return (
-      <Centered>
-        <Loader2 className="h-6 w-6 animate-spin text-[#737373]" />
-      </Centered>
-    );
+    return <InterviewRoom grant={grant} onRejoin={handleJoin} />;
   }
 
   if (isLoading) {
@@ -87,7 +91,13 @@ export default function InterviewJoin() {
       brief={data}
       joining={joining}
       joinError={joinError}
-      onJoin={handleJoin}
+      // handleJoin rethrows on failure (so InterviewRoom's Rejoin can react
+      // to it); the failure is already surfaced here via joinError state,
+      // so swallow the rejection at this call site rather than let it go
+      // unhandled.
+      onJoin={() => {
+        handleJoin().catch(() => {});
+      }}
     />
   );
 }
