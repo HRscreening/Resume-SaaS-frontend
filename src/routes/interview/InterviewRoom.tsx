@@ -13,6 +13,7 @@ import {
 import type { InterviewJoinGrant } from "@/lib/interviewApi";
 import CaptionPane from "./CaptionPane";
 import { useLiveCaptions } from "./useLiveCaptions";
+import { useElapsedTime } from "./useElapsedTime";
 
 // The candidate's LiveKit participant identity is always this literal string
 // (minted server-side by mint_candidate_token — see backend service.join()).
@@ -48,6 +49,10 @@ function writeCaptionsPreference(enabled: boolean): void {
 
 interface InterviewRoomProps {
   grant: InterviewJoinGrant;
+  // From the interview brief (InterviewJoin's getInterviewBrief call). Used
+  // only to label the elapsed-time counter ("12:04 of about 50 minutes") —
+  // never as a countdown or a deadline the UI enforces.
+  durationMinutes: number;
   // Resolves once a fresh grant has been applied to props, or rejects (the
   // rejection is what drives the "could not rejoin" error state below).
   onRejoin: () => Promise<unknown>;
@@ -59,13 +64,21 @@ interface InterviewRoomProps {
 // empty_timeout), and renders the states a candidate will actually hit, plus
 // the live caption panes. Deliberately minimal beyond that: no other in-call
 // chrome. Later tasks extend this component rather than replace it.
-export default function InterviewRoom({ grant, onRejoin }: InterviewRoomProps) {
+export default function InterviewRoom({ grant, durationMinutes, onRejoin }: InterviewRoomProps) {
   const roomRef = useRef<Room | null>(null);
   const audioElsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
 
   const [callState, setCallState] = useState<CallState>("connecting");
   const [error, setError] = useState<RoomError | null>(null);
   const [rejoining, setRejoining] = useState(false);
+  // Timestamp of the first successful connect. Set once and never cleared by
+  // a reconnect or rejoin — see useElapsedTime for why.
+  const [connectedAt, setConnectedAt] = useState<number | null>(null);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
+  // The candidate deliberately ended the interview. Distinct from
+  // callState === "disconnected", which also covers an accidental drop and
+  // offers a Rejoin button — ending on purpose is final, with no rejoin.
+  const [completed, setCompleted] = useState(false);
   // Mirrors roomRef in state: the captions hook needs a value that changes
   // reference (and re-renders) on every connect/reconnect, which a ref alone
   // does not give us.
@@ -81,6 +94,7 @@ export default function InterviewRoom({ grant, onRejoin }: InterviewRoomProps) {
   );
   const candidateSpeaking = activeSpeakerIds.has(CANDIDATE_IDENTITY);
   const agentSpeaking = [...activeSpeakerIds].some((id) => id !== CANDIDATE_IDENTITY);
+  const elapsedLabel = useElapsedTime(connectedAt);
 
   function handleToggleCaptions() {
     setCaptionsEnabled((prev) => {
@@ -202,6 +216,55 @@ export default function InterviewRoom({ grant, onRejoin }: InterviewRoomProps) {
     // and connect a new one.
   }, [grant.url, grant.token]);
 
+  // Starts the elapsed-time clock on the first successful connect. The
+  // `connectedAt === null` guard makes this fire exactly once per mount, so
+  // reconnects and rejoins do not restart the counter.
+  useEffect(() => {
+    if (callState === "connected" && connectedAt === null) {
+      setConnectedAt(Date.now());
+    }
+  }, [callState, connectedAt]);
+
+  // A candidate who closes the tab mid-interview loses it: close_on_disconnect
+  // means the agent finalizes the session the moment the room drops. The
+  // guard is armed only while a live call is actually up, and torn down the
+  // instant it is not, so it never follows the candidate to another page.
+  //
+  // The `completed` check matters on its own, not just as a subset of
+  // callState: room.disconnect() below is async, and its Disconnected event
+  // (which flips callState) can lag behind the completion screen appearing.
+  // Without this, a candidate who confirms "End interview" and immediately
+  // tries to close the tab would still see a "leave site" prompt for an
+  // interview that has, from their perspective, already been submitted.
+  useEffect(() => {
+    if (completed) return;
+    if (callState !== "connected" && callState !== "reconnecting") return;
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [callState, completed]);
+
+  function handleEndInterview() {
+    setShowEndConfirm(true);
+  }
+
+  function handleCancelEnd() {
+    setShowEndConfirm(false);
+  }
+
+  function handleConfirmEnd() {
+    setShowEndConfirm(false);
+    // The backend finalizes the session on disconnect (close_on_disconnect),
+    // so this is the real, irreversible end of the interview for the
+    // candidate — the completion screen below reflects that, not a "you can
+    // rejoin" state.
+    roomRef.current?.disconnect();
+    setCompleted(true);
+  }
+
   async function handleRejoin() {
     setRejoining(true);
     try {
@@ -231,6 +294,16 @@ export default function InterviewRoom({ grant, onRejoin }: InterviewRoomProps) {
         message: err instanceof Error ? err.message : "Could not access your microphone.",
       });
     }
+  }
+
+  if (completed) {
+    return (
+      <Centered>
+        <p className="text-sm text-[#404040] max-w-sm text-center">
+          Thank you. Your interview has been submitted and the hiring team will be in touch.
+        </p>
+      </Centered>
+    );
   }
 
   if (error?.kind === "mic") {
@@ -291,6 +364,21 @@ export default function InterviewRoom({ grant, onRejoin }: InterviewRoomProps) {
           Reconnecting…
         </div>
       )}
+      <div className="w-full flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2 text-[#737373]">
+          <ConnectionDot state={callState} />
+          <span className="text-xs tabular-nums">
+            {elapsedLabel} of about {durationMinutes} minutes
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={handleEndInterview}
+          className="h-8 px-3 border border-[#D4D4D4] text-xs font-medium text-[#404040] rounded-lg hover:bg-white transition-colors"
+        >
+          End interview
+        </button>
+      </div>
       <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4 py-8">
         <div className="flex items-center gap-2 text-[#404040]">
           <Mic className="h-4 w-4" />
@@ -332,8 +420,46 @@ export default function InterviewRoom({ grant, onRejoin }: InterviewRoomProps) {
           </div>
         )}
       </div>
+
+      {showEndConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50">
+          <div className="max-w-sm w-full rounded-xl border border-[#D4D4D4] bg-white p-5 text-center">
+            <p className="text-sm text-[#0F0F0F] mb-5">
+              End the interview now? You will not be able to rejoin once it is finished.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={handleCancelEnd}
+                className="h-9 px-4 border border-[#D4D4D4] text-sm font-medium text-[#404040] rounded-lg hover:bg-[#F5F3EE] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmEnd}
+                className="h-9 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-lg hover:bg-[#1C1C1C] transition-colors"
+              >
+                End interview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+function ConnectionDot({ state }: { state: CallState }) {
+  // "connecting" never reaches this component (it has its own full screen
+  // above); it is included here only so the mapping stays total.
+  const color =
+    state === "connected"
+      ? "bg-emerald-500"
+      : state === "reconnecting"
+        ? "bg-amber-500"
+        : "bg-neutral-400";
+  return <span className={`inline-block h-2 w-2 rounded-full ${color}`} aria-hidden="true" />;
 }
 
 function Centered({ children }: { children: React.ReactNode }) {

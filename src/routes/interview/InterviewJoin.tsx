@@ -59,8 +59,15 @@ export default function InterviewJoin() {
   // instance for the rest of the call. Rejoin (after a disconnect) just
   // calls handleJoin again: joining is idempotent server-side, so a fresh
   // grant resumes the same session rather than starting over.
-  if (grant) {
-    return <InterviewRoom grant={grant} onRejoin={handleJoin} />;
+  //
+  // `data` is guaranteed populated by the time `grant` exists: joining is
+  // only reachable from PreJoinScreen below, which itself requires `data`.
+  // The `&& data` guard exists for type narrowing, not because that case is
+  // expected to occur.
+  if (grant && data) {
+    return (
+      <InterviewRoom grant={grant} durationMinutes={data.duration_minutes} onRejoin={handleJoin} />
+    );
   }
 
   if (isLoading) {
