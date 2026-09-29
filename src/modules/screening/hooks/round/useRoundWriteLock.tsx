@@ -38,8 +38,25 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 // here instead of wiring two ad hoc boolean props between two components.
 interface RoundWriteLock {
   isBlocked: (key: string) => boolean;
+  // Whether the given key itself is currently busy, regardless of who is
+  // asking (unlike isBlocked, which is always false for the caller's own
+  // key). Lets a component that isn't the writer itself (RoundView asking
+  // about "edit" from outside any single row's QuestionEditForm) know a
+  // save is in flight elsewhere in the same surface, so it can disable every
+  // row's Edit toggle, not just the row currently saving. See final review
+  // item 2.
+  isActive: (key: string) => boolean;
   setBusy: (key: string, busy: boolean) => void;
 }
+
+// One neutral message shared by all three write surfaces. A keyed message
+// ("An inline edit is saving", "A chat message is being sent") drifts the
+// moment a new writer joins the lock: AuthoringChat and RoundView's copy
+// both named only the other ORIGINAL surface, so a publish in flight (the
+// third writer, added later) was described wrongly by both of them. Naming
+// nobody in particular is what keeps this correct as writers are added.
+export const ROUND_WRITE_BUSY_MESSAGE =
+  "Another change to this round is still saving. Wait for it to finish.";
 
 const RoundWriteLockContext = createContext<RoundWriteLock | null>(null);
 
@@ -64,6 +81,7 @@ export function RoundWriteLockProvider({ children }: { children: React.ReactNode
     () => ({
       isBlocked: (key: string) =>
         Array.from(activeKeys).some((activeKey) => activeKey !== key),
+      isActive: (key: string) => activeKeys.has(key),
       setBusy,
     }),
     [activeKeys, setBusy],
