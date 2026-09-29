@@ -10,6 +10,13 @@ export type InterviewBrief = {
   duration_minutes: number;
   candidate_name: string | null;
   already_completed: boolean;
+  // What the hiring manager set when authoring this round (see
+  // RoundRequirements in the authoring screen). Purely informational here:
+  // the pre-join screen tells the candidate what to expect, it does not
+  // detect or enforce whether a camera or screen share actually gets
+  // turned on.
+  requires_camera: boolean;
+  requires_screen_share: boolean;
 };
 
 export type InterviewJoinGrant = {

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Mic } from "lucide-react";
+import { Camera, Loader2, Mic, ScreenShare } from "lucide-react";
 
 import {
   getInterviewBrief,
   joinInterview,
   InterviewRetryableError,
+  type InterviewBrief,
   type InterviewJoinGrant,
 } from "@/lib/interviewApi";
 import InterviewRoom from "@/routes/interview/InterviewRoom";
@@ -212,6 +213,8 @@ function PreJoinScreen({
           <p className="text-sm text-[#404040] leading-relaxed">{RECORDING_DISCLOSURE}</p>
         </div>
 
+        <SessionRequirements brief={brief} />
+
         <div className="rounded-xl border border-[#D4D4D4] bg-white p-4 mb-6">
           <div className="flex items-center gap-2 mb-2">
             <Mic className="h-4 w-4 text-[#404040]" />
@@ -259,6 +262,36 @@ function PreJoinScreen({
         </button>
       </div>
     </Centered>
+  );
+}
+
+// What the hiring manager set when authoring this round (requires_camera /
+// requires_screen_share on the brief), surfaced here so a candidate knows
+// what to expect before they start, not as a warning: same plain card
+// styling as the recording disclosure above it, no amber/red treatment.
+// Deliberately does not check whether a camera or screen share actually
+// gets turned on; that detection is out of scope for this screen.
+function SessionRequirements({ brief }: { brief: Pick<InterviewBrief, "requires_camera" | "requires_screen_share"> }) {
+  if (!brief.requires_camera && !brief.requires_screen_share) return null;
+
+  return (
+    <div className="rounded-xl border border-[#D4D4D4] bg-white p-4 mb-6">
+      <p className="text-sm font-medium text-[#0F0F0F] mb-2">What to have ready</p>
+      <ul className="flex flex-col gap-1.5">
+        {brief.requires_camera && (
+          <li className="flex items-center gap-2 text-sm text-[#404040]">
+            <Camera className="h-4 w-4 text-[#737373] shrink-0" />
+            This interview asks you to turn your camera on.
+          </li>
+        )}
+        {brief.requires_screen_share && (
+          <li className="flex items-center gap-2 text-sm text-[#404040]">
+            <ScreenShare className="h-4 w-4 text-[#737373] shrink-0" />
+            This interview asks you to share your screen.
+          </li>
+        )}
+      </ul>
+    </div>
   );
 }
 
