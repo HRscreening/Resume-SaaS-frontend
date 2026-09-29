@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
-import { sendChatTurn, cloneRound } from "@/lib/roundApi";
+import { sendChatTurn } from "@/lib/roundApi";
 import { ApiError } from "@/lib/api";
 import { ReadOnlyError } from "@/lib/accountSession";
 import { useAccount } from "@/hooks/useAccount";
-import { useRoundWriteLock } from "@/modules/screening/hooks/round/useRoundWriteLock";
+import {
+  useRoundWriteLock,
+  ROUND_WRITE_BUSY_MESSAGE,
+} from "@/modules/screening/hooks/round/useRoundWriteLock";
 import type { RoundResponse } from "@/types";
 
 interface AuthoringChatProps {
@@ -37,17 +38,17 @@ interface AuthoringChatProps {
 export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
   const { canWrite } = useAccount();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const { isBlocked, setBusy } = useRoundWriteLock();
 
   const isFrozen = round.status !== "draft";
-  // A round-level write lock (see useRoundWriteLock): a chat turn and an
-  // inline question edit (RoundView) both write to the same round row with
-  // no per-write version check on the backend, so one in flight while the
-  // other lands would silently clobber whichever wrote second. "edit" is
-  // RoundView's key for its own in-flight save.
+  // A round-level write lock (see useRoundWriteLock): a chat turn, an
+  // inline question edit (RoundView), and publish (PublishGate) all write
+  // to the same round row with no per-write version check on the backend,
+  // so one in flight while another lands would silently clobber whichever
+  // wrote second. Named editInFlight for history, but isBlocked("chat") is
+  // true whenever EITHER other surface is busy, not just an inline edit.
   const editInFlight = isBlocked("chat");
   const disabled = isFrozen || !canWrite || editInFlight;
 
@@ -70,21 +71,6 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
       if (err instanceof ApiError && err.status === 409) {
         queryClient.invalidateQueries({ queryKey: ["round", roundId] });
       }
-    },
-  });
-
-  const cloneMutation = useMutation({
-    mutationFn: () => cloneRound(roundId),
-    onSuccess: (newRound) => {
-      queryClient.setQueryData(["round", newRound.id], newRound);
-      toast.success("Cloned into a new draft.");
-      navigate({
-        to: "/screenings/$id/rounds/$roundId",
-        params: { id: newRound.screening_id, roundId: newRound.id },
-      });
-    },
-    onError: (err: unknown) => {
-      toast.error(err instanceof Error ? err.message : "Could not clone this round.");
     },
   });
 
@@ -152,19 +138,12 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
         <div className="mx-4 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
           <p className="text-xs leading-relaxed text-amber-800">
             {round.status === "published"
-              ? "This round is published and frozen. Clone it to make changes."
+              ? // Cloning lives in one place (PublishGate, below this panel):
+                // a second button here duplicated the action under a
+                // different label. See final review item 6.
+                "This round is published and frozen. Clone it below to make changes."
               : "This round is archived and can no longer be edited."}
           </p>
-          {round.status === "published" && canWrite && (
-            <button
-              type="button"
-              onClick={() => cloneMutation.mutate()}
-              disabled={cloneMutation.isPending}
-              className="mt-2 h-7 rounded-md border border-amber-300 bg-white px-3 text-xs font-medium text-amber-900 transition-colors hover:bg-amber-100 disabled:opacity-60"
-            >
-              {cloneMutation.isPending ? "Cloning..." : "Clone this round"}
-            </button>
-          )}
         </div>
       )}
 
@@ -178,9 +157,7 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
 
       {editInFlight && !isFrozen && canWrite && (
         <div className="mx-4 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-          <p className="text-xs leading-relaxed text-amber-800">
-            An inline edit is saving. Wait for it to finish before sending a message.
-          </p>
+          <p className="text-xs leading-relaxed text-amber-800">{ROUND_WRITE_BUSY_MESSAGE}</p>
         </div>
       )}
 
