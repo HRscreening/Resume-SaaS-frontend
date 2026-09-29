@@ -681,3 +681,94 @@ export interface CallArtifactsResponse {
   transcript_available: boolean;
   transcript_download_url: string | null;
 }
+
+// ─── Interview round authoring (Task 11) ───────────────────────────────────
+// Mirrors backend/app/schemas/interview_round.py (the validated domain
+// object) and backend/app/modules/interview/authoring/schemas.py (the HTTP
+// envelopes). See .superpowers/sdd/2026-09-28-interview-round-authoring/
+// api-contract.md for the endpoints these shapes ride on.
+
+export type RoundStatus = "draft" | "published" | "archived";
+
+export interface RoundRequirements {
+  camera: boolean;
+  screen_share: boolean;
+}
+
+// Deliberately has no `id`, unlike Question: a problem's examples are
+// authored and revised as one set, never addressed individually. Do not add
+// one back in — see the backend model's docstring for why.
+export interface CodingExample {
+  input: string;
+  output: string;
+  note?: string;
+}
+
+// Fields every question carries regardless of kind. Not exported on its own
+// (no bare object of this shape exists over the wire) — SpokenQuestion and
+// CodingQuestion each spell it out so the discriminated union below narrows
+// cleanly on `kind` without an intersection type hiding the discriminant.
+interface QuestionSpine {
+  id: string;
+  competency_ref: string;
+  expected_answer: string;
+  grading_notes: string;
+  weight: number; // 1-5
+  allocated_minutes: number; // >= 5
+}
+
+export interface SpokenQuestion extends QuestionSpine {
+  kind: "spoken";
+  prompt: string;
+}
+
+export interface CodingQuestion extends QuestionSpine {
+  kind: "coding";
+  title: string;
+  statement_md: string;
+  examples: CodingExample[];
+}
+
+// Discriminated union on `kind`. Narrow with `question.kind === "coding"`
+// (or "spoken") before reading kind-specific fields.
+export type Question = SpokenQuestion | CodingQuestion;
+
+export interface ChatMessage {
+  role: "user" | "model";
+  text: string;
+}
+
+// One row of GET /screenings/{id}/rounds — enough for a picker, no
+// questions or chat history.
+export interface RoundSummary {
+  id: string;
+  screening_id: string;
+  title: string;
+  status: RoundStatus;
+  published_at: string | null;
+  question_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// The full round: everything the authoring screen needs to render the live
+// draft (or a published round, read-only) plus its chat history.
+export interface RoundResponse {
+  id: string;
+  screening_id: string;
+  status: RoundStatus;
+  published_at: string | null;
+  title: string;
+  total_minutes: number;
+  overhead_minutes: number;
+  requirements: RoundRequirements;
+  questions: Question[];
+  authoring_chat: ChatMessage[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatTurnResponse {
+  round: RoundResponse;
+  reply: string;
+}

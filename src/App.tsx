@@ -57,6 +57,7 @@ import { searchSchema, screeningsSearchSchema, screeningDetailsSearchSchema } fr
 import ResumeDetail from "@/routes/ResumeDetail";
 import EditRubric from "@/modules/screening/routes/EditRubric";
 import InterviewConfigPage from "@/modules/screening/routes/InterviewConfig";
+import RoundAuthoring from "@/modules/screening/routes/RoundAuthoring";
 import VoiceConfigPage from "@/routes/VoiceConfig";
 import VoiceCalls from "@/routes/VoiceCalls";
 import TranscriptPage from "@/routes/TranscriptPage";
@@ -300,6 +301,18 @@ const voiceCallsRoute = createRoute({
   component: VoiceCalls,
 });
 
+// Round authoring screen: a hiring manager chats with an AI to build a
+// round, then publishes it. Recruiter-facing, behind AuthGuard like its
+// sibling screening routes above — never off rootRoute like
+// interviewJoinRoute, which is the candidate's unauthenticated link.
+// Path uses $id (not $screeningId) to match every other /screenings/$id/...
+// route in this file; see api-contract.md R43 for the ruling.
+const roundAuthoringRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings/$id/rounds/$roundId",
+  component: RoundAuthoring,
+});
+
 const resumeDetailRoute = createRoute({
   getParentRoute: () => authOnlyLayoutRoute,
   path: "/screenings/$id/$resumeId",
@@ -396,6 +409,7 @@ const routeTree = rootRoute.addChildren([
     voiceConfigRoute,
     interviewConfigRoute,
     voiceCallsRoute,
+    roundAuthoringRoute,
     settingsRoute,
     profileRoute,
     changePasswordRoute,
