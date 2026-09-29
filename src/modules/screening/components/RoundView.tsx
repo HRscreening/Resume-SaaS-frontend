@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRound, reviseQuestion } from "@/lib/roundApi";
 import { ApiError } from "@/lib/api";
+import { ReadOnlyError } from "@/lib/accountSession";
 import { useAccount } from "@/hooks/useAccount";
-import { useRoundWriteLock } from "@/modules/screening/hooks/round/useRoundWriteLock";
+import {
+  useRoundWriteLock,
+  ROUND_WRITE_BUSY_MESSAGE,
+} from "@/modules/screening/hooks/round/useRoundWriteLock";
 import type { CodingExample, Question, RoundResponse } from "@/types";
 
 interface RoundViewProps {
@@ -23,6 +27,7 @@ interface RoundViewProps {
 export default function RoundView({ roundId }: RoundViewProps) {
   const { canWrite } = useAccount();
   const queryClient = useQueryClient();
+  const { isActive } = useRoundWriteLock();
 
   const { data: round } = useQuery({
     queryKey: ["round", roundId],
@@ -31,12 +36,29 @@ export default function RoundView({ roundId }: RoundViewProps) {
 
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  const isFrozen = round ? round.status !== "draft" : false;
+
+  // A publish (or a 409 that invalidates the cache) can land while a
+  // QuestionEditForm is open. Without this, editingId survives the round
+  // going frozen: RoundView keeps rendering a live Save button while
+  // AuthoringChat shows the frozen banner and PublishGate shows Published:
+  // two contradictory states on screen with nothing to reconcile them until
+  // the user navigates away. See final review item 1. Runs before the
+  // `!round` guard below so hook order stays stable across renders.
+  useEffect(() => {
+    if (isFrozen) setEditingId(null);
+  }, [isFrozen]);
+
   if (!round) return null;
 
-  const isFrozen = round.status !== "draft";
   const canEdit = !isFrozen && canWrite;
   const allocated = round.questions.reduce((sum, q) => sum + q.allocated_minutes, 0);
   const target = round.total_minutes - round.overhead_minutes;
+  // True the instant any row's QuestionEditForm mutation goes pending, read
+  // back from the shared lock rather than local state; that's what lets
+  // every row's Edit toggle disable together, not just the row that started
+  // the save. See final review item 2.
+  const editSaving = isActive("edit");
 
   // The endpoint an inline edit saves through (POST /rounds/{rid}/tool-calls
   // with revise_question) returns the full updated round, the same shape
@@ -62,6 +84,20 @@ export default function RoundView({ roundId }: RoundViewProps) {
 
       <RequirementsLine requirements={round.requirements} />
 
+      {/* Every other disabled control on this screen explains itself
+          (AuthoringChat's frozen/read-only banners, PublishGate's blocking
+          reason). The Edit button on each row was the one exception. See
+          final review item 7. */}
+      {!canEdit && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+          {isFrozen
+            ? round.status === "published"
+              ? "This round is published and frozen. Clone it below to make changes."
+              : "This round is archived and can no longer be edited."
+            : "Read-only: you can view these questions but not edit them."}
+        </p>
+      )}
+
       {round.questions.length === 0 ? (
         <p className="text-sm text-[#737373]">
           No questions yet. Chat with the assistant to start building this round.
@@ -76,6 +112,7 @@ export default function RoundView({ roundId }: RoundViewProps) {
               question={question}
               isEditing={editingId === question.id}
               canEdit={canEdit}
+              editSaving={editSaving}
               onToggleEdit={() =>
                 setEditingId((current) => (current === question.id ? null : question.id))
               }
@@ -109,7 +146,12 @@ function BudgetLine({
   target: number;
   totalMinutes: number;
 }) {
-  const satisfied = allocated === target;
+  // A brand-new round (zero questions) has an unsatisfied allocation by
+  // definition; that is not an alarm, it is the starting state, and the
+  // "No questions yet" line below already carries the next action. Only
+  // treat a mismatch as noteworthy once there is at least one question. See
+  // final review item 5.
+  const satisfied = questionCount === 0 || allocated === target;
   return (
     <div
       className={`rounded-xl border px-3 py-2 text-sm font-medium ${
@@ -163,6 +205,15 @@ interface QuestionRowProps {
   question: Question;
   isEditing: boolean;
   canEdit: boolean;
+  // True while ANY row's QuestionEditForm save is in flight (read from the
+  // shared write lock in RoundView, not local state): the header toggle
+  // used to be gated on `!canEdit` only, so clicking Edit/Cancel on this
+  // row OR ANY OTHER ROW while a save was pending unmounted that form
+  // mid-POST. The form's own unmount cleanup releases the write lock
+  // regardless of whether the request has actually finished, so chat and
+  // publish would re-enable and could clobber the still-running write. See
+  // final review item 2.
+  editSaving: boolean;
   onToggleEdit: () => void;
   onSaved: (round: RoundResponse) => void;
   onFrozenMidEdit: () => void;
@@ -174,6 +225,7 @@ function QuestionRow({
   question,
   isEditing,
   canEdit,
+  editSaving,
   onToggleEdit,
   onSaved,
   onFrozenMidEdit,
@@ -197,14 +249,22 @@ function QuestionRow({
         <button
           type="button"
           onClick={onToggleEdit}
-          disabled={!canEdit}
+          disabled={!canEdit || editSaving}
           className="h-7 shrink-0 rounded-md border border-[#D4D4D4] bg-white px-2.5 text-xs font-medium text-[#404040] transition-colors hover:bg-[#F5F3EE] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {isEditing ? "Cancel" : "Edit"}
         </button>
       </div>
 
-      {isEditing && (
+      {/* Gated on canEdit too, not just isEditing: if the round freezes
+          (or write access is lost) while this row's editingId is still
+          set, the form disappears on the same render as the rest of the
+          screen going read-only, instead of lingering until RoundView's
+          own effect clears editingId. Belt-and-suspenders with that
+          effect. See final review item 1. Not gated on editSaving: that
+          would unmount THIS row's own form the instant its save begins,
+          which is the opposite of what item 2 needs. */}
+      {isEditing && canEdit && (
         <QuestionEditForm
           roundId={roundId}
           question={question}
@@ -371,18 +431,24 @@ function QuestionEditForm({
   // Register this save as a round write while it's in flight, under this
   // form's own key ("edit"). Mirrors `isPending` so the flag clears on
   // success or error alike, and releases on unmount as a defensive
-  // backstop (the Cancel button below is itself disabled while saving, so
-  // this form can't normally unmount mid-save, but a stale lock would be
-  // worse than a redundant clear).
+  // backstop. This form's own Cancel button, AND every row's header
+  // Edit/Cancel toggle (QuestionRow, driven by RoundView's `editSaving` =
+  // isActive("edit")), are now disabled while a save is pending, so this
+  // form can't normally unmount mid-save, but a stale lock would be worse
+  // than a redundant clear if some other path still managed it. Previously
+  // only this form's own Cancel button was disabled, which missed every
+  // row's header toggle; see final review item 2.
   useEffect(() => {
     setBusy("edit", saveMutation.isPending);
   }, [saveMutation.isPending, setBusy]);
   useEffect(() => () => setBusy("edit", false), [setBusy]);
 
-  // A chat turn in flight (AuthoringChat's "chat" key) writes the whole
-  // round from a draft it read before this edit existed. Saving now would
-  // race it: whichever write lands second wins, and the other vanishes
-  // with no error. See useRoundWriteLock.tsx.
+  // True while some OTHER write surface (a chat turn or a publish) is in
+  // flight: each writes the whole round from a draft it read before this
+  // edit existed, so saving now would race it: whichever write lands
+  // second wins, and the other vanishes with no error. Named chatInFlight
+  // for history, but isBlocked("edit") covers publish too now that it
+  // registers with the same lock. See useRoundWriteLock.tsx.
   const chatInFlight = isBlocked("edit");
 
   function update<K extends keyof EditState>(key: K, value: EditState[K]) {
@@ -428,7 +494,9 @@ function QuestionEditForm({
       ? saveMutation.error.status === 409
         ? "This round was published while you were editing, so this change was not saved. It is now frozen; clone it to keep going."
         : saveMutation.error.message
-      : "Could not reach the server. Your edit is still here, try again."
+      : saveMutation.error instanceof ReadOnlyError
+        ? saveMutation.error.message
+        : "Could not reach the server. Your edit is still here, try again."
     : null;
 
   return (
@@ -564,9 +632,7 @@ function QuestionEditForm({
 
       {chatInFlight && !saveMutation.isPending && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-          <p className="text-xs leading-relaxed text-amber-800">
-            A chat message is being sent. Wait for it to finish before saving.
-          </p>
+          <p className="text-xs leading-relaxed text-amber-800">{ROUND_WRITE_BUSY_MESSAGE}</p>
         </div>
       )}
 
