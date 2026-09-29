@@ -24,6 +24,11 @@ interface PublishGateProps {
 }
 
 
+// Shown in two places that must not drift: the gate's own amber banner,
+// and the confirm dialog when a write lands while it is open.
+const OTHER_WRITE_REASON =
+  "A chat message or inline edit is still saving. Wait for it to finish before publishing.";
+
 // The publish gate: a draft round shows the publish button (disabled with
 // a reason until it is actually publishable), a published round shows the
 // invite panel and a clone action, and an archived round (superseded by a
@@ -176,7 +181,7 @@ export default function PublishGate({ screeningId, roundId, round }: PublishGate
 
       {canWrite && !blockingReason && otherWriteInFlight && (
         <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
-          A chat message or inline edit is still saving. Wait for it to finish before publishing.
+          {OTHER_WRITE_REASON}
         </p>
       )}
 
@@ -186,6 +191,7 @@ export default function PublishGate({ screeningId, roundId, round }: PublishGate
         allocated={allocated}
         target={target}
         isPending={publishMutation.isPending}
+        blockedReason={blockingReason ?? (otherWriteInFlight ? OTHER_WRITE_REASON : null)}
         errorMessage={
           publishMutation.isError && !(publishMutation.error instanceof ApiError && publishMutation.error.status === 409)
             ? publishMutation.error instanceof Error
@@ -195,7 +201,7 @@ export default function PublishGate({ screeningId, roundId, round }: PublishGate
         }
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => {
-          if (otherWriteInFlight || publishMutation.isPending) return;
+          if (blockingReason || otherWriteInFlight || publishMutation.isPending) return;
           publishMutation.mutate();
         }}
       />
@@ -209,6 +215,12 @@ interface PublishConfirmDialogProps {
   allocated: number;
   target: number;
   isPending: boolean;
+  // Non-null when the round stopped being publishable while this dialog
+  // was open: a chat turn can land at any moment and leave the budget
+  // unsatisfied. The dialog reads the same live round the gate does, so
+  // the numbers above stay honest either way, but the Confirm button has
+  // to follow them or it sends a call the backend will only refuse.
+  blockedReason: string | null;
   errorMessage: string | null;
   onCancel: () => void;
   onConfirm: () => void;
@@ -224,6 +236,7 @@ function PublishConfirmDialog({
   allocated,
   target,
   isPending,
+  blockedReason,
   errorMessage,
   onCancel,
   onConfirm,
@@ -253,6 +266,12 @@ function PublishConfirmDialog({
           to make changes.
         </p>
 
+        {blockedReason && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            <p className="text-xs leading-relaxed text-amber-800">{blockedReason}</p>
+          </div>
+        )}
+
         {errorMessage && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
             <p className="text-xs leading-relaxed text-red-700">{errorMessage}</p>
@@ -273,7 +292,7 @@ function PublishConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={isPending}
+            disabled={isPending || blockedReason !== null}
             className="h-9 rounded-lg border border-[#0F0F0F] bg-[#0F0F0F] px-4 text-sm font-medium text-white transition-colors hover:bg-[#262626] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isPending ? "Publishing..." : "Publish round"}
