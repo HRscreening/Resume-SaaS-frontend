@@ -4,6 +4,7 @@ import { BackLink } from "@/components/layout/BackLink";
 import { getRound } from "@/lib/roundApi";
 import { ApiError } from "@/lib/api";
 import AuthoringChat from "@/modules/screening/components/AuthoringChat";
+import RoundView from "@/modules/screening/components/RoundView";
 
 // The interview round authoring screen: a hiring manager chats with an AI
 // to build a round, then publishes it. This file is the page shell the
@@ -33,7 +34,7 @@ export default function RoundAuthoring() {
   });
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto">
       <BackLink to="/screenings/$id" params={{ id }} label="Screening" />
 
       {isLoading && (
@@ -60,15 +61,13 @@ export default function RoundAuthoring() {
                 ? "Published and frozen. Invite candidates or clone to revise."
                 : "Archived."}
           </p>
-          <p className="mt-1 text-xs text-[#737373]">
-            {round.questions.length} question{round.questions.length === 1 ? "" : "s"} ·{" "}
-            {round.questions.reduce((sum, q) => sum + q.allocated_minutes, 0)}/{round.total_minutes} min allocated
-          </p>
 
-          {/* Task 13 mounts the live question/budget view here, beside the
-              chat panel — it should read this same ["round", roundId] query
-              rather than take the round as a prop from this component. */}
-          <div className="mt-4">
+          {/* The chat panel (Task 12) and the live question/budget view
+              (Task 13) both read the shared ["round", roundId] query
+              directly rather than taking `round` as a prop, so either one
+              writing a fresh round into the cache is picked up by both. */}
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <RoundView roundId={roundId} />
             <AuthoringChat roundId={roundId} round={round} />
           </div>
         </div>

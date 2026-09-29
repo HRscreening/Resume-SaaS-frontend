@@ -85,3 +85,37 @@ export async function cloneRound(roundId: string): Promise<RoundResponse> {
     method: "POST",
   });
 }
+
+// Applies a single `revise_question` tool call directly to the round's
+// draft, bypassing the chat/LLM loop entirely (added in Task 13a, see
+// api-contract.md's "ADDED AFTER TASK 9" section). This is what a
+// per-question inline hand-edit saves through, so the edit gets exactly the
+// same validation and rebalance as the chat path, but deterministically and
+// without waiting on the model. `changes` should only include the fields
+// actually being edited: omitting `allocated_minutes` lets the server
+// choose it, while setting it pins this question's minutes and rebalances
+// every other question around it.
+//
+// The underlying endpoint (`POST /rounds/{rid}/tool-calls`) accepts any of
+// the six authoring tools, but this wrapper only ever sends
+// `revise_question` — `set_round` is deliberately never exposed here, since
+// `total_minutes`/`overhead_minutes` are the AI's to own, not an inline
+// edit's.
+//
+// 422 means the edit was rejected and NOTHING was persisted: the thrown
+// ApiError's `.message` is the `INVALID: ...` line, written to be shown to
+// the hiring manager as-is. 409 means the round was published (frozen)
+// while they were editing, the same as the chat path's 409.
+export async function reviseQuestion(
+  roundId: string,
+  questionId: string,
+  changes: Record<string, unknown>,
+): Promise<RoundResponse> {
+  return request<RoundResponse>(`/api/v1/rounds/${roundId}/tool-calls`, {
+    method: "POST",
+    body: JSON.stringify({
+      name: "revise_question",
+      args: { id: questionId, changes },
+    }),
+  });
+}
