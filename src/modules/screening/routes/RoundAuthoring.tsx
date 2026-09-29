@@ -5,6 +5,7 @@ import { getRound } from "@/lib/roundApi";
 import { ApiError } from "@/lib/api";
 import AuthoringChat from "@/modules/screening/components/AuthoringChat";
 import RoundView from "@/modules/screening/components/RoundView";
+import { RoundWriteLockProvider } from "@/modules/screening/hooks/round/useRoundWriteLock";
 
 // The interview round authoring screen: a hiring manager chats with an AI
 // to build a round, then publishes it. This file is the page shell the
@@ -65,11 +66,20 @@ export default function RoundAuthoring() {
           {/* The chat panel (Task 12) and the live question/budget view
               (Task 13) both read the shared ["round", roundId] query
               directly rather than taking `round` as a prop, so either one
-              writing a fresh round into the cache is picked up by both. */}
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <RoundView roundId={roundId} />
-            <AuthoringChat roundId={roundId} round={round} />
-          </div>
+              writing a fresh round into the cache is picked up by both.
+              RoundWriteLockProvider is the mutual-exclusion lock between
+              their two write surfaces (chat turn vs. inline edit) — the
+              backend has no per-write version check on a draft round, so
+              without this a chat turn and an inline edit in flight at once
+              can silently clobber each other. See
+              hooks/round/useRoundWriteLock.tsx; Task 14's publish button
+              registers under this same provider. */}
+          <RoundWriteLockProvider>
+            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <RoundView roundId={roundId} />
+              <AuthoringChat roundId={roundId} round={round} />
+            </div>
+          </RoundWriteLockProvider>
         </div>
       )}
     </div>

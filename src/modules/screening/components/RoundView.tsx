@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRound, reviseQuestion } from "@/lib/roundApi";
 import { ApiError } from "@/lib/api";
 import { useAccount } from "@/hooks/useAccount";
+import { useRoundWriteLock } from "@/modules/screening/hooks/round/useRoundWriteLock";
 import type { CodingExample, Question, RoundResponse } from "@/types";
 
 interface RoundViewProps {
@@ -345,6 +346,7 @@ function QuestionEditForm({
   onFrozenMidEdit,
 }: QuestionEditFormProps) {
   const [edited, setEdited] = useState<EditState>(() => buildEditState(question));
+  const { isBlocked, setBusy } = useRoundWriteLock();
 
   const saveMutation = useMutation({
     mutationFn: (changes: Record<string, unknown>) =>
@@ -366,12 +368,30 @@ function QuestionEditForm({
     },
   });
 
+  // Register this save as a round write while it's in flight, under this
+  // form's own key ("edit"). Mirrors `isPending` so the flag clears on
+  // success or error alike, and releases on unmount as a defensive
+  // backstop (the Cancel button below is itself disabled while saving, so
+  // this form can't normally unmount mid-save, but a stale lock would be
+  // worse than a redundant clear).
+  useEffect(() => {
+    setBusy("edit", saveMutation.isPending);
+  }, [saveMutation.isPending, setBusy]);
+  useEffect(() => () => setBusy("edit", false), [setBusy]);
+
+  // A chat turn in flight (AuthoringChat's "chat" key) writes the whole
+  // round from a draft it read before this edit existed. Saving now would
+  // race it: whichever write lands second wins, and the other vanishes
+  // with no error. See useRoundWriteLock.tsx.
+  const chatInFlight = isBlocked("edit");
+
   function update<K extends keyof EditState>(key: K, value: EditState[K]) {
     setEdited((current) => ({ ...current, [key]: value }));
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (chatInFlight || saveMutation.isPending) return;
     const changes = diffEditState(question, edited);
     if (Object.keys(changes).length === 0) {
       onCancel();
@@ -542,10 +562,18 @@ function QuestionEditForm({
         </div>
       )}
 
+      {chatInFlight && !saveMutation.isPending && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+          <p className="text-xs leading-relaxed text-amber-800">
+            A chat message is being sent. Wait for it to finish before saving.
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-2">
         <button
           type="submit"
-          disabled={saveMutation.isPending}
+          disabled={saveMutation.isPending || chatInFlight}
           className="h-8 rounded-lg border border-[#0F0F0F] bg-[#0F0F0F] px-3 text-xs font-medium text-white transition-colors hover:bg-[#262626] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {saveMutation.isPending ? "Saving..." : "Save"}

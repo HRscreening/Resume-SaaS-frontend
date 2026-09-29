@@ -6,6 +6,7 @@ import { sendChatTurn, cloneRound } from "@/lib/roundApi";
 import { ApiError } from "@/lib/api";
 import { ReadOnlyError } from "@/lib/accountSession";
 import { useAccount } from "@/hooks/useAccount";
+import { useRoundWriteLock } from "@/modules/screening/hooks/round/useRoundWriteLock";
 import type { RoundResponse } from "@/types";
 
 interface AuthoringChatProps {
@@ -39,9 +40,16 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
   const navigate = useNavigate();
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
+  const { isBlocked, setBusy } = useRoundWriteLock();
 
   const isFrozen = round.status !== "draft";
-  const disabled = isFrozen || !canWrite;
+  // A round-level write lock (see useRoundWriteLock): a chat turn and an
+  // inline question edit (RoundView) both write to the same round row with
+  // no per-write version check on the backend, so one in flight while the
+  // other lands would silently clobber whichever wrote second. "edit" is
+  // RoundView's key for its own in-flight save.
+  const editInFlight = isBlocked("chat");
+  const disabled = isFrozen || !canWrite || editInFlight;
 
   const sendTurn = useMutation({
     mutationFn: (message: string) => sendChatTurn(roundId, message),
@@ -83,6 +91,15 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [round.authoring_chat.length, sendTurn.isPending]);
+
+  // Register this turn as a round write while it's in flight, under this
+  // component's own key. Mirroring `isPending` (rather than setting it
+  // inside onSuccess/onError) means the flag clears on either outcome
+  // automatically, since a settled mutation is no longer "in flight" either
+  // way.
+  useEffect(() => {
+    setBusy("chat", sendTurn.isPending);
+  }, [sendTurn.isPending, setBusy]);
 
   function trySend() {
     const message = draft.trim();
@@ -155,6 +172,14 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
         <div className="mx-4 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
           <p className="text-xs leading-relaxed text-amber-800">
             Read-only: you can view this conversation but not send messages.
+          </p>
+        </div>
+      )}
+
+      {editInFlight && !isFrozen && canWrite && (
+        <div className="mx-4 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+          <p className="text-xs leading-relaxed text-amber-800">
+            An inline edit is saving. Wait for it to finish before sending a message.
           </p>
         </div>
       )}
