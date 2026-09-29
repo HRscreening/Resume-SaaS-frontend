@@ -5,14 +5,15 @@ import { getRound } from "@/lib/roundApi";
 import { ApiError } from "@/lib/api";
 import AuthoringChat from "@/modules/screening/components/AuthoringChat";
 import RoundView from "@/modules/screening/components/RoundView";
+import PublishGate from "@/modules/screening/components/PublishGate";
 import { RoundWriteLockProvider } from "@/modules/screening/hooks/round/useRoundWriteLock";
 
 // The interview round authoring screen: a hiring manager chats with an AI
 // to build a round, then publishes it. This file is the page shell the
 // route registers in App.tsx (/screenings/$id/rounds/$roundId) — it fetches
-// the round and renders its current state. The chat panel (Task 12) and the
-// live question/budget view (Task 13) mount here once built; publish/clone
-// (Task 14) attach to the same round data this page already loads.
+// the round and renders its current state: the chat panel (Task 12) and
+// live question/budget view (Task 13) side by side, and PublishGate (Task
+// 14) below them for publish, invite and clone.
 export default function RoundAuthoring() {
   const { id, roundId } = useParams({ strict: false }) as {
     id: string;
@@ -72,12 +73,15 @@ export default function RoundAuthoring() {
               backend has no per-write version check on a draft round, so
               without this a chat turn and an inline edit in flight at once
               can silently clobber each other. See
-              hooks/round/useRoundWriteLock.tsx; Task 14's publish button
-              registers under this same provider. */}
+              hooks/round/useRoundWriteLock.tsx; PublishGate below registers
+              under this same provider as a third write surface ("publish"). */}
           <RoundWriteLockProvider>
             <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
               <RoundView roundId={roundId} />
               <AuthoringChat roundId={roundId} round={round} />
+            </div>
+            <div className="mt-4">
+              <PublishGate screeningId={id} roundId={roundId} round={round} />
             </div>
           </RoundWriteLockProvider>
         </div>
