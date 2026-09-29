@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BackLink } from "@/components/layout/BackLink";
 import { getRound } from "@/lib/roundApi";
 import { ApiError } from "@/lib/api";
+import AuthoringChat from "@/modules/screening/components/AuthoringChat";
 
 // The interview round authoring screen: a hiring manager chats with an AI
 // to build a round, then publishes it. This file is the page shell the
@@ -16,6 +17,12 @@ export default function RoundAuthoring() {
     roundId: string;
   };
 
+  // ["round", roundId] is the shared cache key for this round: AuthoringChat
+  // (Task 12) writes the post-turn round straight into this entry after
+  // every chat turn, so this query re-renders with the new state without an
+  // explicit refetch. Task 13's live round view should read the round with
+  // this same queryKey rather than take it as a prop, so it too picks up
+  // every update AuthoringChat writes.
   const {
     data: round,
     isLoading,
@@ -53,6 +60,17 @@ export default function RoundAuthoring() {
                 ? "Published and frozen. Invite candidates or clone to revise."
                 : "Archived."}
           </p>
+          <p className="mt-1 text-xs text-[#737373]">
+            {round.questions.length} question{round.questions.length === 1 ? "" : "s"} ·{" "}
+            {round.questions.reduce((sum, q) => sum + q.allocated_minutes, 0)}/{round.total_minutes} min allocated
+          </p>
+
+          {/* Task 13 mounts the live question/budget view here, beside the
+              chat panel — it should read this same ["round", roundId] query
+              rather than take the round as a prop from this component. */}
+          <div className="mt-4">
+            <AuthoringChat roundId={roundId} round={round} />
+          </div>
         </div>
       )}
     </div>
