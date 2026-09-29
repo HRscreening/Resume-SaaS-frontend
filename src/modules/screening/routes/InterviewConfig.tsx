@@ -43,6 +43,11 @@ export default function InterviewConfigPage() {
     mutationFn: () => createRound(id, "Interview round"),
     onSuccess: (round) => {
       queryClient.setQueryData(["round", round.id], round);
+      // Without this, the global 5 minute staleTime means a return to this
+      // resolver route within that window re-reads the cached, now-empty
+      // ["rounds", id] list and creates a second round. See final review
+      // item 3.
+      queryClient.invalidateQueries({ queryKey: ["rounds", id] });
       navigate({
         to: "/screenings/$id/rounds/$roundId",
         params: { id, roundId: round.id },

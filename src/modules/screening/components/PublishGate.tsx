@@ -13,7 +13,10 @@ import {
 import { publishRound, cloneRound } from "@/lib/roundApi";
 import { ApiError } from "@/lib/api";
 import { useAccount } from "@/hooks/useAccount";
-import { useRoundWriteLock } from "@/modules/screening/hooks/round/useRoundWriteLock";
+import {
+  useRoundWriteLock,
+  ROUND_WRITE_BUSY_MESSAGE,
+} from "@/modules/screening/hooks/round/useRoundWriteLock";
 import { InvitePanel } from "@/modules/screening/components/interview/InvitePanel";
 import type { RoundResponse } from "@/types";
 
@@ -22,12 +25,6 @@ interface PublishGateProps {
   roundId: string;
   round: RoundResponse;
 }
-
-
-// Shown in two places that must not drift: the gate's own amber banner,
-// and the confirm dialog when a write lands while it is open.
-const OTHER_WRITE_REASON =
-  "A chat message or inline edit is still saving. Wait for it to finish before publishing.";
 
 // The publish gate: a draft round shows the publish button (disabled with
 // a reason until it is actually publishable), a published round shows the
@@ -84,6 +81,11 @@ export default function PublishGate({ screeningId, roundId, round }: PublishGate
     mutationFn: () => cloneRound(roundId),
     onSuccess: (newRound) => {
       queryClient.setQueryData(["round", newRound.id], newRound);
+      // The clone adds a row to this screening's round list. Without this,
+      // InterviewConfig's resolver can still be sitting on a cached, now
+      // stale ["rounds", screeningId] list for up to the 5 minute staleTime.
+      // See final review item 3.
+      queryClient.invalidateQueries({ queryKey: ["rounds", newRound.screening_id] });
       toast.success("Cloned into a new draft.");
       navigate({
         to: "/screenings/$id/rounds/$roundId",
@@ -181,7 +183,7 @@ export default function PublishGate({ screeningId, roundId, round }: PublishGate
 
       {canWrite && !blockingReason && otherWriteInFlight && (
         <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
-          {OTHER_WRITE_REASON}
+          {ROUND_WRITE_BUSY_MESSAGE}
         </p>
       )}
 
@@ -191,7 +193,7 @@ export default function PublishGate({ screeningId, roundId, round }: PublishGate
         allocated={allocated}
         target={target}
         isPending={publishMutation.isPending}
-        blockedReason={blockingReason ?? (otherWriteInFlight ? OTHER_WRITE_REASON : null)}
+        blockedReason={blockingReason ?? (otherWriteInFlight ? ROUND_WRITE_BUSY_MESSAGE : null)}
         errorMessage={
           publishMutation.isError && !(publishMutation.error instanceof ApiError && publishMutation.error.status === 409)
             ? publishMutation.error instanceof Error
