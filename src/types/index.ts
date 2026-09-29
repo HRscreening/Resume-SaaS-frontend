@@ -764,6 +764,12 @@ export interface RoundResponse {
   requirements: RoundRequirements;
   questions: Question[];
   authoring_chat: ChatMessage[];
+  // The hiring stage a candidate must reach to be eligible for this
+  // round's invites. Served by the backend rather than duplicated here:
+  // the same value decides who create_invites actually invites, so a
+  // local copy could drift and show a candidate list drawn from a
+  // different stage than the one the invite endpoint gates on.
+  entry_stage: string;
   created_at: string;
   updated_at: string;
 }

@@ -23,14 +23,6 @@ interface PublishGateProps {
   round: RoundResponse;
 }
 
-// Published rounds carry no entry-stage setting of their own (see backend
-// app/modules/interview/config_service.py's `_DEFAULT_ENTRY_STAGE` and its
-// docstring: entry_stage used to live on InterviewConfig, which Task 5
-// dropped). Every published round is gated on this fixed kanban stage until
-// a later task decides a round needs its own — InvitePanel's `entryStage`
-// prop only affects which candidates this panel lists to pick from, not
-// what create_invites' backend query filters by, so the two must agree.
-const ENTRY_STAGE = "Shortlisted";
 
 // The publish gate: a draft round shows the publish button (disabled with
 // a reason until it is actually publishable), a published round shows the
@@ -126,7 +118,7 @@ export default function PublishGate({ screeningId, roundId, round }: PublishGate
           )}
         </div>
 
-        <InvitePanel screeningId={screeningId} entryStage={ENTRY_STAGE} ready canWrite={canWrite} />
+        <InvitePanel screeningId={screeningId} entryStage={round.entry_stage} ready canWrite={canWrite} />
       </div>
     );
   }
