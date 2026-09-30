@@ -258,6 +258,13 @@ export function CandidatesTable({
                   </th>
                   {/* )} */}
 
+                  <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
+                    <span className="block">Interview</span>
+                    <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">
+                      round
+                    </span>
+                  </th>
+
                   {/* !Need Reimplementation */}
                   {/* {showToolbar ? (
                   <SortableHeader

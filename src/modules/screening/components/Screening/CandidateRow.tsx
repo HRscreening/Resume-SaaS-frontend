@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type { HiringStage, MatchTierId, RangeFilter, RubricCategory, StagesMap } from "@/types";
+import { InterviewInviteCell } from "@/modules/screening/components/interview/InterviewInviteCell";
 import type { RankedCandidate, ScreeningActionStatus } from "@/modules/screening/types/screening.type";
 import { getTier } from "@/lib/tier";
 import ProcessingOverlay from "@/modules/screening/components/shared/RowProcessingOverlay"
@@ -159,6 +160,17 @@ export function CandidateRow({
                     <VoiceCell candidate={candidate} />
                 </td>
                 {/* )} */}
+
+                {/* The interview round comes after the voice screen, so the
+                    invite sits beside the voice result and only lights up
+                    once that result exists. */}
+                <td className="px-2 py-3 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                    <InterviewInviteCell
+                        candidate={candidate}
+                        screeningId={screening_id}
+                        canWrite={!disableStageChange}
+                    />
+                </td>
 
                 <td className="px-2 py-3 align-middle" onClick={(e) => e.stopPropagation()}>
                     <StageSelect value={stage} stages={stages} onChange={onStageChange} onManage={onManageStages} disabled={disableStageChange} />
