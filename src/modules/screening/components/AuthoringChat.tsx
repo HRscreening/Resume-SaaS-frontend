@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { sendChatTurn } from "@/lib/roundApi";
+import { toast } from "sonner";
+import { resetRoundChat, sendChatTurn } from "@/lib/roundApi";
 import { ApiError } from "@/lib/api";
 import { ReadOnlyError } from "@/lib/accountSession";
 import { useAccount } from "@/hooks/useAccount";
@@ -74,6 +75,21 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
     },
   });
 
+  // Clearing the conversation is a write like any other, so it takes the
+  // same lock. The questions survive: only the transcript goes.
+  const resetChat = useMutation({
+    mutationFn: () => resetRoundChat(roundId),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["round", roundId], data);
+    },
+    onError: (err) => {
+      if (err instanceof ApiError && err.status === 409) {
+        queryClient.invalidateQueries({ queryKey: ["round", roundId] });
+      }
+      toast.error(err instanceof Error ? err.message : "Could not clear the conversation.");
+    },
+  });
+
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [round.authoring_chat.length, sendTurn.isPending]);
@@ -84,8 +100,8 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
   // automatically, since a settled mutation is no longer "in flight" either
   // way.
   useEffect(() => {
-    setBusy("chat", sendTurn.isPending);
-  }, [sendTurn.isPending, setBusy]);
+    setBusy("chat", sendTurn.isPending || resetChat.isPending);
+  }, [sendTurn.isPending, resetChat.isPending, setBusy]);
 
   function trySend() {
     const message = draft.trim();
@@ -117,6 +133,31 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
 
   return (
     <div className="flex flex-col rounded-2xl border border-[#E8E5DF] bg-white">
+      {/* Only offered once there is something to clear, and never on a
+          frozen round, whose transcript is part of the record. */}
+      {round.authoring_chat.length > 0 && !isFrozen && canWrite && (
+        <div className="flex items-center justify-between border-b border-[#E8E5DF] px-4 py-2">
+          <span className="text-xs text-[#737373]">
+            {round.authoring_chat.length} message
+            {round.authoring_chat.length === 1 ? "" : "s"} in this conversation
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              if (resetChat.isPending || editInFlight) return;
+              if (window.confirm(
+                "Start a new conversation? The questions, budget and requirements stay exactly as they are. Only the chat history is cleared."
+              )) {
+                resetChat.mutate();
+              }
+            }}
+            disabled={resetChat.isPending || editInFlight}
+            className="rounded-lg border border-[#D4D4D4] bg-white px-2.5 py-1 text-xs font-medium text-[#404040] transition-colors hover:bg-[#F5F3EE] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {resetChat.isPending ? "Clearing..." : "New chat"}
+          </button>
+        </div>
+      )}
       <div
         ref={listRef}
         className="flex-1 space-y-3 overflow-y-auto px-4 py-4"

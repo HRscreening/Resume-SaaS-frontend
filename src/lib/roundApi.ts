@@ -86,6 +86,17 @@ export async function cloneRound(roundId: string): Promise<RoundResponse> {
   });
 }
 
+// Clears this round's conversation and starts a fresh one. The questions,
+// budget, title and requirements all survive: only the transcript goes.
+// Safe because the assistant reads the round from state the server renders
+// into its prompt every turn, not from the conversation, so a cleared chat
+// is a fresh start rather than amnesia.
+export async function resetRoundChat(roundId: string): Promise<RoundResponse> {
+  return request<RoundResponse>(`/api/v1/rounds/${roundId}/chat/reset`, {
+    method: "POST",
+  });
+}
+
 // Applies a single `revise_question` tool call directly to the round's
 // draft, bypassing the chat/LLM loop entirely (added in Task 13a, see
 // api-contract.md's "ADDED AFTER TASK 9" section). This is what a

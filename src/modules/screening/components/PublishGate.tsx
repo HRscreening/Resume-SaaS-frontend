@@ -17,7 +17,6 @@ import {
   useRoundWriteLock,
   ROUND_WRITE_BUSY_MESSAGE,
 } from "@/modules/screening/hooks/round/useRoundWriteLock";
-import { InvitePanel } from "@/modules/screening/components/interview/InvitePanel";
 import type { RoundResponse } from "@/types";
 
 interface PublishGateProps {
@@ -123,9 +122,13 @@ export default function PublishGate({ screeningId, roundId, round }: PublishGate
               {cloneMutation.isPending ? "Cloning..." : "Clone to revise"}
             </button>
           )}
+          {/* Inviting lives on the screening page, not here. This screen is
+              for authoring a round; choosing who sits it is done where the
+              candidate list actually is. */}
+          <p className="mt-3 text-xs leading-relaxed text-[#737373]">
+            Candidates can now be invited to this round from the screening page.
+          </p>
         </div>
-
-        <InvitePanel screeningId={screeningId} entryStage={round.entry_stage} ready canWrite={canWrite} />
       </div>
     );
   }

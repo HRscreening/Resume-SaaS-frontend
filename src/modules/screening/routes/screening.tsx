@@ -20,6 +20,7 @@ import {
     RotateCcw,
     Mic,
     History,
+    Send,
     Download,
     Video
 } from "lucide-react";
@@ -30,6 +31,7 @@ import UploadResumes from "@/modules/screening/components/uploadResumes"
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useAccount } from "@/hooks/useAccount";
+import { InterviewInviteDialog } from "@/modules/screening/components/interview/InterviewInviteDialog";
 
 import { useScreening } from "@/modules/screening/hooks/shared/useScreening"
 import { useApplicationQuery } from "@/modules/screening/hooks/application/custom/useApplicationQuery";
@@ -55,6 +57,7 @@ export default function ScreeningDetail() {
 
     const { user } = useAuth();
     const { canWrite } = useAccount();
+    const [inviteOpen, setInviteOpen] = useState(false);
 
 
     const [sourceMode, setSourceMode] = useState(false);
@@ -245,6 +248,19 @@ export default function ScreeningDetail() {
                                             compacted={analysisOpen}
                                         />
 
+                                        {/* Invite to the interview round. Lives here, beside
+                                            the candidate list, rather than on the round
+                                            authoring screen: authoring a round and choosing
+                                            who sits it are different jobs. */}
+                                        {canWrite && (
+                                            <ActionButton
+                                                title="Invite to interview"
+                                                onClick={() => setInviteOpen(true)}
+                                                icon={<Send size={12} />}
+                                                compacted={analysisOpen}
+                                            />
+                                        )}
+
                                         {/* Call History button */}
                                         <ActionButton
                                             title="View Calls"
@@ -291,6 +307,12 @@ export default function ScreeningDetail() {
             {
                 showUploadMore &&
                 <div className="my-4 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
+                    <InterviewInviteDialog
+                        screeningId={id}
+                        open={inviteOpen}
+                        onOpenChange={setInviteOpen}
+                        canWrite={canWrite}
+                    />
                     {canWrite && <UploadResumes screening_id={id} user_id={user?.id ?? ""} setShowUploadMore={setShowUploadMore} />}
                 </div>
             }
