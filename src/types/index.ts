@@ -487,6 +487,10 @@ export interface InterviewInviteItem {
   resume_id: string;
   candidate_name: string | null;
   invite_url: string;
+  // Whether the candidate was actually emailed their link. False means the
+  // invite exists and works, but nobody has told them: no address on the
+  // resume, or the mail provider declined.
+  emailed?: boolean;
 }
 
 export interface InterviewInviteResponse {

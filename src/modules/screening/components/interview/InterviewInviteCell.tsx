@@ -28,6 +28,7 @@ export function InterviewInviteCell({
 }) {
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [emailed, setEmailed] = useState(false);
 
   const voiceDone = candidate.voice_status === "ready";
 
@@ -47,6 +48,12 @@ export function InterviewInviteCell({
       const first = res.invites[0];
       if (first) {
         setLink(first.invite_url);
+        setEmailed(first.emailed === true);
+        toast.success(
+          first.emailed
+            ? `Invite emailed to ${candidate.candidate_name ?? "the candidate"}.`
+            : "Invite created, but no email was sent. Share the link yourself."
+        );
         return;
       }
       // The server took the request but invited nobody. That is a real
@@ -89,11 +96,11 @@ export function InterviewInviteCell({
             () => toast.error("Could not copy the link.")
           );
         }}
-        title={link}
+        title={emailed ? `Emailed. Click to copy the link too: ${link}` : `Not emailed. Click to copy: ${link}`}
         className="inline-flex items-center gap-1 rounded-lg border border-[#D4D4D4] bg-white px-2 py-1 text-[11px] font-medium text-[#404040] transition-colors hover:bg-[#F5F3EE]"
       >
         {copied ? <Check size={11} /> : <Copy size={11} />}
-        {copied ? "Copied" : "Copy link"}
+        {copied ? "Copied" : emailed ? "Emailed" : "Copy link"}
       </button>
     );
   }
