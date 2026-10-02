@@ -16,8 +16,10 @@ import {
   type InterviewJoinGrant,
 } from "@/lib/interviewApi";
 import CaptionPane from "./CaptionPane";
+import CodingPane from "./CodingPane";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { useElapsedTime } from "./useElapsedTime";
+import { useCodingQuestions } from "./useCodingQuestions";
 
 // The candidate's LiveKit participant identity is always this literal string
 // (minted server-side by mint_candidate_token — see backend service.join()).
@@ -57,6 +59,10 @@ function writeCaptionsPreference(enabled: boolean): void {
 
 interface InterviewRoomProps {
   grant: InterviewJoinGrant;
+  // The invite token from the URL. Carried here (rather than read again off
+  // the route) only to call the three coding-pane endpoints, which are
+  // authenticated solely by this token, exactly like join() above.
+  token: string;
   // From the interview brief (InterviewJoin's getInterviewBrief call). Used
   // only to label the elapsed-time counter ("12:04 of about 50 minutes") —
   // never as a countdown or a deadline the UI enforces.
@@ -78,6 +84,7 @@ interface InterviewRoomProps {
 // chrome. Later tasks extend this component rather than replace it.
 export default function InterviewRoom({
   grant,
+  token,
   durationMinutes,
   onRejoin,
   onCheckCompleted,
@@ -126,6 +133,17 @@ export default function InterviewRoom({
   const candidateSpeaking = activeSpeakerIds.has(CANDIDATE_IDENTITY);
   const agentSpeaking = [...activeSpeakerIds].some((id) => id !== CANDIDATE_IDENTITY);
   const elapsedLabel = useElapsedTime(connectedAt);
+
+  // Owns the question list, the per-question timer, and the Run/Submit
+  // buffers. Runs regardless of call state: a candidate who reconnects
+  // mid-question must find their code and their remaining time exactly as
+  // they left them, not reset by the reconnect.
+  const coding = useCodingQuestions(token);
+  // Only a coding question replaces today's screen with the split view. A
+  // spoken question, or no question data yet, renders exactly what this
+  // screen has always rendered — there is deliberately no "empty pane" for
+  // either of those cases.
+  const showCodingPane = coding.current?.kind === "coding";
 
   function handleToggleCaptions() {
     setCaptionsEnabled((prev) => {
@@ -440,7 +458,12 @@ export default function InterviewRoom({
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F5F3EE" }}>
+    // h-screen + overflow-hidden (rather than the min-h-screen used by every
+    // other state above) so the coding split view below can give its two
+    // columns a real, bounded height to scroll independently within. The
+    // question pane must stay on screen for the whole question — it must
+    // never be something the page itself can scroll past.
+    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: "#F5F3EE" }}>
       {callState === "reconnecting" && (
         <div className="w-full bg-[#FDECD2] text-[#8A4B08] text-xs text-center py-2">
           Reconnecting…
@@ -461,47 +484,61 @@ export default function InterviewRoom({
           End interview
         </button>
       </div>
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4 py-8">
-        <div className="flex items-center gap-2 text-[#404040]">
-          <Mic className="h-4 w-4" />
-          <p className="text-sm">You are connected. The interview is in progress.</p>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleToggleCaptions}
-          className="text-xs font-medium text-[#404040] underline underline-offset-2 hover:text-[#0F0F0F]"
-        >
-          {captionsEnabled ? "Hide captions" : "Show captions"}
-        </button>
-
-        {captionsEnabled && (
-          // Interviewer first, candidate's own pane second: the candidate
-          // follows the question in the interviewer's pane and only glances
-          // at their own to confirm they were heard.
-          <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-            <CaptionPane
-              title="Interviewer"
-              lines={agentCaptions}
-              speaking={agentSpeaking}
-              emptyText="The interviewer's words will appear here."
-            />
-            <div className="flex flex-col gap-2">
-              <CaptionPane
-                title="You"
-                lines={candidateCaptions}
-                speaking={candidateSpeaking}
-                emptyText="Your words will appear here as you speak."
-              />
-              <p className="text-xs text-[#737373] px-1">
-                These captions are produced automatically and may contain mistakes. There
-                is no need to correct them out loud: the interviewer hears you, not the
-                captions.
-              </p>
-            </div>
+      {showCodingPane ? (
+        <CodingPane
+          coding={coding}
+          captions={{
+            agentCaptions,
+            candidateCaptions,
+            agentSpeaking,
+            candidateSpeaking,
+            enabled: captionsEnabled,
+            onToggle: handleToggleCaptions,
+          }}
+        />
+      ) : (
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center gap-6 px-4 py-8">
+          <div className="flex items-center gap-2 text-[#404040]">
+            <Mic className="h-4 w-4" />
+            <p className="text-sm">You are connected. The interview is in progress.</p>
           </div>
-        )}
-      </div>
+
+          <button
+            type="button"
+            onClick={handleToggleCaptions}
+            className="text-xs font-medium text-[#404040] underline underline-offset-2 hover:text-[#0F0F0F]"
+          >
+            {captionsEnabled ? "Hide captions" : "Show captions"}
+          </button>
+
+          {captionsEnabled && (
+            // Interviewer first, candidate's own pane second: the candidate
+            // follows the question in the interviewer's pane and only glances
+            // at their own to confirm they were heard.
+            <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+              <CaptionPane
+                title="Interviewer"
+                lines={agentCaptions}
+                speaking={agentSpeaking}
+                emptyText="The interviewer's words will appear here."
+              />
+              <div className="flex flex-col gap-2">
+                <CaptionPane
+                  title="You"
+                  lines={candidateCaptions}
+                  speaking={candidateSpeaking}
+                  emptyText="Your words will appear here as you speak."
+                />
+                <p className="text-xs text-[#737373] px-1">
+                  These captions are produced automatically and may contain mistakes. There
+                  is no need to correct them out loud: the interviewer hears you, not the
+                  captions.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {showEndConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50">

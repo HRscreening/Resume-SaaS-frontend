@@ -89,6 +89,7 @@ export default function InterviewJoin() {
     return (
       <InterviewRoom
         grant={grant}
+        token={token}
         durationMinutes={data.duration_minutes}
         onRejoin={handleJoin}
         onCheckCompleted={checkCompleted}
