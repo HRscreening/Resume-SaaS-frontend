@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { Room } from "livekit-client";
 
 import {
   getInterviewQuestions,
@@ -18,6 +19,7 @@ import {
   type QuestionBuffer,
 } from "./codingBufferStorage";
 import { useCountdown } from "./useCountdown";
+import { useQuestionSync } from "./useQuestionSync";
 
 const DEFAULT_LANGUAGE: InterviewLanguage = "python";
 
@@ -34,17 +36,32 @@ export type SubmitNotice = { kind: "saved" | "error"; message: string };
 
 // Everything the coding pane needs: which question (if any) is current, its
 // saved-as-you-type buffer, the countdown, and the Run/Submit actions. Owns
-// no audio or caption state — that stays in InterviewRoom and is threaded
-// into CodingPane separately, so this hook has nothing to do with the
-// LiveKit Room and can be reasoned about on its own.
+// no audio state and no caption state of its own — those stay in
+// InterviewRoom and are threaded into CodingPane separately.
 //
-// Progression through the round is driven entirely by this hook's own
-// per-question timer, not by anything the agent sends over the room: the
-// contract defines no such signal, and "every candidate gets exactly
-// allocated_minutes, so scorecards stay comparable" is itself an argument
-// against letting an early manual Submit skip ahead — only the timer
-// advances the candidate to the next question.
-export function useCodingQuestions(token: string) {
+// WHICH QUESTION IS CURRENT is decided by the agent, not by this hook: the
+// gap found during the build (coding-pane-contract.md's ADDENDUM) is that a
+// screen advancing on its own timer drifts from an interviewer pacing itself
+// off the conversation, and a drifted screen means the candidate writes code
+// for a question nobody asked. `useQuestionSync` follows the room's
+// `hiresort.question` topic, the same signal `advance_segment` derives from
+// coverage server-side, and that id — once this round's question list
+// confirms it is one of ITS ids — is what `current` resolves to.
+//
+// The local index (`state.index`) still exists and still advances on its own
+// timer, but only as the pre-sync fallback: until the first valid signal
+// arrives, `current` falls back to it, which is exactly today's behaviour
+// (an interview where the data channel never arrives must still be usable).
+// Once a signal has been adopted, it is sticky (see useQuestionSync) and wins
+// over the local index from then on.
+//
+// The per-question timer itself is unconditional either way: whichever
+// question is CURRENTLY DISPLAYED gets its own fresh countdown against its
+// own `allocated_minutes`, for the warning and the auto-submit on expiry
+// only. It never decides what is displayed — see the `deadlineOwnerRef`
+// effect below, and `handleExpire`, which only advances the local fallback
+// index when no sync signal has taken over yet.
+export function useCodingQuestions(token: string, room: Room | null) {
   const { data, error: questionsError } = useQuery({
     queryKey: ["interview-questions", token],
     queryFn: () => getInterviewQuestions(token),
@@ -54,8 +71,26 @@ export function useCodingQuestions(token: string) {
   });
   const questions = data?.questions;
 
+  const knownQuestionIds = useMemo(
+    () => (questions ? new Set(questions.map((q) => q.id)) : null),
+    [questions],
+  );
+  // The agent-named current question, once a valid, known id has arrived —
+  // null (and therefore ignored below) until then or if it never does.
+  const syncedQuestionId = useQuestionSync(room, knownQuestionIds);
+
   const [state, setState] = useState<CodingState | null>(null);
   const expiringRef = useRef(false);
+
+  // Which question id the CURRENTLY STORED `deadlineAt` was computed for.
+  // Lets the id-change effect below tell "the displayed question just
+  // changed, give it a fresh countdown" apart from "nothing changed, leave
+  // the restored/ticking deadline alone" — the two cases a plain `[current]`
+  // effect dependency cannot distinguish between on its own. Set directly
+  // (not via setState) by the mount effect below, synchronously with the
+  // state it establishes, so the id-change effect never fires spuriously on
+  // first mount or on a reload that is restoring an in-progress countdown.
+  const deadlineOwnerRef = useRef<string | null>(null);
 
   // Restore a prior mount's progress (a reload, a remount after a
   // reconnect) or start at question 0 the moment the question list is
@@ -67,8 +102,12 @@ export function useCodingQuestions(token: string) {
     setState((prev) => {
       if (prev) return prev;
       const stored = loadCodingState(token);
-      if (stored && stored.index < questions.length) return stored;
+      if (stored && stored.index < questions.length) {
+        deadlineOwnerRef.current = questions[stored.index]?.id ?? null;
+        return stored;
+      }
       const first = questions[0];
+      deadlineOwnerRef.current = first.id;
       return {
         index: 0,
         deadlineAt: Date.now() + minutesToMs(first.allocated_minutes),
@@ -86,10 +125,40 @@ export function useCodingQuestions(token: string) {
     return () => window.clearTimeout(id);
   }, [state, token]);
 
-  const index = state?.index ?? 0;
+  // The DISPLAYED question: the agent's synced id when this round's question
+  // list recognises it, falling back to the local index otherwise (no signal
+  // yet, or none ever arrives — today's behaviour, unchanged). Resolved by
+  // id rather than trusting the signal's own `index`, so a stale or
+  // off-by-one index from the agent can never point this at the wrong
+  // question while a valid id is available.
+  const syncedIndex = useMemo(
+    () => (questions && syncedQuestionId ? questions.findIndex((q) => q.id === syncedQuestionId) : -1),
+    [questions, syncedQuestionId],
+  );
+  const displayIndex = syncedIndex !== -1 ? syncedIndex : (state?.index ?? 0);
+  const index = displayIndex;
   const total = questions?.length ?? 0;
-  const current = questions && state ? questions[state.index] : undefined;
+  const current = questions && state ? questions[displayIndex] : undefined;
   const buffer = current ? bufferFor(state?.buffers ?? {}, current.id) : null;
+
+  // The timer belongs to whichever question is actually on screen, not to
+  // the local index: give the displayed question a fresh countdown against
+  // its own `allocated_minutes` the moment it changes — whether that change
+  // came from the local fallback advancing, or from a sync signal moving the
+  // pane forward, backward, or to a question the local index was never on.
+  // A restored deadline (mount effect above already set deadlineOwnerRef to
+  // match) is left untouched, which is what preserves true remaining time
+  // across a reload instead of resetting it to a fresh full allocation.
+  useEffect(() => {
+    const id = current?.id ?? null;
+    if (deadlineOwnerRef.current === id) return;
+    deadlineOwnerRef.current = id;
+    setState((prev) => {
+      if (!prev) return prev;
+      if (!current) return { ...prev, deadlineAt: null };
+      return { ...prev, deadlineAt: Date.now() + minutesToMs(current.allocated_minutes) };
+    });
+  }, [current]);
 
   const [runResult, setRunResult] = useState<RunCodeResponse | null>(null);
   const [runNotice, setRunNotice] = useState<RunNotice | null>(null);
@@ -158,18 +227,15 @@ export function useCodingQuestions(token: string) {
     [token],
   );
 
+  // Advances the LOCAL FALLBACK index only. This is a no-op on what is
+  // displayed once a sync signal has been adopted (`current` resolves by
+  // synced id first — see `displayIndex` above), which is deliberate: moving
+  // the candidate on is the agent's call once it is driving the pane, not a
+  // local clock's. The resulting deadline for whatever ends up displayed is
+  // handled uniformly by the id-change effect above, not here.
   const advance = useCallback(() => {
-    setState((prev) => {
-      if (!prev || !questions) return prev;
-      const nextIndex = prev.index + 1;
-      const next = questions[nextIndex];
-      return {
-        ...prev,
-        index: nextIndex,
-        deadlineAt: next ? Date.now() + minutesToMs(next.allocated_minutes) : null,
-      };
-    });
-  }, [questions]);
+    setState((prev) => (prev ? { ...prev, index: prev.index + 1 } : prev));
+  }, []);
 
   const handleExpire = useCallback(() => {
     if (expiringRef.current || !current || !state) return;
@@ -188,10 +254,14 @@ export function useCodingQuestions(token: string) {
               },
         );
       }
-      advance();
+      // Moving on is only this hook's call while nothing has told it
+      // otherwise. Once a sync signal is driving the pane, expiry still
+      // captures the buffer above (never discard what they wrote) but leaves
+      // deciding what comes next to the agent's own next publish.
+      if (syncedQuestionId === null) advance();
       expiringRef.current = false;
     })();
-  }, [current, state, persist, advance]);
+  }, [current, state, persist, advance, syncedQuestionId]);
 
   const { secondsRemaining, warning } = useCountdown(state?.deadlineAt ?? null, handleExpire);
 

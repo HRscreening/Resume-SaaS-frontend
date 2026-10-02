@@ -134,11 +134,14 @@ export default function InterviewRoom({
   const agentSpeaking = [...activeSpeakerIds].some((id) => id !== CANDIDATE_IDENTITY);
   const elapsedLabel = useElapsedTime(connectedAt);
 
-  // Owns the question list, the per-question timer, and the Run/Submit
-  // buffers. Runs regardless of call state: a candidate who reconnects
-  // mid-question must find their code and their remaining time exactly as
-  // they left them, not reset by the reconnect.
-  const coding = useCodingQuestions(token);
+  // Owns the question list, which question is current (the agent's own
+  // hiresort.question signal when one has arrived, a local fallback
+  // otherwise), the per-question timer, and the Run/Submit buffers. Runs
+  // regardless of call state: a candidate who reconnects mid-question must
+  // find their code and their remaining time exactly as they left them, not
+  // reset by the reconnect. `activeRoom` is threaded in so it can subscribe
+  // to that signal the same way useLiveCaptions subscribes to captions.
+  const coding = useCodingQuestions(token, activeRoom);
   // Only a coding question replaces today's screen with the split view. A
   // spoken question, or no question data yet, renders exactly what this
   // screen has always rendered — there is deliberately no "empty pane" for
