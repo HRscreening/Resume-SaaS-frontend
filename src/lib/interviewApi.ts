@@ -103,3 +103,87 @@ export const joinInterview = (token: string) =>
     `/api/v1/interview/${encodeURIComponent(token)}/join`,
     { method: "POST" },
   );
+
+// ─── Coding pane ────────────────────────────────────────────────────────────
+// See .superpowers/sdd/2026-09-28-interview-round-authoring/coding-pane-contract.md
+// for the binding shape of these three endpoints. Field names here are not
+// ours to rename: the backend is built against the same document.
+
+export type InterviewLanguage = "python" | "javascript" | "cpp";
+
+export interface InterviewExample {
+  input: string;
+  output: string;
+  note?: string;
+}
+
+// A spoken question carries no text by design (the interviewer asks it aloud
+// and putting it on screen would let the candidate read ahead), so the
+// discriminated union only attaches title/statement_md/examples to "coding".
+export type InterviewQuestion =
+  | { id: string; kind: "spoken"; allocated_minutes: number }
+  | {
+      id: string;
+      kind: "coding";
+      allocated_minutes: number;
+      title: string;
+      statement_md: string;
+      examples: InterviewExample[];
+    };
+
+export interface InterviewQuestionsResponse {
+  questions: InterviewQuestion[];
+}
+
+export const getInterviewQuestions = (token: string) =>
+  publicRequest<InterviewQuestionsResponse>(
+    `/api/v1/interview/${encodeURIComponent(token)}/questions`,
+  );
+
+export interface RunCodeRequest {
+  question_id: string;
+  language: InterviewLanguage;
+  source: string;
+}
+
+export interface RunResultItem {
+  index: number;
+  passed: boolean;
+  stdout: string;
+  stderr: string;
+  status: string;
+  // Present only when `passed` is false: what the visible example expected
+  // versus what the candidate's program actually printed.
+  expected?: string;
+  actual?: string;
+}
+
+export interface RunCodeResponse {
+  results: RunResultItem[];
+  // Reported once for the whole run, never per example.
+  compile_error: string | null;
+  ran: number;
+  passed: number;
+}
+
+export const runCode = (token: string, body: RunCodeRequest) =>
+  publicRequest<RunCodeResponse>(`/api/v1/interview/${encodeURIComponent(token)}/run`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export interface SubmitCodeRequest {
+  question_id: string;
+  language: InterviewLanguage;
+  source: string;
+}
+
+export interface SubmitCodeResponse {
+  saved: true;
+}
+
+export const submitCode = (token: string, body: SubmitCodeRequest) =>
+  publicRequest<SubmitCodeResponse>(
+    `/api/v1/interview/${encodeURIComponent(token)}/submit`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
