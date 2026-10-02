@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { useCandidateScreeningDetail } from "@/controllers/screening/getCandidateScreeningDetail";
 import { VoiceScorePill } from "@/components/screening/voice/VoiceScorePill";
+import { InterviewScorePill } from "@/components/screening/interview/InterviewScorePill";
+import { InterviewScorecardDrawer } from "@/components/screening/interview/InterviewScorecardDrawer";
 import { useScreening } from "@/controllers/screening/getScreening";
 import { formatDate } from "@/lib/utils";
 import { resumeUploadService } from "@/lib/services"
@@ -36,6 +38,7 @@ export default function ResumeDetail({
   const dragging = useRef(false);
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [interviewScorecardOpen, setInterviewScorecardOpen] = useState(false);
 
   // Prevent both panels being collapsed simultaneously — must be before early returns
   useEffect(() => {
@@ -199,6 +202,13 @@ export default function ResumeDetail({
 
         {/* Voice interview result (renders only when a scored call exists) */}
         <VoiceScorePill screeningId={id} resumeId={resumeId} />
+
+        {/* AI interview round result (renders only when a scored session exists) */}
+        <InterviewScorePill
+          screeningId={id}
+          resumeId={resumeId}
+          onOpen={() => setInterviewScorecardOpen(true)}
+        />
 
         {/* Panel toggles — desktop only; on mobile the layout stacks and these don't apply. */}
         <div className="hidden md:flex items-center gap-1 shrink-0 ml-1">
@@ -461,6 +471,14 @@ export default function ResumeDetail({
         )}
 
       </div>
+
+      {interviewScorecardOpen && (
+        <InterviewScorecardDrawer
+          screeningId={id}
+          resumeId={resumeId}
+          onClose={() => setInterviewScorecardOpen(false)}
+        />
+      )}
     </div>
   );
 }

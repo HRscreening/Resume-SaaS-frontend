@@ -782,3 +782,75 @@ export interface ChatTurnResponse {
   round: RoundResponse;
   reply: string;
 }
+
+// ─── Interview round scorecards (flow-completion-contract.md, step 6) ──────
+// GET /api/v1/screenings/{screening_id}/interview-scorecards. Written by
+// backend/app/workers/interview_tasks.py when a session finishes; this is
+// the first thing that reads it. Built in parallel with the backend, so
+// field shapes nested inside `breakdown` and `per_question` are loosely
+// typed on purpose — render defensively rather than assuming a shape that
+// has not shipped yet.
+
+// Keyed by question id, same as `code` on InterviewScorecard below. Shape
+// is whatever the scorer produced for that question; only a few fields are
+// treated as known, everything else still renders through a generic
+// fallback rather than being silently dropped.
+export interface InterviewPerQuestionResult {
+  score?: number | null;
+  summary?: string | null;
+  explanation?: string | null;
+  evidence?: string[] | null;
+  [key: string]: unknown;
+}
+
+// A single row of the overall rubric breakdown, parallel to the voice
+// round's VoiceBreakdownItem (src/components/screening/voice/scorecard/
+// CriterionBreakdown.tsx) but kept separate: the two scorecards are
+// produced by different scorers and must not be assumed to share a wire
+// shape just because they look similar.
+export interface InterviewBreakdownItem {
+  category?: string | null;
+  criterion?: string | null;
+  question?: string | null;
+  score?: number | null;
+  explanation?: string | null;
+  evidence?: string[] | null;
+  [key: string]: unknown;
+}
+
+// The candidate's submitted code for one coding question, read from
+// interview_sessions.artifacts["code"]. `language` mirrors
+// lib/interviewApi.ts's InterviewLanguage ("python" | "javascript" | "cpp")
+// but is left as `string` here: this is read-only display of whatever the
+// candidate's browser sent, and a value outside that union must still
+// render rather than fail a type check at the API boundary.
+export interface InterviewScorecardCode {
+  language: string;
+  source: string;
+}
+
+export interface InterviewScorecard {
+  interview_session_id: string;
+  resume_id: string;
+  candidate_name: string | null;
+  overall_score: number | null;
+  recommendation: "advance" | "hold" | "reject" | null;
+  // Not an edge case to gloss over: an interview that ended early scored on
+  // partial evidence must read differently from a complete one. Every
+  // surface that shows this scorecard must show this flag too.
+  is_partial: boolean;
+  completed_at: string | null;
+  overall_summary: string | null;
+  strengths: string[] | null;
+  missing_elements: string[] | null;
+  flags: string[] | null;
+  breakdown: InterviewBreakdownItem[];
+  per_question: Record<string, InterviewPerQuestionResult>;
+  // Absent entirely, or empty, on an all-spoken round with no coding
+  // question — never assume at least one entry.
+  code: Record<string, InterviewScorecardCode> | null;
+}
+
+export interface InterviewScorecardsResponse {
+  scorecards: InterviewScorecard[];
+}
