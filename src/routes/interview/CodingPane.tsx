@@ -147,8 +147,20 @@ function LabelledCode({ label, value }: { label: string; value: string }) {
 }
 
 function EditorPane({ coding }: { coding: UseCodingQuestions }) {
-  const { buffer, setSource, setLanguage, isRunning, isSubmitting, handleRun, handleSubmit } = coding;
+  const { buffer, setSource, setLanguage, isRunning, isSubmitting, runBlockedReason, handleRun, handleSubmit } =
+    coding;
   if (!buffer) return null;
+
+  // Run is disabled either because a run is already in flight (self-evident
+  // from the spinner) or for a structural reason the candidate cannot fix by
+  // waiting a moment and clicking again in the same way — a language with no
+  // browser runner, or Python's worker not being ready yet. Both still get
+  // an explicit reason on the button itself ("every disabled control
+  // explains itself"); the structural one additionally gets a standing
+  // banner below, since a hover tooltip alone is easy to miss on a button
+  // that otherwise looks identical to always.
+  const runDisabled = isRunning || Boolean(runBlockedReason);
+  const runDisabledReason = isRunning ? "A run is already in progress." : (runBlockedReason ?? "");
 
   return (
     <div className="flex flex-col gap-3 min-h-0">
@@ -157,10 +169,10 @@ function EditorPane({ coding }: { coding: UseCodingQuestions }) {
         <div className="flex items-center gap-2">
           <ActionButton
             onClick={handleRun}
-            disabled={isRunning}
+            disabled={runDisabled}
             label={isRunning ? "Running" : "Run"}
             loading={isRunning}
-            disabledReason="A run is already in progress."
+            disabledReason={runDisabledReason}
           />
           <ActionButton
             onClick={handleSubmit}
@@ -172,6 +184,8 @@ function EditorPane({ coding }: { coding: UseCodingQuestions }) {
           />
         </div>
       </div>
+
+      {runBlockedReason && !isRunning && <Banner tone="warning">{runBlockedReason}</Banner>}
 
       <div className="flex-1 min-h-[220px]">
         <CodeEditor value={buffer.source} onChange={setSource} />

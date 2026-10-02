@@ -4,11 +4,7 @@ import type { Room } from "livekit-client";
 
 import {
   getInterviewQuestions,
-  runCode,
   submitCode,
-  InterviewApiError,
-  InterviewUnavailableError,
-  InterviewRetryableError,
   type InterviewLanguage,
   type RunCodeResponse,
 } from "@/lib/interviewApi";
@@ -21,6 +17,9 @@ import {
 import { useCountdown } from "./useCountdown";
 import { useQuestionSync } from "./useQuestionSync";
 import { notifySubmitted } from "./notifySubmission";
+import { runCodeLocally, CppNotRunnableError, PythonNotReadyError } from "./execution/runCodeLocally";
+import { pyodideManager } from "./execution/pyodideManager";
+import { usePyodideStatus } from "./execution/usePyodideStatus";
 
 const DEFAULT_LANGUAGE: InterviewLanguage = "python";
 
@@ -71,6 +70,19 @@ export function useCodingQuestions(token: string, room: Room | null) {
     staleTime: Infinity,
   });
   const questions = data?.questions;
+
+  // Preloaded the moment this hook mounts — which is as soon as
+  // InterviewRoom's live call renders, regardless of call state or whether
+  // the current question is even a coding one (see InterviewRoom's comment
+  // on why this hook "runs regardless of call state"). Pyodide is several
+  // megabytes; starting the fetch here, rather than waiting for the first
+  // Run press, is what makes "ready by the time a coding question arrives"
+  // true for a real interview instead of aspirational copy. preload() is
+  // idempotent, so a remount (a reconnect, a rejoin) never restarts it.
+  useEffect(() => {
+    pyodideManager.preload();
+  }, []);
+  const pythonStatus = usePyodideStatus();
 
   const knownQuestionIds = useMemo(
     () => (questions ? new Set(questions.map((q) => q.id)) : null),
@@ -295,41 +307,53 @@ export function useCodingQuestions(token: string, room: Room | null) {
     return () => window.clearTimeout(id);
   }, [submitNotice]);
 
+  // Structural reasons Run cannot be used right now, independent of whether
+  // a run happens to be in flight: C++ has no browser runner at all, and
+  // Python needs its (preloaded, but not instant) worker to be ready. Kept
+  // separate from `isRunning` so the UI can show a persistent, honest banner
+  // for these ("Python is still loading...") without also showing one for
+  // the ordinary, self-explanatory "Running" spinner state. Every disabled
+  // Run button traces back to one of these three reasons, or to isRunning.
+  const runBlockedReason: string | null =
+    buffer?.language === "cpp"
+      ? "Running C++ isn't available here yet. You can still write your solution and submit it."
+      : buffer?.language === "python" && pythonStatus === "loading"
+        ? "Python is still loading in this browser. This happens once per interview and takes a few seconds."
+        : buffer?.language === "python" && pythonStatus === "error"
+          ? "Python could not be loaded in this browser. You can still write your solution and submit it."
+          : null;
+
   const handleRun = useCallback(async () => {
-    if (!current || current.kind !== "coding" || !buffer || isRunning) return;
+    if (!current || current.kind !== "coding" || !buffer || isRunning || runBlockedReason) return;
     const questionId = current.id;
     setIsRunning(true);
     setRunNotice(null);
     try {
-      const result = await runCode(token, {
-        question_id: questionId,
-        language: buffer.language,
-        source: buffer.source,
-      });
-      // The timer can advance the candidate past this question while the
-      // request is still in flight. A result for a question that is no
-      // longer on screen must be dropped, not shown against whatever came
-      // next.
+      // Entirely local: no network call, no backend endpoint involved. See
+      // coding-pane-contract.md's "Why this is in the browser" — Run exists
+      // so the candidate can check their own work, and nothing here is ever
+      // read for scoring, which is what makes running untrusted code in the
+      // candidate's own tab safe in the first place.
+      const result = await runCodeLocally(buffer.language, buffer.source, current.examples);
+      // The agent's question-sync signal (or the local timer fallback) can
+      // advance the candidate past this question while a run is still going.
+      // A result for a question that is no longer on screen must be
+      // dropped, not shown against whatever came next.
       if (currentIdRef.current !== questionId) return;
       setRunResult(result);
     } catch (err) {
       if (currentIdRef.current !== questionId) return;
       setRunResult(null);
-      if (err instanceof InterviewUnavailableError) {
-        setRunNotice({
-          kind: "unavailable",
-          message: `${err.message} Your code has not been lost. It is saved in this browser, and you can still submit it.`,
-        });
-      } else if (err instanceof InterviewApiError && err.status === 409) {
-        setRunNotice({ kind: "error", message: "This interview session is not active right now." });
-      } else if (err instanceof InterviewApiError && err.status === 422) {
-        setRunNotice({ kind: "error", message: "This language is not supported for running code." });
-      } else if (err instanceof InterviewApiError) {
-        setRunNotice({ kind: "error", message: err.message });
-      } else if (err instanceof InterviewRetryableError) {
-        setRunNotice({ kind: "error", message: err.message });
+      if (err instanceof CppNotRunnableError || err instanceof PythonNotReadyError) {
+        setRunNotice({ kind: "unavailable", message: err.message });
       } else {
-        setRunNotice({ kind: "error", message: "Could not run your code. Please try again." });
+        setRunNotice({
+          kind: "error",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Could not run your code in this browser. Please try again.",
+        });
       }
     } finally {
       // Always cleared, regardless of whether the question has since moved
@@ -337,7 +361,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
       // never get stuck true because the candidate advanced mid-request.
       setIsRunning(false);
     }
-  }, [current, buffer, isRunning, token]);
+  }, [current, buffer, isRunning, runBlockedReason]);
 
   const handleSubmit = useCallback(async () => {
     if (!current || current.kind !== "coding" || !buffer || isSubmitting) return;
@@ -372,6 +396,8 @@ export function useCodingQuestions(token: string, room: Room | null) {
     runResult,
     runNotice,
     isRunning,
+    runBlockedReason,
+    pythonStatus,
     handleRun,
     submitNotice,
     isSubmitting,

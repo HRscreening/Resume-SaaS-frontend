@@ -166,6 +166,13 @@ export interface RunCodeResponse {
   passed: number;
 }
 
+// Not called from the frontend any more: Run for Python and JavaScript now
+// executes entirely in the candidate's browser (see
+// src/routes/interview/execution/runCodeLocally.ts), and C++ has no runner
+// here yet. The endpoint itself stays exactly as the backend built it —
+// unused by this path today, reserved for a server-side C++ judge later —
+// so this client function is kept, matching the contract, rather than
+// deleted and re-added when that lands.
 export const runCode = (token: string, body: RunCodeRequest) =>
   publicRequest<RunCodeResponse>(`/api/v1/interview/${encodeURIComponent(token)}/run`, {
     method: "POST",
