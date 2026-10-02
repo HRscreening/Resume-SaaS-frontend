@@ -20,6 +20,7 @@ import {
 } from "./codingBufferStorage";
 import { useCountdown } from "./useCountdown";
 import { useQuestionSync } from "./useQuestionSync";
+import { notifySubmitted } from "./notifySubmission";
 
 const DEFAULT_LANGUAGE: InterviewLanguage = "python";
 
@@ -207,10 +208,17 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // Best-effort submit shared by the manual Submit button and the timeout
   // path. Never throws: a failure here must never be allowed to look like a
   // lost buffer, only like a save that has not reached the server yet.
+  //
+  // Tells the agent right after POST /submit succeeds (flow-completion-
+  // contract.md, step 4) — never before, and never in a way that can affect
+  // the return value below: notifySubmitted is fire-and-forget and swallows
+  // its own failures, so a candidate's submission is never put at risk by a
+  // data packet that did not go out.
   const persist = useCallback(
     async (questionId: string, language: InterviewLanguage, source: string): Promise<boolean> => {
       try {
         await submitCode(token, { question_id: questionId, language, source });
+        notifySubmitted(room, questionId, language);
         return true;
       } catch {
         // One retry: most failures here are a single dropped request, and a
@@ -218,13 +226,14 @@ export function useCodingQuestions(token: string, room: Room | null) {
         // to one bad network blip.
         try {
           await submitCode(token, { question_id: questionId, language, source });
+          notifySubmitted(room, questionId, language);
           return true;
         } catch {
           return false;
         }
       }
     },
-    [token],
+    [token, room],
   );
 
   // Advances the LOCAL FALLBACK index only. This is a no-op on what is
