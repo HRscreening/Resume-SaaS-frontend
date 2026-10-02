@@ -142,11 +142,14 @@ export default function InterviewRoom({
   // reset by the reconnect. `activeRoom` is threaded in so it can subscribe
   // to that signal the same way useLiveCaptions subscribes to captions.
   const coding = useCodingQuestions(token, activeRoom);
-  // Only a coding question replaces today's screen with the split view. A
-  // spoken question, or no question data yet, renders exactly what this
-  // screen has always rendered — there is deliberately no "empty pane" for
-  // either of those cases.
-  const showCodingPane = coding.current?.kind === "coding";
+  // The split view replaces today's screen only once the agent's own
+  // `hiresort.question` signal has named a coding question — never on the
+  // local fallback index alone, and never for a question the candidate has
+  // already submitted. See useCodingQuestions' `showPane` for the full
+  // rule. A spoken question, no question data yet, or no signal at all
+  // renders exactly what this screen has always rendered — there is
+  // deliberately no "empty pane" for any of those cases.
+  const showCodingPane = coding.showPane;
 
   function handleToggleCaptions() {
     setCaptionsEnabled((prev) => {

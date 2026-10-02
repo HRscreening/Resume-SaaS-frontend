@@ -61,6 +61,19 @@ export type SubmitNotice = { kind: "saved" | "error"; message: string };
 // only. It never decides what is displayed — see the `deadlineOwnerRef`
 // effect below, and `handleExpire`, which only advances the local fallback
 // index when no sync signal has taken over yet.
+//
+// WHICH QUESTION IS CURRENT and WHETHER THE PANE IS SHOWN are two different
+// questions with two different answers, on purpose (see this change's
+// report, pane-visibility-report.md). `current` keeps the fallback behaviour
+// above — it must resolve to *something* before the first signal arrives, so
+// the timer and the buffers have a question to attach to even in an
+// interview whose data channel never comes up. `showPane` does not: it is
+// true only once a real signal has named a coding question (`current` is
+// synced, not just defaulted to index 0), and false again forever for any
+// question id the candidate has already submitted (`dismissed`), no matter
+// how `current` itself resolves. A pane that opened because the local clock
+// guessed is worse than one that stays closed — closed just means the
+// interview keeps going by voice, which is always a safe default.
 export function useCodingQuestions(token: string, room: Room | null) {
   const { data, error: questionsError } = useQuery({
     queryKey: ["interview-questions", token],
@@ -125,6 +138,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
         index: 0,
         deadlineAt: Date.now() + minutesToMs(first.allocated_minutes),
         buffers: stored?.buffers ?? {},
+        dismissed: stored?.dismissed ?? {},
       };
     });
   }, [questions, token]);
@@ -153,6 +167,32 @@ export function useCodingQuestions(token: string, room: Room | null) {
   const total = questions?.length ?? 0;
   const current = questions && state ? questions[displayIndex] : undefined;
   const buffer = current ? bufferFor(state?.buffers ?? {}, current.id) : null;
+
+  // Question ids the candidate has already submitted (Submit, or the
+  // timeout auto-submit) — see CodingState.dismissed. Checked by id, not by
+  // index, so it survives the pane being re-shown at a different index
+  // later and still recognises "I've already finished this one."
+  const dismissedIds = state?.dismissed;
+  const isCurrentDismissed = Boolean(current && dismissedIds?.[current.id]);
+
+  // Gates the PANE'S VISIBILITY — deliberately stricter than `current`.
+  // `current` (above) resolves by sync-or-fallback because the timer and
+  // the buffers must work even before any signal has arrived (today's
+  // behaviour, unchanged). The pane itself is held to a higher bar: it may
+  // only open on an actual signal from the agent naming a coding question,
+  // never on the local fallback index alone. `syncedIndex !== -1` is that
+  // signal — it is -1 whenever no valid `hiresort.question` tick has been
+  // adopted yet, which is exactly the "interviewer hasn't gotten there"
+  // window this change closes. See useQuestionSync for why a stale or
+  // unknown id can never produce a value other than -1 here.
+  //
+  // A dismissed question is the other way to fail this gate: once
+  // submitted (manually or by timeout), the pane for that question id
+  // never reopens, even if the agent's signal republishes it or explicitly
+  // moves back to it — see handleSubmit/handleExpire below for where
+  // `dismissed` gets set, and this hook's module comment / the report for
+  // why "moved back" gets the same treatment as "still naming it."
+  const showPane = syncedIndex !== -1 && current?.kind === "coding" && !isCurrentDismissed;
 
   // The timer belongs to whichever question is actually on screen, not to
   // the local index: give the displayed question a fresh countdown against
@@ -258,8 +298,26 @@ export function useCodingQuestions(token: string, room: Room | null) {
     setState((prev) => (prev ? { ...prev, index: prev.index + 1 } : prev));
   }, []);
 
+  // Marks a question id as submitted — see CodingState.dismissed and
+  // `showPane` above. The merge is keyed by id and never touches `buffers`,
+  // so a question's code is preserved exactly as-is regardless of how many
+  // times this fires for it (a re-submit after being moved back, a second
+  // timeout tick that lost the race with expiringRef — see handleExpire).
+  const dismissQuestion = useCallback((questionId: string) => {
+    setState((prev) =>
+      prev ? { ...prev, dismissed: { ...prev.dismissed, [questionId]: true } } : prev,
+    );
+  }, []);
+
   const handleExpire = useCallback(() => {
     if (expiringRef.current || !current || !state) return;
+    // Already submitted (manually, or by an earlier expiry) — the pane for
+    // this id is closed for good (see `showPane`), so there is nothing left
+    // to capture and nowhere for a notice to be seen. Without this guard a
+    // countdown that is still ticking for a dismissed-but-synced question
+    // (the agent named it again after the candidate moved on) would
+    // re-submit the same buffer on every expiry.
+    if (state.dismissed[current.id]) return;
     expiringRef.current = true;
     (async () => {
       if (current.kind === "coding") {
@@ -274,6 +332,11 @@ export function useCodingQuestions(token: string, room: Room | null) {
                   "Time's up. We could not reach the server to save your answer, but it is still here in this browser.",
               },
         );
+        // Dismiss only once the server actually has it. A failed persist
+        // leaves the pane open (even past the deadline, Submit is still on
+        // screen) so the candidate's one recovery path — press Submit again
+        // — still exists; see handleSubmit for the identical rule.
+        if (ok) dismissQuestion(current.id);
       }
       // Moving on is only this hook's call while nothing has told it
       // otherwise. Once a sync signal is driving the pane, expiry still
@@ -282,7 +345,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
       if (syncedQuestionId === null) advance();
       expiringRef.current = false;
     })();
-  }, [current, state, persist, advance, syncedQuestionId]);
+  }, [current, state, persist, advance, syncedQuestionId, dismissQuestion]);
 
   const { secondsRemaining, warning } = useCountdown(state?.deadlineAt ?? null, handleExpire);
 
@@ -379,13 +442,20 @@ export function useCodingQuestions(token: string, room: Room | null) {
           : { kind: "error", message: "We could not reach the server. Your code is still here, try again." },
       );
     }
+    // Dismiss the pane only on a confirmed save. On failure the pane stays
+    // open (own comment on persist()'s retry above covers why this can
+    // still fail) so "try again" in the notice above is a real button, not
+    // a dead end — the candidate's one way to recover is pressing Submit a
+    // second time, which a dismissed, unmounted pane would take away.
+    if (ok) dismissQuestion(questionId);
     setIsSubmitting(false);
-  }, [current, buffer, isSubmitting, persist]);
+  }, [current, buffer, isSubmitting, persist, dismissQuestion]);
 
   return {
     questions,
     questionsError,
     current,
+    showPane,
     index,
     total,
     buffer,

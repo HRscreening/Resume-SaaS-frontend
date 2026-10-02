@@ -23,6 +23,15 @@ export interface CodingState {
   // was paused while the tab was inactive.
   deadlineAt: number | null;
   buffers: Record<string, QuestionBuffer>;
+  // Question ids the candidate has already submitted (by Submit or by
+  // timeout auto-submit) and whose coding pane must therefore stay closed,
+  // even if the agent's `hiresort.question` signal later names that id
+  // again (a republish of the same tick, or the agent genuinely moving the
+  // candidate back to it). Persisted here, not just in memory, so a
+  // remount (reload, reconnect) does not resurrect a pane the candidate
+  // already finished with. Never used to discard a buffer — `buffers`
+  // above keeps every question's code regardless of this set.
+  dismissed: Record<string, true>;
 }
 
 function storageKey(token: string): string {
@@ -46,7 +55,18 @@ export function loadCodingState(token: string): CodingState | null {
     ) {
       return null;
     }
-    return { index: parsed.index, deadlineAt: parsed.deadlineAt ?? null, buffers: parsed.buffers };
+    // `dismissed` is new: a state saved by a build before this change will
+    // not have it. Defaulting to {} (nothing dismissed yet) rather than
+    // rejecting the whole stored state is what keeps an in-progress
+    // interview's buffers and index intact across a deploy.
+    const dismissed =
+      typeof parsed.dismissed === "object" && parsed.dismissed !== null ? parsed.dismissed : {};
+    return {
+      index: parsed.index,
+      deadlineAt: parsed.deadlineAt ?? null,
+      buffers: parsed.buffers,
+      dismissed,
+    };
   } catch {
     return null;
   }
