@@ -11,6 +11,11 @@ import {
   type InterviewJoinGrant,
 } from "@/lib/interviewApi";
 import InterviewRoom from "@/routes/interview/InterviewRoom";
+import {
+  DeviceCheckPanel,
+  deviceCheckPassed,
+  useDeviceCheck,
+} from "@/routes/interview/DeviceCheck";
 
 // Describes only what the browser round actually does. Audio recording is
 // deliberately gated off for browser sessions (nothing writes
@@ -189,7 +194,13 @@ function PreJoinScreen({
   joinError: string | null;
   onJoin: () => void;
 }) {
-  const { micReady, micError, levelPercent, retryMic } = useMicCheck();
+  // Camera is checked only when the hiring manager required it for this
+  // round: asking for a camera the round does not use is an intrusion, and
+  // a candidate who declines it would be blocked from an interview that
+  // never needed it.
+  const requiresCamera = brief.requires_camera === true;
+  const devices = useDeviceCheck(requiresCamera);
+  const ready = deviceCheckPassed(devices, requiresCamera);
 
   const greeting = brief.candidate_name ? `Hi ${brief.candidate_name},` : "Hi,";
   const roleLine =
@@ -209,43 +220,8 @@ function PreJoinScreen({
           Expected duration: about {brief.duration_minutes} minutes.
         </p>
 
-        <div className="rounded-xl border border-[#D4D4D4] bg-white p-4 mb-6">
-          <p className="text-sm text-[#404040] leading-relaxed">{RECORDING_DISCLOSURE}</p>
-        </div>
-
-        <SessionRequirements brief={brief} />
-
-        <div className="rounded-xl border border-[#D4D4D4] bg-white p-4 mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <Mic className="h-4 w-4 text-[#404040]" />
-            <p className="text-sm font-medium text-[#0F0F0F]">Microphone check</p>
-          </div>
-          {micError ? (
-            <div className="text-sm text-[#404040]">
-              <p className="mb-2">
-                We could not access your microphone. Check your browser's permission prompt or
-                site settings, allow microphone access, then try again.
-              </p>
-              <button
-                onClick={retryMic}
-                className="h-8 px-3 border border-[#D4D4D4] text-sm font-medium text-[#404040] rounded-lg hover:bg-[#F5F3EE] transition-colors"
-              >
-                Retry
-              </button>
-            </div>
-          ) : (
-            <>
-              <p className="text-xs text-[#737373] mb-2">
-                {micReady ? "Say something so we can hear you." : "Requesting microphone access…"}
-              </p>
-              <div className="h-2 w-full rounded-full bg-[#F0EEE6] overflow-hidden">
-                <div
-                  className="h-full bg-[#C85A17] transition-[width] duration-75"
-                  style={{ width: `${levelPercent}%` }}
-                />
-              </div>
-            </>
-          )}
+        <div className="mb-6">
+          <DeviceCheckPanel state={devices} requiresCamera={requiresCamera} />
         </div>
 
         {joinError && (
@@ -254,12 +230,18 @@ function PreJoinScreen({
 
         <button
           onClick={onJoin}
-          disabled={!micReady || joining}
+          disabled={!ready || joining}
           className="w-full h-11 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2"
         >
           {joining && <Loader2 className="h-4 w-4 animate-spin" />}
           Join interview
         </button>
+        {!ready && !devices.micError && !devices.cameraError && (
+          <p className="mt-2 text-center text-xs text-[#737373]">
+            Finish the checks above to start. There is no second attempt, so it is
+            worth knowing your setup works first.
+          </p>
+        )}
       </div>
     </Centered>
   );
@@ -295,83 +277,3 @@ function SessionRequirements({ brief }: { brief: Pick<InterviewBrief, "requires_
   );
 }
 
-// Level threshold above which we consider the mic "confirmed working":
-// picked to catch ordinary speech and typing-adjacent room noise while
-// ignoring near-silence from a muted or broken input device.
-const MIC_LEVEL_THRESHOLD = 4;
-
-function useMicCheck() {
-  const [micReady, setMicReady] = useState(false);
-  const [micError, setMicError] = useState<string | null>(null);
-  const [levelPercent, setLevelPercent] = useState(0);
-  const [attempt, setAttempt] = useState(0);
-
-  const streamRef = useRef<MediaStream | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const rafRef = useRef<number | null>(null);
-  const confirmedRef = useRef(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    confirmedRef.current = false;
-
-    async function start() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        streamRef.current = stream;
-
-        const audioCtx = new AudioContext();
-        audioCtxRef.current = audioCtx;
-        const source = audioCtx.createMediaStreamSource(stream);
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 512;
-        source.connect(analyser);
-
-        const data = new Uint8Array(analyser.frequencyBinCount);
-
-        const tick = () => {
-          analyser.getByteFrequencyData(data);
-          const avg = data.reduce((sum, v) => sum + v, 0) / data.length;
-          const pct = Math.min(100, Math.round((avg / 128) * 100));
-          setLevelPercent(pct);
-          if (pct > MIC_LEVEL_THRESHOLD && !confirmedRef.current) {
-            confirmedRef.current = true;
-            setMicReady(true);
-          }
-          rafRef.current = requestAnimationFrame(tick);
-        };
-        tick();
-      } catch (err) {
-        if (!cancelled) {
-          setMicError(
-            err instanceof Error ? err.message : "Microphone access was denied.",
-          );
-        }
-      }
-    }
-
-    start();
-
-    return () => {
-      cancelled = true;
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-      audioCtxRef.current?.close().catch(() => {});
-      audioCtxRef.current = null;
-    };
-  }, [attempt]);
-
-  function retryMic() {
-    setMicError(null);
-    setMicReady(false);
-    setLevelPercent(0);
-    setAttempt((n) => n + 1);
-  }
-
-  return { micReady, micError, levelPercent, retryMic };
-}
