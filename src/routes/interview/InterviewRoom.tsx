@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Mic, MicOff } from "lucide-react";
+import { Loader2, MicOff } from "lucide-react";
 import {
   Room,
   RoomEvent,
@@ -15,11 +15,15 @@ import {
   InterviewRetryableError,
   type InterviewJoinGrant,
 } from "@/lib/interviewApi";
-import CaptionPane from "./CaptionPane";
 import CodingPane from "./CodingPane";
+import VoiceOrb from "./VoiceOrb";
+import StatusPill from "./StatusPill";
+import Transcript from "./Transcript";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { useElapsedTime } from "./useElapsedTime";
 import { useCodingQuestions } from "./useCodingQuestions";
+import { useAudioAnalyser } from "./useAudioAnalyser";
+import { useTranscript } from "./useTranscript";
 
 // The candidate's LiveKit participant identity is always this literal string
 // (minted server-side by mint_candidate_token — see backend service.join()).
@@ -115,6 +119,11 @@ export default function InterviewRoom({
     () => new Set(),
   );
   const [captionsEnabled, setCaptionsEnabled] = useState(() => readCaptionsPreference());
+  // The interviewer's own MediaStreamTrack, held purely so VoiceOrb's
+  // amplitude tap (useAudioAnalyser) has something to attach to. Never
+  // attached to anything itself — attachRemoteAudio below already handles
+  // the <audio> element this track is actually played through.
+  const [agentAudioTrack, setAgentAudioTrack] = useState<MediaStreamTrack | null>(null);
 
   // Held in a ref so the connect effect below keeps its [grant] deps: the
   // parent re-creates this callback on every render, and depending on it
@@ -130,9 +139,17 @@ export default function InterviewRoom({
     activeRoom,
     CANDIDATE_IDENTITY,
   );
-  const candidateSpeaking = activeSpeakerIds.has(CANDIDATE_IDENTITY);
   const agentSpeaking = [...activeSpeakerIds].some((id) => id !== CANDIDATE_IDENTITY);
   const elapsedLabel = useElapsedTime(connectedAt);
+  // Real amplitude, tapped off the interviewer's audio track (never in
+  // series with it — see useAudioAnalyser). `agentSpeaking` above, not this,
+  // is what decides the orb's color and the status pill's label: this only
+  // drives how much the shape moves.
+  const agentAnalyser = useAudioAnalyser(agentAudioTrack);
+  // One chronological transcript built from the two per-speaker lists
+  // useLiveCaptions produces, without touching that hook's own delta/replace
+  // logic.
+  const transcriptTurns = useTranscript(agentCaptions, candidateCaptions);
 
   // Owns the question list, which question is current (the agent's own
   // hiresort.question signal when one has arrived, a local fallback
@@ -187,6 +204,12 @@ export default function InterviewRoom({
       _participant: RemoteParticipant,
     ) {
       attachRemoteAudio(track, publication.trackSid);
+      // The candidate identity never publishes a track back to itself, so
+      // any remote audio track here is the interviewer's — there is only
+      // ever one to track for the orb's amplitude tap.
+      if (track.kind === Track.Kind.Audio && !cancelled) {
+        setAgentAudioTrack(track.mediaStreamTrack);
+      }
     }
 
     function handleTrackUnsubscribed(
@@ -195,6 +218,9 @@ export default function InterviewRoom({
       _participant: RemoteParticipant,
     ) {
       detachRemoteAudio(track, publication.trackSid);
+      if (track.kind === Track.Kind.Audio && !cancelled) {
+        setAgentAudioTrack((prev) => (prev === track.mediaStreamTrack ? null : prev));
+      }
     }
 
     function handleDisconnected() {
@@ -289,6 +315,7 @@ export default function InterviewRoom({
       roomRef.current = null;
       setActiveRoom(null);
       setActiveSpeakerIds(new Set());
+      setAgentAudioTrack(null);
     };
     // grant.token changes on every rejoin (a fresh grant is minted each
     // time), which is exactly when this effect must tear down the old Room
@@ -477,13 +504,13 @@ export default function InterviewRoom({
       )}
       <div className="w-full flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-[#737373]">
-            <ConnectionDot state={callState} />
-            <span className="text-xs tabular-nums">
-              {elapsedLabel} of about {durationMinutes} minutes
-            </span>
-          </div>
-          <InterviewerStatus speaking={agentSpeaking} />
+          <span className="text-xs tabular-nums text-[#737373]">
+            {elapsedLabel} of about {durationMinutes} minutes
+          </span>
+          <StatusPill
+            connectionState={callState === "reconnecting" ? "reconnecting" : "connected"}
+            speaking={agentSpeaking}
+          />
         </div>
         <button
           type="button"
@@ -496,56 +523,40 @@ export default function InterviewRoom({
       {showCodingPane ? (
         <CodingPane
           coding={coding}
-          captions={{
-            agentCaptions,
-            candidateCaptions,
+          voice={{
+            turns: transcriptTurns,
+            agentAnalyser,
             agentSpeaking,
-            candidateSpeaking,
+            reconnecting: callState === "reconnecting",
             enabled: captionsEnabled,
             onToggle: handleToggleCaptions,
           }}
         />
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center gap-6 px-4 py-8">
-          <div className="flex items-center gap-2 text-[#404040]">
-            <Mic className="h-4 w-4" />
-            <p className="text-sm">You are connected. The interview is in progress.</p>
+        // Nothing else is on screen here, so the orb gets the room: large,
+        // centered, the first thing a candidate's eyes land on. CodingPane
+        // gives the same two pieces (orb + transcript) a much smaller,
+        // subordinate spot once there is an editor to not compete with.
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center gap-6 px-4 py-10">
+          <div className="flex flex-col items-center gap-4 pt-4">
+            <VoiceOrb
+              analyser={agentAnalyser}
+              speaking={agentSpeaking}
+              reconnecting={callState === "reconnecting"}
+              size="large"
+            />
+            <p className="text-sm text-[#404040]">
+              {callState === "reconnecting"
+                ? "Reconnecting you to the interview."
+                : agentSpeaking
+                  ? "The interviewer is speaking."
+                  : "The interviewer is listening. Go ahead and answer."}
+            </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleToggleCaptions}
-            className="text-xs font-medium text-[#404040] underline underline-offset-2 hover:text-[#0F0F0F]"
-          >
-            {captionsEnabled ? "Hide captions" : "Show captions"}
-          </button>
-
-          {captionsEnabled && (
-            // Interviewer first, candidate's own pane second: the candidate
-            // follows the question in the interviewer's pane and only glances
-            // at their own to confirm they were heard.
-            <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-              <CaptionPane
-                title="Interviewer"
-                lines={agentCaptions}
-                speaking={agentSpeaking}
-                emptyText="The interviewer's words will appear here."
-              />
-              <div className="flex flex-col gap-2">
-                <CaptionPane
-                  title="You"
-                  lines={candidateCaptions}
-                  speaking={candidateSpeaking}
-                  emptyText="Your words will appear here as you speak."
-                />
-                <p className="text-xs text-[#737373] px-1">
-                  These captions are produced automatically and may contain mistakes. There
-                  is no need to correct them out loud: the interviewer hears you, not the
-                  captions.
-                </p>
-              </div>
-            </div>
-          )}
+          <div className="w-full max-w-2xl">
+            <Transcript turns={transcriptTurns} enabled={captionsEnabled} onToggle={handleToggleCaptions} />
+          </div>
         </div>
       )}
 
@@ -576,43 +587,6 @@ export default function InterviewRoom({
       )}
     </div>
   );
-}
-
-// First-class, always-rendered readout of whether the interviewer is
-// talking right now — not only inside CaptionPane, which a candidate with
-// captions off never sees. This is a voice interview with no face on
-// screen, so silence is otherwise ambiguous between the interviewer
-// thinking, the interviewer listening, and the call being broken. Showing
-// one of two states at all times (never nothing) is what resolves that:
-// the candidate always has an answer to "is this still working."
-function InterviewerStatus({ speaking }: { speaking: boolean }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 text-xs font-medium ${
-        speaking ? "text-[#0F8A46]" : "text-[#A3A3A3]"
-      }`}
-    >
-      <span
-        className={`h-1.5 w-1.5 rounded-full ${
-          speaking ? "bg-[#0F8A46] animate-pulse" : "bg-[#A3A3A3]"
-        }`}
-        aria-hidden="true"
-      />
-      {speaking ? "Interviewer speaking" : "Interviewer listening"}
-    </span>
-  );
-}
-
-function ConnectionDot({ state }: { state: CallState }) {
-  // "connecting" never reaches this component (it has its own full screen
-  // above); it is included here only so the mapping stays total.
-  const color =
-    state === "connected"
-      ? "bg-emerald-500"
-      : state === "reconnecting"
-        ? "bg-amber-500"
-        : "bg-neutral-400";
-  return <span className={`inline-block h-2 w-2 rounded-full ${color}`} aria-hidden="true" />;
 }
 
 function Centered({ children }: { children: React.ReactNode }) {

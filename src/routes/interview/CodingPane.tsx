@@ -3,8 +3,9 @@ import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import type { InterviewExample, InterviewLanguage } from "@/lib/interviewApi";
 import { Markdown } from "./markdown";
 import CodeEditor from "./CodeEditor";
-import CaptionPane from "./CaptionPane";
-import type { CaptionLine } from "./useLiveCaptions";
+import VoiceOrb from "./VoiceOrb";
+import Transcript from "./Transcript";
+import type { TranscriptTurn } from "./useTranscript";
 import { formatCountdown } from "./useCountdown";
 import type { UseCodingQuestions } from "./useCodingQuestions";
 
@@ -14,18 +15,18 @@ const LANGUAGES: { value: InterviewLanguage; label: string }[] = [
   { value: "cpp", label: "C++" },
 ];
 
-interface CaptionsBundle {
-  agentCaptions: CaptionLine[];
-  candidateCaptions: CaptionLine[];
+interface VoiceBundle {
+  turns: TranscriptTurn[];
+  agentAnalyser: AnalyserNode | null;
   agentSpeaking: boolean;
-  candidateSpeaking: boolean;
+  reconnecting: boolean;
   enabled: boolean;
   onToggle: () => void;
 }
 
 interface CodingPaneProps {
   coding: UseCodingQuestions;
-  captions: CaptionsBundle;
+  voice: VoiceBundle;
 }
 
 // Rendered in place of the plain audio/captions screen only while the
@@ -33,7 +34,7 @@ interface CodingPaneProps {
 // spoken question, or no question data at all, falls back to today's
 // screen untouched — this component is never mounted for those cases, so
 // there is no empty pane to accidentally render.
-export default function CodingPane({ coding, captions }: CodingPaneProps) {
+export default function CodingPane({ coding, voice }: CodingPaneProps) {
   const { current } = coding;
   if (!current || current.kind !== "coding") return null;
 
@@ -64,7 +65,7 @@ export default function CodingPane({ coding, captions }: CodingPaneProps) {
         <EditorPane coding={coding} />
       </div>
 
-      <CompactCaptions {...captions} />
+      <CompactVoice {...voice} />
     </div>
   );
 }
@@ -331,44 +332,19 @@ function RunResultsPanel({ coding }: { coding: UseCodingQuestions }) {
   );
 }
 
-// A smaller version of InterviewRoom's own caption block, carried along so
-// the live audio and the interviewer's words are never hidden just because
-// a coding question is on screen. Props are the same captions state
+// The orb and transcript, carried along so the live call and the
+// conversation are never hidden just because a coding question is on
+// screen — only shrunk down and moved below the editor, which is the part
+// of this screen actually being worked on. Props are the same voice state
 // InterviewRoom already computes; this component owns no subscription of
 // its own.
-function CompactCaptions({
-  agentCaptions,
-  candidateCaptions,
-  agentSpeaking,
-  candidateSpeaking,
-  enabled,
-  onToggle,
-}: CaptionsBundle) {
+function CompactVoice({ turns, agentAnalyser, agentSpeaking, reconnecting, enabled, onToggle }: VoiceBundle) {
   return (
-    <div className="flex flex-col gap-2">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="self-start text-xs font-medium text-[#404040] underline underline-offset-2 hover:text-[#0F0F0F]"
-      >
-        {enabled ? "Hide captions" : "Show captions"}
-      </button>
-      {enabled && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <CaptionPane
-            title="Interviewer"
-            lines={agentCaptions}
-            speaking={agentSpeaking}
-            emptyText="The interviewer's words will appear here."
-          />
-          <CaptionPane
-            title="You"
-            lines={candidateCaptions}
-            speaking={candidateSpeaking}
-            emptyText="Your words will appear here as you speak."
-          />
-        </div>
-      )}
+    <div className="flex items-start gap-3">
+      <VoiceOrb analyser={agentAnalyser} speaking={agentSpeaking} reconnecting={reconnecting} size="compact" />
+      <div className="flex-1 min-w-0">
+        <Transcript turns={turns} enabled={enabled} onToggle={onToggle} compact />
+      </div>
     </div>
   );
 }
