@@ -473,11 +473,14 @@ export default function InterviewRoom({
         </div>
       )}
       <div className="w-full flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2 text-[#737373]">
-          <ConnectionDot state={callState} />
-          <span className="text-xs tabular-nums">
-            {elapsedLabel} of about {durationMinutes} minutes
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-[#737373]">
+            <ConnectionDot state={callState} />
+            <span className="text-xs tabular-nums">
+              {elapsedLabel} of about {durationMinutes} minutes
+            </span>
+          </div>
+          <InterviewerStatus speaking={agentSpeaking} />
         </div>
         <button
           type="button"
@@ -569,6 +572,31 @@ export default function InterviewRoom({
         </div>
       )}
     </div>
+  );
+}
+
+// First-class, always-rendered readout of whether the interviewer is
+// talking right now — not only inside CaptionPane, which a candidate with
+// captions off never sees. This is a voice interview with no face on
+// screen, so silence is otherwise ambiguous between the interviewer
+// thinking, the interviewer listening, and the call being broken. Showing
+// one of two states at all times (never nothing) is what resolves that:
+// the candidate always has an answer to "is this still working."
+function InterviewerStatus({ speaking }: { speaking: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 text-xs font-medium ${
+        speaking ? "text-[#0F8A46]" : "text-[#A3A3A3]"
+      }`}
+    >
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${
+          speaking ? "bg-[#0F8A46] animate-pulse" : "bg-[#A3A3A3]"
+        }`}
+        aria-hidden="true"
+      />
+      {speaking ? "Interviewer speaking" : "Interviewer listening"}
+    </span>
   );
 }
 
