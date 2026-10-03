@@ -5,6 +5,7 @@ import { Markdown } from "./markdown";
 import CodeEditor from "./CodeEditor";
 import VoiceOrb from "./VoiceOrb";
 import Transcript from "./Transcript";
+import QuestionProgress from "./QuestionProgress";
 import type { TranscriptTurn } from "./useTranscript";
 import { formatCountdown } from "./useCountdown";
 import type { UseCodingQuestions } from "./useCodingQuestions";
@@ -46,9 +47,7 @@ export default function CodingPane({ coding, voice }: CodingPaneProps) {
   return (
     <div className="w-full flex-1 flex flex-col gap-4 px-4 pb-6 min-h-0 overflow-y-auto">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium text-[#737373]">
-          Question {coding.index + 1} of {coding.total}
-        </p>
+        <QuestionProgress index={coding.index} total={coding.total} compact />
         <TimerBadge secondsRemaining={coding.secondsRemaining} warning={coding.warning} />
       </div>
 
