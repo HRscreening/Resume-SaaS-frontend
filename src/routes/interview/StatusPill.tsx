@@ -43,7 +43,9 @@ function describe(
     return { color: "text-[#737373]", dotColor: "bg-neutral-400", pulse: false, text: "Disconnected" };
   }
   if (speaking) {
-    return { color: "text-[#0F8A46]", dotColor: "bg-[#0F8A46]", pulse: true, text: "Interviewer speaking" };
+    // Warm brand copper rather than a status-console green — see VoiceOrb
+    // for the same substitution and why.
+    return { color: "text-[#C85A17]", dotColor: "bg-[#C85A17]", pulse: true, text: "Interviewer speaking" };
   }
   return { color: "text-[#A3A3A3]", dotColor: "bg-[#A3A3A3]", pulse: false, text: "Interviewer listening" };
 }

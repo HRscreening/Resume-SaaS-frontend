@@ -80,11 +80,19 @@ export default function Transcript({ turns, enabled, onToggle, compact = false }
   );
 }
 
+// Speaker labels get their own color (candidate: charcoal, interviewer:
+// the warm brand copper used for "speaking" everywhere else on this
+// screen) rather than sharing one gray, so a turn's speaker is legible at
+// a glance without needing full chat-bubble chrome.
+const CANDIDATE_LABEL_COLOR = "#404040";
+const INTERVIEWER_LABEL_COLOR = "#C85A17";
+
 function TurnRow({ turn }: { turn: TranscriptTurn }) {
   const isCandidate = turn.speaker === "candidate";
+  const labelColor = isCandidate ? CANDIDATE_LABEL_COLOR : INTERVIEWER_LABEL_COLOR;
   return (
     <div className={`flex flex-col gap-0.5 max-w-[85%] ${isCandidate ? "items-end self-end text-right" : "items-start self-start text-left"}`}>
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-[#A3A3A3]">
+      <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: labelColor }}>
         {isCandidate ? "You" : "Interviewer"}
       </span>
       <p className={`text-sm leading-relaxed text-[#1C1C1C] ${turn.final ? "" : "opacity-50"}`}>{turn.text}</p>
