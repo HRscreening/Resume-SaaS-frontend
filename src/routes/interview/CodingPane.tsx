@@ -19,6 +19,11 @@ interface VoiceBundle {
   turns: TranscriptTurn[];
   agentAnalyser: AnalyserNode | null;
   agentSpeaking: boolean;
+  // The candidate's own voice, tapped the same way as the interviewer's
+  // (see useLocalAudioTrack + useAudioAnalyser) so their own presence is
+  // visible here too, not just on the full-screen view.
+  candidateAnalyser: AnalyserNode | null;
+  candidateSpeaking: boolean;
   reconnecting: boolean;
   enabled: boolean;
   onToggle: () => void;
@@ -338,10 +343,24 @@ function RunResultsPanel({ coding }: { coding: UseCodingQuestions }) {
 // of this screen actually being worked on. Props are the same voice state
 // InterviewRoom already computes; this component owns no subscription of
 // its own.
-function CompactVoice({ turns, agentAnalyser, agentSpeaking, reconnecting, enabled, onToggle }: VoiceBundle) {
+function CompactVoice({
+  turns,
+  agentAnalyser,
+  agentSpeaking,
+  candidateAnalyser,
+  candidateSpeaking,
+  reconnecting,
+  enabled,
+  onToggle,
+}: VoiceBundle) {
   return (
     <div className="flex items-start gap-3">
-      <VoiceOrb analyser={agentAnalyser} speaking={agentSpeaking} reconnecting={reconnecting} size="compact" />
+      <VoiceOrb
+        interviewer={{ analyser: agentAnalyser, speaking: agentSpeaking }}
+        candidate={{ analyser: candidateAnalyser, speaking: candidateSpeaking }}
+        reconnecting={reconnecting}
+        size="compact"
+      />
       <div className="flex-1 min-w-0">
         <Transcript turns={turns} enabled={enabled} onToggle={onToggle} compact />
       </div>

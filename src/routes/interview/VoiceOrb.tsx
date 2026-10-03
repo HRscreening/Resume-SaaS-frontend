@@ -3,35 +3,59 @@ import { useEffect, useRef } from "react";
 import { createLevelLoop } from "./audioLevelLoop";
 import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
 
-const GREEN = "#0F8A46"; // matches the "speaking" color used elsewhere on this screen
-const AMBER = "#D97706"; // matches the reconnecting banner's tone
-const GRAY = "#A3A3A3";
+// Warm brand accent (--copper / --copper-light in globals.css) — used here
+// instead of a status-console green so a hands-free hour in this screen
+// reads as a room, not a dashboard. Amber is kept for reconnecting only: a
+// real warning state, distinct in kind from ordinary speaking.
+const COPPER = "#C85A17";
+const COPPER_LIGHT = "#E8753A";
+const CHARCOAL = "#1C1C1C";
+const AMBER = "#D97706";
+const NEUTRAL = "#A3A3A3";
+const STAGE = "#EAE7DF"; // --ivory-dark
+
+interface VoicePresence {
+  // Null before that side's audio track has subscribed/published (brief, at
+  // the very start of a call) or while it is between tracks (a reconnect,
+  // or — for the candidate — a mute/unmute cycle that swaps in a fresh
+  // MediaStreamTrack). The orb still renders in that window, at rest; it
+  // just has no live amplitude to draw from yet.
+  analyser: AnalyserNode | null;
+  // Sourced from LiveKit's own active-speaker detection (computed once in
+  // InterviewRoom from RoomEvent.ActiveSpeakersChanged), not from this
+  // component's amplitude tap — so color stays correct even if a tap is
+  // briefly unavailable on one side.
+  speaking: boolean;
+}
 
 interface VoiceOrbProps {
-  // Null before the interviewer's audio track has subscribed (brief, at the
-  // very start of a call) or while it is between tracks (a reconnect). The
-  // orb still renders in that window — at rest, in the current state's
-  // color — it just has no live amplitude to draw from yet.
-  analyser: AnalyserNode | null;
-  // Whether the interviewer is talking right now. Sourced from LiveKit's own
-  // active-speaker detection (already computed in InterviewRoom), not from
-  // this component's amplitude tap — so the color and label stay correct
-  // even in the rare case the tap itself is unavailable.
-  speaking: boolean;
+  // The interviewer: rendered as the outer field, the presence surrounding
+  // the candidate.
+  interviewer: VoicePresence;
+  // The candidate's own voice: rendered as the inner core, so speaking
+  // reads as speaking to something rather than into a void — the whole
+  // point of giving this side a tap at all. See useLocalAudioTrack for how
+  // the candidate's MediaStreamTrack is obtained; see useAudioAnalyser
+  // (reused unchanged for both sides) for why the tap cannot affect what
+  // either party actually hears.
+  candidate: VoicePresence;
   reconnecting: boolean;
   size: "large" | "compact";
 }
 
 // The candidate's one visual anchor for "is there a person on the other end
-// of this, and are they talking." Driven by real audio amplitude
-// (useAudioAnalyser + createLevelLoop), never by a timer: silence renders as
-// stillness, because a shape that moves on its own schedule would tell the
+// of this, are they talking, and am I being heard." Two amplitude-driven
+// presences share one shape: an outer field for the interviewer, an inner
+// core for the candidate's own voice. Both are driven by real audio
+// amplitude (useAudioAnalyser + createLevelLoop) on their own independent
+// track, never by a timer — silence on a side renders as stillness on that
+// side, because a shape that moves on its own schedule would tell the
 // candidate something false about what is happening in the room.
-export default function VoiceOrb({ analyser, speaking, reconnecting, size }: VoiceOrbProps) {
+export default function VoiceOrb({ interviewer, candidate, reconnecting, size }: VoiceOrbProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const dimension = size === "large" ? 168 : 56;
-  const label = reconnecting ? "Reconnecting" : speaking ? "Interviewer speaking" : "Interviewer listening";
+  const dimension = size === "large" ? 200 : 60;
+  const label = describeLabel(interviewer.speaking, candidate.speaking, reconnecting);
 
   useEffect(() => {
     if (prefersReducedMotion) return;
@@ -45,20 +69,68 @@ export default function VoiceOrb({ analyser, speaking, reconnecting, size }: Voi
     canvas.height = dimension * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    if (!analyser) {
-      // No track to read yet: draw one resting frame so the orb is never a
-      // blank canvas, and stop — there is nothing to animate from.
-      drawOrbFrame(ctx, dimension, 0, speaking, reconnecting);
-      return;
+    // Latest smoothed amplitude for each side, updated by that side's own
+    // independent rAF loop (below) and read together on every redraw.
+    // Neither side's loop runs at all while that side has no analyser yet,
+    // so a missing track can never be misread as "silence driving the
+    // shape" — it simply never contributes a frame.
+    let interviewerLevel = 0;
+    let candidateLevel = 0;
+
+    function render() {
+      drawOrbFrame(
+        ctx!,
+        dimension,
+        interviewerLevel,
+        candidateLevel,
+        interviewer.speaking,
+        candidate.speaking,
+        reconnecting,
+      );
     }
 
-    return createLevelLoop(analyser, (level) => {
-      drawOrbFrame(ctx, dimension, level, speaking, reconnecting);
-    });
-  }, [analyser, prefersReducedMotion, dimension, speaking, reconnecting]);
+    // One resting frame immediately, so neither side ever shows a blank
+    // canvas while waiting for its first analyser frame (or forever, if a
+    // side's track never arrives).
+    render();
+
+    const stopInterviewer = interviewer.analyser
+      ? createLevelLoop(interviewer.analyser, (level) => {
+          interviewerLevel = level;
+          render();
+        })
+      : null;
+    const stopCandidate = candidate.analyser
+      ? createLevelLoop(candidate.analyser, (level) => {
+          candidateLevel = level;
+          render();
+        })
+      : null;
+
+    return () => {
+      stopInterviewer?.();
+      stopCandidate?.();
+    };
+  }, [
+    interviewer.analyser,
+    interviewer.speaking,
+    candidate.analyser,
+    candidate.speaking,
+    reconnecting,
+    dimension,
+    prefersReducedMotion,
+  ]);
 
   if (prefersReducedMotion) {
-    return <StaticOrb dimension={dimension} speaking={speaking} reconnecting={reconnecting} label={label} />;
+    return (
+      <StaticOrb
+        dimension={dimension}
+        interviewerSpeaking={interviewer.speaking}
+        candidateSpeaking={candidate.speaking}
+        reconnecting={reconnecting}
+        label={label}
+      />
+    );
   }
 
   return (
@@ -71,24 +143,37 @@ export default function VoiceOrb({ analyser, speaking, reconnecting, size }: Voi
   );
 }
 
+function describeLabel(interviewerSpeaking: boolean, candidateSpeaking: boolean, reconnecting: boolean): string {
+  if (reconnecting) return "Reconnecting";
+  if (interviewerSpeaking && candidateSpeaking) return "Interviewer and you are both speaking";
+  if (interviewerSpeaking) return "Interviewer speaking";
+  if (candidateSpeaking) return "You are speaking";
+  return "Interviewer listening";
+}
+
 // `prefers-reduced-motion: reduce` turns the live, amplitude-driven canvas
-// off entirely rather than slowing it down: this renders instead, a plain
-// shape with no animation of any kind, that still answers the same question
-// (is the interviewer talking) through color and fill alone, updated only
-// when that discrete state actually changes.
+// off entirely rather than slowing it down: this renders instead, two
+// nested plain shapes with no animation of any kind, that still answer the
+// same two questions (is the interviewer talking, am I being heard) through
+// color and fill alone, updated only when those discrete states change.
 function StaticOrb({
   dimension,
-  speaking,
+  interviewerSpeaking,
+  candidateSpeaking,
   reconnecting,
   label,
 }: {
   dimension: number;
-  speaking: boolean;
+  interviewerSpeaking: boolean;
+  candidateSpeaking: boolean;
   reconnecting: boolean;
   label: string;
 }) {
-  const color = reconnecting ? AMBER : speaking ? GREEN : GRAY;
-  const filled = speaking || reconnecting;
+  const outerColor = reconnecting ? AMBER : interviewerSpeaking ? COPPER : NEUTRAL;
+  const outerFilled = interviewerSpeaking || reconnecting;
+  const innerColor = reconnecting ? AMBER : CHARCOAL;
+  const innerFilled = candidateSpeaking || reconnecting;
+
   return (
     <div
       role="img"
@@ -97,10 +182,23 @@ function StaticOrb({
         width: dimension,
         height: dimension,
         borderRadius: "9999px",
-        border: `2px solid ${color}`,
-        backgroundColor: filled ? color : "transparent",
+        border: `2px solid ${outerColor}`,
+        backgroundColor: outerFilled ? withAlpha(outerColor, 0.18) : STAGE,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
-    />
+    >
+      <div
+        style={{
+          width: dimension * 0.32,
+          height: dimension * 0.32,
+          borderRadius: "9999px",
+          border: `2px solid ${innerColor}`,
+          backgroundColor: innerFilled ? innerColor : "transparent",
+        }}
+      />
+    </div>
   );
 }
 
@@ -112,49 +210,86 @@ function withAlpha(hex: string, alpha: number): string {
 }
 
 // Pure canvas drawing, no React and no state of its own: called once per
-// animation frame with the current smoothed amplitude (0..1). Layered soft
-// rings plus a solid core, all sized directly off `level` — nothing here
-// depends on elapsed time, so a constant `level` (including 0, true silence)
-// produces a perfectly still frame.
+// animation frame (from either side's independent loop) with both sides'
+// current smoothed amplitudes (0..1 each). Nothing here depends on elapsed
+// time, so constant levels (including 0, true silence on one or both
+// sides) produce a perfectly still frame.
 function drawOrbFrame(
   ctx: CanvasRenderingContext2D,
   dimension: number,
-  level: number,
-  speaking: boolean,
+  interviewerLevel: number,
+  candidateLevel: number,
+  interviewerSpeaking: boolean,
+  candidateSpeaking: boolean,
   reconnecting: boolean,
 ): void {
   ctx.clearRect(0, 0, dimension, dimension);
   const cx = dimension / 2;
   const cy = dimension / 2;
-  const base = dimension * 0.28;
-  const color = reconnecting ? AMBER : speaking ? GREEN : GRAY;
-  const active = speaking || reconnecting;
 
-  // Outer glow rings: two translucent circles that grow with amplitude,
-  // calmest when idle (small, faint) and fullest mid-word.
+  // Ambient stage: a constant backdrop disc, never driven by state or
+  // time. Purely a calm field for the two presences to sit in, so the orb
+  // reads as a deliberately staged shape rather than one floating in blank
+  // page background — including before either side has said a word.
+  ctx.beginPath();
+  ctx.fillStyle = withAlpha(STAGE, 0.55);
+  ctx.arc(cx, cy, dimension * 0.48, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Outer field: the interviewer. Soft glow rings plus a solid core, sized
+  // directly off their amplitude, calmest when idle (small, faint).
+  const outerColor = reconnecting ? AMBER : interviewerSpeaking ? COPPER : NEUTRAL;
+  const outerActive = interviewerSpeaking || reconnecting;
+  const outerBase = dimension * 0.27;
+
   for (let ring = 2; ring >= 1; ring--) {
-    const radius = base * (1 + ring * 0.22 + level * ring * 0.4);
-    const alpha = (active ? 0.14 : 0.07) / ring;
+    const radius = outerBase * (1 + ring * 0.18 + interviewerLevel * ring * 0.32);
+    const alpha = (outerActive ? 0.16 : 0.08) / ring;
     ctx.beginPath();
-    ctx.fillStyle = withAlpha(color, alpha);
+    ctx.fillStyle = withAlpha(outerColor, alpha);
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // Solid core, always present so the resting state still reads as a
-  // deliberate shape rather than an empty frame.
-  const coreRadius = base * (0.85 + level * 0.3);
+  const outerCoreRadius = outerBase * (0.85 + interviewerLevel * 0.3);
   ctx.beginPath();
-  ctx.fillStyle = withAlpha(color, active ? 0.92 : 0.5);
-  ctx.arc(cx, cy, coreRadius, 0, Math.PI * 2);
+  ctx.fillStyle = withAlpha(outerColor, outerActive ? 0.85 : 0.4);
+  ctx.arc(cx, cy, outerCoreRadius, 0, Math.PI * 2);
   ctx.fill();
 
   // Thin resting outline at the base radius, independent of amplitude, so
-  // the shape's "home" size is always legible even at the animation's
-  // quietest point.
+  // the outer field's "home" size stays legible even at its quietest.
   ctx.beginPath();
-  ctx.strokeStyle = withAlpha(color, 0.35);
+  ctx.strokeStyle = withAlpha(outerColor, 0.35);
   ctx.lineWidth = 1.5;
-  ctx.arc(cx, cy, base, 0, Math.PI * 2);
+  ctx.arc(cx, cy, outerBase, 0, Math.PI * 2);
   ctx.stroke();
+
+  // Inner core: the candidate's own voice, nested at the center. A solid
+  // presence only while they are actually speaking, sized off their own
+  // real amplitude — never the interviewer's. At rest it is an outline
+  // only, the same "home size, no fill" convention the outer field already
+  // uses for silence, so silence on this side reads as absence rather than
+  // a shape that happens to not be moving.
+  const innerColor = reconnecting ? AMBER : CHARCOAL;
+  const innerBase = dimension * 0.13;
+  const innerRadius = innerBase * (0.8 + candidateLevel * 0.45);
+
+  if (candidateSpeaking || reconnecting) {
+    ctx.beginPath();
+    ctx.fillStyle = withAlpha(reconnecting ? AMBER : COPPER_LIGHT, 0.22);
+    ctx.arc(cx, cy, innerRadius * 1.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.fillStyle = withAlpha(innerColor, 0.92);
+    ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.strokeStyle = withAlpha(innerColor, 0.4);
+    ctx.lineWidth = 1.5;
+    ctx.arc(cx, cy, innerBase, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 }

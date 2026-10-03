@@ -19,10 +19,12 @@ import CodingPane from "./CodingPane";
 import VoiceOrb from "./VoiceOrb";
 import StatusPill from "./StatusPill";
 import Transcript from "./Transcript";
+import QuestionProgress from "./QuestionProgress";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { useElapsedTime } from "./useElapsedTime";
 import { useCodingQuestions } from "./useCodingQuestions";
 import { useAudioAnalyser } from "./useAudioAnalyser";
+import { useLocalAudioTrack } from "./useLocalAudioTrack";
 import { useTranscript } from "./useTranscript";
 
 // The candidate's LiveKit participant identity is always this literal string
@@ -140,12 +142,22 @@ export default function InterviewRoom({
     CANDIDATE_IDENTITY,
   );
   const agentSpeaking = [...activeSpeakerIds].some((id) => id !== CANDIDATE_IDENTITY);
+  const candidateSpeaking = activeSpeakerIds.has(CANDIDATE_IDENTITY);
   const elapsedLabel = useElapsedTime(connectedAt);
   // Real amplitude, tapped off the interviewer's audio track (never in
   // series with it — see useAudioAnalyser). `agentSpeaking` above, not this,
   // is what decides the orb's color and the status pill's label: this only
   // drives how much the shape moves.
   const agentAnalyser = useAudioAnalyser(agentAudioTrack);
+  // The candidate's own microphone track, found the same way the agent's
+  // track is found above — via LiveKit's own publication/mute lifecycle,
+  // never by attaching anything new to the mic. Fed through the exact same
+  // useAudioAnalyser hook as the interviewer's track: a read-only tap on
+  // its own private AudioContext with nothing connected downstream, so it
+  // cannot affect what the candidate's mic actually publishes. See
+  // useLocalAudioTrack and useAudioAnalyser for the respective guarantees.
+  const candidateMicTrack = useLocalAudioTrack(activeRoom);
+  const candidateAnalyser = useAudioAnalyser(candidateMicTrack);
   // One chronological transcript built from the two per-speaker lists
   // useLiveCaptions produces, without touching that hook's own delta/replace
   // logic.
@@ -511,6 +523,12 @@ export default function InterviewRoom({
             connectionState={callState === "reconnecting" ? "reconnecting" : "connected"}
             speaking={agentSpeaking}
           />
+          {/* Only shown here when the coding pane is not: CodingPane carries
+              its own QuestionProgress right next to its timer badge, and
+              showing both at once would just repeat the same two numbers. */}
+          {!showCodingPane && coding.total > 0 && (
+            <QuestionProgress index={coding.index} total={coding.total} compact />
+          )}
         </div>
         <button
           type="button"
@@ -527,6 +545,8 @@ export default function InterviewRoom({
             turns: transcriptTurns,
             agentAnalyser,
             agentSpeaking,
+            candidateAnalyser,
+            candidateSpeaking,
             reconnecting: callState === "reconnecting",
             enabled: captionsEnabled,
             onToggle: handleToggleCaptions,
@@ -534,14 +554,19 @@ export default function InterviewRoom({
         />
       ) : (
         // Nothing else is on screen here, so the orb gets the room: large,
-        // centered, the first thing a candidate's eyes land on. CodingPane
-        // gives the same two pieces (orb + transcript) a much smaller,
-        // subordinate spot once there is an editor to not compete with.
-        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center gap-6 px-4 py-10">
-          <div className="flex flex-col items-center gap-4 pt-4">
+        // centered, the first thing a candidate's eyes land on, sitting in
+        // its own calm stage rather than loose in the page's empty space.
+        // CodingPane gives the same two pieces (orb + transcript) a much
+        // smaller, subordinate spot once there is an editor to not compete
+        // with.
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center gap-8 px-4 py-10">
+          <div
+            className="flex flex-col items-center gap-5 pt-6 pb-8 px-8 rounded-3xl"
+            style={{ backgroundColor: "#EAE7DF66" }}
+          >
             <VoiceOrb
-              analyser={agentAnalyser}
-              speaking={agentSpeaking}
+              interviewer={{ analyser: agentAnalyser, speaking: agentSpeaking }}
+              candidate={{ analyser: candidateAnalyser, speaking: candidateSpeaking }}
               reconnecting={callState === "reconnecting"}
               size="large"
             />
