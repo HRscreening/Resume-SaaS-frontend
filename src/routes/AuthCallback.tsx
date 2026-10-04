@@ -4,10 +4,12 @@ import { createClient } from "@/lib/supabase/client";
 import { initAuth, isAuthenticated } from "@/lib/auth";
 import { getProfile } from "@/lib/api";
 import { safeNext } from "@/lib/utils";
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const handled = useRef(false);
+  const analytics = useAnalytics();
 
   useEffect(() => {
     if (handled.current) return;
@@ -34,6 +36,9 @@ export default function AuthCallbackPage() {
     }
 
     async function redirectAfterAuth() {
+      if (!isPasswordReset) {
+        analytics.track(AnalyticsEvent.LOGIN, { method: "google" });
+      }
       // Re-hydrate auth cache so AuthGuard picks up session instantly
       await initAuth();
       // Password-reset links land here with a recovery session — the user
@@ -84,7 +89,7 @@ export default function AuthCallbackPage() {
       clearTimeout(timeout);
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [analytics, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#F5F3EE" }}>

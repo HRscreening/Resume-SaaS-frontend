@@ -190,7 +190,7 @@ function ScreeningDetailContent({
                 </div>
 
                 <div className="my-3 flex items-center justify-between gap-2">
-                    <ScreeningToolbar categories={(screening.rubric as any)?.categories ?? []} candidateQuery={candidateQuery} stages={stagesMap} />
+                    <ScreeningToolbar screeningId={id} categories={(screening.rubric as any)?.categories ?? []} candidateQuery={candidateQuery} stages={stagesMap} />
                     <CustomMenuButton selectedOption={search.screenType} options={options} handleOptionClick={(e: TableOptions) => {
                         setScreenType(e as ScreeningDetailsSearchParams["screenType"]);
                         clearSelection();

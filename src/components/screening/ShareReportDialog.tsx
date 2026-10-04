@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { shareCandidateReport } from "@/lib/api";
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 interface ShareReportDialogProps {
   screeningId: string;
@@ -26,6 +27,7 @@ export function ShareReportDialog({
 }: ShareReportDialogProps) {
   const [emails, setEmails] = useState("");
   const [note, setNote] = useState("");
+  const analytics = useAnalytics();
 
   // Split on the separators people actually paste from address books.
   const parsed = emails
@@ -40,6 +42,11 @@ export function ShareReportDialog({
       note: note.trim() || undefined,
     }),
     onSuccess: (res) => {
+      analytics.track(AnalyticsEvent.RESUME_ANALYSIS_SHARED, {
+        screeningId,
+        resumeId,
+        recipientCount: res.sent.length,
+      });
       if (res.failed.length) {
         // Naming who failed matters: re-sending to everyone would mail the
         // report twice to people who already have it.

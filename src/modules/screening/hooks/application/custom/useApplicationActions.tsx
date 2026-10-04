@@ -8,6 +8,7 @@ import type { ApplicationsSearchParams, applicationSearchSchema } from "@/module
 import { toast } from "sonner";
 import { type Option } from "@/modules/screening/components/shared/MenuButton";
 import { resumeUploadService } from "@/lib/services/index";
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 
 export function useApplicationActions({
@@ -19,6 +20,19 @@ export function useApplicationActions({
 }) {
 
     const [localActions, setLocalActions] = useState(new Map<string, ApplicationActionStatus["action"]>());
+    const analytics = useAnalytics();
+
+    const trackRowAction = (
+        operation: "resume" | "archive" | "unarchive" | "delete",
+        resumeId: string,
+    ) => {
+        analytics.track(AnalyticsEvent.ROW_MENU_ACTION, {
+            screeningId,
+            table: "applications",
+            operation,
+            resumeId,
+        });
+    };
 
     // Use localActions to track the status of actions for each application. This allows us to show a loading state for individual rows without affecting the entire table.
     const startLocalAction = (resumeId: string, action: ApplicationActionStatus["action"]) => {
@@ -84,6 +98,7 @@ export function useApplicationActions({
             label: "Resume",
             icon: <Download size={12} />,
             onClick: async (application: Application) => {
+                trackRowAction("resume", application.id);
                 if (!application.resume_url) {
                     toast.error("Resume URL is not available for this candidate.");
                     return;
@@ -93,6 +108,10 @@ export function useApplicationActions({
 
                 try {
                     await resumeUploadService.downloadResume(application.resume_url, application.candidate_name, screeningId);
+                    analytics.track(AnalyticsEvent.RESUME_DOWNLOADED, {
+                        screeningId,
+                        resumeId: application.id,
+                    });
                 } catch (error) {
                     console.error("Error downloading resume:", error);
                     toast.error("Failed to download resume. Please try again.");
@@ -112,6 +131,7 @@ export function useApplicationActions({
                 label: "Archive",
                 icon: <Archive size={12} />,
                 onClick: (application) => {
+                    trackRowAction("archive", application.id);
                     archiveMutation.mutate({
                         screeningId,
                         resumeId: application.id,
@@ -124,6 +144,7 @@ export function useApplicationActions({
             label: "Unarchive",
             icon: <Archive size={12} />,
             onClick: (application) => {
+                trackRowAction("unarchive", application.id);
                 unarchiveMutation.mutate({
                     screeningId,
                     resumeId: application.id,
@@ -139,6 +160,7 @@ export function useApplicationActions({
                 label: "Delete",
                 icon: <Trash2 size={12} />,
                 onClick: (application) => {
+                    trackRowAction("delete", application.id);
                     deleteMutation.mutate({
                         screeningId,
                         resumeId: application.id,

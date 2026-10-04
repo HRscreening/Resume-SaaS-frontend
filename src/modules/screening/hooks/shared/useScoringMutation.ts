@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type QueryClie
 import { ApplicationQueryKeys, ResumeParsingQueryKeys, ScreeningResultsQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys, ScreeningUsageQueryKeys } from "@/modules/screening/queryKeys";
 import { type GetActiveBatchesResponse } from "@/modules/screening/apis/activeBatches";
 import { screenResume } from "@/modules/screening/apis/screenings.api"
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 
 
@@ -21,9 +22,18 @@ export function useScoringMutation(
     }
 ) {
     const queryClient = useQueryClient();
+    const analytics = useAnalytics();
 
     return useMutation({
         mutationFn: screenResume,
+        onMutate: (variables) => {
+            if (variables.isRescore) {
+                analytics.track(AnalyticsEvent.RESCORING_STARTED, {
+                    screeningId: variables.screeningId,
+                    resumeCount: variables.resumeIds.length,
+                });
+            }
+        },
 
         onSuccess: (data, variables) => {
             
