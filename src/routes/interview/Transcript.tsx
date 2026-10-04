@@ -53,12 +53,15 @@ export default function Transcript({ turns, enabled, onToggle, compact = false }
         {enabled ? "Hide transcript" : "Show transcript"}
       </button>
       {enabled && (
-        <div className="flex flex-col rounded-xl border border-[#E5E1D8] bg-white overflow-hidden">
+        <div
+          className="flex flex-col rounded-2xl border border-[#E8E5DF] overflow-hidden"
+          style={{ background: "linear-gradient(180deg, #FFFFFF 0%, #FAF9F5 100%)" }}
+        >
           <div
             ref={scrollRef}
             onScroll={handleScroll}
             aria-live="polite"
-            className={`overflow-y-auto px-4 py-3 flex flex-col gap-3 ${compact ? "h-36" : "h-96"}`}
+            className={`overflow-y-auto px-4 py-4 flex flex-col gap-4 ${compact ? "h-36" : "h-96"}`}
           >
             {turns.length === 0 ? (
               <p className="text-sm text-[#A3A3A3] italic">
@@ -82,20 +85,38 @@ export default function Transcript({ turns, enabled, onToggle, compact = false }
 
 // Speaker labels get their own color (candidate: charcoal, interviewer:
 // the warm brand copper used for "speaking" everywhere else on this
-// screen) rather than sharing one gray, so a turn's speaker is legible at
-// a glance without needing full chat-bubble chrome.
-const CANDIDATE_LABEL_COLOR = "#404040";
-const INTERVIEWER_LABEL_COLOR = "#C85A17";
+// screen) rather than sharing one gray, plus a small solid dot, so a
+// turn's speaker is legible at a glance without needing full chat-bubble
+// chrome.
+const CANDIDATE_COLOR = "#404040";
+const INTERVIEWER_COLOR = "#C85A17";
 
 function TurnRow({ turn }: { turn: TranscriptTurn }) {
   const isCandidate = turn.speaker === "candidate";
-  const labelColor = isCandidate ? CANDIDATE_LABEL_COLOR : INTERVIEWER_LABEL_COLOR;
+  const color = isCandidate ? CANDIDATE_COLOR : INTERVIEWER_COLOR;
   return (
-    <div className={`flex flex-col gap-0.5 max-w-[85%] ${isCandidate ? "items-end self-end text-right" : "items-start self-start text-left"}`}>
-      <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: labelColor }}>
+    <div className={`flex flex-col gap-1 max-w-[85%] ${isCandidate ? "items-end self-end text-right" : "items-start self-start text-left"}`}>
+      <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color }}>
+        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
         {isCandidate ? "You" : "Interviewer"}
       </span>
-      <p className={`text-sm leading-relaxed text-[#1C1C1C] ${turn.final ? "" : "opacity-50"}`}>{turn.text}</p>
+      {/* A line still being transcribed gets a soft tint in its speaker's
+          color, cleared the moment it's marked final (useLiveCaptions) —
+          a discrete state change, not a timed highlight, so it never
+          lingers or flickers on its own. */}
+      <p
+        className="text-sm leading-relaxed text-[#1C1C1C] px-3 py-1.5 rounded-xl"
+        style={turn.final ? undefined : { backgroundColor: withAlpha(color, 0.08) }}
+      >
+        {turn.text}
+      </p>
     </div>
   );
+}
+
+function withAlpha(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
