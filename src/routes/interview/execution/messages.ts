@@ -2,8 +2,9 @@
 // pyodide.worker.ts). Kept as plain `type`/`interface` declarations with no
 // runtime code so they can be `import type`-ed from a worker file without
 // pulling anything into that worker's bundle (type-only imports are erased
-// before Vite bundles the worker as an IIFE — see pyodide.worker.ts's own
-// comment on why that bundling format matters).
+// at compile time regardless of whether Vite bundles a given worker as a
+// classic or a module script — see pyodide.worker.ts's own comment on why
+// that distinction matters there).
 
 // ─── JavaScript worker ──────────────────────────────────────────────────────
 // One request/response per call: the orchestrator (javascriptRunner.ts)

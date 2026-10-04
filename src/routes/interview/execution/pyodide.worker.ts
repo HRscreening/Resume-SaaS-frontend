@@ -8,12 +8,20 @@
 //
 // Pinned CDN version — never "latest". See PYODIDE_VERSION below.
 //
-// This file is bundled by Vite as a classic (IIFE) worker (Vite's default
-// `worker.format`), not a module worker, which is what makes the
-// `importScripts` call below legal: that API only exists on classic workers.
-// Static `import type` of message shapes is still fine here — type-only
-// imports are erased at compile time, so they add nothing to the bundle and
-// do not turn this into a module worker.
+// This file is loaded via Vite's `?worker` import, which hands this worker
+// an `import.meta.url` of its own and — critically — is a MODULE worker
+// (Vite always serves `?worker` scripts as native ES modules in dev, and a
+// bare `worker.format` build can still produce one). `importScripts` only
+// exists on classic workers; calling it here previously threw immediately,
+// so Pyodide never loaded and every Run fell back to "Python could not be
+// loaded in this browser" — the bug this file now fixes. Pyodide 0.27 ships
+// an ESM build (`pyodide.mjs`, confirmed alongside `pyodide.js` at this same
+// CDN path) specifically for this case: `init()` below dynamically
+// `import()`s it instead, which is legal in a module worker and also still
+// legal in a classic one, so this works regardless of which format Vite
+// chooses for a given build. Static `import type` of message shapes is
+// still fine here — type-only imports are erased at compile time and add
+// nothing to the bundle either way.
 import type { PyMainMessage, PyWorkerMessage } from "./messages";
 
 // Pyodide's own CDN, pinned to one exact release. A silent upgrade mid
@@ -26,14 +34,21 @@ const PYODIDE_INDEX_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/
 // See javascript.worker.ts's identical comment: this project's tsconfig
 // loads the "DOM" lib for the rest of the app, not "webworker" (the two
 // declare clashing globals), so `self` is cast once, locally, to exactly
-// what this file needs plus the one extra worker-only API (`importScripts`)
-// DOM does not declare.
+// what this file needs. No extra worker-only API is needed any more —
+// `import()` is a language feature, not a worker-global one, which is
+// exactly why it works in both a classic and a module worker.
 const ctx = self as unknown as {
   onmessage: ((event: MessageEvent<PyMainMessage>) => void) | null;
   postMessage: (message: PyWorkerMessage) => void;
-  importScripts: (...urls: string[]) => void;
-  loadPyodide?: (options: { indexURL: string }) => Promise<PyodideInterface>;
 };
+
+// The handful of named exports this file actually reads off Pyodide's ESM
+// build. Loose, same reasoning as PyodideInterface below: the full `pyodide`
+// npm package's types are not installed, since Pyodide is fetched from the
+// CDN at runtime rather than bundled.
+interface PyodideModule {
+  loadPyodide: (options: { indexURL: string }) => Promise<PyodideInterface>;
+}
 
 // Deliberately loose: the full Pyodide API surface ships as its own `pyodide`
 // npm package's types, which this project does not install (Pyodide is
@@ -118,12 +133,16 @@ __RESULT_STDERR__ = __err__.getvalue()
 `;
 
 async function init(): Promise<void> {
-  ctx.importScripts(`${PYODIDE_INDEX_URL}pyodide.js`);
-  const loadPyodide = ctx.loadPyodide;
-  if (!loadPyodide) {
+  // `@vite-ignore`: this is a fully-remote, runtime-computed URL, not a
+  // module Vite could ever resolve or bundle at build time — the comment
+  // only silences Vite's "cannot analyze dynamic import" warning for that
+  // case, it does not change what actually runs (a plain browser
+  // `import()`, resolved by the worker's own global scope at runtime).
+  const mod: PyodideModule = await import(/* @vite-ignore */ `${PYODIDE_INDEX_URL}pyodide.mjs`);
+  if (!mod.loadPyodide) {
     throw new Error("Pyodide failed to load from the CDN.");
   }
-  pyodide = await loadPyodide({ indexURL: PYODIDE_INDEX_URL });
+  pyodide = await mod.loadPyodide({ indexURL: PYODIDE_INDEX_URL });
 }
 
 async function runOnce(
