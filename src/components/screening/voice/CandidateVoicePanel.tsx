@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ import { InterruptionNotice } from "./InterruptionNotice";
 import { toInputValue, defaultScheduleValue } from "@/lib/scheduleTime";
 import { ExternalLink, Loader2 } from "lucide-react";
 import { useAccount } from "@/hooks/useAccount";
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 interface CandidateVoicePanelProps {
   screeningId: string;
@@ -79,6 +80,8 @@ const PhoneIcon = ({ size = 13 }: { size?: number }) => (
  */
 export function CandidateVoicePanel({ screeningId, resumeId, candidateName,currentStage }: CandidateVoicePanelProps) {
   const { canWrite } = useAccount();
+  const analytics = useAnalytics();
+  const trackedVoiceCalls = useRef(new Set<string>());
   const queryClient = useQueryClient();
   const [scheduling, setScheduling] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
@@ -126,6 +129,10 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
       invalidate();
       setScheduling(false);
       if (res.created.length) {
+        analytics.track(
+          vars.iso ? AnalyticsEvent.VOICE_SCREENING_SCHEDULED : AnalyticsEvent.VOICE_SCREENING_STARTED,
+          { screeningId, resumeId },
+        );
         toast.success(
           vars.iso
             ? `Scheduled ${candidateName ?? "candidate"} for ${new Date(vars.iso).toLocaleString()}`
@@ -140,7 +147,15 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
 
   const cancelMut = useMutation({
     mutationFn: (callId: string) => cancelScheduledCall(screeningId, callId),
-    onSuccess: () => { invalidate(); toast.success("Scheduled call cancelled"); },
+    onSuccess: (_data, callId) => {
+      invalidate();
+      analytics.track(AnalyticsEvent.VOICE_SCREENING_CANCELLED, {
+        screeningId,
+        resumeId,
+        callId,
+      });
+      toast.success("Scheduled call cancelled");
+    },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Could not cancel"),
   });
 
@@ -172,6 +187,15 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
   const candidate: CallCandidate | undefined = candidatesResp?.candidates.find((c) => c.resume_id === resumeId);
   // Calls list is newest-first → first match is the latest attempt.
   const latestCall: CallListItem | undefined = callsResp?.calls.find((c) => c.resume_id === resumeId);
+  useEffect(() => {
+    if (!latestCall || latestCall.display_status !== "ready" || trackedVoiceCalls.current.has(latestCall.id)) return;
+    trackedVoiceCalls.current.add(latestCall.id);
+    analytics.track(AnalyticsEvent.VOICE_SCREENING_COMPLETED, {
+      screeningId,
+      resumeId,
+      callId: latestCall.id,
+    });
+  }, [analytics, latestCall, resumeId, screeningId]);
   const busy = callMut.isPending || cancelMut.isPending || rescheduleMut.isPending;
 
   // TEMPORARY (2026-07-13): the number we'll actually dial. Defaults to the

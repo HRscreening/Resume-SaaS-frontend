@@ -398,8 +398,22 @@ declare module "@tanstack/react-router" {
 }
 
 // ─── App ────────────────────────────────────────────────────
-
+import { useAnalytics } from "@/analytics";
+import { useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 export function App() {
+  const { user } = useAuth();
+
+  const analytics = useAnalytics();
+
+  useEffect(() => {
+    if (!user) return;
+    console.log("setting user in analytics", user.id, user.user_metadata?.full_name);
+    analytics.identify(user.id, {
+      name: user.user_metadata?.full_name,
+    });
+  }, [user?.id, user?.user_metadata?.full_name, analytics]);
+
   return (
     <>
       <RouterProvider router={router} />

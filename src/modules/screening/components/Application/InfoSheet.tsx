@@ -31,6 +31,7 @@ import { Application } from "@/modules/screening/types/application.type";
 import { resumeUploadService } from "@/lib/services";
 import { toast } from "sonner";
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 
 /* ─── external-store (mirrors AnalysisSheet pattern) ─── */
@@ -96,6 +97,7 @@ const InfoSheet = ({ candidate, open,disabled = false }: { candidate: Applicatio
 
   const [showAllSkills, setShowAllSkills] = useState(false);
   const {setAppId} = useScreeningDetailsNavigation();
+  const analytics = useAnalytics();
   const { id: screening_id } = useParams({ strict: false }) as { id: string };
 
   const handleOpenChange = (next: boolean) => {
@@ -142,6 +144,10 @@ const InfoSheet = ({ candidate, open,disabled = false }: { candidate: Applicatio
         : await resumeUploadService.generateSignedUrls(path, screening_id);
 
       window.open(url, "_blank", "noopener,noreferrer");
+      analytics.track(AnalyticsEvent.APPLICATION_RESUME_OPENED, {
+        screeningId: screening_id,
+        resumeId: candidate.id,
+      });
     }
     catch (error) {
       console.error("Error generating signed URL for resume:", error);

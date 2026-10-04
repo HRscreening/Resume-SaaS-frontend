@@ -3,10 +3,12 @@ import { saveScreeningStages, updateCandidateStage } from "@/modules/screening/a
 import type { StagesMap, Screening, HiringStage } from "@/modules/screening/types/screening.type";
 import { ScreeningResultsQueryKeys } from "@/modules/screening/queryKeys";
 import  {ScreeningQueryKeys} from "@/modules/screening/queryKeys"
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 
 export function useChangeCandidateStageMutation(screeningId: string) {
     const queryClient = useQueryClient();
+    const analytics = useAnalytics();
 
     return useMutation({
         mutationFn: ({ scoreId, stage }: {
@@ -15,6 +17,13 @@ export function useChangeCandidateStageMutation(screeningId: string) {
         }) => {
             // console.log("mutationFn", scoreId, stage);
             return updateCandidateStage(scoreId, stage)
+        },
+        onSuccess: (_data, variables) => {
+            analytics.track(AnalyticsEvent.FUNNEL_STAGE_CHANGED, {
+                screeningId,
+                scoreId: variables.scoreId,
+                stage: variables.stage,
+            });
         },
 
         onMutate: async ({ scoreId, stage }) => {
