@@ -1,7 +1,8 @@
 // A requestAnimationFrame loop that turns a live AnalyserNode into a single
 // smoothed 0..1 amplitude value, frame by frame. Deliberately not a React
-// hook: both VoiceOrb (a canvas redraw) and anything else that wants a live
-// level need to run work on every frame without going through React state
+// hook: both VoiceMeter (a direct DOM style update, no React state) and
+// anything else that wants a live level need to run work on every frame
+// without going through React state
 // (a state update per animation frame, for up to an hour, is the kind of
 // thing that is cheap in isolation and not worth paying 60 times a second
 // next to a candidate's code editor).

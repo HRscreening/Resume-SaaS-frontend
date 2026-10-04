@@ -4,10 +4,11 @@ import { Room, RoomEvent, Track } from "livekit-client";
 // Tracks the candidate's own published microphone MediaStreamTrack — the
 // local-participant counterpart to the interviewer's track InterviewRoom
 // already tracks via TrackSubscribed/TrackUnsubscribed. Exists purely so
-// VoiceOrb's candidate-side amplitude tap (useAudioAnalyser, unchanged) has
-// something real to attach to. This hook never attaches, mutes, publishes,
-// or republishes anything itself — it only reads whatever LiveKit is
-// already doing with the mic and hands back the current track or null.
+// VoiceMeter's candidate-side amplitude tap (useAudioAnalyser, unchanged)
+// has something real to attach to. This hook never attaches, mutes,
+// publishes, or republishes anything itself — it only reads whatever
+// LiveKit is already doing with the mic and hands back the current track or
+// null.
 //
 // `room` is the same mirrored Room instance InterviewRoom hands to
 // useLiveCaptions/useQuestionSync (its `activeRoom` state): non-null for
