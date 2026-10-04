@@ -39,41 +39,34 @@ export type SubmitNotice = { kind: "saved" | "error"; message: string };
 // no audio state and no caption state of its own — those stay in
 // InterviewRoom and are threaded into CodingPane separately.
 //
-// WHICH QUESTION IS CURRENT is decided by the agent, not by this hook: the
-// gap found during the build (coding-pane-contract.md's ADDENDUM) is that a
-// screen advancing on its own timer drifts from an interviewer pacing itself
-// off the conversation, and a drifted screen means the candidate writes code
-// for a question nobody asked. `useQuestionSync` follows the room's
-// `hiresort.question` topic, the same signal `advance_segment` derives from
-// coverage server-side, and that id — once this round's question list
-// confirms it is one of ITS ids — is what `current` resolves to.
+// WHICH QUESTION IS CURRENT is decided by the server, not by this hook, and
+// not by the model either — see
+// .superpowers/sdd/2026-09-28-interview-round-authoring/question-state-machine.md.
+// The server owns an ordered question pointer; `useQuestionSync` follows the
+// room's `hiresort.question` topic that pointer publishes, and that id —
+// once this round's question list confirms it is one of ITS ids — is the
+// ONLY thing `current` ever resolves to. There is no other path to a value:
+// no local index that advances on its own timer, no "show question 0 until
+// the first signal arrives." Before the pointer has named anything (the
+// warm-up, or the gap right after a remount while the next publish tick is
+// still in flight), `current` is `undefined` and stays that way — nothing is
+// pinned, no pane is shown, and "Question N of M" renders nothing, exactly
+// together, because all three read this same value. They cannot disagree,
+// because there is only ever one value to read.
 //
-// The local index (`state.index`) still exists and still advances on its own
-// timer, but only as the pre-sync fallback: until the first valid signal
-// arrives, `current` falls back to it, which is exactly today's behaviour
-// (an interview where the data channel never arrives must still be usable).
-// Once a signal has been adopted, it is sticky (see useQuestionSync) and wins
-// over the local index from then on.
+// The per-question timer is unconditional, but it has nothing to do with
+// what is displayed: whichever question `current` resolves to gets its own
+// fresh countdown against its own `allocated_minutes`, for the warning and
+// the auto-submit on expiry only (see the `deadlineOwnerRef` effect below).
+// It never advances anything — see `handleExpire`, which persists a timed-out
+// coding answer and nothing more; moving the pointer on is the server's
+// call, made when the model asks for the next question, not a local clock's.
 //
-// The per-question timer itself is unconditional either way: whichever
-// question is CURRENTLY DISPLAYED gets its own fresh countdown against its
-// own `allocated_minutes`, for the warning and the auto-submit on expiry
-// only. It never decides what is displayed — see the `deadlineOwnerRef`
-// effect below, and `handleExpire`, which only advances the local fallback
-// index when no sync signal has taken over yet.
-//
-// WHICH QUESTION IS CURRENT and WHETHER THE PANE IS SHOWN are two different
-// questions with two different answers, on purpose (see this change's
-// report, pane-visibility-report.md). `current` keeps the fallback behaviour
-// above — it must resolve to *something* before the first signal arrives, so
-// the timer and the buffers have a question to attach to even in an
-// interview whose data channel never comes up. `showPane` does not: it is
-// true only once a real signal has named a coding question (`current` is
-// synced, not just defaulted to index 0), and false again forever for any
-// question id the candidate has already submitted (`dismissed`), no matter
-// how `current` itself resolves. A pane that opened because the local clock
-// guessed is worse than one that stays closed — closed just means the
-// interview keeps going by voice, which is always a safe default.
+// `showPane` is `current?.kind === "coding"` and nothing else (plus
+// `dismissed`, below) — no heuristics, no timers, no fallback. A question id
+// the candidate has already submitted (`dismissed`) keeps the pane closed
+// for good even if the pointer republishes that id again (a repeated tick,
+// or the interviewer genuinely moving back to it).
 export function useCodingQuestions(token: string, room: Room | null) {
   const { data, error: questionsError, refetch } = useQuery({
     queryKey: ["interview-questions", token],
@@ -112,8 +105,8 @@ export function useCodingQuestions(token: string, room: Room | null) {
   const expiringRef = useRef(false);
 
   // Which question id the CURRENTLY STORED `deadlineAt` was computed for.
-  // Lets the id-change effect below tell "the displayed question just
-  // changed, give it a fresh countdown" apart from "nothing changed, leave
+  // Lets the id-change effect below tell "the pointer just named a new
+  // question, give it a fresh countdown" apart from "nothing changed, leave
   // the restored/ticking deadline alone" — the two cases a plain `[current]`
   // effect dependency cannot distinguish between on its own. Set directly
   // (not via setState) by the mount effect below, synchronously with the
@@ -122,29 +115,24 @@ export function useCodingQuestions(token: string, room: Room | null) {
   const deadlineOwnerRef = useRef<string | null>(null);
 
   // Restore a prior mount's progress (a reload, a remount after a
-  // reconnect) or start at question 0 the moment the question list is
-  // known. The `prev` guard makes this run at most once per mount: a
-  // background refetch of `questions` (there should not be one, given
-  // staleTime above) must never reset progress already made.
+  // reconnect) — buffers, the dismissed set, and which question the stored
+  // countdown belongs to — or start from nothing. Deliberately independent
+  // of `questions`: this state is pure bookkeeping (code the candidate
+  // wrote, a countdown, what has been submitted), never which question is
+  // current, so it has nothing to wait on the question list for. The `prev`
+  // guard makes this run at most once per mount.
   useEffect(() => {
-    if (!questions || questions.length === 0) return;
     setState((prev) => {
       if (prev) return prev;
       const stored = loadCodingState(token);
-      if (stored && stored.index < questions.length) {
-        deadlineOwnerRef.current = questions[stored.index]?.id ?? null;
+      if (stored) {
+        deadlineOwnerRef.current = stored.deadlineQuestionId;
         return stored;
       }
-      const first = questions[0];
-      deadlineOwnerRef.current = first.id;
-      return {
-        index: 0,
-        deadlineAt: Date.now() + minutesToMs(first.allocated_minutes),
-        buffers: stored?.buffers ?? {},
-        dismissed: stored?.dismissed ?? {},
-      };
+      deadlineOwnerRef.current = null;
+      return { deadlineAt: null, deadlineQuestionId: null, buffers: {}, dismissed: {} };
     });
-  }, [questions, token]);
+  }, [token]);
 
   // Persisted on every change, slightly debounced so fast typing does not
   // turn into a synchronous sessionStorage write per keystroke while live
@@ -155,20 +143,20 @@ export function useCodingQuestions(token: string, room: Room | null) {
     return () => window.clearTimeout(id);
   }, [state, token]);
 
-  // The DISPLAYED question: the agent's synced id when this round's question
-  // list recognises it, falling back to the local index otherwise (no signal
-  // yet, or none ever arrives — today's behaviour, unchanged). Resolved by
-  // id rather than trusting the signal's own `index`, so a stale or
-  // off-by-one index from the agent can never point this at the wrong
-  // question while a valid id is available.
-  const syncedIndex = useMemo(
+  // THE single source for which question is current, full stop. Resolved by
+  // looking the pointer's id up in this round's own question list — never by
+  // trusting a separately-sent index, and never by falling back to anything
+  // local — so that this number, the pinned content below, and the coding
+  // pane's gate are all reading the exact same value and can never disagree.
+  // `-1` (and therefore `current === undefined`) means the pointer has not
+  // named a known question yet: the warm-up, or the gap right after a
+  // remount before the next publish tick lands. It is never defaulted to 0.
+  const index = useMemo(
     () => (questions && syncedQuestionId ? questions.findIndex((q) => q.id === syncedQuestionId) : -1),
     [questions, syncedQuestionId],
   );
-  const displayIndex = syncedIndex !== -1 ? syncedIndex : (state?.index ?? 0);
-  const index = displayIndex;
   const total = questions?.length ?? 0;
-  const current = questions && state ? questions[displayIndex] : undefined;
+  const current = index !== -1 && questions ? questions[index] : undefined;
   const buffer = current ? bufferFor(state?.buffers ?? {}, current.id) : null;
 
   // Question ids the candidate has already submitted (Submit, or the
@@ -178,51 +166,40 @@ export function useCodingQuestions(token: string, room: Room | null) {
   const dismissedIds = state?.dismissed;
   const isCurrentDismissed = Boolean(current && dismissedIds?.[current.id]);
 
-  // Gates the PANE'S VISIBILITY — deliberately stricter than `current`.
-  // `current` (above) resolves by sync-or-fallback because the timer and
-  // the buffers must work even before any signal has arrived (today's
-  // behaviour, unchanged). The pane itself is held to a higher bar: it may
-  // only open on an actual signal from the agent naming a coding question,
-  // never on the local fallback index alone. `syncedIndex !== -1` is that
-  // signal — it is -1 whenever no valid `hiresort.question` tick has been
-  // adopted yet, which is exactly the "interviewer hasn't gotten there"
-  // window this change closes. See useQuestionSync for why a stale or
-  // unknown id can never produce a value other than -1 here.
+  // The coding pane opens if and only if the current question's kind is
+  // "coding" — no timers, no heuristics, no local index deciding anything.
+  // `current` is already gated on the pointer above, so there is no separate
+  // "has a real signal arrived" check to repeat here.
   //
   // A dismissed question is the other way to fail this gate: once
   // submitted (manually or by timeout), the pane for that question id
-  // never reopens, even if the agent's signal republishes it or explicitly
-  // moves back to it — see handleSubmit/handleExpire below for where
-  // `dismissed` gets set, and this hook's module comment / the report for
-  // why "moved back" gets the same treatment as "still naming it."
-  const showPane = syncedIndex !== -1 && current?.kind === "coding" && !isCurrentDismissed;
+  // never reopens, even if the pointer republishes it or moves back to it —
+  // see handleSubmit/handleExpire below for where `dismissed` gets set.
+  const showPane = current?.kind === "coding" && !isCurrentDismissed;
 
   // The pinned slot's SPOKEN half. (The coding half reuses `current` +
   // `showPane` above unchanged — coding content is always fully present,
   // so it never has anything to wait for.) A spoken question's `prompt` is
   // withheld server-side until the interviewer actually presents it — see
   // interviewApi.ts — so this hook can know THAT a spoken question is
-  // current (via the synced id) before it knows WHAT IT SAYS. `pinned`
+  // current (via the pointer) before it knows WHAT IT SAYS. `pinned`
   // resolves to the former only once the latter has arrived, and is
   // deliberately NOT sticky across a change of question: it clears the
-  // instant the synced id stops being a revealed spoken question — moved
-  // to a coding question, or to a new spoken one whose text has not
-  // arrived yet — rather than holding the PREVIOUS question's text on
-  // screen under a new one's signal. A brief "nothing pinned" gap (which
-  // renders identically to the pre-presentation state, by design) is the
-  // honest state while this hook waits on the refetch below; showing stale
-  // text would not be. Gated on `syncedIndex !== -1` — never the local
-  // fallback index alone — for the same reason `showPane` is: before any
-  // real signal, nothing is pinned, which is the "before anything is
-  // presented, just conversation" rule.
+  // instant `current` stops being a revealed spoken question — moved to a
+  // coding question, or to a new spoken one whose text has not arrived yet
+  // — rather than holding the PREVIOUS question's text on screen under a
+  // new one's pointer value. A brief "nothing pinned" gap (which renders
+  // identically to the pre-presentation state, by design) is the honest
+  // state while this hook waits on the refetch below; showing stale text
+  // would not be.
   const [pinned, setPinned] = useState<{ id: string; prompt: string } | null>(null);
   useEffect(() => {
-    if (syncedIndex !== -1 && current?.kind === "spoken" && typeof current.prompt === "string") {
+    if (current?.kind === "spoken" && typeof current.prompt === "string") {
       setPinned({ id: current.id, prompt: current.prompt });
     } else {
       setPinned(null);
     }
-  }, [current, syncedIndex]);
+  }, [current]);
 
   // The one place this hook polls nothing and waits for nothing: a spoken
   // question's reveal happens server-side at the moment the interviewer
@@ -257,22 +234,27 @@ export function useCodingQuestions(token: string, room: Room | null) {
     };
   }, [syncedQuestionId, questions, refetch]);
 
-  // The timer belongs to whichever question is actually on screen, not to
-  // the local index: give the displayed question a fresh countdown against
-  // its own `allocated_minutes` the moment it changes — whether that change
-  // came from the local fallback advancing, or from a sync signal moving the
-  // pane forward, backward, or to a question the local index was never on.
-  // A restored deadline (mount effect above already set deadlineOwnerRef to
-  // match) is left untouched, which is what preserves true remaining time
-  // across a reload instead of resetting it to a fresh full allocation.
+  // The timer belongs to whichever question the pointer names, and only
+  // that: give it a fresh countdown against its own `allocated_minutes` the
+  // moment the pointer moves to a different question, forward, backward, or
+  // to one the pointer was never on before in this mount. A restored
+  // deadline (mount effect above already primed deadlineOwnerRef from
+  // `deadlineQuestionId` to match) is left untouched, which is what
+  // preserves true remaining time across a reload instead of resetting it
+  // to a fresh full allocation the instant the pointer republishes the same
+  // question.
   useEffect(() => {
     const id = current?.id ?? null;
     if (deadlineOwnerRef.current === id) return;
     deadlineOwnerRef.current = id;
     setState((prev) => {
       if (!prev) return prev;
-      if (!current) return { ...prev, deadlineAt: null };
-      return { ...prev, deadlineAt: Date.now() + minutesToMs(current.allocated_minutes) };
+      if (!current) return { ...prev, deadlineAt: null, deadlineQuestionId: null };
+      return {
+        ...prev,
+        deadlineAt: Date.now() + minutesToMs(current.allocated_minutes),
+        deadlineQuestionId: current.id,
+      };
     });
   }, [current]);
 
@@ -283,11 +265,10 @@ export function useCodingQuestions(token: string, room: Room | null) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Read inside the async handlers below so a Run or Submit request that is
-  // still in flight when the candidate's question advances (the timer fired
-  // mid-request, or — defensively — any other path) applies its result only
-  // if it is still talking about the question currently on screen. Without
-  // this, a slow Run response for question 1 could land on question 2's
-  // results panel after the auto-advance.
+  // still in flight when the pointer moves the candidate on (mid-request)
+  // applies its result only if it is still talking about the question
+  // currently on screen. Without this, a slow Run response for question 1
+  // could land on question 2's results panel after the pointer advances.
   const currentIdRef = useRef<string | undefined>(current?.id);
   currentIdRef.current = current?.id;
 
@@ -351,16 +332,6 @@ export function useCodingQuestions(token: string, room: Room | null) {
     [token, room],
   );
 
-  // Advances the LOCAL FALLBACK index only. This is a no-op on what is
-  // displayed once a sync signal has been adopted (`current` resolves by
-  // synced id first — see `displayIndex` above), which is deliberate: moving
-  // the candidate on is the agent's call once it is driving the pane, not a
-  // local clock's. The resulting deadline for whatever ends up displayed is
-  // handled uniformly by the id-change effect above, not here.
-  const advance = useCallback(() => {
-    setState((prev) => (prev ? { ...prev, index: prev.index + 1 } : prev));
-  }, []);
-
   // Marks a question id as submitted — see CodingState.dismissed and
   // `showPane` above. The merge is keyed by id and never touches `buffers`,
   // so a question's code is preserved exactly as-is regardless of how many
@@ -372,43 +343,43 @@ export function useCodingQuestions(token: string, room: Room | null) {
     );
   }, []);
 
+  // Captures a timed-out coding answer and nothing more. Moving the pointer
+  // on is never this hook's call — see the module comment — so there is no
+  // "advance" branch here any more: a spoken question's timer firing does
+  // nothing (there is no buffer to capture for it), and a coding question's
+  // firing persists the buffer and dismisses it, leaving the server's own
+  // pointer to decide what, if anything, happens next.
   const handleExpire = useCallback(() => {
     if (expiringRef.current || !current || !state) return;
     // Already submitted (manually, or by an earlier expiry) — the pane for
     // this id is closed for good (see `showPane`), so there is nothing left
     // to capture and nowhere for a notice to be seen. Without this guard a
-    // countdown that is still ticking for a dismissed-but-synced question
-    // (the agent named it again after the candidate moved on) would
+    // countdown that is still ticking for a dismissed-but-current question
+    // (the pointer named it again after the candidate moved on) would
     // re-submit the same buffer on every expiry.
     if (state.dismissed[current.id]) return;
+    if (current.kind !== "coding") return;
     expiringRef.current = true;
     (async () => {
-      if (current.kind === "coding") {
-        const b = bufferFor(state.buffers, current.id);
-        const ok = await persist(current.id, b.language, b.source);
-        setSubmitNotice(
-          ok
-            ? { kind: "saved", message: "Time's up. Your answer was saved." }
-            : {
-                kind: "error",
-                message:
-                  "Time's up. We could not reach the server to save your answer, but it is still here in this browser.",
-              },
-        );
-        // Dismiss only once the server actually has it. A failed persist
-        // leaves the pane open (even past the deadline, Submit is still on
-        // screen) so the candidate's one recovery path — press Submit again
-        // — still exists; see handleSubmit for the identical rule.
-        if (ok) dismissQuestion(current.id);
-      }
-      // Moving on is only this hook's call while nothing has told it
-      // otherwise. Once a sync signal is driving the pane, expiry still
-      // captures the buffer above (never discard what they wrote) but leaves
-      // deciding what comes next to the agent's own next publish.
-      if (syncedQuestionId === null) advance();
+      const b = bufferFor(state.buffers, current.id);
+      const ok = await persist(current.id, b.language, b.source);
+      setSubmitNotice(
+        ok
+          ? { kind: "saved", message: "Time's up. Your answer was saved." }
+          : {
+              kind: "error",
+              message:
+                "Time's up. We could not reach the server to save your answer, but it is still here in this browser.",
+            },
+      );
+      // Dismiss only once the server actually has it. A failed persist
+      // leaves the pane open (even past the deadline, Submit is still on
+      // screen) so the candidate's one recovery path — press Submit again
+      // — still exists; see handleSubmit for the identical rule.
+      if (ok) dismissQuestion(current.id);
       expiringRef.current = false;
     })();
-  }, [current, state, persist, advance, syncedQuestionId, dismissQuestion]);
+  }, [current, state, persist, dismissQuestion]);
 
   const { secondsRemaining, warning } = useCountdown(state?.deadlineAt ?? null, handleExpire);
 
@@ -461,10 +432,10 @@ export function useCodingQuestions(token: string, room: Room | null) {
       // read for scoring, which is what makes running untrusted code in the
       // candidate's own tab safe in the first place.
       const result = await runCodeLocally(buffer.language, buffer.source, current.examples);
-      // The agent's question-sync signal (or the local timer fallback) can
-      // advance the candidate past this question while a run is still going.
-      // A result for a question that is no longer on screen must be
-      // dropped, not shown against whatever came next.
+      // The pointer can move the candidate past this question (the server
+      // advanced it) while a run is still going. A result for a question
+      // that is no longer on screen must be dropped, not shown against
+      // whatever came next.
       if (currentIdRef.current !== questionId) return;
       setRunResult(result);
     } catch (err) {

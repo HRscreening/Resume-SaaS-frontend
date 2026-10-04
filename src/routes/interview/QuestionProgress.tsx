@@ -1,5 +1,10 @@
 interface QuestionProgressProps {
-  // 0-based index of the question currently on screen.
+  // 0-based index of the question the server's pointer currently names, or
+  // -1 when it has not named one yet (the warm-up, or a remount waiting on
+  // the next publish tick — see useCodingQuestions). -1 is a real, expected
+  // value, not an error: it renders nothing, same as `total <= 0` below,
+  // rather than ever defaulting to "Question 1 of N" for a question the
+  // pointer has not actually named.
   index: number;
   // Total questions in this round, coding and spoken combined — the same
   // list useCodingQuestions already fetched. 0 before that list has
@@ -23,7 +28,7 @@ const UPCOMING_COLOR = "#E5E1D8";
 // adds no state or network call of its own, and nothing here animates —
 // it only ever changes when the agent actually advances the round.
 export default function QuestionProgress({ index, total, compact = false }: QuestionProgressProps) {
-  if (total <= 0) return null;
+  if (total <= 0 || index < 0) return null;
   const current = Math.min(index, total - 1);
   const segments = Array.from({ length: total }, (_, i) => i);
 
