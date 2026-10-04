@@ -6,6 +6,18 @@ interface TranscriptProps {
   turns: TranscriptTurn[];
   enabled: boolean;
   onToggle: () => void;
+  // True only while the coding pane is open (InterviewRoom passes
+  // `showCodingPane` straight through). The editor is the primary thing on
+  // screen in that layout — a whole problem statement and a code editor
+  // already compete for height — so the transcript becomes a secondary,
+  // deliberately modest strip underneath it (a fixed height, not a flexible
+  // one trying and failing to share space with the editor) rather than
+  // disappearing or fighting for room. In the other layout (the warm-up, or
+  // a spoken question) there is no editor to share space with, so the
+  // transcript is the primary thing below the pinned question and gets a
+  // full, comfortable column instead. Same component, two deliberate sizes
+  // — see InterviewRoom for which one it's given.
+  compact: boolean;
 }
 
 // How close to the bottom (in px) still counts as "at the bottom" for
@@ -14,12 +26,16 @@ interface TranscriptProps {
 const AUTO_SCROLL_THRESHOLD_PX = 24;
 
 // The whole conversation, top to bottom, newest at the bottom, each turn
-// labelled by who said it. Replaces the old side-by-side "Interviewer" /
-// "You" columns, which made a single back-and-forth read as two separate
-// logs the candidate had to cross-reference by eye. This is a reading aid
-// only, same as the panes it replaces: the transcript that is scored lives
-// on the server.
-export default function Transcript({ turns, enabled, onToggle }: TranscriptProps) {
+// labelled by who said it and READ left to right like running text — both
+// speakers left-aligned, never split into right-aligned "my side" bubbles.
+// Replaces the old side-by-side "Interviewer" / "You" columns (which made a
+// single back-and-forth read as two separate logs the candidate had to
+// cross-reference by eye) and the right-aligned-in-places layout that came
+// after it, which read like a chat app rather than a transcript and made a
+// single exchange harder to follow top to bottom, not easier. This is a
+// reading aid only, same as the panes it replaces: the transcript that is
+// scored lives on the server.
+export default function Transcript({ turns, enabled, onToggle, compact }: TranscriptProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const atBottomRef = useRef(true);
 
@@ -40,7 +56,7 @@ export default function Transcript({ turns, enabled, onToggle }: TranscriptProps
   }, [turns]);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 flex-1 min-h-0">
       <button
         type="button"
         onClick={onToggle}
@@ -50,14 +66,16 @@ export default function Transcript({ turns, enabled, onToggle }: TranscriptProps
       </button>
       {enabled && (
         <div
-          className="flex flex-col rounded-2xl border border-[#E8E5DF] overflow-hidden"
+          className={`flex flex-col rounded-2xl border border-[#E8E5DF] overflow-hidden ${
+            compact ? "" : "flex-1 min-h-0"
+          }`}
           style={{ background: "linear-gradient(180deg, #FFFFFF 0%, #FAF9F5 100%)" }}
         >
           <div
             ref={scrollRef}
             onScroll={handleScroll}
             aria-live="polite"
-            className="overflow-y-auto px-4 py-4 flex flex-col gap-4 h-96"
+            className={`overflow-y-auto px-4 py-4 flex flex-col gap-4 ${compact ? "h-40" : "flex-1 min-h-0"}`}
           >
             {turns.length === 0 ? (
               <p className="text-sm text-[#A3A3A3] italic">
@@ -81,7 +99,8 @@ export default function Transcript({ turns, enabled, onToggle }: TranscriptProps
 // the warm brand copper used for "speaking" everywhere else on this
 // screen) rather than sharing one gray, plus a small solid dot, so a
 // turn's speaker is legible at a glance without needing full chat-bubble
-// chrome.
+// chrome or a side a turn sits on — every turn sits on the same side, in
+// one left-aligned column, and the label/color is what tells them apart.
 const CANDIDATE_COLOR = "#404040";
 const INTERVIEWER_COLOR = "#C85A17";
 
@@ -89,7 +108,7 @@ function TurnRow({ turn }: { turn: TranscriptTurn }) {
   const isCandidate = turn.speaker === "candidate";
   const color = isCandidate ? CANDIDATE_COLOR : INTERVIEWER_COLOR;
   return (
-    <div className={`flex flex-col gap-1 max-w-[85%] ${isCandidate ? "items-end self-end text-right" : "items-start self-start text-left"}`}>
+    <div className="flex flex-col gap-1 items-start text-left max-w-[42rem]">
       <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color }}>
         <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} aria-hidden="true" />
         {isCandidate ? "You" : "Interviewer"}

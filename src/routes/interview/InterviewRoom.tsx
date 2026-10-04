@@ -556,11 +556,12 @@ export default function InterviewRoom({
 
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* The pinned slot: question in focus, for as long as it is the
-            current one. Coding gets the larger share of the available
-            height (it has a whole editor beside it); a spoken question is
-            just its own text and needs only as much height as that takes. */}
+            current one. Coding gets nearly all of the available height (a
+            whole problem statement and an editor need it); a spoken
+            question is just its own text and needs only as much height as
+            that takes, leaving the rest to the transcript below. */}
         {showCodingPane && (
-          <div className="flex-[3] min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden">
             <CodingPane coding={coding} />
           </div>
         )}
@@ -568,15 +569,36 @@ export default function InterviewRoom({
 
         {hasPinnedSlot && <div className="border-t border-[#E5E1D8]" />}
 
-        {/* The conversation, always underneath. Never shrunk down to a
-            "compact" strip next to a voice presence any more — the voice
-            presence lives in TopBar now, so this is just the transcript,
-            full height, whether or not anything is pinned above it. */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-5">
-          <div className="w-full max-w-2xl mx-auto">
-            <Transcript turns={transcriptTurns} enabled={captionsEnabled} onToggle={handleToggleCaptions} />
+        {/* The conversation. Its place in the layout is a deliberate choice,
+            not the same box resized: with a coding question open, the editor
+            is what the candidate is actually using, so the transcript drops
+            to a fixed, modest strip underneath it (`compact`) rather than a
+            flexible region that would either starve the editor of height or
+            get crushed itself trying to share it. With nothing competing
+            for space — the warm-up, or a spoken question pinned above —
+            the transcript becomes the primary thing below the fold and
+            takes the entire remaining height as a real, readable column. */}
+        {showCodingPane ? (
+          <div className="shrink-0 px-4 pt-3 pb-4">
+            <Transcript
+              turns={transcriptTurns}
+              enabled={captionsEnabled}
+              onToggle={handleToggleCaptions}
+              compact
+            />
           </div>
-        </div>
+        ) : (
+          <div className="flex-1 min-h-0 flex flex-col px-4 py-5">
+            <div className="w-full max-w-2xl mx-auto flex-1 min-h-0 flex flex-col">
+              <Transcript
+                turns={transcriptTurns}
+                enabled={captionsEnabled}
+                onToggle={handleToggleCaptions}
+                compact={false}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {showEndConfirm && (
