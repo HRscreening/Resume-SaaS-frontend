@@ -5,6 +5,7 @@ import { getProfile } from "@/lib/api";
 import { PasswordInput } from "@/components/PasswordInput";
 import { GuestGuard } from "@/components/GuestGuard";
 import { getURL, safeNext } from "@/lib/utils";
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 export default function LoginPage() {
   return (
@@ -22,6 +23,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const analytics = useAnalytics();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +33,7 @@ function LoginForm() {
       const supabase = createClient();
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError) throw authError;
+      analytics.track(AnalyticsEvent.LOGIN, { method: "password" });
 
       // If the user came here from a protected page (?next=...), send them
       // back there directly — bypassing the onboarding gate. They can finish

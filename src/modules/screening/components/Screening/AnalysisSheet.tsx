@@ -1,4 +1,4 @@
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useParams } from "@tanstack/react-router";
 import { Eye, ExternalLink, Expand, Download, Loader2, } from "lucide-react";
 import { downloadScorecard } from "@/lib/api";
@@ -15,6 +15,7 @@ import { CandidateVoicePanel } from "@/components/screening/voice/CandidateVoice
 import { ShareReportDialog } from "@/components/screening/ShareReportDialog";
 import { useScreening } from "@/controllers/screening/getScreening";
 import { formatDate } from "@/lib/utils";
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 import {
   Tooltip,
   TooltipContent,
@@ -100,6 +101,8 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
 
   const tab = search.analysisTab ?? "scorecard";
   const open = search.screenId === resume_id;
+  const analytics = useAnalytics();
+  const trackedOpen = useRef(false);
 
   // Opens on Analysis even though Profile is listed first: the scorecard
   // always has content, whereas Profile renders a "not available" notice
@@ -109,8 +112,16 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
   const handleOpenChange = (next: boolean) => {
     if (next) {
       setScreenId(resume_id);
+      if (!trackedOpen.current) {
+        analytics.track(AnalyticsEvent.CANDIDATE_ANALYSIS_OPENED, {
+          screeningId: screening_id,
+          resumeId: resume_id,
+        });
+        trackedOpen.current = true;
+      }
     } else {
       setScreenId(null);
+      trackedOpen.current = false;
     }
   };
 
@@ -181,6 +192,15 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
         filename ?? `${resume?.candidate_name ?? "scorecard"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
+      analytics.track(AnalyticsEvent.RESUME_DOWNLOADED, {
+        screeningId: screening_id,
+        resumeId: resume_id,
+      });
+      analytics.track(AnalyticsEvent.SCORECARD_DOWNLOADED, {
+        screeningId: screening_id,
+        resumeId: resume_id,
+        scoreId: score.id,
+      });
     } catch {
       /* ignored */
     } finally {
@@ -385,6 +405,10 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                             href={`/screenings/${screening_id}/${resume_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={() => analytics.track(AnalyticsEvent.ANALYSIS_EXPANDED, {
+                              screeningId: screening_id,
+                              resumeId: resume_id,
+                            })}
                             className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
 
                           >

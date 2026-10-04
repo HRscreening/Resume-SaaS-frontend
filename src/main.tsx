@@ -7,6 +7,7 @@ import { initAuth } from "@/lib/auth";
 import { App } from "@/App";
 import "@/globals.css";
 import { TooltipProvider } from "./components/ui/tooltip";
+import { AnalyticsProvider } from "@/analytics";
 // If Supabase redirects the OAuth token to the root (/#access_token=...),
 // forward to /auth/callback so the callback component can handle it.
 if (window.location.hash.includes("access_token=") && window.location.pathname !== "/auth/callback") {
@@ -19,9 +20,11 @@ initAuth().finally(() => {
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
+        <AnalyticsProvider>
         <TooltipProvider>
         <App />
         </TooltipProvider>
+        </AnalyticsProvider>
         {import.meta.env.VITE_ENVIROMENT === "Development" && true && (<ReactQueryDevtools initialIsOpen={false} />)}
       </QueryClientProvider>
     </StrictMode> 

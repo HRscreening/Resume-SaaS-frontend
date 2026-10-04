@@ -9,6 +9,7 @@ import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/
 import { toast } from "sonner";
 import { type Option } from "@/modules/screening/components/shared/MenuButton";
 import { resumeUploadService } from "@/lib/services/index";
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 export function useScreeningActions({
     screeningId,
@@ -81,6 +82,19 @@ export function useScreeningActions({
     });
 
     const { screenType } = screeningSearchParams
+    const analytics = useAnalytics();
+
+    const trackRowAction = (
+        operation: "resume" | "scorecard" | "profile" | "voice" | "rescore" | "expand" | "share" | "archive" | "unarchive" | "delete",
+        resumeId: string,
+    ) => {
+        analytics.track(AnalyticsEvent.ROW_MENU_ACTION, {
+            screeningId,
+            table: "screening",
+            operation,
+            resumeId,
+        });
+    };
 
 
 
@@ -94,6 +108,7 @@ export function useScreeningActions({
             label,
             icon: <Icon size={12} />,
             onClick: (candidate: RankedCandidate) => {
+                trackRowAction(tab as "scorecard" | "profile" | "voice", candidate.resume_id);
                 setScreenId(candidate.resume_id);
                 setAnalysisTab(tab as "profile" | "scorecard" | "voice");
             }
@@ -102,6 +117,7 @@ export function useScreeningActions({
             label: "Resume",
             icon: <Download size={12} />,
             onClick: async (candidate: RankedCandidate) => {
+                trackRowAction("resume", candidate.resume_id);
                 if (!candidate.resume_url) {
                     toast.error("Resume URL is not available for this candidate.");
                     return;
@@ -125,6 +141,7 @@ export function useScreeningActions({
             label: "Rescore",
             icon: <RotateCcw size={12} />,
             onClick: (candidate: RankedCandidate) => {
+                trackRowAction("rescore", candidate.resume_id);
                 // console.log("Rescore clicked for candidate:", candidate);
                 toast.success("Unavaileble Currently");
             },
@@ -133,6 +150,7 @@ export function useScreeningActions({
             label: "Expand",
             icon: <Expand size={12} />,
             onClick: (candidate) => {
+                trackRowAction("expand", candidate.resume_id);
                 window.open(
                     `/screenings/${screeningId}/${candidate.resume_id}`,
                     "_blank",
@@ -145,6 +163,7 @@ export function useScreeningActions({
             icon:
                 <Share2 size={12} />,
             onClick: (candidate: RankedCandidate) => {
+                trackRowAction("share", candidate.resume_id);
                 setShareCandidate(candidate);
                 setIsShareDialogOpen(true);
             },
@@ -159,6 +178,7 @@ export function useScreeningActions({
                 label: "Archive",
                 icon: <Archive size={12} />,
                 onClick: (candidate: RankedCandidate) => {
+                    trackRowAction("archive", candidate.resume_id);
                     archiveMutation.mutate({
                         screeningId: screeningId,
                         resumeId: candidate.resume_id,
@@ -175,6 +195,7 @@ export function useScreeningActions({
             label: "Unarchive",
             icon: <Archive size={12} />,
             onClick: (candidate: RankedCandidate) => {
+                trackRowAction("unarchive", candidate.resume_id);
                 unarchiveMutation.mutate({
                     screeningId,
                     resumeId: candidate.resume_id,
@@ -190,6 +211,7 @@ export function useScreeningActions({
                 label: "Delete",
                 icon: <Trash2 size={12} />,
                 onClick: (candidate: RankedCandidate) => {
+                    trackRowAction("delete", candidate.resume_id);
                     deleteMutation.mutate({
                         screeningId,
                         resumeId: candidate.resume_id,

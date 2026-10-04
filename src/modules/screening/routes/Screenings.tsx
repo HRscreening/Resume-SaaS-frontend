@@ -12,7 +12,7 @@ import { archiveScreening, unarchiveScreening, deleteScreening } from "@/modules
 import { ConfirmScreeningDelete } from "@/modules/screening/components/Dialogs/ConfirmScreeningDelete";
 import { ActionButton } from "@/modules/screening/components/shared/ActionButton";
 import { useAccount } from "@/hooks/useAccount";
-
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 const TableHeader = ["Title", "Applications", "Screened", "Last Accessed", "Action"];
 
@@ -22,6 +22,7 @@ export default function Screenings() {
   const navigate = useNavigate({ from: "/screenings" });
   const searchParams = useSearch({ strict: false }) as ScreeningsSearchParams;
   const { canWrite } = useAccount();
+  const analytics = useAnalytics();
 
   const params = {
     ...searchParams,
@@ -48,6 +49,7 @@ export default function Screenings() {
 
 
   const handleOptionClick = (type: any) => {
+    analytics.track(AnalyticsEvent.JOB_TYPE_SWITCHED, { type });
     navigate({
       search: (prev) => ({
         ...prev,

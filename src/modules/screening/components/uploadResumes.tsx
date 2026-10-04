@@ -3,6 +3,7 @@ import { resumeUploadService } from '@/lib/services'
 import { queryClient } from '@/lib/queryClient'
 import { toast } from "sonner"
 import { useAddApplicationsMutation } from '@/modules/screening/hooks/application/queries/application.hook'
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 interface UploadResumesProps {
     screening_id: string;
@@ -23,6 +24,7 @@ const UploadResumes = ({ screening_id, user_id, setShowUploadMore }: UploadResum
 
 
     const { mutateAsync: UploadResumes, isSuccess: isUploadDone, isPending: isUploading } = useAddApplicationsMutation()
+    const analytics = useAnalytics();
 
     function pickResumeFiles(
         picked: FileList | File[] | null,
@@ -87,6 +89,10 @@ const UploadResumes = ({ screening_id, user_id, setShowUploadMore }: UploadResum
         const result = await resumeUploadService.uploadResumes(draftFiles, screening_id, user_id)
 
         console.log("Uploaded files:", result);
+        analytics.track(AnalyticsEvent.RESUME_UPLOADED, {
+            screeningId: screening_id,
+            fileCount: draftFiles.length,
+        });
 
         return;
 
@@ -105,6 +111,10 @@ const UploadResumes = ({ screening_id, user_id, setShowUploadMore }: UploadResum
             const result = await resumeUploadService.uploadResumes(uploadMoreFiles, screening_id, user_id)
 
             const res = await UploadResumes({ resumes: result, screening_id: screening_id })
+            analytics.track(AnalyticsEvent.RESUME_UPLOADED, {
+                screeningId: screening_id,
+                fileCount: uploadMoreFiles.length,
+            });
 
             toast.success(res.message || "Resumes uploaded successfully");
 

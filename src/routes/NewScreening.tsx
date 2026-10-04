@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useEffect,useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -8,7 +8,7 @@ import { MAX_SUBCATEGORIES } from "@/lib/rubric";
 import { StepIndicator } from "@/components/screening/new-screening/StepIndicator";
 import { JdInputStep } from "@/components/screening/new-screening/JdInputStep";
 import { RubricReviewStep } from "@/components/screening/new-screening/RubricReviewStep";
-
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 
 type Step = 1 | 2;
@@ -23,6 +23,9 @@ export default function NewScreening() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>(1);
 
+  const analytics = useAnalytics();
+  const hasTrackedAbandonment = useRef(false);
+
   // Step 1 — job description input
   const [title, setTitle] = useState("");
   const [jdText, setJdText] = useState("");
@@ -34,6 +37,26 @@ export default function NewScreening() {
   // Step 2 — rubric editor
   const [rubric, setRubric] = useState<Rubric | null>(null);
   const [saving, setSaving] = useState(false);
+  const draftRef = useRef({ step, title: "", jdText: "", hasRubric: false, saving: false });
+  draftRef.current = { step, title, jdText, hasRubric: Boolean(rubric), saving };
+
+  useEffect(() => {
+    analytics.page();
+    analytics.track(AnalyticsEvent.JOB_CREATION_VIEWED, { source: "direct" });
+    analytics.track(AnalyticsEvent.JOB_CREATION_STEP_VIEWED, { step: "jd" });
+    return () => {
+      if (hasTrackedAbandonment.current) return;
+      hasTrackedAbandonment.current = true;
+      const draft = draftRef.current;
+      if (!draft.saving) {
+        analytics.track(AnalyticsEvent.JOB_CREATION_ABANDONED, {
+          step: draft.step === 2 || draft.hasRubric ? "rubric" : "jd",
+          hasTitle: Boolean(draft.title.trim()),
+          hasJd: Boolean(draft.jdText.trim()),
+        });
+      }
+    };
+  }, [analytics]);
 
   function handleModeChange(mode: JdInputMode) {
     setJdInputMode(mode);
@@ -41,6 +64,7 @@ export default function NewScreening() {
     // Start fresh when switching to paste or AI; upload keeps any extracted
     // text until a new file is chosen.
     if (mode === "paste" || mode === "ai") setJdText("");
+    analytics.track(AnalyticsEvent.JD_INPUT_MODE_CHANGED, { mode });
   }
 
   async function handleJDFileSelect(file: File) {
@@ -50,7 +74,11 @@ export default function NewScreening() {
     try {
       const { text } = await parseJDFile(file);
       setJdText(text);
+      analytics.track(AnalyticsEvent.JD_FILE_UPLOADED, {
+        fileType: file.name.split(".").pop()?.toLowerCase() ?? "unknown",
+      });
     } catch (err) {
+      analytics.track(AnalyticsEvent.JOB_CREATION_FAILED, { reason: "jd_extraction" });
       toast.error(err instanceof Error ? err.message : "Could not extract text from file");
       setJdFile(null);
     } finally {
@@ -64,10 +92,16 @@ export default function NewScreening() {
   }
 
   async function handleAnalyzeJD() {
-    if (!jdText.trim() || analyzingJD) return;
+    if (!jdText.trim()) {
+      analytics.track(AnalyticsEvent.JOB_CREATION_VALIDATION_FAILED, { reason: "missing_jd" });
+      return;
+    }
+    if (analyzingJD) return;
     setAnalyzingJD(true);
+    analytics.track(AnalyticsEvent.JD_GENERATION_STARTED, { inputMode: jdInputMode });
     try {
       const result = await analyzeJD(jdText);
+      analytics.track(AnalyticsEvent.JD_GENERATION_COMPLETED, { inputMode: jdInputMode });
       const sorted = {
         ...result,
         categories: result.categories.map((cat) => ({
@@ -81,8 +115,12 @@ export default function NewScreening() {
         })),
       };
       setRubric(sorted);
+      analytics.track(AnalyticsEvent.RUBRIC_GENERATION_COMPLETED, { categoryCount: sorted.categories.length });
+      analytics.track(AnalyticsEvent.JOB_CREATION_STEP_VIEWED, { step: "rubric" });
       setStep(2);
     } catch (err) {
+      analytics.track(AnalyticsEvent.JD_GENERATION_FAILED, { inputMode: jdInputMode });
+      analytics.track(AnalyticsEvent.JOB_CREATION_FAILED, { reason: "jd_generation" });
       toast.error(err instanceof Error ? err.message : "Failed to analyze JD");
     } finally {
       setAnalyzingJD(false);
@@ -93,6 +131,7 @@ export default function NewScreening() {
     if (!rubric) return;
     const updated = rubric.categories.map((c, i) => (i === catIdx ? { ...c, weight } : c));
     setRubric({ ...rubric, categories: updated });
+    analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType: "category_weight" });
   }
 
   function updateSubcategory(catIdx: number, subIdx: number, updates: Partial<Subcategory>) {
@@ -103,6 +142,7 @@ export default function NewScreening() {
       return { ...cat, subcategories: subs };
     });
     setRubric({ ...rubric, categories: updated });
+    analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType: "subcategory" });
   }
 
   function removeSubcategory(catIdx: number, subIdx: number) {
@@ -112,6 +152,7 @@ export default function NewScreening() {
       return { ...cat, subcategories: cat.subcategories.filter((_, si) => si !== subIdx) };
     });
     setRubric({ ...rubric, categories: updated });
+    analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType: "remove" });
   }
 
   function addSubcategory(catIdx: number) {
@@ -122,10 +163,18 @@ export default function NewScreening() {
       return { ...c, subcategories: [...c.subcategories, { name: "", weight: 3, description: "" }] };
     });
     setRubric({ ...rubric, categories: updated });
+    analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType: "add" });
   }
 
   async function handleSaveJob(sourceJob: boolean) {
-    if (!rubric || !title.trim()) return;
+    if (!title.trim()) {
+      analytics.track(AnalyticsEvent.JOB_CREATION_VALIDATION_FAILED, { reason: "missing_title" });
+      return;
+    }
+    if (!rubric) {
+      analytics.track(AnalyticsEvent.JOB_CREATION_VALIDATION_FAILED, { reason: "missing_rubric" });
+      return;
+    }
     setSaving(true);
     try {
       const data = new FormData();
@@ -154,9 +203,13 @@ export default function NewScreening() {
       // console.log("Saving job with data:", data);
 
       const { screening_id } = await createJob_v1(data);
+      hasTrackedAbandonment.current = true;
+      analytics.track(AnalyticsEvent.JOB_SOURCING_ALLOWED, { allowed: sourceJob });
+      analytics.track(AnalyticsEvent.JOB_CREATED, { jobId: screening_id, source: "dashboard" });
       queryClient.invalidateQueries({ queryKey: ["screenings"] });
       navigate({ to: "/screenings/$id", params: { id: screening_id } });
     } catch (err) {
+      analytics.track(AnalyticsEvent.JOB_CREATION_FAILED, { reason: "job_save" });
       toast.error(err instanceof Error ? err.message : "Failed to save job");
     } finally {
       setSaving(false);
@@ -195,7 +248,10 @@ export default function NewScreening() {
           onSubcategoryChange={updateSubcategory}
           onRemoveSubcategory={removeSubcategory}
           onAddSubcategory={addSubcategory}
-          onBack={() => setStep(1)}
+          onBack={() => {
+            setStep(1);
+            analytics.track(AnalyticsEvent.JOB_CREATION_STEP_VIEWED, { step: "jd" });
+          }}
           onSave={handleSaveJob}
           saving={saving}
         />
