@@ -117,15 +117,22 @@ export interface InterviewExample {
   note?: string;
 }
 
-// A spoken question carries no text by design (the interviewer asks it aloud
-// and putting it on screen would let the candidate read ahead), so the
-// discriminated union only attaches title/statement_md/examples to "coding".
+// A spoken question's text is withheld until the interviewer has actually
+// presented it out loud — see
+// .superpowers/sdd/2026-09-28-interview-round-authoring/question-in-focus-contract.md.
+// `presented` is sent for every question; `prompt` is sent for a spoken one
+// only once `presented` is true, and is absent (never null) before that —
+// reading ahead of what has been asked out loud is exactly what this field
+// must never allow. Coding questions keep their existing, unconditional
+// content: the pane's statement/examples were already only useful once the
+// pane opens, so there was never read-ahead risk to withhold them against.
 export type InterviewQuestion =
-  | { id: string; kind: "spoken"; allocated_minutes: number }
+  | { id: string; kind: "spoken"; allocated_minutes: number; presented: boolean; prompt?: string }
   | {
       id: string;
       kind: "coding";
       allocated_minutes: number;
+      presented: boolean;
       title: string;
       statement_md: string;
       examples: InterviewExample[];
