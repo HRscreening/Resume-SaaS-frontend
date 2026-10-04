@@ -5,8 +5,8 @@ interface QuestionProgressProps {
   // list useCodingQuestions already fetched. 0 before that list has
   // loaded, in which case this renders nothing rather than a false "0 of 0".
   total: number;
-  // The CodingPane placement: text and dots sit on one line next to the
-  // timer badge, rather than stacked, to fit the pane's tighter header.
+  // TopBar's placement: text and dots sit on one line among the meter,
+  // state label, and elapsed time, rather than stacked, to fit the bar.
   compact?: boolean;
 }
 

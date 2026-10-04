@@ -16,16 +16,16 @@ import {
   type InterviewJoinGrant,
 } from "@/lib/interviewApi";
 import CodingPane from "./CodingPane";
-import VoiceOrb from "./VoiceOrb";
-import StatusPill from "./StatusPill";
+import TopBar from "./TopBar";
+import PinnedQuestion from "./PinnedQuestion";
 import Transcript from "./Transcript";
-import QuestionProgress from "./QuestionProgress";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { useElapsedTime } from "./useElapsedTime";
 import { useCodingQuestions } from "./useCodingQuestions";
 import { useAudioAnalyser } from "./useAudioAnalyser";
 import { useLocalAudioTrack } from "./useLocalAudioTrack";
 import { useTranscript } from "./useTranscript";
+import { derivePresenceState } from "./presenceState";
 
 // The candidate's LiveKit participant identity is always this literal string
 // (minted server-side by mint_candidate_token — see backend service.join()).
@@ -121,7 +121,7 @@ export default function InterviewRoom({
     () => new Set(),
   );
   const [captionsEnabled, setCaptionsEnabled] = useState(() => readCaptionsPreference());
-  // The interviewer's own MediaStreamTrack, held purely so VoiceOrb's
+  // The interviewer's own MediaStreamTrack, held purely so VoiceMeter's
   // amplitude tap (useAudioAnalyser) has something to attach to. Never
   // attached to anything itself — attachRemoteAudio below already handles
   // the <audio> element this track is actually played through.
@@ -179,6 +179,25 @@ export default function InterviewRoom({
   // renders exactly what this screen has always rendered — there is
   // deliberately no "empty pane" for any of those cases.
   const showCodingPane = coding.showPane;
+  // The pinned slot's spoken half — see useCodingQuestions' `pinned` for
+  // the reveal rules. Null for the entire warm-up (nothing presented yet),
+  // null again whenever a coding question is current instead (CodingPane
+  // fills the slot in that case; the two never render together), and null
+  // for the brief gap after a new spoken question is presented but before
+  // its text has arrived.
+  const pinnedSpoken = coding.pinned;
+
+  // Three states, drawn as three different things (see TopBar/VoiceMeter/
+  // ThinkingDots): the same animation for listening and speaking, and no
+  // distinct state at all for the pause between them, are exactly the two
+  // anti-patterns this redesign exists to fix. `transcriptTurns.length > 0`
+  // is what tells "nobody has spoken yet" apart from "the interviewer just
+  // finished listening and is about to respond" — see presenceState.ts.
+  const presenceState = derivePresenceState(
+    agentSpeaking,
+    candidateSpeaking,
+    transcriptTurns.length > 0,
+  );
 
   function handleToggleCaptions() {
     setCaptionsEnabled((prev) => {
@@ -502,11 +521,18 @@ export default function InterviewRoom({
     );
   }
 
+  // The pinned slot is occupied by exactly one of: the coding pane (an
+  // actually-presented, not-yet-dismissed coding question), the spoken
+  // pinned question (one whose text has been revealed), or nothing at all
+  // (before anything is presented — the warm-up, same as today: just the
+  // conversation, no claim made about a question on screen).
+  const hasPinnedSlot = showCodingPane || pinnedSpoken !== null;
+
   return (
     // h-screen + overflow-hidden (rather than the min-h-screen used by every
     // other state above) so the coding split view below can give its two
     // columns a real, bounded height to scroll independently within. The
-    // question pane must stay on screen for the whole question — it must
+    // pinned slot must stay on screen for the whole question — it must
     // never be something the page itself can scroll past.
     <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: "#F5F3EE" }}>
       {callState === "reconnecting" && (
@@ -514,76 +540,44 @@ export default function InterviewRoom({
           Reconnecting…
         </div>
       )}
-      <div className="w-full flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
-          <span className="text-xs tabular-nums text-[#737373]">
-            {elapsedLabel} of about {durationMinutes} minutes
-          </span>
-          <StatusPill
-            connectionState={callState === "reconnecting" ? "reconnecting" : "connected"}
-            speaking={agentSpeaking}
-          />
-          {/* Only shown here when the coding pane is not: CodingPane carries
-              its own QuestionProgress right next to its timer badge, and
-              showing both at once would just repeat the same two numbers. */}
-          {!showCodingPane && coding.total > 0 && (
-            <QuestionProgress index={coding.index} total={coding.total} compact />
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={handleEndInterview}
-          className="h-8 px-3 border border-[#D4D4D4] text-xs font-medium text-[#404040] rounded-lg hover:bg-white transition-colors"
-        >
-          End interview
-        </button>
-      </div>
-      {showCodingPane ? (
-        <CodingPane
-          coding={coding}
-          voice={{
-            turns: transcriptTurns,
-            agentAnalyser,
-            agentSpeaking,
-            candidateAnalyser,
-            candidateSpeaking,
-            reconnecting: callState === "reconnecting",
-            enabled: captionsEnabled,
-            onToggle: handleToggleCaptions,
-          }}
-        />
-      ) : (
-        // Nothing else is on screen here, so the orb gets the room: large,
-        // centered, the first thing a candidate's eyes land on, sitting in
-        // its own calm stage rather than loose in the page's empty space.
-        // CodingPane gives the same two pieces (orb + transcript) a much
-        // smaller, subordinate spot once there is an editor to not compete
-        // with.
-        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center gap-8 px-4 py-10">
-          <div
-            className="flex flex-col items-center gap-5 pt-6 pb-8 px-8 rounded-3xl"
-            style={{ backgroundColor: "#EAE7DF66" }}
-          >
-            <VoiceOrb
-              interviewer={{ analyser: agentAnalyser, speaking: agentSpeaking }}
-              candidate={{ analyser: candidateAnalyser, speaking: candidateSpeaking }}
-              reconnecting={callState === "reconnecting"}
-              size="large"
-            />
-            <p className="text-sm text-[#404040]">
-              {callState === "reconnecting"
-                ? "Reconnecting you to the interview."
-                : agentSpeaking
-                  ? "The interviewer is speaking."
-                  : "The interviewer is listening. Go ahead and answer."}
-            </p>
-          </div>
+      <TopBar
+        elapsedLabel={elapsedLabel}
+        durationMinutes={durationMinutes}
+        presenceState={presenceState}
+        reconnecting={callState === "reconnecting"}
+        interviewerAnalyser={agentAnalyser}
+        interviewerSpeaking={agentSpeaking}
+        candidateAnalyser={candidateAnalyser}
+        candidateSpeaking={candidateSpeaking}
+        questionIndex={coding.index}
+        questionTotal={coding.total}
+        onEndInterview={handleEndInterview}
+      />
 
-          <div className="w-full max-w-2xl">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        {/* The pinned slot: question in focus, for as long as it is the
+            current one. Coding gets the larger share of the available
+            height (it has a whole editor beside it); a spoken question is
+            just its own text and needs only as much height as that takes. */}
+        {showCodingPane && (
+          <div className="flex-[3] min-h-0 overflow-hidden">
+            <CodingPane coding={coding} />
+          </div>
+        )}
+        {!showCodingPane && pinnedSpoken && <PinnedQuestion prompt={pinnedSpoken.prompt} />}
+
+        {hasPinnedSlot && <div className="border-t border-[#E5E1D8]" />}
+
+        {/* The conversation, always underneath. Never shrunk down to a
+            "compact" strip next to a voice presence any more — the voice
+            presence lives in TopBar now, so this is just the transcript,
+            full height, whether or not anything is pinned above it. */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-5">
+          <div className="w-full max-w-2xl mx-auto">
             <Transcript turns={transcriptTurns} enabled={captionsEnabled} onToggle={handleToggleCaptions} />
           </div>
         </div>
-      )}
+      </div>
 
       {showEndConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50">

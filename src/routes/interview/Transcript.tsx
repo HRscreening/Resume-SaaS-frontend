@@ -6,10 +6,6 @@ interface TranscriptProps {
   turns: TranscriptTurn[];
   enabled: boolean;
   onToggle: () => void;
-  // The coding-pane placement: a short strip under the editor rather than a
-  // tall panel of its own. Same component, same scroll and attribution
-  // rules — only the height and the trailing disclaimer differ.
-  compact?: boolean;
 }
 
 // How close to the bottom (in px) still counts as "at the bottom" for
@@ -23,7 +19,7 @@ const AUTO_SCROLL_THRESHOLD_PX = 24;
 // logs the candidate had to cross-reference by eye. This is a reading aid
 // only, same as the panes it replaces: the transcript that is scored lives
 // on the server.
-export default function Transcript({ turns, enabled, onToggle, compact = false }: TranscriptProps) {
+export default function Transcript({ turns, enabled, onToggle }: TranscriptProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const atBottomRef = useRef(true);
 
@@ -61,7 +57,7 @@ export default function Transcript({ turns, enabled, onToggle, compact = false }
             ref={scrollRef}
             onScroll={handleScroll}
             aria-live="polite"
-            className={`overflow-y-auto px-4 py-4 flex flex-col gap-4 ${compact ? "h-36" : "h-96"}`}
+            className="overflow-y-auto px-4 py-4 flex flex-col gap-4 h-96"
           >
             {turns.length === 0 ? (
               <p className="text-sm text-[#A3A3A3] italic">
@@ -71,12 +67,10 @@ export default function Transcript({ turns, enabled, onToggle, compact = false }
               turns.map((turn) => <TurnRow key={turn.id} turn={turn} />)
             )}
           </div>
-          {!compact && (
-            <p className="text-xs text-[#737373] px-4 py-2 border-t border-[#E5E1D8]">
-              This transcript is produced automatically and may contain mistakes. There is no
-              need to correct it out loud: the interviewer hears you, not the transcript.
-            </p>
-          )}
+          <p className="text-xs text-[#737373] px-4 py-2 border-t border-[#E5E1D8]">
+            This transcript is produced automatically and may contain mistakes. There is no
+            need to correct it out loud: the interviewer hears you, not the transcript.
+          </p>
         </div>
       )}
     </div>

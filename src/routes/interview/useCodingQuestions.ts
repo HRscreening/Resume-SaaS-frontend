@@ -75,11 +75,14 @@ export type SubmitNotice = { kind: "saved" | "error"; message: string };
 // guessed is worse than one that stays closed — closed just means the
 // interview keeps going by voice, which is always a safe default.
 export function useCodingQuestions(token: string, room: Room | null) {
-  const { data, error: questionsError } = useQuery({
+  const { data, error: questionsError, refetch } = useQuery({
     queryKey: ["interview-questions", token],
     queryFn: () => getInterviewQuestions(token),
     // The round's question set is fixed once the interview starts; no
-    // in-flight event should ever invalidate it.
+    // in-flight event should ever invalidate it. A spoken question's
+    // *text* is the one thing that can still change on this same cached
+    // list — see the refetch-on-reveal effect below, which calls
+    // `refetch()` explicitly rather than relying on staleTime.
     staleTime: Infinity,
   });
   const questions = data?.questions;
@@ -193,6 +196,66 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // `dismissed` gets set, and this hook's module comment / the report for
   // why "moved back" gets the same treatment as "still naming it."
   const showPane = syncedIndex !== -1 && current?.kind === "coding" && !isCurrentDismissed;
+
+  // The pinned slot's SPOKEN half. (The coding half reuses `current` +
+  // `showPane` above unchanged — coding content is always fully present,
+  // so it never has anything to wait for.) A spoken question's `prompt` is
+  // withheld server-side until the interviewer actually presents it — see
+  // interviewApi.ts — so this hook can know THAT a spoken question is
+  // current (via the synced id) before it knows WHAT IT SAYS. `pinned`
+  // resolves to the former only once the latter has arrived, and is
+  // deliberately NOT sticky across a change of question: it clears the
+  // instant the synced id stops being a revealed spoken question — moved
+  // to a coding question, or to a new spoken one whose text has not
+  // arrived yet — rather than holding the PREVIOUS question's text on
+  // screen under a new one's signal. A brief "nothing pinned" gap (which
+  // renders identically to the pre-presentation state, by design) is the
+  // honest state while this hook waits on the refetch below; showing stale
+  // text would not be. Gated on `syncedIndex !== -1` — never the local
+  // fallback index alone — for the same reason `showPane` is: before any
+  // real signal, nothing is pinned, which is the "before anything is
+  // presented, just conversation" rule.
+  const [pinned, setPinned] = useState<{ id: string; prompt: string } | null>(null);
+  useEffect(() => {
+    if (syncedIndex !== -1 && current?.kind === "spoken" && typeof current.prompt === "string") {
+      setPinned({ id: current.id, prompt: current.prompt });
+    } else {
+      setPinned(null);
+    }
+  }, [current, syncedIndex]);
+
+  // The one place this hook polls nothing and waits for nothing: a spoken
+  // question's reveal happens server-side at the moment the interviewer
+  // presents it, so the only thing the client needs to do is ask again once
+  // the agent's own signal says a question is current that this client does
+  // not yet have text for. Bounded to a handful of short retries (never an
+  // open-ended interval) to absorb the brief gap between the signal
+  // arriving and the server's own write landing, not to paper over a
+  // question that will never be revealed.
+  const refetchedForIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!syncedQuestionId || !questions) return;
+    const synced = questions.find((q) => q.id === syncedQuestionId);
+    if (!synced || synced.kind !== "spoken" || typeof synced.prompt === "string") return;
+    if (refetchedForIdRef.current === syncedQuestionId) return;
+    refetchedForIdRef.current = syncedQuestionId;
+
+    let cancelled = false;
+    (async function retry(attempt: number) {
+      const result = await refetch();
+      if (cancelled) return;
+      const updated = result.data?.questions.find((q) => q.id === syncedQuestionId);
+      if (updated && updated.kind === "spoken" && typeof updated.prompt === "string") return;
+      if (attempt >= 3) return;
+      window.setTimeout(() => {
+        if (!cancelled) retry(attempt + 1);
+      }, attempt * 800);
+    })(1);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [syncedQuestionId, questions, refetch]);
 
   // The timer belongs to whichever question is actually on screen, not to
   // the local index: give the displayed question a fresh countdown against
@@ -456,6 +519,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
     questionsError,
     current,
     showPane,
+    pinned,
     index,
     total,
     buffer,

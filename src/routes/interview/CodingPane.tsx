@@ -3,10 +3,6 @@ import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import type { InterviewExample, InterviewLanguage } from "@/lib/interviewApi";
 import { Markdown } from "./markdown";
 import CodeEditor from "./CodeEditor";
-import VoiceOrb from "./VoiceOrb";
-import Transcript from "./Transcript";
-import QuestionProgress from "./QuestionProgress";
-import type { TranscriptTurn } from "./useTranscript";
 import { formatCountdown } from "./useCountdown";
 import type { UseCodingQuestions } from "./useCodingQuestions";
 
@@ -16,38 +12,30 @@ const LANGUAGES: { value: InterviewLanguage; label: string }[] = [
   { value: "cpp", label: "C++" },
 ];
 
-interface VoiceBundle {
-  turns: TranscriptTurn[];
-  agentAnalyser: AnalyserNode | null;
-  agentSpeaking: boolean;
-  // The candidate's own voice, tapped the same way as the interviewer's
-  // (see useLocalAudioTrack + useAudioAnalyser) so their own presence is
-  // visible here too, not just on the full-screen view.
-  candidateAnalyser: AnalyserNode | null;
-  candidateSpeaking: boolean;
-  reconnecting: boolean;
-  enabled: boolean;
-  onToggle: () => void;
-}
-
 interface CodingPaneProps {
   coding: UseCodingQuestions;
-  voice: VoiceBundle;
 }
 
-// Rendered in place of the plain audio/captions screen only while the
-// current question is a coding one (InterviewRoom makes that decision). A
-// spoken question, or no question data at all, falls back to today's
-// screen untouched — this component is never mounted for those cases, so
-// there is no empty pane to accidentally render.
-export default function CodingPane({ coding, voice }: CodingPaneProps) {
+// The "question in focus" pinned slot, for a coding question: the problem
+// statement and examples, with the editor beside it. This is the SAME slot
+// PinnedQuestion fills for a spoken one — InterviewRoom mounts exactly one
+// of the two, never both — so this component owns only that slot's content.
+// Progress ("question N of M"), elapsed time, and the voice presence all
+// moved up to TopBar, which is shared across both slot kinds; duplicating
+// them here (as the old CompactVoice/QuestionProgress did) would just be
+// the same two numbers shown twice.
+//
+// Rendered only while the current question is a coding one AND the agent's
+// own signal has actually presented it (InterviewRoom gates on
+// `coding.showPane`) — a spoken question, or no question data at all, falls
+// back to the plain conversation view untouched.
+export default function CodingPane({ coding }: CodingPaneProps) {
   const { current } = coding;
   if (!current || current.kind !== "coding") return null;
 
   return (
-    <div className="w-full flex-1 flex flex-col gap-4 px-4 pb-6 min-h-0 overflow-y-auto">
-      <div className="flex items-center justify-between gap-3">
-        <QuestionProgress index={coding.index} total={coding.total} compact />
+    <div className="w-full flex-1 flex flex-col gap-4 px-4 pb-4 min-h-0">
+      <div className="flex items-center justify-end gap-3">
         <TimerBadge secondsRemaining={coding.secondsRemaining} warning={coding.warning} />
       </div>
 
@@ -68,8 +56,6 @@ export default function CodingPane({ coding, voice }: CodingPaneProps) {
         />
         <EditorPane coding={coding} />
       </div>
-
-      <CompactVoice {...voice} />
     </div>
   );
 }
@@ -332,37 +318,6 @@ function RunResultsPanel({ coding }: { coding: UseCodingQuestions }) {
           ))}
         </>
       )}
-    </div>
-  );
-}
-
-// The orb and transcript, carried along so the live call and the
-// conversation are never hidden just because a coding question is on
-// screen — only shrunk down and moved below the editor, which is the part
-// of this screen actually being worked on. Props are the same voice state
-// InterviewRoom already computes; this component owns no subscription of
-// its own.
-function CompactVoice({
-  turns,
-  agentAnalyser,
-  agentSpeaking,
-  candidateAnalyser,
-  candidateSpeaking,
-  reconnecting,
-  enabled,
-  onToggle,
-}: VoiceBundle) {
-  return (
-    <div className="flex items-start gap-3">
-      <VoiceOrb
-        interviewer={{ analyser: agentAnalyser, speaking: agentSpeaking }}
-        candidate={{ analyser: candidateAnalyser, speaking: candidateSpeaking }}
-        reconnecting={reconnecting}
-        size="compact"
-      />
-      <div className="flex-1 min-w-0">
-        <Transcript turns={turns} enabled={enabled} onToggle={onToggle} compact />
-      </div>
     </div>
   );
 }
