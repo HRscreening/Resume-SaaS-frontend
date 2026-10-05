@@ -21,6 +21,7 @@ import { runCodeLocally, CppNotRunnableError, PythonNotReadyError } from "./exec
 import { pyodideManager } from "./execution/pyodideManager";
 import { usePyodideStatus } from "./execution/usePyodideStatus";
 import { runGateFor } from "./execution/runGate";
+import { submitGateFor } from "./execution/submitGate";
 
 const DEFAULT_LANGUAGE: InterviewLanguage = "python";
 
@@ -414,6 +415,17 @@ export function useCodingQuestions(token: string, room: Room | null) {
   const runBlockedReason: string | null = runGate.blocked ? runGate.note : null;
   const runNote: string | null = runGate.note;
 
+  // Submit means "I checked this". It waits for a passing run, EXCEPT where
+  // running is impossible (C++, or Pyodide failed to load) -- there it
+  // stands down rather than leaving the candidate no way to finish the
+  // question by hand. `runGate.blocked` is exactly "cannot run here".
+  const submitGate = submitGateFor({
+    runnable: !runGate.blocked,
+    isRunning,
+    runResult,
+  });
+  const submitBlockedReason: string | null = submitGate.note;
+
   const handleRun = useCallback(async () => {
     if (!current || current.kind !== "coding" || !buffer || isRunning || runBlockedReason) return;
     const questionId = current.id;
@@ -456,6 +468,12 @@ export function useCodingQuestions(token: string, room: Room | null) {
 
   const handleSubmit = useCallback(async () => {
     if (!current || current.kind !== "coding" || !buffer || isSubmitting) return;
+    // Enforced here too, not only on the button: the gate is a rule about
+    // what a submission means, so it should not be bypassable by anything
+    // that can reach this callback. The timer's auto-save deliberately
+    // does NOT come through here (handleExpire persists directly), so
+    // running out of time still captures the work.
+    if (submitGate.blocked) return;
     const questionId = current.id;
     setIsSubmitting(true);
     setSubmitNotice(null);
@@ -477,7 +495,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
     // second time, which a dismissed, unmounted pane would take away.
     if (ok) dismissQuestion(questionId);
     setIsSubmitting(false);
-  }, [current, buffer, isSubmitting, persist, dismissQuestion]);
+  }, [current, buffer, isSubmitting, persist, dismissQuestion, submitGate.blocked]);
 
   return {
     questions,
@@ -497,6 +515,8 @@ export function useCodingQuestions(token: string, room: Room | null) {
     isRunning,
     runBlockedReason,
     runNote,
+    submitBlocked: submitGate.blocked,
+    submitBlockedReason,
     pythonStatus,
     handleRun,
     submitNotice,

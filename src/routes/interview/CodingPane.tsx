@@ -143,8 +143,8 @@ function LabelledCode({ label, value }: { label: string; value: string }) {
 }
 
 function EditorPane({ coding }: { coding: UseCodingQuestions }) {
-  const { buffer, setSource, setLanguage, isRunning, isSubmitting, runBlockedReason, runNote, handleRun, handleSubmit } =
-    coding;
+  const { buffer, setSource, setLanguage, isRunning, isSubmitting, runBlockedReason, runNote,
+    submitBlocked, submitBlockedReason, handleRun, handleSubmit } = coding;
   if (!buffer) return null;
 
   // Run is disabled either because a run is already in flight (self-evident
@@ -174,16 +174,21 @@ function EditorPane({ coding }: { coding: UseCodingQuestions }) {
           />
           <ActionButton
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || submitBlocked}
             label={isSubmitting ? "Saving" : "Submit"}
             loading={isSubmitting}
             primary
-            disabledReason="Saving your previous submission."
+            disabledReason={
+              isSubmitting ? "Saving your previous submission." : (submitBlockedReason ?? "")
+            }
           />
         </div>
       </div>
 
       {runNote && !isRunning && <Banner tone="warning">{runNote}</Banner>}
+      {submitBlockedReason && !isSubmitting && (
+        <p className="text-xs text-[#737373] shrink-0">{submitBlockedReason}</p>
+      )}
 
       <div className="flex-1 min-h-[180px]">
         <CodeEditor value={buffer.source} onChange={setSource} />
