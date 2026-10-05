@@ -420,7 +420,10 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // stands down rather than leaving the candidate no way to finish the
   // question by hand. `runGate.blocked` is exactly "cannot run here".
   const submitGate = submitGateFor({
-    runnable: !runGate.blocked,
+    // canSucceed, NOT !blocked: a failed Pyodide load leaves Run pressable
+    // (it retries) but means the candidate may never be able to produce a
+    // passing run, so Submit must not hold them to one.
+    runnable: runGate.canSucceed,
     isRunning,
     runResult,
   });

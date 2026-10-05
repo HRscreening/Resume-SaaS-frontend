@@ -7,7 +7,7 @@ import { runGateFor } from "./runGate";
 
 describe("runGateFor", () => {
   it("lets Run through once Python is ready", () => {
-    expect(runGateFor("python", "ready")).toEqual({ blocked: false, note: null });
+    expect(runGateFor("python", "ready")).toEqual({ blocked: false, canSucceed: true, note: null });
   });
 
   it("lets Run through WHILE Python is still loading", () => {
@@ -22,16 +22,27 @@ describe("runGateFor", () => {
     expect(runGateFor("python", "idle").blocked).toBe(false);
   });
 
-  it("blocks only when Python actually failed to load", () => {
+  it("keeps Run pressable after a failed load, so it can retry", () => {
+    // A single bad moment at interview start used to kill Run for the
+    // whole hour: status went to error and nothing could ever clear it.
     const gate = runGateFor("python", "error");
-    expect(gate.blocked).toBe(true);
-    expect(gate.note).toMatch(/could not be loaded/i);
+    expect(gate.blocked).toBe(false);
+    expect(gate.note).toMatch(/try loading it again/i);
+  });
+
+  it("does not pretend a failed load can succeed", () => {
+    // What the Submit gate reads, so it never demands a passing run the
+    // candidate has no way to produce.
+    expect(runGateFor("python", "error").canSucceed).toBe(false);
+    expect(runGateFor("cpp", "ready").canSucceed).toBe(false);
+    expect(runGateFor("python", "loading").canSucceed).toBe(true);
+    expect(runGateFor("javascript", "error").canSucceed).toBe(true);
   });
 
   it("never blocks JavaScript, whatever Python is doing", () => {
     // JS runs in its own throwaway worker and does not touch Pyodide.
     for (const status of ["idle", "loading", "ready", "error"] as const) {
-      expect(runGateFor("javascript", status)).toEqual({ blocked: false, note: null });
+      expect(runGateFor("javascript", status)).toEqual({ blocked: false, canSucceed: true, note: null });
     }
   });
 

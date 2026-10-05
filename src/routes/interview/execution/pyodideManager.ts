@@ -70,8 +70,11 @@ class PyodideManager {
   // cost them a wait, not the exercise.
   whenReady(timeoutMs = 60_000): Promise<boolean> {
     if (this.status === "ready") return Promise.resolve(true);
-    if (this.status === "idle") this.spawn();
-    if (this.status === "error") return Promise.resolve(false);
+    // A failed load is retried, not treated as permanent. This is reached
+    // from a Run press, so the retry is something the candidate asked for
+    // rather than a background loop: without it, one bad moment during
+    // start-up took Run away for the rest of the interview.
+    if (this.status === "idle" || this.status === "error") this.spawn();
     return new Promise((resolve) => {
       let settled = false;
       const finish = (ok: boolean) => {
@@ -170,6 +173,10 @@ class PyodideManager {
     worker.onmessage = (event: MessageEvent<PyWorkerMessage>) => this.handleMessage(event.data);
     worker.onerror = (event) => {
       this.errorMessage = event.message || "Could not load Python in this browser.";
+      // Logged, not swallowed: when a candidate reports "Run never worked",
+      // this line is the only evidence of why. The generic banner text is
+      // all they see, and it names no cause.
+      console.error("[interview] Pyodide worker failed to load:", this.errorMessage, event);
       this.setStatus("error");
     };
 
@@ -184,6 +191,7 @@ class PyodideManager {
     }
     if (message.type === "init-error") {
       this.errorMessage = message.message;
+      console.error("[interview] Pyodide failed to initialise:", message.message);
       this.setStatus("error");
       return;
     }
