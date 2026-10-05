@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/tooltip"
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 import { useAccount } from "@/hooks/useAccount";
+import { InterviewScorecardPanel } from "@/components/screening/interview/InterviewScorecardPanel";
 
 // const sheetListeners = new Set<() => void>();
 // let openResumeId: string | null = null;
@@ -77,7 +78,7 @@ function criterionBarColor(score: number) {
 }
 
 
-type TabValue = "profile" | "scorecard" | "voice";
+type TabValue = "profile" | "scorecard" | "voice" | "round";
 
 type Tab = {
   title: string;
@@ -87,7 +88,11 @@ type Tab = {
 const tabs: Tab[] = [
   { title: "Profile", value: "profile" },
   { title: "Analysis", value: "scorecard" },
+  // "Interview" is the VOICE screen; "Interview Round" is the browser round
+  // that comes after it. Two separate scorers, two separate scorecards, so
+  // they get two tabs rather than one tab that silently changes meaning.
   { title: "Interview", value: "voice" },
+  { title: "Interview Round", value: "round" },
 ]
 
 
@@ -529,6 +534,19 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
         }
 
         {/* Interview Tab — call / schedule / transcript + scorecard for this candidate */}
+        {
+          tab === "round" && (
+            <div className="px-6 py-2 space-y-5">
+              {screening_id && resume_id ? (
+                <InterviewScorecardPanel screeningId={screening_id} resumeId={resume_id} />
+              ) : (
+                <div className="py-10 text-center text-sm text-[#737373]">
+                  The interview round is not available for this candidate.
+                </div>
+              )}
+            </div>
+          )
+        }
         {
           tab === "voice" && (
             <div className="px-6 py-2 space-y-5">
