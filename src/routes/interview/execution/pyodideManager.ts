@@ -58,6 +58,40 @@ class PyodideManager {
     this.spawn();
   }
 
+  // Resolves once Python can actually run, or false if it never will.
+  //
+  // Pyodide is ~13MB from a CDN. A candidate who reaches a coding question
+  // before that finishes used to meet a disabled Run button; waiting is
+  // work the machine can do for them. Starts the load if nothing has yet,
+  // so this is also correct when called before preload().
+  //
+  // The cap is generous because the alternative is telling someone in a
+  // live interview that their code cannot be run: a slow connection should
+  // cost them a wait, not the exercise.
+  whenReady(timeoutMs = 60_000): Promise<boolean> {
+    if (this.status === "ready") return Promise.resolve(true);
+    if (this.status === "idle") this.spawn();
+    if (this.status === "error") return Promise.resolve(false);
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        unsubscribe();
+        resolve(ok);
+      };
+      const timer = window.setTimeout(() => finish(false), timeoutMs);
+      const unsubscribe = this.subscribe((status) => {
+        if (status === "ready") finish(true);
+        // Not "error" alone: a run timeout terminates and respawns the
+        // worker, which passes through loading again. Only a load that
+        // actually failed ends the wait.
+        else if (status === "error") finish(false);
+      });
+    });
+  }
+
   // Runs one example's worth of source+stdin. Never rejects on a timeout —
   // it resolves with `timedOut: true` — because a runaway submission is an
   // expected, handled outcome, not a bug in this harness. Rejects up front,

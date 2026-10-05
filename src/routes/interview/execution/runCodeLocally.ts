@@ -44,7 +44,35 @@ export async function runCodeLocally(
 ): Promise<RunCodeResponse> {
   if (language === "cpp") throw new CppNotRunnableError();
   if (language === "python" && pyodideManager.getStatus() !== "ready") {
-    throw new PythonNotReadyError(pyodideManager.getStatus() === "error" ? "error" : "loading");
+    // Wait rather than refuse. Run is deliberately pressable while Pyodide
+    // is still loading (see runGate.ts): the candidate gets a "Running"
+    // spinner that resolves into real output, instead of a dead button
+    // they have to keep poking during a live interview. Only a load that
+    // genuinely failed, or one slow past all patience, still throws.
+    const ready = await pyodideManager.whenReady();
+    if (!ready) {
+      throw new PythonNotReadyError(pyodideManager.getStatus() === "error" ? "error" : "loading");
+    }
+  }
+
+  // A coding question is not guaranteed to carry structured examples: a
+  // real authored round put all three of its worked examples into the
+  // statement markdown and left `examples` empty. Looping over nothing
+  // meant Run executed nothing and reported "0 of 0 examples passed",
+  // which to a candidate mid-interview is a broken button. With no
+  // examples to check against, Run does the only honest thing left: it
+  // runs the code once on empty stdin and shows what it printed.
+  if (examples.length === 0) {
+    const outcome =
+      language === "python"
+        ? await pyodideManager.run(source, "")
+        : await runJavaScriptExample(source, "");
+    return {
+      results: [bareRunResult(outcome)],
+      compile_error: null,
+      ran: 1,
+      passed: outcome.timedOut || outcome.crashed ? 0 : 1,
+    };
   }
 
   const results: RunResultItem[] = [];
@@ -101,5 +129,29 @@ export async function runCodeLocally(
     compile_error: null,
     ran: results.length,
     passed: results.filter((result) => result.passed).length,
+  };
+}
+
+// One run with nothing to compare against. `status: "output"` rather than
+// "ok" so the UI can say "your program ran, here is what it printed"
+// instead of implying the code was checked against anything.
+function bareRunResult(outcome: {
+  stdout: string; stderr: string; crashed: boolean; timedOut: boolean;
+}): RunResultItem {
+  if (outcome.timedOut) {
+    return {
+      index: 0,
+      passed: false,
+      stdout: "",
+      stderr: "Timed out: this took too long to run, which usually means an infinite loop.",
+      status: "timeout",
+    };
+  }
+  return {
+    index: 0,
+    passed: !outcome.crashed,
+    stdout: outcome.stdout,
+    stderr: outcome.stderr,
+    status: outcome.crashed ? "runtime_error" : "output",
   };
 }

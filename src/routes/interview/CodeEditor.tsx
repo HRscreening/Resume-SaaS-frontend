@@ -47,7 +47,7 @@ export default function CodeEditor({ value, onChange, disabled }: CodeEditorProp
       autoCapitalize="off"
       autoCorrect="off"
       aria-label="Code editor"
-      className="w-full h-full min-h-[280px] resize-none rounded-lg border border-[#D4D4D4] bg-white px-3 py-2 text-sm font-mono leading-relaxed text-[#0F0F0F] outline-none focus:border-[#C85A17] disabled:opacity-60 disabled:bg-[#F5F3EE]"
+      className="w-full h-full min-h-[180px] resize-none rounded-lg border border-[#D4D4D4] bg-white px-3 py-2 text-sm font-mono leading-relaxed text-[#0F0F0F] outline-none focus:border-[#C85A17] disabled:opacity-60 disabled:bg-[#F5F3EE]"
       placeholder="Write your solution here."
     />
   );

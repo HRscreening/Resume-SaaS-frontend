@@ -20,6 +20,7 @@ import { notifySubmitted } from "./notifySubmission";
 import { runCodeLocally, CppNotRunnableError, PythonNotReadyError } from "./execution/runCodeLocally";
 import { pyodideManager } from "./execution/pyodideManager";
 import { usePyodideStatus } from "./execution/usePyodideStatus";
+import { runGateFor } from "./execution/runGate";
 
 const DEFAULT_LANGUAGE: InterviewLanguage = "python";
 
@@ -404,21 +405,14 @@ export function useCodingQuestions(token: string, room: Room | null) {
     return () => window.clearTimeout(id);
   }, [submitNotice]);
 
-  // Structural reasons Run cannot be used right now, independent of whether
-  // a run happens to be in flight: C++ has no browser runner at all, and
-  // Python needs its (preloaded, but not instant) worker to be ready. Kept
-  // separate from `isRunning` so the UI can show a persistent, honest banner
-  // for these ("Python is still loading...") without also showing one for
-  // the ordinary, self-explanatory "Running" spinner state. Every disabled
-  // Run button traces back to one of these three reasons, or to isRunning.
-  const runBlockedReason: string | null =
-    buffer?.language === "cpp"
-      ? "Running C++ isn't available here yet. You can still write your solution and submit it."
-      : buffer?.language === "python" && pythonStatus === "loading"
-        ? "Python is still loading in this browser. This happens once per interview and takes a few seconds."
-        : buffer?.language === "python" && pythonStatus === "error"
-          ? "Python could not be loaded in this browser. You can still write your solution and submit it."
-          : null;
+  // Whether Run can be pressed, and what to say about it (runGate.ts).
+  // Note and blocked are separate on purpose: "Python is still loading" is
+  // worth telling the candidate but must NOT disable the button, because
+  // the run itself waits for the interpreter. Only a language with no
+  // browser runner, or an interpreter that failed outright, blocks.
+  const runGate = runGateFor(buffer?.language, pythonStatus);
+  const runBlockedReason: string | null = runGate.blocked ? runGate.note : null;
+  const runNote: string | null = runGate.note;
 
   const handleRun = useCallback(async () => {
     if (!current || current.kind !== "coding" || !buffer || isRunning || runBlockedReason) return;
@@ -502,6 +496,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
     runNotice,
     isRunning,
     runBlockedReason,
+    runNote,
     pythonStatus,
     handleRun,
     submitNotice,

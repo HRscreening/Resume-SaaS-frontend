@@ -48,7 +48,12 @@ export default function CodingPane({ coding }: CodingPaneProps) {
         </Banner>
       )}
 
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Below lg the two panes stack. The ancestor is h-screen with
+          overflow-hidden, so without a scroller here the editor column -
+          and the Run button at the top of it - was simply clipped off the
+          bottom of the screen, unreachable. At lg each pane scrolls
+          internally instead and this stays a fixed two-column split. */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-4 overflow-y-auto lg:overflow-hidden">
         <QuestionPane
           title={current.title}
           statementMd={current.statement_md}
@@ -96,7 +101,7 @@ function QuestionPane({
   // contract's "Frontend behaviour" section — the candidate was explicit
   // that the question must not disappear.
   return (
-    <div className="flex flex-col rounded-xl border border-[#E5E1D8] bg-white overflow-hidden min-h-0">
+    <div className="flex flex-col rounded-xl border border-[#E5E1D8] bg-white overflow-hidden min-h-[200px] lg:min-h-0">
       <div className="px-4 py-3 border-b border-[#E5E1D8]">
         <h2 className="text-sm font-semibold text-[#0F0F0F]">{title}</h2>
       </div>
@@ -138,7 +143,7 @@ function LabelledCode({ label, value }: { label: string; value: string }) {
 }
 
 function EditorPane({ coding }: { coding: UseCodingQuestions }) {
-  const { buffer, setSource, setLanguage, isRunning, isSubmitting, runBlockedReason, handleRun, handleSubmit } =
+  const { buffer, setSource, setLanguage, isRunning, isSubmitting, runBlockedReason, runNote, handleRun, handleSubmit } =
     coding;
   if (!buffer) return null;
 
@@ -155,7 +160,9 @@ function EditorPane({ coding }: { coding: UseCodingQuestions }) {
 
   return (
     <div className="flex flex-col gap-3 min-h-0">
-      <div className="flex items-center justify-between gap-3">
+      {/* shrink-0: Run and Submit are the two controls the candidate needs
+          most, so they are the last thing allowed to lose height. */}
+      <div className="flex items-center justify-between gap-3 shrink-0 flex-wrap">
         <LanguagePicker value={buffer.language} onChange={setLanguage} disabled={isRunning} />
         <div className="flex items-center gap-2">
           <ActionButton
@@ -176,13 +183,15 @@ function EditorPane({ coding }: { coding: UseCodingQuestions }) {
         </div>
       </div>
 
-      {runBlockedReason && !isRunning && <Banner tone="warning">{runBlockedReason}</Banner>}
+      {runNote && !isRunning && <Banner tone="warning">{runNote}</Banner>}
 
-      <div className="flex-1 min-h-[220px]">
+      <div className="flex-1 min-h-[180px]">
         <CodeEditor value={buffer.source} onChange={setSource} />
       </div>
 
-      <RunResultsPanel coding={coding} />
+      <div className="shrink-0">
+        <RunResultsPanel coding={coding} />
+      </div>
     </div>
   );
 }
@@ -283,8 +292,13 @@ function RunResultsPanel({ coding }: { coding: UseCodingQuestions }) {
       )}
       {!runResult.compile_error && (
         <>
+          {/* A question with no structured examples has nothing to check
+              against, so claiming "1 of 1 examples passed" would be a lie
+              about work that was never done. Say what actually happened. */}
           <p className="text-xs font-medium text-[#404040]">
-            {runResult.passed} of {runResult.ran} examples passed.
+            {runResult.results[0]?.status === "output"
+              ? "Your code ran. Output below."
+              : `${runResult.passed} of ${runResult.ran} examples passed.`}
           </p>
           {runResult.results.map((result) => (
             <div
