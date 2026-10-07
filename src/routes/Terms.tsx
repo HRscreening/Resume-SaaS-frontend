@@ -93,7 +93,7 @@ export default function TermsPage() {
 
         <Section title="8. Subscriptions, Billing and Refunds">
           <p>
-            Paid plans are billed in advance through our payment processor (Razorpay). Quotas
+            Paid plans are billed in advance through our payment processors (Razorpay in India, PayPal elsewhere). Quotas
             (such as resumes processed per cycle) reset on the renewal date and unused quota
             does not roll over. Except where required by law, fees are non-refundable. You may
             cancel at any time; cancellation takes effect at the end of the current billing

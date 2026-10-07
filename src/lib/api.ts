@@ -628,10 +628,16 @@ export interface BillingQuote {
   usd_amount: number;
   /** USD→INR rate applied, null when billing in USD. */
   fx_rate: number | null;
-  /** False when we cannot take this payment (e.g. international not enabled). */
+  /** False when we cannot take this payment (no gateway accepts this currency). */
   payable: boolean;
+  /** Which gateway takes this charge: Razorpay for INR, PayPal for USD. */
+  gateway: PaymentGateway | null;
+  /** Public id the PayPal SDK is loaded with; set only when gateway is "paypal". */
+  paypal_client_id: string | null;
   unavailable_reason: string | null;
 }
+
+export type PaymentGateway = "razorpay" | "paypal";
 
 export async function getBillingQuote({
   plan,
@@ -682,6 +688,41 @@ export async function verifyRazorpayPayment(data: {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
+  });
+}
+
+export interface PayPalOrder extends BillingQuote {
+  order_id: string;
+}
+
+export async function createPayPalOrder({
+  plan,
+  cycle,
+}: {
+  plan: string;
+  cycle: "monthly" | "yearly";
+}): Promise<PayPalOrder> {
+  // Same rule as Razorpay: the server prices the order, nothing here does.
+  const currency = detectBillingCurrency();
+  return request<PayPalOrder>(
+    `/api/billing/paypal/order?plan=${encodeURIComponent(plan)}&cycle=${cycle}` +
+      `&currency=${encodeURIComponent(currency)}`,
+    { method: "POST" },
+  );
+}
+
+export interface PayPalCaptureResult {
+  success: boolean;
+  plan?: string;
+  /** True when PayPal is still reviewing the payment; the plan upgrades once it clears. */
+  pending?: boolean;
+}
+
+export async function capturePayPalOrder(orderId: string): Promise<PayPalCaptureResult> {
+  return request<PayPalCaptureResult>("/api/billing/paypal/capture", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ order_id: orderId }),
   });
 }
 
