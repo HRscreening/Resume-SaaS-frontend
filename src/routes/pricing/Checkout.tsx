@@ -5,6 +5,7 @@ import { getProfile, getPlans, getBillingQuote } from "@/lib/api";
 import { formatMoney } from "@/lib/currency";
 import { openRazorpayCheckout, type UpgradePlanSlug } from "@/lib/razorpay";
 import { useUserKey } from "@/lib/userKey";
+import PayPalPayButton from "./PayPalPayButton";
 import type { PlanSpec, SubscriptionPlan } from "@/types";
 
 const VALID_PLANS: UpgradePlanSlug[] = ["pro", "plus", "enterprise"];
@@ -47,7 +48,7 @@ export default function Checkout() {
   const cycle: "monthly" | "yearly" = search.cycle === "yearly" ? "yearly" : "monthly";
   // The server returns the exact amount it will charge — including the
   // USD→INR conversion for Indian customers — so the price on this page
-  // and the price in the Razorpay popup are the same number.
+  // and the price in the Razorpay or PayPal popup are the same number.
   const quoteQuery = useQuery({
     queryKey: ["billing-quote", planSlug, cycle],
     queryFn: () => getBillingQuote({ plan: planSlug!, cycle }),
@@ -71,6 +72,21 @@ export default function Checkout() {
 
   const isAlreadyOnPlan = profile && planSlug && profile.plan === slugToPlanKey(planSlug);
 
+  async function finishUpgrade() {
+    if (!planSlug) return;
+    // Refresh caches so dashboard / settings / sidebar show new plan immediately.
+    await queryClient.invalidateQueries({ queryKey: ["profile"] });
+    await queryClient.invalidateQueries({ queryKey: ["usage"] });
+    // If the user signed up via the marketing → checkout flow, they paid
+    // before onboarding. Send them through onboarding now; otherwise go
+    // straight to the dashboard with the upgraded banner.
+    if (profile && !profile.onboarding_completed) {
+      navigate({ to: "/onboarding" });
+    } else {
+      navigate({ to: "/dashboard", search: { upgraded: planSlug } as any });
+    }
+  }
+
   async function handlePay() {
     if (!profile || !planSlug) return;
     setPaying(true);
@@ -82,17 +98,7 @@ export default function Checkout() {
         profile,
         onStatusChange: setPaymentStatus,
       });
-      // Refresh caches so dashboard / settings / sidebar show new plan immediately.
-      await queryClient.invalidateQueries({ queryKey: ["profile"] });
-      await queryClient.invalidateQueries({ queryKey: ["usage"] });
-      // If the user signed up via the marketing → checkout flow, they paid
-      // before onboarding. Send them through onboarding now; otherwise go
-      // straight to the dashboard with the upgraded banner.
-      if (profile && !profile.onboarding_completed) {
-        navigate({ to: "/onboarding" });
-      } else {
-        navigate({ to: "/dashboard", search: { upgraded: planSlug } as any });
-      }
+      await finishUpgrade();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Payment failed";
       if (msg !== "cancelled") setPaymentError(msg);
@@ -178,6 +184,7 @@ export default function Checkout() {
     : `$${totalUsd.toFixed(2)}`;
 
   const cannotPay = !!quote && !quote.payable;
+  const paypalClientId = quote?.gateway === "paypal" ? quote.paypal_client_id : null;
   const quoteError = quoteQuery.error instanceof Error ? quoteQuery.error.message : null;
 
   const fromPricing = search.from === "pricing";
@@ -291,19 +298,42 @@ export default function Checkout() {
                 <p className="text-xs text-red-600 mb-3">{paymentError}</p>
               )}
 
-              <button
-                onClick={handlePay}
-                disabled={!agreed || paying || cannotPay || quoteQuery.isLoading || !!quoteError}
-                className="w-full h-12 bg-[#0F0F0F] text-white text-sm font-semibold rounded-xl hover:bg-[#1C1C1C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {paying && (
-                  <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                )}
-                {paying ? "Processing…" : `Pay ${totalLabel}`}
-              </button>
+              {paypalClientId && agreed ? (
+                <PayPalPayButton
+                  clientId={paypalClientId}
+                  plan={planSlug}
+                  cycle={cycle}
+                  onPaid={finishUpgrade}
+                  onPending={() =>
+                    setPaymentStatus(
+                      "PayPal is reviewing your payment. Your plan will upgrade automatically once it clears.",
+                    )
+                  }
+                  onError={setPaymentError}
+                  onBusyChange={(busy) => {
+                    setPaying(busy);
+                    if (busy) setPaymentError(null);
+                  }}
+                />
+              ) : (
+                <button
+                  onClick={handlePay}
+                  // PayPal draws its own buttons once the terms are agreed;
+                  // until then this one only ever shows disabled.
+                  disabled={!agreed || paying || cannotPay || quoteQuery.isLoading || !!quoteError || !!paypalClientId}
+                  className="w-full h-12 bg-[#0F0F0F] text-white text-sm font-semibold rounded-xl hover:bg-[#1C1C1C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  {paying && (
+                    <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  )}
+                  {paying ? "Processing…" : `Pay ${totalLabel}`}
+                </button>
+              )}
 
               <p className="mt-4 text-[11px] text-[#A0A0A0] text-center leading-relaxed">
-                Secured by Razorpay · UPI · Cards · Netbanking · Wallets
+                {paypalClientId
+                  ? "Secured by PayPal · PayPal balance · Cards"
+                  : "Secured by Razorpay · UPI · Cards · Netbanking · Wallets"}
               </p>
             </div>
           </div>

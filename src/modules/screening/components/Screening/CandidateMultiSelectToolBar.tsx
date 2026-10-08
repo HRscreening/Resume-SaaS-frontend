@@ -26,6 +26,7 @@ import { UtilityButton } from "@/modules/screening/components/shared/MultiSelect
 import MultiShareDialog from "@/modules/screening/components/shared/MultiShareDialog";
 import { useNavigate } from "@tanstack/react-router"
 import { useAccount } from "@/hooks/useAccount"
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 
 import {
@@ -75,6 +76,7 @@ const CandidateMultiSelectToolBar = ({
   const navigate = useNavigate()
   const { screening_id, selectedCandidates, clearSelection, showSelectedOnly, setShowSelectedOnly } = useSelectedCandidates()
   const { canWrite } = useAccount()
+  const analytics = useAnalytics();
 
   const [isResumeDownloading, setIsResumeDownloading] = useState(false)
 
@@ -82,6 +84,7 @@ const CandidateMultiSelectToolBar = ({
 
 
   function cancelMultiSelectMode() {
+    analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "cancel", selectedCount: totalSelected });
     setIsMultiSelectMode(false)
     clearSelection()
   }
@@ -127,6 +130,7 @@ const CandidateMultiSelectToolBar = ({
 
 
   async function handleExport() {
+    analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "export", selectedCount: totalSelected });
     try {
       // const { blob, filename } = await exportResults(id, queryState);
       const { blob, filename } = await multiExportMutation.mutateAsync({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) });
@@ -142,6 +146,7 @@ const CandidateMultiSelectToolBar = ({
   }
 
   async function handleResumeDownload() {
+    analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "download", selectedCount: totalSelected });
     setIsResumeDownloading(true);
     try {
       const { blob, filename } = await downloadSelectedResumes({
@@ -167,6 +172,7 @@ const CandidateMultiSelectToolBar = ({
   }
 
   async function handleCall() {
+    analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "call", selectedCount: totalSelected });
     try {
       if (selectedCandidates.size > 10) {
         toast.error("You can only initiate calls for 10 candidates at a time");
@@ -193,6 +199,7 @@ const CandidateMultiSelectToolBar = ({
   }
 
   async function handleShare(emails: string[], note?: string) {
+    analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "share", selectedCount: totalSelected });
 
     try {
 
@@ -216,6 +223,7 @@ const CandidateMultiSelectToolBar = ({
 
 
   async function handleRescore() {
+    analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "rescore", selectedCount: totalSelected });
     if (selectedCandidates.size === 0) {
       toast.error("No candidates selected for Screening.");
       return;
@@ -291,6 +299,7 @@ const CandidateMultiSelectToolBar = ({
           {canWrite && stages && Object.keys(stages).length > 0 &&
             <StageSelectButton
               onOptionClick={(newStage) => {
+                analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "change_stage", selectedCount: totalSelected });
                 multiChangeStageMutation.mutate({
                   screeningId: screening_id,
                   resumeIds: getIdsFromSet(selectedCandidates),
@@ -336,12 +345,21 @@ const CandidateMultiSelectToolBar = ({
           )}
 
           {canWrite && type === "Active" && (
-            <UtilityButton title="Archive" onClick={() => { multiArchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar }) }} Icon={Archive} variant="danger" compact={compact} isLoading={multiArchiveMutation.isPending} />
+            <UtilityButton title="Archive" onClick={() => {
+              analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "archive", selectedCount: totalSelected });
+              multiArchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar });
+            }} Icon={Archive} variant="danger" compact={compact} isLoading={multiArchiveMutation.isPending} />
           )}
           {canWrite && type === "Archived" && (
             <>
-              <UtilityButton title="Unarchive" onClick={() => { multiUnarchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar }) }} Icon={ArchiveRestore} compact={compact} isLoading={multiUnarchiveMutation.isPending} />
-              <UtilityButton title="Delete" onClick={() => { multiDeleteMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar }) }} Icon={Trash2} variant="danger" compact={compact} isLoading={multiDeleteMutation.isPending} />
+              <UtilityButton title="Unarchive" onClick={() => {
+                analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "unarchive", selectedCount: totalSelected });
+                multiUnarchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar });
+              }} Icon={ArchiveRestore} compact={compact} isLoading={multiUnarchiveMutation.isPending} />
+              <UtilityButton title="Delete" onClick={() => {
+                analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "delete", selectedCount: totalSelected });
+                multiDeleteMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar });
+              }} Icon={Trash2} variant="danger" compact={compact} isLoading={multiDeleteMutation.isPending} />
             </>
           )}
 

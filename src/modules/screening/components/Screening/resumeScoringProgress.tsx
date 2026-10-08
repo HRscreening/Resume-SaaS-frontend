@@ -7,6 +7,7 @@ import { PendingResumeRow } from '@/modules/screening/components/shared/Processi
 import { queryClient } from '@/lib/queryClient';
 import { ApplicationQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys,ScreeningResultsQueryKeys, ScreeningUsageQueryKeys } from '@/modules/screening/queryKeys';
 import type { GetActiveBatchesResponse } from '@/modules/screening/apis/activeBatches';
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 import {
     Accordion,
     AccordionContent,
@@ -47,6 +48,7 @@ const ResumeScoringProgress = React.memo(({ screening_id, batch_id }: Props) => 
 
     const eventSourceRef = useRef<EventSource | null>(null);
     const { data, isError } = useActiveScoringQuery({ screening_id, batch_id });
+    const analytics = useAnalytics();
 
     const resumes = data?.resumes || [];
     const totalResumes = data?.total || 0;
@@ -82,6 +84,11 @@ const ResumeScoringProgress = React.memo(({ screening_id, batch_id }: Props) => 
                     }
                 );
             } else if (type === "Scoring_Batch_Complete") {
+                analytics.track(AnalyticsEvent.RESUME_SCREENED, {
+                    screeningId: screening_id,
+                    batchId: batch_id,
+                    screenedCount: resumes.length,
+                });
                 queryClient.invalidateQueries({ queryKey: ScreeningResultsQueryKeys.screening(screening_id) });
                 queryClient.invalidateQueries({ queryKey: ApplicationQueryKeys.screening(screening_id) });
                 queryClient.invalidateQueries({ queryKey: ResumeScoringQueryKeys.getActiveScorings(screening_id, batch_id) });
@@ -108,7 +115,7 @@ const ResumeScoringProgress = React.memo(({ screening_id, batch_id }: Props) => 
             source.close();
             eventSourceRef.current = null;
         };
-    }, [screening_id, batch_id]);
+    }, [analytics, batch_id, resumes.length, screening_id]);
 
     if (!screening_id) {
         return <div className="text-sm text-rose-500">No screening ID provided</div>;

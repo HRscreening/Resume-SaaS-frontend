@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useScreeningQuery } from "@/modules/screening/hooks/screening/queries/screening.query"
 import { getScreeningUsage } from "@/lib/api";
 import { ScreeningUsageQueryKeys } from "@/modules/screening/queryKeys";
-
+import {AnalyticsEvent, useAnalytics} from "@/analytics";
 import type { RubricCategory } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";
 import { RubricModal } from "@/components/screening/RubricModal";
@@ -46,6 +46,7 @@ export type Sections = typeof sectionTabs[number];
 
 export default function ScreeningDetail() {
     const { id } = useParams({ strict: false }) as { id: string };
+    const analytics = useAnalytics();
 
     const { search, navigate, setTab,getScreeningSearchParams } = useScreeningDetailsNavigation();
 
@@ -90,6 +91,14 @@ export default function ScreeningDetail() {
 
 
     const toastShownRef = useRef(false);
+    const viewedRef = useRef(false);
+
+    useEffect(() => {
+        if (!viewedRef.current && id) {
+            analytics.track(AnalyticsEvent.SCREENING_VIEWED, { screeningId: id });
+            viewedRef.current = true;
+        }
+    }, [analytics, id]);
 
     useEffect(() => {
         if (search.saved !== 1) {
@@ -119,6 +128,7 @@ export default function ScreeningDetail() {
 
     const changeTab = useCallback((tab: Sections) => {
         setTab(tab);
+        analytics.track(AnalyticsEvent.TAB_SWITCHED, { tab, screeningId: id });
     }, [navigate, id]);
 
 
@@ -199,13 +209,22 @@ export default function ScreeningDetail() {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         {screening.jd_url &&
-                            <ActionButton title="Job Desc." description="Job Desc." icon={<FileText size={12} />} compacted={analysisOpen} disabled={!screening} onClick={() => viewJD()} />
+                            <ActionButton title="Job Desc." description="Job Desc." icon={<FileText size={12} />} compacted={analysisOpen} disabled={!screening} onClick={() => {
+                                analytics.track(AnalyticsEvent.JD_VIEWED, { screeningId: id });
+                                void viewJD();
+                            }} />
                         }
                         <ActionButton title="Rubric"
-                            icon={<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h3" /></svg>} compacted={analysisOpen} disabled={!screening} onClick={() => setShowRubric(true)} />
+                            icon={<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1.5" y="2" width="11" height="10" rx="1.5" /><path d="M4.5 5h5M4.5 7.5h3" /></svg>} compacted={analysisOpen} disabled={!screening} onClick={() => {
+                                analytics.track(AnalyticsEvent.RUBRIC_VIEWED, { screeningId: id });
+                                setShowRubric(true);
+                            }} />
 
                         {canWrite && <ActionButton title="Post Job"
-                            icon={<Link2 size={12} />} compacted={analysisOpen} disabled={!screening} onClick={() => postJob()} />}
+                            icon={<Link2 size={12} />} compacted={analysisOpen} disabled={!screening} onClick={() => {
+                                analytics.track(AnalyticsEvent.JOB_POST_STARTED, { screeningId: id });
+                                postJob();
+                            }} />}
 
 
 
@@ -216,7 +235,16 @@ export default function ScreeningDetail() {
                                 title="Add Resumes"
                                 icon={<Upload size={12} />}
                                 compacted={analysisOpen}
-                                onClick={() => { setShowUploadMore((v) => !v) }}
+                                onClick={() => {
+                                    setShowUploadMore((v) => {
+                                        const next = !v;
+                                        if (next) analytics.track(AnalyticsEvent.RESUME_UPLOAD_PANEL_OPENED, {
+                                            screeningId: id,
+                                            uploadedCount: totalApplications,
+                                        });
+                                        return next;
+                                    });
+                                }}
                             />
                         )}
                         {true && (
@@ -275,6 +303,9 @@ export default function ScreeningDetail() {
                             key={tab}
                             onClick={() => {
                                 changeTab(tab);
+                                if (tab === "Applications") {
+                                    analytics.track(AnalyticsEvent.APPLICATION_TAB_CLICKED, { screeningId: id });
+                                }
                                 setShowUploadMore(false);
                             }}
                             className={`px-4 py-2 text-sm font-medium rounded-t-lg focus:outline-none ${currentTab === tab ? "bg-[#0F0F0F] text-white" : "bg-[#E8E5DF] text-[#404040] hover:bg-[#D4D4D4]"}`}

@@ -19,6 +19,7 @@ import { exportSelectedApplications } from "@/modules/screening/apis/addApplicat
 import { UtilityButton } from "@/modules/screening/components/shared/MultiSelectUtilityButton"
 import {useScoringMutation} from "@/modules/screening/hooks/shared/useScoringMutation"
 import { useAccount } from "@/hooks/useAccount"
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 
 
@@ -45,11 +46,13 @@ const CandidateMultiSelectToolBar = ({
 
   const { screening_id, selectedApplications, clearSelection, showSelectedOnly, setShowSelectedOnly } = useSelectedApplications()
   const { canWrite } = useAccount()
+  const analytics = useAnalytics();
 
   const [isResumeDownloading, setIsResumeDownloading] = useState(false)
 
 
   function cancelMultiSelectMode() {
+    analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "cancel", selectedCount: totalSelected });
     setIsMultiSelectMode(false)
     clearSelection()
   }
@@ -70,6 +73,7 @@ const CandidateMultiSelectToolBar = ({
 
 
   async function handleExport() {
+    analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "export", selectedCount: totalSelected });
     try {
       // const { blob, filename } = await exportResults(id, queryState);
       const { blob, filename } = await multiExportMutation.mutateAsync({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedApplications) }, { onSuccess: closeToolBar });
@@ -85,6 +89,7 @@ const CandidateMultiSelectToolBar = ({
   }
 
   async function handleResumeDownload() {
+    analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "download", selectedCount: totalSelected });
     setIsResumeDownloading(true);
     try {
       const { blob, filename } = await downloadSelectedResumes({
@@ -111,6 +116,7 @@ const CandidateMultiSelectToolBar = ({
 
 
   async function submitScreen() {
+        analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "screen", selectedCount: totalSelected });
         if (selectedApplications.size === 0) {
             toast.error("No candidates selected for Screening.");
             return;
@@ -207,12 +213,21 @@ const CandidateMultiSelectToolBar = ({
           )}
 
           {canWrite && type === "Active" && (
-            <UtilityButton title="Archive" onClick={() => { multiArchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedApplications) }, { onSuccess: closeToolBar }) }} Icon={Archive} variant="danger" compact={compact} isLoading={multiArchiveMutation.isPending} />
+            <UtilityButton title="Archive" onClick={() => {
+              analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "archive", selectedCount: totalSelected });
+              multiArchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedApplications) }, { onSuccess: closeToolBar });
+            }} Icon={Archive} variant="danger" compact={compact} isLoading={multiArchiveMutation.isPending} />
           )}
           {canWrite && type === "Archived" && (
             <>
-              <UtilityButton title="Unarchive" onClick={() => { multiUnarchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedApplications) }, { onSuccess: closeToolBar }) }} Icon={ArchiveRestore} compact={compact} isLoading={multiUnarchiveMutation.isPending} />
-              <UtilityButton title="Delete" onClick={() => { multiDeleteMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedApplications) }, { onSuccess: closeToolBar }) }} Icon={Trash2} variant="danger" compact={compact} isLoading={multiDeleteMutation.isPending} />
+              <UtilityButton title="Unarchive" onClick={() => {
+                analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "unarchive", selectedCount: totalSelected });
+                multiUnarchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedApplications) }, { onSuccess: closeToolBar });
+              }} Icon={ArchiveRestore} compact={compact} isLoading={multiUnarchiveMutation.isPending} />
+              <UtilityButton title="Delete" onClick={() => {
+                analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "delete", selectedCount: totalSelected });
+                multiDeleteMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedApplications) }, { onSuccess: closeToolBar });
+              }} Icon={Trash2} variant="danger" compact={compact} isLoading={multiDeleteMutation.isPending} />
             </>
           )}
         </div>

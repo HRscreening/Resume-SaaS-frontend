@@ -8,6 +8,7 @@ import { useUserKey } from "@/lib/userKey";
 import { useUsage } from "@/hooks/useUsage";
 import { cn } from "@/lib/utils";
 import type { SubscriptionPlan } from "@/types";
+import {AnalyticsEvent, useAnalytics} from "@/analytics";
 
 
 type TabKey = "general" | "account" | "privacy" | "billing" | "usage" | "capabilities" | "connectors";
@@ -18,6 +19,7 @@ const USAGE_TAB: { key: TabKey; label: string } = { key: "usage", label: "Usage"
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabKey>("account");
   const { unlimited } = useUsage();
+
 
   // useUsage() reports unlimited: false while the usage query is loading, so
   // a user who clicks "Billing" in that window (or when the request errors)
@@ -121,6 +123,7 @@ function AccountPanel() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [hideChangePassword, setHideChangePassword] = useState(true);
+  const analytics = useAnalytics();
 
   async function checkGoogleUser() {
     const supabase = createClient();
@@ -143,6 +146,8 @@ function AccountPanel() {
     clearAuthCache();
     const supabase = createClient();
     await supabase.auth.signOut();
+    analytics.track(AnalyticsEvent.LOGOUT);
+    analytics.reset();
     navigate({ to: "/login" });
   }
 

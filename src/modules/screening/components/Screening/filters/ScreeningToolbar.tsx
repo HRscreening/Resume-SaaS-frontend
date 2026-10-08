@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { MatchTierId, StagesMap, RubricCategory } from "@/types"
 import { FilterAddOnButton as AddNewFilterDropDown } from "@/modules/screening/components/Screening/filters/ScreeningFilterAddOnButton";
 import { Screening_FILTER_KEYS, type ScreeningFilterKey } from "@/modules/screening/types/searchSchema"
@@ -12,8 +12,10 @@ import { TIER_OPTIONS } from "./matchTiers";
 import { sortedStages } from "@/lib/stages";
 
 import { FilterDialog } from "@/modules/screening/components/Screening/filters/FilterDialog";
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 interface ScreeningToolbarProps {
+  screeningId: string;
   candidateQuery: CandidateQuery;
   stages: StagesMap;
   categories: RubricCategory[]
@@ -30,6 +32,7 @@ const matchOptions = TIER_OPTIONS.map((t) => ({
 }));
 
 export function ScreeningToolbar({
+  screeningId,
   candidateQuery,
   stages,
   categories
@@ -37,6 +40,7 @@ export function ScreeningToolbar({
 
   const state = candidateQuery.state;
   const [newFilter, setNewFilter] = useState<ScreeningFilterKey | null>(null);
+  const analytics = useAnalytics();
 
 
   const stageOptions = sortedStages(stages).map((s) => ({
@@ -70,6 +74,20 @@ export function ScreeningToolbar({
   const filtersToRender = newFilter && !activeFilters.includes(newFilter)
     ? [...activeFilters, newFilter]
     : activeFilters;
+
+  useEffect(() => {
+    const filterCount =
+      activeFilters.length +
+      (hasActiveStageFilter ? 1 : 0) +
+      (hasActiveMatchFilter ? 1 : 0) +
+      (hasActiveScoreFilter ? 1 : 0);
+    if (filterCount > 0) {
+      analytics.track(AnalyticsEvent.FILTERS_APPLIED, {
+        screeningId,
+        filterCount,
+      });
+    }
+  }, [activeFilters.length, analytics, hasActiveMatchFilter, hasActiveScoreFilter, hasActiveStageFilter, screeningId]);
 
 
 

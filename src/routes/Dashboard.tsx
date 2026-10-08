@@ -7,6 +7,7 @@ import type { Screening } from "@/modules/screening/types/screening.type";
 import { useAccount } from "@/hooks/useAccount";
 import { useUsage } from "@/hooks/useUsage";
 import { QuotaMeter } from "@/components/usage/QuotaMeter";
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -32,6 +33,7 @@ function StatusPill({ status }: { status: string }) {
 
 export default function Dashboard() {
   const { canWrite } = useAccount();
+  const analytics = useAnalytics();
   const { unlimited } = useUsage();
   const qc = useQueryClient();
   function prefetch(id: string) {
@@ -67,6 +69,7 @@ export default function Dashboard() {
         {canWrite && (
           <Link
             to="/screenings/new"
+            onClick={() => analytics.track(AnalyticsEvent.JOB_CREATE_STARTED, { source: "dashboard" })}
             className="h-10 px-3 sm:px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center gap-2 shrink-0"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -214,6 +217,7 @@ export default function Dashboard() {
             {canWrite && (
               <Link
                 to="/screenings/new"
+                onClick={() => analytics.track(AnalyticsEvent.JOB_CREATE_STARTED, { source: "empty_state" })}
                 className="inline-flex items-center h-9 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-lg hover:bg-[#1C1C1C] transition-colors"
               >
                 Create first screening
