@@ -38,7 +38,7 @@ export default function PrivacyPage() {
           <p><strong>Account information</strong> &mdash; name, email, organisation, password hash, role, and onboarding details you provide.</p>
           <p><strong>Customer Data</strong> &mdash; resumes, job descriptions, screening criteria, candidate notes, and other content you upload to evaluate candidates.</p>
           <p><strong>Usage data</strong> &mdash; logs, device and browser information, IP address, timestamps, and feature usage. Used for security, debugging, and product improvement.</p>
-          <p><strong>Payment metadata</strong> &mdash; subscription plan, billing status, and payment identifiers. We <strong>do not store card numbers</strong>; payments are handled by Razorpay.</p>
+          <p><strong>Payment metadata</strong> &mdash; subscription plan, billing status, and payment identifiers. We <strong>do not store card numbers</strong>; payments are handled by Razorpay and PayPal.</p>
           <p><strong>Communications</strong> &mdash; emails you send to support and feedback you submit.</p>
         </Section>
 
@@ -82,6 +82,7 @@ export default function PrivacyPage() {
             <li><strong>Vercel</strong> &mdash; frontend hosting and CDN (USA / global)</li>
             <li><strong>Upstash</strong> &mdash; managed Redis for job queues (USA)</li>
             <li><strong>Razorpay</strong> &mdash; payment processing (India)</li>
+            <li><strong>PayPal</strong> &mdash; payment processing (outside India)</li>
             <li><strong>Resend</strong> &mdash; transactional email delivery (USA)</li>
           </ul>
           <p>
