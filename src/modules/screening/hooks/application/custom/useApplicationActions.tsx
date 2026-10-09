@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutationState } from "@tanstack/react-query";
-import { Archive, Trash2, Share2, Download } from "lucide-react";
+import { Archive, Trash2, Share2, Download,NotebookPen } from "lucide-react";
 import { useApplicationUtility } from "@/modules/screening/hooks/application/queries/application.hook"
 import type { Application, ApplicationActionStatus } from "@/modules/screening/types/application.type";
 import { archiveResume, unarchiveResume, deleteResume } from "@/modules/screening/apis/screenings.api"
@@ -22,8 +22,14 @@ export function useApplicationActions({
     const [localActions, setLocalActions] = useState(new Map<string, ApplicationActionStatus["action"]>());
     const analytics = useAnalytics();
 
+
+
+    const [targetCandidate, setTargetCandidate] = useState<Application | null>(null);
+    const [isAddNoteDialogOpen, setIsAddNoteDialogOpen] = useState(false);
+
+
     const trackRowAction = (
-        operation: "resume" | "archive" | "unarchive" | "delete",
+        operation: "resume" | "archive" | "unarchive" | "delete" | "addNote",
         resumeId: string,
     ) => {
         analytics.track(AnalyticsEvent.ROW_MENU_ACTION, {
@@ -211,8 +217,16 @@ export function useApplicationActions({
         };
     };
 
+    const clearDialogs = () => {
+        setIsAddNoteDialogOpen(false);
+        setTargetCandidate(null);
+    }
+
     return {
         menuOptions,
         getRowStatus,
+        clearDialogs,
+        targetCandidate,
+        isAddNoteDialogOpen,
     };
 }

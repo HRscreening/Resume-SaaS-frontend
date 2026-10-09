@@ -96,7 +96,7 @@ export interface AnalyticsEventProperties {
   row_menu_action: {
     screeningId: string;
     table: "applications" | "screening";
-    operation: "resume" | "scorecard" | "profile" | "voice" | "rescore" | "expand" | "share" | "archive" | "unarchive" | "delete";
+    operation: "resume" | "scorecard" | "profile" | "voice" | "rescore" | "expand" | "share" | "archive" | "unarchive" | "delete" | "addNote";
     resumeId: string;
   };
 

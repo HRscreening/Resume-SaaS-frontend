@@ -198,3 +198,12 @@ import {ResumeSections} from "./searchSchema";
 export type ResumeSections = (typeof ResumeSections)[number];
 
 
+
+
+export  type Note = {
+  added_by: string;
+  created_at: string;
+  creator_id:string;
+  note:string;
+  stage?: string;
+}
