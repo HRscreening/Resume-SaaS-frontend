@@ -21,9 +21,13 @@ import { runCodeLocally, CppNotRunnableError, PythonNotReadyError } from "./exec
 import { pyodideManager } from "./execution/pyodideManager";
 import { usePyodideStatus } from "./execution/usePyodideStatus";
 import { runGateFor } from "./execution/runGate";
+import { isUntouchedStarter, starterCodeFor } from "./starterCode";
 import { submitGateFor } from "./execution/submitGate";
 
 const DEFAULT_LANGUAGE: InterviewLanguage = "python";
+// The languages the pane offers, for isUntouchedStarter: a stub from ANY
+// of them still counts as untouched.
+const LANGUAGE_IDS = ["python", "javascript", "cpp"] as const;
 
 function minutesToMs(minutes: number): number {
   return minutes * 60_000;
@@ -159,7 +163,16 @@ export function useCodingQuestions(token: string, room: Room | null) {
   );
   const total = questions?.length ?? 0;
   const current = index !== -1 && questions ? questions[index] : undefined;
-  const buffer = current ? bufferFor(state?.buffers ?? {}, current.id) : null;
+  const rawBuffer = current ? bufferFor(state?.buffers ?? {}, current.id) : null;
+  // An editor that opens empty makes the candidate guess the harness
+  // before they can start on the problem (starterCode.ts). Seeded at read
+  // time rather than written into state: a stub nobody has typed into is
+  // not the candidate's work, and persisting it would make every later
+  // "has this been touched?" check think it had been.
+  const buffer =
+    rawBuffer && current && current.kind === "coding" && !rawBuffer.source
+      ? { ...rawBuffer, source: starterCodeFor(current, rawBuffer.language) }
+      : rawBuffer;
 
   // Question ids the candidate has already submitted (Submit, or the
   // timeout auto-submit) — see CodingState.dismissed. Checked by id, not by
@@ -288,8 +301,11 @@ export function useCodingQuestions(token: string, room: Room | null) {
     [current],
   );
 
-  // Changing language never touches `source`: it is the candidate's work,
-  // not a template to discard (contract, "Frontend behaviour").
+  // Changing language never discards the candidate's WORK: it is theirs,
+  // not a template (contract, "Frontend behaviour"). Untouched starter
+  // code is not work, though, and leaving Python's stub in the box after
+  // they pick JavaScript is worse than useless -- so that one case, and
+  // only that one, is swapped for the new language's stub.
   const setLanguage = useCallback(
     (language: InterviewLanguage) => {
       setRunResult(null);
@@ -297,6 +313,18 @@ export function useCodingQuestions(token: string, room: Room | null) {
       setState((prev) => {
         if (!prev || !current) return prev;
         const existing = bufferFor(prev.buffers, current.id);
+        if (
+          current.kind === "coding" &&
+          isUntouchedStarter(existing.source, current, LANGUAGE_IDS)
+        ) {
+          return {
+            ...prev,
+            buffers: {
+              ...prev.buffers,
+              [current.id]: { language, source: starterCodeFor(current, language) },
+            },
+          };
+        }
         return { ...prev, buffers: { ...prev.buffers, [current.id]: { ...existing, language } } };
       });
     },

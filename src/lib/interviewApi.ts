@@ -136,6 +136,10 @@ export type InterviewQuestion =
       title: string;
       statement_md: string;
       examples: InterviewExample[];
+      // Per-language starter code the editor opens with, keyed by language
+      // id. Absent on any question authored before the field existed, which
+      // is why the pane keeps its own generic scaffold (starterCode.ts).
+      starter_code?: Record<string, string>;
     };
 
 export interface InterviewQuestionsResponse {
