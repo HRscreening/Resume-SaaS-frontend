@@ -16,7 +16,7 @@ import {
 } from "./codingBufferStorage";
 import { useCountdown } from "./useCountdown";
 import { useQuestionSync } from "./useQuestionSync";
-import { notifySubmitted } from "./notifySubmission";
+import { notifyActivity, notifySubmitted } from "./notifySubmission";
 import { runCodeLocally, CppNotRunnableError, PythonNotReadyError } from "./execution/runCodeLocally";
 import { pyodideManager } from "./execution/pyodideManager";
 import { usePyodideStatus } from "./execution/usePyodideStatus";
@@ -289,6 +289,12 @@ export function useCodingQuestions(token: string, room: Room | null) {
 
   const setSource = useCallback(
     (source: string) => {
+      // Typing is the only evidence of presence for a candidate doing
+      // exactly what a coding question asks: working quietly. Without it
+      // the agent hears silence and cannot tell them apart from someone
+      // who has gone. Throttled inside notifyActivity, and carries no
+      // content -- only that something happened.
+      notifyActivity(room);
       setRunResult(null);
       setRunNotice(null);
       setSubmitNotice(null);
@@ -298,7 +304,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
         return { ...prev, buffers: { ...prev.buffers, [current.id]: { ...existing, source } } };
       });
     },
-    [current],
+    [current, room],
   );
 
   // Changing language never discards the candidate's WORK: it is theirs,
