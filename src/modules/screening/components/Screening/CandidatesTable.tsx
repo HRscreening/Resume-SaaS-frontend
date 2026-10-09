@@ -58,12 +58,12 @@ export function CandidatesTable({
   onLoadMore
 }: CandidatesTableProps) {
 
-  const { search, setScreenId } = useScreeningDetailsNavigation()
+  const { search, setScreenId,setAnalysisTab } = useScreeningDetailsNavigation()
   const { canWrite } = useAccount();
 
   const { selectedCandidates, toggleSelection, togglePageSelection } = useSelectedCandidates();
 
-  const { menuOptions, getRowStatus,isShareDialogOpen,shareCandidate,setIsShareDialogOpen } = useScreeningActions({ screeningId: screening_id });
+  const { menuOptions, getRowStatus,isShareDialogOpen,shareCandidate,setIsShareDialogOpen,isAddNoteDialogOpen,targetCandidate,setIsAddNoteDialogOpen,clearDialogs } = useScreeningActions({ screeningId: screening_id });
   // Per-row "..." menu mixes read items (ScoreCard/Profile/Voice/Resume/Expand)
   // with write items wired to live mutations or dialogs (Rescore/Share/Archive/
   // Unarchive/Delete). A viewer only gets the read items.
@@ -77,6 +77,10 @@ export function CandidatesTable({
 
   // const screeningSearchParams: ScreeningsSearchParams = screeningSearchSchema.parse(search);
 
+  const handleViewAllNotes = (resumeId: string) => {
+    setScreenId(resumeId);
+    setAnalysisTab("note");
+  };
 
 
   // Default landing stage for a candidate that has no stage yet — the first
@@ -316,6 +320,7 @@ export function CandidatesTable({
 
                     MenuOptions={visibleMenuOptions}
                     processingStatus={getRowStatus(c.resume_id)}
+                    onViwAllNotes={handleViewAllNotes}
                   />
                 ))}
 
@@ -345,9 +350,11 @@ export function CandidatesTable({
           onClose={() => {
             setScreenId(null);
             setIsShareDialogOpen(false);
+            clearDialogs();
           }}
         />
       )}
+      
     </>
   );
 }

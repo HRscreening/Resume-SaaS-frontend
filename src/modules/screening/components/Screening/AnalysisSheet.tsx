@@ -10,7 +10,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useCandidateScreeningDetail } from "@/controllers/screening/getCandidateScreeningDetail";
-import InfoTab from "@/modules/screening/components/Screening/profileTab";
 import { CandidateVoicePanel } from "@/components/screening/voice/CandidateVoicePanel";
 import { ShareReportDialog } from "@/components/screening/ShareReportDialog";
 import { useScreening } from "@/controllers/screening/getScreening";
@@ -23,33 +22,9 @@ import {
 } from "@/components/ui/tooltip"
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 import { useAccount } from "@/hooks/useAccount";
+import NotesTab from "@/modules/screening/components/shared/NotesTab";
+import ProfileTab from "@/modules/screening/components/shared/profileTab";
 
-// const sheetListeners = new Set<() => void>();
-// let openResumeId: string | null = null;
-// function subscribe(fn: () => void) {
-//   sheetListeners.add(fn);
-//   return () => sheetListeners.delete(fn);
-// }
-// function notify() {
-//   sheetListeners.forEach((fn) => fn());
-// }
-// function getSnapshot() {
-//   return openResumeId;
-// }
-// export function setOpenAnalysisSheet(resume_id: string | null) {
-//   if (openResumeId === resume_id) return;
-//   openResumeId = resume_id;
-//   notify();
-// }
-// export function toggleAnalysisSheet(resume_id: string) {
-//   setOpenAnalysisSheet(openResumeId === resume_id ? null : resume_id);
-// }
-// export function useAnalysisSheetOpenId(): string | null {
-//   return useSyncExternalStore(subscribe, getSnapshot, () => null);
-// }
-// export function useAnalysisSheetOpen() {
-//   return useSyncExternalStore(subscribe, getSnapshot, () => null) !== null;
-// }
 export const ANALYSIS_SHEET_WIDTH = 600;
 
 type AnalysisSheetProps = {
@@ -78,7 +53,7 @@ function criterionBarColor(score: number) {
 }
 
 
-type TabValue = "profile" | "scorecard" | "voice";
+type TabValue = "profile" | "scorecard" | "voice" | "note";
 
 type Tab = {
   title: string;
@@ -89,6 +64,7 @@ const tabs: Tab[] = [
   { title: "Profile", value: "profile" },
   { title: "Analysis", value: "scorecard" },
   { title: "Interview", value: "voice" },
+  { title: "Notes", value: "note" },
 ]
 
 
@@ -130,7 +106,9 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
     isLoading,
     isError,
     error,
-  } = useCandidateScreeningDetail(screening_id, resume_id, { enabled: open });
+  } = useCandidateScreeningDetail(screening_id, resume_id, {
+    enabled: open,
+  });
 
 
   const { data: screening } = useScreening(screening_id, {
@@ -235,9 +213,9 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
         onOpenAutoFocus={(e) => e.preventDefault()}
         // Mobile: full-width overlay (the underlying SheetContent default is
         // w-3/4 — too narrow at 320–430 px to be useful). sm+: cap at 600 px.
-        className="!w-full sm:!max-w-[600px] overflow-y-auto p-0 !z-40"
+        className="!w-full sm:!max-w-[600px] flex flex-col overflow-hidden p-0 !z-40"
       >
-        <SheetHeader className="px-6 pt-6 border-b border-[#E8E5DF] pb-0">
+        <SheetHeader className="shrink-0 px-6 pt-6 border-b border-[#E8E5DF] pb-0">
           <SheetTitle className="text-sm font-semibold text-[#0F0F0F]">
             {/* Share sits in the drawer header, not inside the voice panel:
                 the resume report exists for EVERY candidate, so a candidate
@@ -547,7 +525,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                 Profile not available. Please Contact Support for more information.
               </div>
               :
-              <InfoTab candidate={resume.profile} />
+              <ProfileTab candidate={resume.profile} />
             }
           </div>)
         }
@@ -570,6 +548,16 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
             </div>
           )
         }
+        {/* Notes */}
+        {
+          tab === "note" && (
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-2">
+            <NotesTab screeningId={screening_id} resumeId={resume_id}/>
+            </div>
+          )
+        }
+
+
 
 
       </SheetContent>
