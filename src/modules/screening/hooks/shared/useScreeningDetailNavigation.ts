@@ -51,6 +51,15 @@ export const useScreeningDetailsNavigation = () => {
         });
     };
 
+    const setInfoTab = (tab: ScreeningDetailsSearchParams["infoTab"]) => {
+        navigate({
+            search: (prev) => ({
+                ...prev,
+                infoTab: tab,
+            }),
+        });
+    }
+    
     const setAnalysisTab = (tab: ScreeningDetailsSearchParams["analysisTab"]) => {
         navigate({
             search: (prev) => ({
@@ -105,6 +114,7 @@ export const useScreeningDetailsNavigation = () => {
         setAppType,
         setScreenType,
         setTab,
+        setInfoTab,
         setAnalysisTab,
         setAppId,
         setScreenId,

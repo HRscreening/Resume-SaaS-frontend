@@ -1,4 +1,4 @@
-import { createRazorpayOrder, verifyRazorpayPayment, getProfile } from "@/lib/api";
+import { createRazorpayOrder, verifyRazorpayPayment } from "@/lib/api";
 import type { Profile } from "@/types";
 
 export type UpgradePlanSlug = "pro" | "plus" | "enterprise";
@@ -43,7 +43,6 @@ export async function openRazorpayCheckout({
 }: OpenCheckoutOptions): Promise<void> {
   const order = await createRazorpayOrder({ plan, cycle });
   await loadRazorpayScript();
-  const previousPlan = profile.plan;
 
   await new Promise<void>((resolve, reject) => {
     let handlerFired = false;
@@ -61,28 +60,6 @@ export async function openRazorpayCheckout({
       } catch {
         reject(new Error("Payment verification failed. Contact support."));
       }
-    };
-
-    // UPI async path: poll profile after popup closes (Razorpay's handler
-    // does NOT fire for some UPI flows — the user pays on their phone after
-    // dismissing the popup). Up to ~20s.
-    const pollAfterDismiss = async () => {
-      if (handlerFired) return;
-      onStatusChange?.("Checking payment status…");
-      for (let i = 0; i < 10; i++) {
-        await new Promise((r) => setTimeout(r, 2000));
-        try {
-          const updated = await getProfile();
-          if (updated.plan !== previousPlan) {
-            resolve();
-            return;
-          }
-        } catch {
-          /* ignore transient errors */
-        }
-      }
-      onStatusChange?.(null);
-      reject(new Error("cancelled"));
     };
 
     const options = {
@@ -104,7 +81,14 @@ export async function openRazorpayCheckout({
       }) => {
         onSuccess(response.razorpay_payment_id, response.razorpay_order_id, response.razorpay_signature);
       },
-      modal: { ondismiss: pollAfterDismiss },
+      // Dismissing the modal is a user cancellation. Do not poll here: that
+      // leaves the checkout button in "Processing…" for up to 20 seconds
+      // (or indefinitely if a profile request hangs).
+      modal: {
+        ondismiss: () => {
+          if (!handlerFired) reject(new Error("cancelled"));
+        },
+      },
     };
 
     // @ts-expect-error — Razorpay loaded via script tag

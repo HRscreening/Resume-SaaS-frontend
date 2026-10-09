@@ -8,6 +8,7 @@ import { StageSelect } from "@/components/screening/StageSelect";
 import { MenuButton, type Option } from "@/modules/screening/components/shared/MenuButton";
 import ScoreProgressBar from "@/modules/screening/components/shared/ProgressBars/ScoreProgressBar";
 import { generateCategoryProgressBarsInput } from "@/modules/screening/utils/Screeening.utils";
+import AddNote from "@/modules/screening/components/Dialogs/AddNoteDialog" 
 
 
 interface CandidateRowProps {
@@ -27,6 +28,7 @@ interface CandidateRowProps {
     index: number;
     isOpen: boolean;
     setScreenId: (id: string | null) => void;
+    onViwAllNotes: (resumeId:string) => void;
 }
 
 export function CandidateRow({
@@ -35,7 +37,7 @@ export function CandidateRow({
     processingStatus,
     candidate, compact, stage, stages, onStageChange, onManageStages, disableStageChange = false,
     selectable, selected, onToggle,
-    index, isOpen, setScreenId
+    index, isOpen, setScreenId, onViwAllNotes
 }: CandidateRowProps) {
 
 
@@ -173,8 +175,9 @@ export function CandidateRow({
                     </span>
                 </td>
                 {!compact && (
-                    <td className="px-2 py-3 text-center flex align-middle" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-2 py-3 text-center flex justify-between align-middle" onClick={(e) => e.stopPropagation()}>
                         <AnalysisSheet resume_id={candidate.resume_id} />
+                        <AddNote resumeId={candidate.resume_id} screeningId={screening_id} onViwAllNotes={onViwAllNotes} />
                         <MenuButton key={candidate.resume_id} options={MenuOptions} data={candidate} />
 
                     </td>
