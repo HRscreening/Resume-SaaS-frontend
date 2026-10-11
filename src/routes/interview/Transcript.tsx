@@ -7,16 +7,13 @@ interface TranscriptProps {
   enabled: boolean;
   onToggle: () => void;
   // True only while the coding pane is open (InterviewRoom passes
-  // `showCodingPane` straight through). The editor is the primary thing on
-  // screen in that layout — a whole problem statement and a code editor
-  // already compete for height — so the transcript becomes a secondary,
-  // deliberately modest strip underneath it (a fixed height, not a flexible
-  // one trying and failing to share space with the editor) rather than
-  // disappearing or fighting for room. In the other layout (the warm-up, or
-  // a spoken question) there is no editor to share space with, so the
-  // transcript is the primary thing below the pinned question and gets a
-  // full, comfortable column instead. Same component, two deliberate sizes
-  // — see InterviewRoom for which one it's given.
+  // `showCodingPane` straight through). The statement and the editor need
+  // every row of height the screen has, so the conversation shrinks to a
+  // caption: the line being said now, in one strip under the pane. It used
+  // to be a 160px scrolling box plus a disclaimer, which on a laptop took a
+  // third of the space the editor had and pushed the run output off screen.
+  // In the other layout (the warm-up, or a spoken question) there is no
+  // editor to share space with and the transcript gets a full column.
   compact: boolean;
 }
 
@@ -55,6 +52,10 @@ export default function Transcript({ turns, enabled, onToggle, compact }: Transc
     el.scrollTop = el.scrollHeight;
   }, [turns]);
 
+  if (compact) {
+    return <CaptionStrip latest={turns[turns.length - 1]} enabled={enabled} onToggle={onToggle} />;
+  }
+
   return (
     <div className="flex flex-col gap-2 flex-1 min-h-0">
       <button
@@ -66,16 +67,14 @@ export default function Transcript({ turns, enabled, onToggle, compact }: Transc
       </button>
       {enabled && (
         <div
-          className={`flex flex-col rounded-2xl border border-[#E8E5DF] overflow-hidden ${
-            compact ? "" : "flex-1 min-h-0"
-          }`}
+          className="flex flex-col rounded-2xl border border-[#E8E5DF] overflow-hidden flex-1 min-h-0"
           style={{ background: "linear-gradient(180deg, #FFFFFF 0%, #FAF9F5 100%)" }}
         >
           <div
             ref={scrollRef}
             onScroll={handleScroll}
             aria-live="polite"
-            className={`overflow-y-auto px-4 py-4 flex flex-col gap-4 ${compact ? "h-40" : "flex-1 min-h-0"}`}
+            className="overflow-y-auto px-4 py-4 flex flex-col gap-4 flex-1 min-h-0"
           >
             {turns.length === 0 ? (
               <p className="text-sm text-[#A3A3A3] italic">
@@ -91,6 +90,46 @@ export default function Transcript({ turns, enabled, onToggle, compact }: Transc
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// The conversation as a live caption: only the most recent line, clamped to
+// two rows so its height never changes under the editor.
+function CaptionStrip({
+  latest,
+  enabled,
+  onToggle,
+}: {
+  latest: TranscriptTurn | undefined;
+  enabled: boolean;
+  onToggle: () => void;
+}) {
+  const isCandidate = latest?.speaker === "candidate";
+  const color = isCandidate ? CANDIDATE_COLOR : INTERVIEWER_COLOR;
+  return (
+    <div className="flex items-start gap-3 min-h-[2.5rem]">
+      <div aria-live="polite" className="flex-1 min-w-0 text-sm leading-snug text-[#1C1C1C] line-clamp-2">
+        {!enabled ? (
+          <span className="text-[#A3A3A3] italic">Captions are hidden.</span>
+        ) : latest ? (
+          <>
+            <span className="text-xs font-semibold mr-1.5" style={{ color }}>
+              {isCandidate ? "You" : "Interviewer"}
+            </span>
+            {latest.text}
+          </>
+        ) : (
+          <span className="text-[#A3A3A3] italic">What you and the interviewer say appears here.</span>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="shrink-0 text-xs font-medium text-[#404040] underline underline-offset-2 hover:text-[#0F0F0F]"
+      >
+        {enabled ? "Hide captions" : "Show captions"}
+      </button>
     </div>
   );
 }

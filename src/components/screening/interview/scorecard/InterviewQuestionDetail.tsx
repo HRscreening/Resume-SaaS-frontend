@@ -1,5 +1,10 @@
 import type { InterviewScorecard } from "@/types";
-import { languageLabel, otherFields, questionIds } from "./interviewScorecardUtils";
+import {
+  hiddenChecksLabel,
+  languageLabel,
+  otherFields,
+  questionIds,
+} from "./interviewScorecardUtils";
 
 interface InterviewQuestionDetailProps {
   scorecard: InterviewScorecard;
@@ -80,6 +85,12 @@ export function InterviewQuestionDetail({ scorecard }: InterviewQuestionDetailPr
                 <pre className="max-h-80 overflow-auto rounded-lg border border-[#E8E5DF] bg-[#0F0F0F] p-3 text-[11px] leading-relaxed text-[#F5F3EE]">
                   <code>{code.source}</code>
                 </pre>
+                {code.hidden_checks && (
+                  <p className="mt-1.5 text-[11px] text-[#404040]">
+                    <span className="font-semibold text-[#0F0F0F]">Hidden checks:</span>{" "}
+                    {hiddenChecksLabel(code.hidden_checks)}
+                  </p>
+                )}
               </div>
             )}
           </div>

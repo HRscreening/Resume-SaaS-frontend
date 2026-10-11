@@ -8,6 +8,7 @@ import {
   stripSearchParams,
   parseSearchWith,
   stringifySearchWith,
+  lazyRouteComponent,
 } from "@tanstack/react-router";
 import qs from 'query-string'
 
@@ -382,6 +383,16 @@ const checkoutRoute = createRoute({
 
 // ─── Build router ───────────────────────────────────────────
 
+// Development only: the interview coding pane on its own, with no LiveKit
+// room behind it. Lazy, and never registered in a production build.
+const devCodingPaneRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dev/coding-pane",
+  component: import.meta.env.DEV
+    ? lazyRouteComponent(() => import("@/routes/interview/dev/CodingPanePreview"))
+    : undefined,
+});
+
 const routeTree = rootRoute.addChildren([
   landingRoute,
   authLayoutRoute.addChildren([loginRoute, signupRoute, forgotPasswordRoute, resetPasswordRoute]),
@@ -390,6 +401,7 @@ const routeTree = rootRoute.addChildren([
   termsRoute,
   privacyRoute,
   interviewJoinRoute,
+  ...(import.meta.env.DEV ? [devCodingPaneRoute] : []),
   appLayoutNoSidebarRoute.addChildren([
     upgradePlanRoute,
     contactUsRoute,

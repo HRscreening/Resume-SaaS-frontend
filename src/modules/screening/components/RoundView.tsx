@@ -8,7 +8,7 @@ import {
   useRoundWriteLock,
   ROUND_WRITE_BUSY_MESSAGE,
 } from "@/modules/screening/hooks/round/useRoundWriteLock";
-import type { CodingExample, Question, RoundResponse } from "@/types";
+import type { CodingExample, JudgingSummary, Question, RoundResponse } from "@/types";
 
 interface RoundViewProps {
   roundId: string;
@@ -110,6 +110,7 @@ export default function RoundView({ roundId }: RoundViewProps) {
               roundId={roundId}
               index={index}
               question={question}
+              judging={round.judging?.[question.id]}
               isEditing={editingId === question.id}
               canEdit={canEdit}
               editSaving={editSaving}
@@ -203,6 +204,8 @@ interface QuestionRowProps {
   roundId: string;
   index: number;
   question: Question;
+  // This question's hidden checks. Undefined for a spoken question.
+  judging?: JudgingSummary;
   isEditing: boolean;
   canEdit: boolean;
   // True while ANY row's QuestionEditForm save is in flight (read from the
@@ -223,6 +226,7 @@ function QuestionRow({
   roundId,
   index,
   question,
+  judging,
   isEditing,
   canEdit,
   editSaving,
@@ -245,6 +249,7 @@ function QuestionRow({
             <span>{question.allocated_minutes} min</span>
           </div>
           {!isEditing && <QuestionBody question={question} />}
+          {question.kind === "coding" && <HiddenChecks judging={judging} />}
         </div>
         <button
           type="button"
@@ -300,6 +305,67 @@ function QuestionBody({ question }: { question: Question }) {
         </div>
       )}
     </div>
+  );
+}
+
+const HIDDEN_CATEGORY_ORDER = ["basic", "edge", "adversarial"];
+
+// Where a coding question's hidden checks stand. The worked examples above
+// are what the candidate reads; these are what decides whether their code
+// is correct. Shown outside QuestionBody so it stays visible while the
+// question is being edited: an edit to the statement or examples is what
+// sends the checks back to be verified.
+function HiddenChecks({ judging }: { judging: JudgingSummary | undefined }) {
+  // A round loaded from an older API response, or a question added before
+  // the server has reported on it.
+  if (!judging) return null;
+
+  if (!judging.verified) {
+    return (
+      <p className="mt-2 rounded-lg border border-[#F3D8A8] bg-[#FDECD2] px-2.5 py-1.5 text-xs text-[#8A4B08]">
+        <span className="font-medium">Hidden checks not verified.</span>{" "}
+        {judging.error ?? "This question cannot be published until they are."}
+      </p>
+    );
+  }
+
+  const breakdown = HIDDEN_CATEGORY_ORDER.filter((c) => judging.counts[c])
+    .map((c) => `${judging.counts[c]} ${c}`)
+    .join(", ");
+
+  return (
+    <details className="mt-2 rounded-lg border border-[#BBE5CA] bg-[#E7F5EC] text-xs text-[#166534]">
+      <summary className="cursor-pointer select-none px-2.5 py-1.5 font-medium">
+        {judging.tests.length} hidden checks verified{breakdown ? `: ${breakdown}` : ""}
+      </summary>
+      <div className="flex flex-col gap-1.5 border-t border-[#BBE5CA] bg-white px-2.5 py-2 text-[#404040]">
+        <p className="text-[#737373]">
+          The candidate never sees these. Each expected output is what the reference solution
+          printed when it was run.
+        </p>
+        {judging.tests.map((test, i) => (
+          <div key={i} className="rounded-lg bg-[#F5F3EE] px-2.5 py-1.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-[#737373]">
+              {test.category}
+            </div>
+            <div className="whitespace-pre-wrap break-words font-mono">
+              <span className="font-sans font-medium text-[#0F0F0F]">Input:</span> {test.input}
+            </div>
+            <div className="whitespace-pre-wrap break-words font-mono">
+              <span className="font-sans font-medium text-[#0F0F0F]">Expected:</span> {test.expected}
+            </div>
+          </div>
+        ))}
+        {judging.reference_solution && (
+          <div>
+            <p className="mb-1 font-medium text-[#0F0F0F]">Reference solution</p>
+            <pre className="max-h-64 overflow-auto rounded-lg bg-[#0F0F0F] p-2.5 text-[11px] leading-relaxed text-[#F5F3EE]">
+              <code>{judging.reference_solution}</code>
+            </pre>
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
 

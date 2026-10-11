@@ -69,3 +69,14 @@ describe("runCodeLocally with examples", () => {
     expect(res.results[1].expected).toBe("18");
   });
 });
+
+describe("runWithInput", () => {
+  it("feeds the candidate's own input to the program and reports what it printed", async () => {
+    const { runWithInput } = await import("./runCodeLocally");
+    const res = await runWithInput("python", "print(input())", "3 3\n6");
+    expect(run).toHaveBeenCalledWith("print(input())", "3 3\n6");
+    // Nothing to compare against: output, never a pass or fail.
+    expect(res.results[0].status).toBe("output");
+    expect(res.results[0].stdout).toBe("hello\n");
+  });
+});

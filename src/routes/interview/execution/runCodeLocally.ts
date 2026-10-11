@@ -1,4 +1,5 @@
 import type { InterviewExample, InterviewLanguage, RunCodeResponse, RunResultItem } from "@/lib/interviewApi";
+import { cleanPythonTraceback } from "./errorTrace";
 import { outputsMatch } from "./outputsMatch";
 import { runJavaScriptExample } from "./javascriptRunner";
 import { pyodideManager } from "./pyodideManager";
@@ -62,26 +63,12 @@ export async function runCodeLocally(
   // which to a candidate mid-interview is a broken button. With no
   // examples to check against, Run does the only honest thing left: it
   // runs the code once on empty stdin and shows what it printed.
-  if (examples.length === 0) {
-    const outcome =
-      language === "python"
-        ? await pyodideManager.run(source, "")
-        : await runJavaScriptExample(source, "");
-    return {
-      results: [bareRunResult(outcome)],
-      compile_error: null,
-      ran: 1,
-      passed: outcome.timedOut || outcome.crashed ? 0 : 1,
-    };
-  }
+  if (examples.length === 0) return runOnce(language, source, "");
 
   const results: RunResultItem[] = [];
   for (let index = 0; index < examples.length; index++) {
     const example = examples[index];
-    const outcome =
-      language === "python"
-        ? await pyodideManager.run(source, example.input)
-        : await runJavaScriptExample(source, example.input);
+    const outcome = await execute(language, source, example.input);
 
     if (outcome.timedOut) {
       results.push({
@@ -129,6 +116,50 @@ export async function runCodeLocally(
     compile_error: null,
     ran: results.length,
     passed: results.filter((result) => result.passed).length,
+  };
+}
+
+// Runs the candidate's source once on stdin of their own choosing and shows
+// what it printed. This is how a candidate tries an edge case the worked
+// examples do not cover (an empty list, a duplicate, a negative number)
+// before submitting, the way they would in any shared editor in a live
+// interview. It compares against nothing, so it reports output and never a
+// pass or a fail, and it has no bearing on whether Submit is unlocked.
+export async function runWithInput(
+  language: InterviewLanguage,
+  source: string,
+  input: string,
+): Promise<RunCodeResponse> {
+  if (language === "cpp") throw new CppNotRunnableError();
+  if (language === "python" && pyodideManager.getStatus() !== "ready") {
+    const ready = await pyodideManager.whenReady();
+    if (!ready) {
+      throw new PythonNotReadyError(pyodideManager.getStatus() === "error" ? "error" : "loading");
+    }
+  }
+  return runOnce(language, source, input);
+}
+
+// One execution in whichever browser runner the language has. Python's
+// traceback is cleaned here; the JavaScript worker cleans its own, because
+// only it can measure the line offset its Function wrapper adds.
+async function execute(language: InterviewLanguage, source: string, input: string) {
+  if (language !== "python") return runJavaScriptExample(source, input);
+  const outcome = await pyodideManager.run(source, input);
+  return { ...outcome, stderr: cleanPythonTraceback(outcome.stderr) };
+}
+
+async function runOnce(
+  language: InterviewLanguage,
+  source: string,
+  input: string,
+): Promise<RunCodeResponse> {
+  const outcome = await execute(language, source, input);
+  return {
+    results: [bareRunResult(outcome)],
+    compile_error: null,
+    ran: 1,
+    passed: outcome.timedOut || outcome.crashed ? 0 : 1,
   };
 }
 

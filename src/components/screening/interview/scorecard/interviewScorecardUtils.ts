@@ -1,4 +1,4 @@
-import type { InterviewScorecard } from "@/types";
+import type { HiddenChecksCounts, InterviewScorecard } from "@/types";
 
 // Known code languages the candidate-facing editor offers (lib/interviewApi.ts's
 // InterviewLanguage). Kept as a display-only lookup, not a shared type import:
@@ -12,6 +12,22 @@ const LANGUAGE_LABEL: Record<string, string> = {
 
 export function languageLabel(language: string): string {
   return LANGUAGE_LABEL[language] ?? language;
+}
+
+const HIDDEN_CATEGORY_ORDER = ["basic", "edge", "adversarial"];
+
+// "6 of 8 passed (basic 3/3, edge 2/3, adversarial 1/2)": the same sentence
+// the judge model was given, so the recruiter reads what the score rests on.
+export function hiddenChecksLabel(checks: HiddenChecksCounts): string {
+  if (checks.compile_error) return "the code did not compile.";
+  const categories = [
+    ...HIDDEN_CATEGORY_ORDER.filter((c) => c in checks.by_category),
+    ...Object.keys(checks.by_category).filter((c) => !HIDDEN_CATEGORY_ORDER.includes(c)),
+  ];
+  const breakdown = categories
+    .map((c) => `${c} ${checks.by_category[c].passed}/${checks.by_category[c].total}`)
+    .join(", ");
+  return `${checks.passed} of ${checks.total} passed${breakdown ? ` (${breakdown})` : ""}`;
 }
 
 export function formatCompletedAt(iso: string | null): string | null {

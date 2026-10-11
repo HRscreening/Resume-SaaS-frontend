@@ -9,6 +9,7 @@
 // brand new JS realm) for every single example. Nothing in this file is
 // reused across examples, so there is no shared global state to accidentally
 // leak between them — the simplest possible isolation guarantee.
+import { cleanJsStack } from "./errorTrace";
 import type { JsRunRequest, JsRunResponse } from "./messages";
 
 // This project's tsconfig includes the "DOM" lib (for the rest of the app)
@@ -159,6 +160,26 @@ function stringifyArg(arg: unknown): string {
 }
 
 function formatError(err: unknown): string {
-  if (err instanceof Error) return err.stack ?? `${err.name}: ${err.message}`;
+  if (err instanceof Error) {
+    return cleanJsStack(err.name, err.message, err.stack ?? "", wrapperLineOffset());
+  }
   return String(err);
+}
+
+// How many lines `new Function` puts above the candidate's first line. It
+// is an engine detail (two in V8), so it is measured once with a throw on
+// a known line rather than assumed.
+let measuredOffset: number | null = null;
+
+function wrapperLineOffset(): number {
+  if (measuredOffset !== null) return measuredOffset;
+  try {
+    new Function("throw new Error('probe')\n//# sourceURL=candidate-solution.js")();
+    measuredOffset = 0;
+  } catch (probe) {
+    const stack = probe instanceof Error ? (probe.stack ?? "") : "";
+    const match = /candidate-solution\.js:(\d+)/.exec(stack);
+    measuredOffset = match ? Number(match[1]) - 1 : 0;
+  }
+  return measuredOffset;
 }

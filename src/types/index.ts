@@ -733,6 +733,18 @@ export interface CodingQuestion extends QuestionSpine {
   examples: CodingExample[];
 }
 
+// One coding question's hidden checks: inputs the candidate never sees,
+// each with the output the question's reference solution produced when
+// the server ran it. Only ever sent to the account that owns the round.
+export interface JudgingSummary {
+  verified: boolean;
+  // Why it is not verified, written for a person. Null when it is.
+  error: string | null;
+  counts: Record<string, number>;
+  tests: { category: string; input: string; expected: string }[];
+  reference_solution: string;
+}
+
 // Discriminated union on `kind`. Narrow with `question.kind === "coding"`
 // (or "spoken") before reading kind-specific fields.
 export type Question = SpokenQuestion | CodingQuestion;
@@ -767,6 +779,9 @@ export interface RoundResponse {
   overhead_minutes: number;
   requirements: RoundRequirements;
   questions: Question[];
+  // The state of each coding question's hidden checks, keyed by question
+  // id. A coding question that is not `verified` blocks publish.
+  judging?: Record<string, JudgingSummary>;
   authoring_chat: ChatMessage[];
   // The hiring stage a candidate must reach to be eligible for this
   // round's invites. Served by the backend rather than duplicated here:
@@ -827,6 +842,17 @@ export interface InterviewBreakdownItem {
 export interface InterviewScorecardCode {
   language: string;
   source: string;
+  // How this code did against the question's hidden checks: inputs the
+  // candidate never saw. Absent when the question has none, or they could
+  // not be run for this exact code.
+  hidden_checks?: HiddenChecksCounts | null;
+}
+
+export interface HiddenChecksCounts {
+  passed: number;
+  total: number;
+  by_category: Record<string, { passed: number; total: number }>;
+  compile_error?: string | null;
 }
 
 export interface InterviewScorecard {

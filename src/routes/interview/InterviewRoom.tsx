@@ -569,17 +569,14 @@ export default function InterviewRoom({
 
         {hasPinnedSlot && <div className="border-t border-[#E5E1D8]" />}
 
-        {/* The conversation. Its place in the layout is a deliberate choice,
-            not the same box resized: with a coding question open, the editor
-            is what the candidate is actually using, so the transcript drops
-            to a fixed, modest strip underneath it (`compact`) rather than a
-            flexible region that would either starve the editor of height or
-            get crushed itself trying to share it. With nothing competing
-            for space — the warm-up, or a spoken question pinned above —
-            the transcript becomes the primary thing below the fold and
-            takes the entire remaining height as a real, readable column. */}
+        {/* The conversation. With a coding question open the editor is what
+            the candidate is using, so the transcript is a one-strip live
+            caption under it (`compact`) and the pane gets the height. With
+            nothing competing for space (the warm-up, or a spoken question
+            pinned above) it takes the entire remaining height as a real,
+            readable column. */}
         {showCodingPane ? (
-          <div className="shrink-0 px-4 pt-3 pb-4">
+          <div className="shrink-0 px-4 py-2">
             <Transcript
               turns={transcriptTurns}
               enabled={captionsEnabled}

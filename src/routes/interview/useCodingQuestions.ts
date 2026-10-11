@@ -5,6 +5,7 @@ import type { Room } from "livekit-client";
 import {
   getInterviewQuestions,
   submitCode,
+  type SubmitVerdict,
   type InterviewLanguage,
   type RunCodeResponse,
 } from "@/lib/interviewApi";
@@ -17,12 +18,25 @@ import {
 import { useCountdown } from "./useCountdown";
 import { useQuestionSync } from "./useQuestionSync";
 import { notifyActivity, notifySubmitted } from "./notifySubmission";
-import { runCodeLocally, CppNotRunnableError, PythonNotReadyError } from "./execution/runCodeLocally";
+import {
+  runCodeLocally,
+  runWithInput,
+  CppNotRunnableError,
+  PythonNotReadyError,
+} from "./execution/runCodeLocally";
 import { pyodideManager } from "./execution/pyodideManager";
 import { usePyodideStatus } from "./execution/usePyodideStatus";
 import { runGateFor } from "./execution/runGate";
 import { isUntouchedStarter, starterCodeFor } from "./starterCode";
 import { submitGateFor } from "./execution/submitGate";
+import { isFullPass, verdictSummary } from "./execution/verdictSummary";
+
+// What a save came back with: whether the server has the code, and the
+// hidden checks' counts when it was asked for them and could produce them.
+interface PersistResult {
+  ok: boolean;
+  verdict: SubmitVerdict | null;
+}
 
 const DEFAULT_LANGUAGE: InterviewLanguage = "python";
 // The languages the pane offers, for isUntouchedStarter: a stub from ANY
@@ -278,6 +292,13 @@ export function useCodingQuestions(token: string, room: Room | null) {
   const [isRunning, setIsRunning] = useState(false);
   const [submitNotice, setSubmitNotice] = useState<SubmitNotice | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // The hidden checks' counts for the last judged Submit of the question on
+  // screen, kept only while they show failures (a full pass ends the
+  // question). Not cleared when the candidate edits: it stays up as "your
+  // last submission", which is exactly what they are working against.
+  const [verdict, setVerdict] = useState<SubmitVerdict | null>(null);
+  const [customInput, setCustomInput] = useState("");
+  const [customResult, setCustomResult] = useState<RunCodeResponse | null>(null);
 
   // Read inside the async handlers below so a Run or Submit request that is
   // still in flight when the pointer moves the candidate on (mid-request)
@@ -337,35 +358,43 @@ export function useCodingQuestions(token: string, room: Room | null) {
     [current],
   );
 
-  // Best-effort submit shared by the manual Submit button and the timeout
+  // Best-effort save shared by the manual Submit button and the timeout
   // path. Never throws: a failure here must never be allowed to look like a
   // lost buffer, only like a save that has not reached the server yet.
   //
-  // Tells the agent right after POST /submit succeeds (flow-completion-
-  // contract.md, step 4) — never before, and never in a way that can affect
-  // the return value below: notifySubmitted is fire-and-forget and swallows
-  // its own failures, so a candidate's submission is never put at risk by a
-  // data packet that did not go out.
+  // `judge` asks the server to also run the saved code against the
+  // question's hidden checks and send back the counts. The timeout path
+  // passes false: a candidate who is out of time should not wait on a
+  // sandbox, and that code is checked after the interview instead.
+  //
+  // This no longer tells the agent anything. Saving and being DONE with a
+  // question used to be the same moment; with hidden checks a candidate can
+  // submit, read that two edge cases fail, and keep working. The agent is
+  // told only when the question is actually finished (see finishQuestion).
   const persist = useCallback(
-    async (questionId: string, language: InterviewLanguage, source: string): Promise<boolean> => {
+    async (
+      questionId: string,
+      language: InterviewLanguage,
+      source: string,
+      judge: boolean,
+    ): Promise<PersistResult> => {
+      const body = { question_id: questionId, language, source, judge };
       try {
-        await submitCode(token, { question_id: questionId, language, source });
-        notifySubmitted(room, questionId, language);
-        return true;
+        const res = await submitCode(token, body);
+        return { ok: true, verdict: res.verdict ?? null };
       } catch {
         // One retry: most failures here are a single dropped request, and a
         // candidate who just ran out of time should not lose their answer
         // to one bad network blip.
         try {
-          await submitCode(token, { question_id: questionId, language, source });
-          notifySubmitted(room, questionId, language);
-          return true;
+          const res = await submitCode(token, body);
+          return { ok: true, verdict: res.verdict ?? null };
         } catch {
-          return false;
+          return { ok: false, verdict: null };
         }
       }
     },
-    [token, room],
+    [token],
   );
 
   // Marks a question id as submitted — see CodingState.dismissed and
@@ -378,6 +407,28 @@ export function useCodingQuestions(token: string, room: Room | null) {
       prev ? { ...prev, dismissed: { ...prev.dismissed, [questionId]: true } } : prev,
     );
   }, []);
+
+  // The one place a coding question ends: the pane closes for good and the
+  // agent is told (flow-completion-contract.md, step 4), always after the
+  // server already holds the code. notifySubmitted is fire-and-forget and
+  // swallows its own failures, so a data packet that did not go out can
+  // never put a saved submission at risk.
+  //
+  // Once per question. A Submit waits on the hidden checks for seconds, and
+  // the question's timer can run out, or the candidate can press "Move on",
+  // while it does. Whichever ends the question first wins; the other must
+  // not tell the agent a second time, and (see handleSubmit) must not put
+  // a verdict panel up on a question that is already over.
+  const finishedRef = useRef<Set<string>>(new Set());
+  const finishQuestion = useCallback(
+    (questionId: string, language: InterviewLanguage) => {
+      if (finishedRef.current.has(questionId)) return;
+      finishedRef.current.add(questionId);
+      notifySubmitted(room, questionId, language);
+      dismissQuestion(questionId);
+    },
+    [room, dismissQuestion],
+  );
 
   // Captures a timed-out coding answer and nothing more. Moving the pointer
   // on is never this hook's call — see the module comment — so there is no
@@ -398,7 +449,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
     expiringRef.current = true;
     (async () => {
       const b = bufferFor(state.buffers, current.id);
-      const ok = await persist(current.id, b.language, b.source);
+      const { ok } = await persist(current.id, b.language, b.source, false);
       setSubmitNotice(
         ok
           ? { kind: "saved", message: "Time's up. Your answer was saved." }
@@ -412,10 +463,10 @@ export function useCodingQuestions(token: string, room: Room | null) {
       // leaves the pane open (even past the deadline, Submit is still on
       // screen) so the candidate's one recovery path — press Submit again
       // — still exists; see handleSubmit for the identical rule.
-      if (ok) dismissQuestion(current.id);
+      if (ok) finishQuestion(current.id, b.language);
       expiringRef.current = false;
     })();
-  }, [current, state, persist, dismissQuestion]);
+  }, [current, state, persist, finishQuestion]);
 
   const { secondsRemaining, warning } = useCountdown(state?.deadlineAt ?? null, handleExpire);
 
@@ -430,6 +481,8 @@ export function useCodingQuestions(token: string, room: Room | null) {
   useEffect(() => {
     setRunResult(null);
     setRunNotice(null);
+    setVerdict(null);
+    setCustomResult(null);
   }, [current?.id]);
 
   // Self-dismissing toast: whatever set submitNotice (manual Submit, or the
@@ -503,6 +556,32 @@ export function useCodingQuestions(token: string, room: Room | null) {
     }
   }, [current, buffer, isRunning, runBlockedReason]);
 
+  // Runs the code on input the candidate typed, and shows what it printed.
+  // Separate state from `runResult` on purpose: the Submit gate reads
+  // runResult ("did the worked examples pass"), and trying an input of your
+  // own must neither satisfy that gate nor reset it.
+  const handleRunCustom = useCallback(async () => {
+    if (!current || current.kind !== "coding" || !buffer || isRunning || runBlockedReason) return;
+    const questionId = current.id;
+    setIsRunning(true);
+    try {
+      const result = await runWithInput(buffer.language, buffer.source, customInput);
+      if (currentIdRef.current === questionId) setCustomResult(result);
+    } catch (err) {
+      if (currentIdRef.current !== questionId) return;
+      setCustomResult(null);
+      setRunNotice({
+        kind: err instanceof CppNotRunnableError || err instanceof PythonNotReadyError ? "unavailable" : "error",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Could not run your code in this browser. Please try again.",
+      });
+    } finally {
+      setIsRunning(false);
+    }
+  }, [current, buffer, isRunning, runBlockedReason, customInput]);
+
   const handleSubmit = useCallback(async () => {
     if (!current || current.kind !== "coding" || !buffer || isSubmitting) return;
     // Enforced here too, not only on the button: the gate is a rule about
@@ -512,27 +591,68 @@ export function useCodingQuestions(token: string, room: Room | null) {
     // running out of time still captures the work.
     if (submitGate.blocked) return;
     const questionId = current.id;
+    const language = buffer.language;
     setIsSubmitting(true);
     setSubmitNotice(null);
-    const ok = await persist(questionId, buffer.language, buffer.source);
-    // The notice is only meaningful if the candidate is still looking at
-    // this question; isSubmitting always clears, for the same reason as
-    // isRunning above.
-    if (currentIdRef.current === questionId) {
-      setSubmitNotice(
-        ok
-          ? { kind: "saved", message: "Saved." }
-          : { kind: "error", message: "We could not reach the server. Your code is still here, try again." },
-      );
-    }
-    // Dismiss the pane only on a confirmed save. On failure the pane stays
-    // open (own comment on persist()'s retry above covers why this can
-    // still fail) so "try again" in the notice above is a real button, not
-    // a dead end — the candidate's one way to recover is pressing Submit a
-    // second time, which a dismissed, unmounted pane would take away.
-    if (ok) dismissQuestion(questionId);
+    const { ok, verdict: result } = await persist(questionId, language, buffer.source, true);
     setIsSubmitting(false);
-  }, [current, buffer, isSubmitting, persist, dismissQuestion, submitGate.blocked]);
+    // The timer ended this question while the checks were running. Its own
+    // save already holds the latest code and the server keeps that one
+    // (the verdict is only ever written over the code it was computed
+    // for), so there is nothing left for this request to say or do.
+    if (finishedRef.current.has(questionId)) return;
+    if (!ok) {
+      // The pane stays open so "try again" is a real button, not a dead
+      // end: pressing Submit a second time is the one way to recover.
+      if (currentIdRef.current === questionId) {
+        setSubmitNotice({
+          kind: "error",
+          message: "We could not reach the server. Your code is still here, try again.",
+        });
+      }
+      return;
+    }
+    // The hidden checks found something. The code is saved, but the
+    // question is not over: the candidate reads the counts and either fixes
+    // their code and submits again or moves on (handleMoveOn). This is the
+    // part of a live interview where the interviewer says "that breaks on
+    // an edge case" and the candidate gets to find it.
+    if (result && !isFullPass(result)) {
+      if (currentIdRef.current === questionId) setVerdict(result);
+      return;
+    }
+    // Everything passed, or there was no verdict to wait for (a question
+    // with no hidden checks, or a sandbox that is down): done, as before.
+    if (currentIdRef.current === questionId) {
+      setSubmitNotice({ kind: "saved", message: verdictSummary(result).headline });
+    }
+    finishQuestion(questionId, language);
+  }, [current, buffer, isSubmitting, persist, finishQuestion, submitGate.blocked]);
+
+  // "Move on with this answer", offered once the hidden checks have
+  // reported failures. Saves whatever is in the editor now (it may have
+  // been edited since the last Submit) without asking for another verdict,
+  // then ends the question. Never gated on a passing run: a candidate who
+  // cannot find the bug must always be able to leave.
+  const handleMoveOn = useCallback(async () => {
+    if (!current || current.kind !== "coding" || !buffer || isSubmitting) return;
+    const questionId = current.id;
+    const language = buffer.language;
+    setIsSubmitting(true);
+    const { ok } = await persist(questionId, language, buffer.source, false);
+    setIsSubmitting(false);
+    if (!ok) {
+      if (currentIdRef.current === questionId) {
+        setSubmitNotice({
+          kind: "error",
+          message: "We could not reach the server. Your code is still here, try again.",
+        });
+      }
+      return;
+    }
+    setSubmitNotice({ kind: "saved", message: "Saved." });
+    finishQuestion(questionId, language);
+  }, [current, buffer, isSubmitting, persist, finishQuestion]);
 
   return {
     questions,
@@ -559,6 +679,12 @@ export function useCodingQuestions(token: string, room: Room | null) {
     submitNotice,
     isSubmitting,
     handleSubmit,
+    verdict,
+    handleMoveOn,
+    customInput,
+    setCustomInput,
+    customResult,
+    handleRunCustom,
   };
 }
 

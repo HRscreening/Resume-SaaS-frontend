@@ -194,10 +194,28 @@ export interface SubmitCodeRequest {
   question_id: string;
   language: InterviewLanguage;
   source: string;
+  // False when a question's timer ran out and this is the automatic save:
+  // the work is captured at once and checked after the interview, so a
+  // candidate who is out of time does not also wait on a sandbox.
+  judge?: boolean;
+}
+
+// How the submitted code did against the question's hidden checks. Counts
+// only, by design: the server never sends an input, an expected output or
+// anything the program printed, so nothing here can reveal a hidden check.
+export interface SubmitVerdict {
+  passed: number;
+  total: number;
+  by_category: Record<string, { passed: number; total: number }>;
+  // The candidate's own compiler output, when their code did not compile.
+  compile_error?: string | null;
 }
 
 export interface SubmitCodeResponse {
   saved: true;
+  // Absent when the code was saved but not checked: a question with no
+  // hidden checks, the sandbox unavailable, or `judge: false`.
+  verdict?: SubmitVerdict | null;
 }
 
 export const submitCode = (token: string, body: SubmitCodeRequest) =>
