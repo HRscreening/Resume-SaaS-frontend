@@ -3,6 +3,7 @@ import { Loader2, MessageSquare, Plus } from "lucide-react";
 import { useAddNoteMutation, useNotesQuery } from "@/modules/screening/hooks/shared/notes.hook";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 interface NotesTabProps {
     screeningId: string;
@@ -12,6 +13,7 @@ interface NotesTabProps {
 export default function NotesTab({ screeningId, resumeId }: NotesTabProps) {
     const { user } = useAuth();
     const currentUserId = user?.id ?? "unknown_user_id";
+    const analytics = useAnalytics();
     const [note, setNote] = useState("");
     const notesQuery = useNotesQuery({ screeningId, resumeId });
     const addNoteMutation = useAddNoteMutation();
@@ -53,7 +55,13 @@ export default function NotesTab({ screeningId, resumeId }: NotesTabProps) {
         addNoteMutation.mutate(
             { screeningId, resumeId, note: trimmedNote },
             {
-                onSuccess: () => setNote(""),
+                onSuccess: () => {
+                    setNote("");
+                    analytics.track(AnalyticsEvent.NOTE_ADDED, {
+                        screeningId,
+                        resumeId,
+                    });
+                },
                 onError: (error) =>
                     toast.error(error instanceof Error ? error.message : "Could not add note"),
             },
