@@ -32,7 +32,7 @@ export function MenuButton({ options, data = null }: MenuButtonProps) {
 
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger className="px-2">
+            <DropdownMenuTrigger className="pr-2">
                 <EllipsisVertical className="text-[#A0A0A0] hover:text-[#C85A17] cursor-pointer" size={16} />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-40" align="end">

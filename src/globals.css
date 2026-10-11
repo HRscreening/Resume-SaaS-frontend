@@ -176,12 +176,6 @@ body {
   border-radius: 3px;
 }
 
-/* Focus ring */
-:focus-visible {
-  outline: 2px solid var(--copper);
-  outline-offset: 2px;
-}
-
 /* Selection */
 ::selection {
   background: #C85A1722;

@@ -1,6 +1,5 @@
 import type {ScreeningsSearchParams,ScreeningSearchParams as ScoredResumeSearchFilterSchema,ApplicationsSearchParams } from "@/modules/screening/types/searchSchema";
 
-
 // --------------------------------- Screening Query Keys ---------------------------------
 export const ScreeningQueryKeys = {
     all: ["screenings"] as const,
@@ -30,6 +29,20 @@ export const ApplicationQueryKeys = {
         [...ApplicationQueryKeys.screening(screeningId), params] as const,
     };
     
+    
+// --------------------------- Note Query Key ---------------------------------
+
+export const NoteQueryKeys = {
+    all: ["notes"] as const,
+
+    screening: (screeningId: string) =>
+        [...NoteQueryKeys.all, screeningId] as const,
+
+    getNotes: (screeningId: string, resumeId: string) =>
+        [...NoteQueryKeys.screening(screeningId), resumeId] as const,
+};
+
+
     
 // --------------------------------- Active Batches Query Keys ---------------------------------
 
@@ -106,4 +119,3 @@ export const ScreeningResultsQueryKeys = {
     ) =>
         [...ScreeningResultsQueryKeys.screening(screeningId), params] as const,
 };
-

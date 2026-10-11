@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useMutationState } from "@tanstack/react-query";
-import { RotateCcw, Archive, Trash2, Share2, Expand, UserRound, ChartNoAxesCombined, PhoneCall, Download } from "lucide-react";
+import { RotateCcw, Archive, Trash2, Share2, Expand, UserRound, ChartNoAxesCombined, PhoneCall, Download,NotebookPen } from "lucide-react";
 import { useScoredResumeUtility } from "@/modules/screening/hooks/screening/queries/screening.query"
 import type { RankedCandidate, ScreeningActionStatus } from "@/modules/screening/types/screening.type";
 import { archiveResume, unarchiveResume, deleteResume } from "@/modules/screening/apis/screenings.api"
@@ -25,9 +25,11 @@ export function useScreeningActions({
     const [localActions, setLocalActions] = useState(new Map<string, ScreeningActionStatus["action"]>());
 
     const [shareCandidate, setShareCandidate] = useState<RankedCandidate | null>(null);
-
     const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
-
+    
+    
+    const [targetCandidate, setTargetCandidate] = useState<RankedCandidate | null>(null);
+    const [isAddNoteDialogOpen, setIsAddNoteDialogOpen] = useState(false);
 
     // Use localActions to track the status of actions for each application. This allows us to show a loading state for individual rows without affecting the entire table.
     const startLocalAction = (resumeId: string, action: ScreeningActionStatus["action"]) => {
@@ -85,7 +87,7 @@ export function useScreeningActions({
     const analytics = useAnalytics();
 
     const trackRowAction = (
-        operation: "resume" | "scorecard" | "profile" | "voice" | "rescore" | "expand" | "share" | "archive" | "unarchive" | "delete",
+        operation: "resume" | "scorecard" | "profile" | "voice" | "rescore" | "expand" | "share" | "archive" | "unarchive" | "delete" | "addNote",
         resumeId: string,
     ) => {
         analytics.track(AnalyticsEvent.ROW_MENU_ACTION, {
@@ -262,6 +264,13 @@ export function useScreeningActions({
         };
     };
 
+    const clearDialogs = useCallback(() => {
+        setIsShareDialogOpen(false);
+        setIsAddNoteDialogOpen(false);
+        setShareCandidate(null);
+        setTargetCandidate(null);
+    }, []);
+
     return {
         menuOptions,
         getRowStatus,
@@ -270,5 +279,11 @@ export function useScreeningActions({
         setShareCandidate,
         isShareDialogOpen,
         setIsShareDialogOpen,
+
+        targetCandidate,
+        isAddNoteDialogOpen,
+        setIsAddNoteDialogOpen,
+
+        clearDialogs,
     };
 }

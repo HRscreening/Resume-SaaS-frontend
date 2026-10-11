@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useParams } from "@tanstack/react-router";
 import { Eye, ExternalLink, Expand, Download, Loader2, } from "lucide-react";
 import { downloadScorecard } from "@/lib/api";
@@ -10,7 +10,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useCandidateScreeningDetail } from "@/controllers/screening/getCandidateScreeningDetail";
-import InfoTab from "@/modules/screening/components/Screening/profileTab";
 import { CandidateVoicePanel } from "@/components/screening/voice/CandidateVoicePanel";
 import { ShareReportDialog } from "@/components/screening/ShareReportDialog";
 import { useScreening } from "@/controllers/screening/getScreening";
@@ -24,33 +23,9 @@ import {
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 import { useAccount } from "@/hooks/useAccount";
 import { InterviewScorecardPanel } from "@/components/screening/interview/InterviewScorecardPanel";
+import NotesTab from "@/modules/screening/components/shared/NotesTab";
+import ProfileTab from "@/modules/screening/components/shared/profileTab";
 
-// const sheetListeners = new Set<() => void>();
-// let openResumeId: string | null = null;
-// function subscribe(fn: () => void) {
-//   sheetListeners.add(fn);
-//   return () => sheetListeners.delete(fn);
-// }
-// function notify() {
-//   sheetListeners.forEach((fn) => fn());
-// }
-// function getSnapshot() {
-//   return openResumeId;
-// }
-// export function setOpenAnalysisSheet(resume_id: string | null) {
-//   if (openResumeId === resume_id) return;
-//   openResumeId = resume_id;
-//   notify();
-// }
-// export function toggleAnalysisSheet(resume_id: string) {
-//   setOpenAnalysisSheet(openResumeId === resume_id ? null : resume_id);
-// }
-// export function useAnalysisSheetOpenId(): string | null {
-//   return useSyncExternalStore(subscribe, getSnapshot, () => null);
-// }
-// export function useAnalysisSheetOpen() {
-//   return useSyncExternalStore(subscribe, getSnapshot, () => null) !== null;
-// }
 export const ANALYSIS_SHEET_WIDTH = 600;
 
 type AnalysisSheetProps = {
@@ -79,7 +54,7 @@ function criterionBarColor(score: number) {
 }
 
 
-type TabValue = "profile" | "scorecard" | "voice" | "round";
+type TabValue = "profile" | "scorecard" | "voice" | "round" | "note";
 
 type Tab = {
   title: string;
@@ -94,6 +69,7 @@ const tabs: Tab[] = [
   // they get two tabs rather than one tab that silently changes meaning.
   { title: "Interview", value: "voice" },
   { title: "Interview Round", value: "round" },
+  { title: "Notes", value: "note" },
 ]
 
 
@@ -107,7 +83,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
   const tab = search.analysisTab ?? "scorecard";
   const open = search.screenId === resume_id;
   const analytics = useAnalytics();
-  const trackedOpen = useRef(false);
+  const trackedOpen = useRef(false);   
 
   // Opens on Analysis even though Profile is listed first: the scorecard
   // always has content, whereas Profile renders a "not available" notice
@@ -135,7 +111,9 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
     isLoading,
     isError,
     error,
-  } = useCandidateScreeningDetail(screening_id, resume_id, { enabled: open });
+  } = useCandidateScreeningDetail(screening_id, resume_id, {
+    enabled: open,
+  });
 
 
   const { data: screening } = useScreening(screening_id, {
@@ -240,9 +218,9 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
         onOpenAutoFocus={(e) => e.preventDefault()}
         // Mobile: full-width overlay (the underlying SheetContent default is
         // w-3/4 — too narrow at 320–430 px to be useful). sm+: cap at 600 px.
-        className="!w-full sm:!max-w-[600px] overflow-y-auto p-0 !z-40"
+        className="!w-full sm:!max-w-[600px] flex flex-col overflow-hidden p-0 !z-40"
       >
-        <SheetHeader className="px-6 pt-6 border-b border-[#E8E5DF] pb-0">
+        <SheetHeader className="shrink-0 px-6 pt-6 border-b border-[#E8E5DF] pb-0">
           <SheetTitle className="text-sm font-semibold text-[#0F0F0F]">
             {/* Share sits in the drawer header, not inside the voice panel:
                 the resume report exists for EVERY candidate, so a candidate
@@ -294,26 +272,27 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
           />
         )}
 
-        {/* Loading */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
-          </div>
-        )}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {/* Loading */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-20">
+              <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
+            </div>
+          )}
 
 
-        {/* Screening Tab */}
-        {
-          tab === "scorecard" && <div>
-            {/* Error */}
-            {!isLoading && isError && (
-              <div className="px-6 py-10 text-center">
-                <p className="text-sm font-medium text-red-700">Failed to load analysis</p>
-                <p className="text-xs text-[#737373] mt-1">
-                  {error instanceof Error ? error.message : "Something went wrong."}
-                </p>
-              </div>
-            )}
+          {/* Screening Tab */}
+          {
+            tab === "scorecard" && <div>
+              {/* Error */}
+              {!isLoading && isError && (
+                <div className="px-6 py-10 text-center">
+                  <p className="text-sm font-medium text-red-700">Failed to load analysis</p>
+                  <p className="text-xs text-[#737373] mt-1">
+                    {error instanceof Error ? error.message : "Something went wrong."}
+                  </p>
+                </div>
+              )}
 
             {/* No score yet */}
             {!isLoading && !isError && resume && !score && (
@@ -542,54 +521,66 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                 </p>
               </div>
             )}
-          </div>
-        }
-        {
-          tab === "profile" && resume && (<div>
-            {!resume.profile
-              ?
-              <div className="px-6 py-10 text-center">
-                Profile not available. Please Contact Support for more information.
+            </div>
+          }
+          {
+            tab === "profile" && resume && (<div>
+              {!resume.profile
+                ?
+                <div className="px-6 py-10 text-center">
+                  Profile not available. Please Contact Support for more information.
+                </div>
+                :
+                <ProfileTab candidate={resume.profile} />
+              }
+            </div>)
+          }
+
+          {/* Interview Tab — call / schedule / transcript + scorecard for this candidate */}
+          {
+            tab === "voice" && (
+              <div className="px-6 py-2 space-y-5">
+                {screening_id && resume_id && resume ? (
+                  <CandidateVoicePanel
+                    screeningId={screening_id}
+                    resumeId={resume_id}
+                    candidateName={resume.candidate_name ?? resume.original_filename}
+                  />
+                ) : (
+                  <div className="py-10 text-center text-sm text-[#737373]">
+                    The interview round is not available for this candidate.
+                  </div>
+                )}
               </div>
-              :
-              <InfoTab candidate={resume.profile} />
-            }
-          </div>)
-        }
-
-        {/* Interview Tab — call / schedule / transcript + scorecard for this candidate */}
-        {
-          tab === "round" && (
-            <div className="px-6 py-2 space-y-5">
-              {screening_id && resume_id ? (
-                <InterviewScorecardPanel screeningId={screening_id} resumeId={resume_id} />
-              ) : (
-                <div className="py-10 text-center text-sm text-[#737373]">
-                  The interview round is not available for this candidate.
-                </div>
-              )}
-            </div>
-          )
-        }
-        {
-          tab === "voice" && (
-            <div className="px-6 py-2 space-y-5">
-              {screening_id && resume_id && resume ? (
-                <CandidateVoicePanel
-                  screeningId={screening_id}
-                  resumeId={resume_id}
-                  candidateName={resume.candidate_name ?? resume.original_filename}
-                />
-              ) : (
-                <div className="py-10 text-center text-sm text-[#737373]">
-                  The interview round is not available for this candidate.
-                </div>
-              )}
-            </div>
-          )
-        }
+            )
+          }
+          {/* Interview Round: the browser round's scorecard for this candidate */}
+          {
+            tab === "round" && (
+              <div className="px-6 py-2 space-y-5">
+                {screening_id && resume_id ? (
+                  <InterviewScorecardPanel screeningId={screening_id} resumeId={resume_id} />
+                ) : (
+                  <div className="py-10 text-center text-sm text-[#737373]">
+                    The interview round is not available for this candidate.
+                  </div>
+                )}
+              </div>
+            )
+          }
+          {/* Notes */}
+          {
+            tab === "note" && (
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-2">
+                <NotesTab screeningId={screening_id} resumeId={resume_id}/>
+              </div>
+            )
+          }
 
 
+
+
+        </div>
       </SheetContent>
     </Sheet>
   );

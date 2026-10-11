@@ -32,13 +32,13 @@ export function ApplicationTable({
 }: ApplicationTableProps) {
 
     const { canWrite } = useAccount();
-    const { search,setAppId } = useScreeningDetailsNavigation();
+    const { search,setAppId,setInfoTab } = useScreeningDetailsNavigation();
     // Derive compact from URL params alone so the table layout is stable on
     // page reload — even before candidate data has loaded.
     const compact = !!search.appId;
 
     const applicationSearchParams: ApplicationsSearchParams = applicationSearchSchema.parse(search);
-    const { menuOptions, getRowStatus } = useApplicationActions({ screeningId, applicationSearchParams });
+    const { menuOptions, getRowStatus, targetCandidate,isAddNoteDialogOpen,clearDialogs } = useApplicationActions({ screeningId, applicationSearchParams });
     // Per-row "..." menu mixes read items (Resume download) with write items
     // wired to live mutations (Archive/Unarchive/Delete). A viewer only gets
     // the read items.
@@ -179,6 +179,7 @@ export function ApplicationTable({
                             ) : candidates.map((c) => (
                                 <CandidateRow
                                     key={c.id}
+                                    screening_id={screeningId}
                                     candidate={c}
                                     compact={compact}
                                     selectable={selectable}
@@ -189,6 +190,10 @@ export function ApplicationTable({
                                     setAppId={setAppId}
                                     MenuOptions={MenuOptions}
                                     processingStatus={getRowStatus(c.id)}
+                                    onViwAllNotes={(resumeId:string)=>{
+                                        setAppId(resumeId);
+                                        setInfoTab("note");
+                                    }}
                                 />
                             ))}
                         </tbody>

@@ -7,6 +7,8 @@ export const AnalyticsEvent = {
   JOB_TYPE_SWITCHED: "job_type_switched",
   SCREENING_VIEWED: "screening_viewed",
   CANDIDATE_ANALYSIS_OPENED: "candidate_analysis_opened",
+  NOTES_VIEWED: "notes_viewed",
+  NOTE_ADDED: "note_added",
   FILTERS_APPLIED: "filters_applied",
 
   JOB_CREATE_STARTED: "job_create_started",
@@ -58,6 +60,8 @@ export interface AnalyticsEventProperties {
   application_resume_opened: { screeningId: string; resumeId: string };
   screening_viewed: { screeningId: string };
   candidate_analysis_opened: { screeningId: string; resumeId: string };
+  notes_viewed: { screeningId: string; resumeId: string };
+  note_added: { screeningId: string; resumeId: string };
   filters_applied: { screeningId: string; filterCount: number };
 
   job_create_started: { source: "dashboard" | "empty_state" };
@@ -96,7 +100,7 @@ export interface AnalyticsEventProperties {
   row_menu_action: {
     screeningId: string;
     table: "applications" | "screening";
-    operation: "resume" | "scorecard" | "profile" | "voice" | "rescore" | "expand" | "share" | "archive" | "unarchive" | "delete";
+    operation: "resume" | "scorecard" | "profile" | "voice" | "rescore" | "expand" | "share" | "archive" | "unarchive" | "delete" | "addNote";
     resumeId: string;
   };
 

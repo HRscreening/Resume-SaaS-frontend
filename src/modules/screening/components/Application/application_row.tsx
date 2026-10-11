@@ -3,8 +3,10 @@ import { useSelectedApplications } from "@/modules/screening/hooks/application/c
 import ProcessingOverlay from "@/modules/screening/components/shared/RowProcessingOverlay"
 import { MenuButton, type Option } from "@/modules/screening/components/shared/MenuButton";
 import InfoSheet from "@/modules/screening/components/Application/InfoSheet";
+import AddNote from "@/modules/screening/components/Dialogs/AddNoteDialog" 
 
 interface CandidateRowProps {
+    screening_id: string;
     candidate: Application;
     selectable: boolean;
     compact: boolean;
@@ -15,9 +17,11 @@ interface CandidateRowProps {
     MenuOptions: Option[];
     selected?: boolean;
     toggleSelection: (id: string) => void;
+    onViwAllNotes: (resumeId:string) => void;
 }
 
 export default function CandidateRow({
+    screening_id,
     candidate,
     selectable,
     processingStatus,
@@ -28,6 +32,7 @@ export default function CandidateRow({
     isOpen,
     setAppId,
     MenuOptions,
+    onViwAllNotes
 }: CandidateRowProps) {
 
     const { action, isProcessing } = processingStatus;
@@ -229,10 +234,11 @@ export default function CandidateRow({
                 {/* View Details / Actions */}
                 {!compact && (
                     <td
-                        className="w-24 px-2 py-3 gap-2 text-center align-middle"
+                        className="w-24 px-2 py-3 flex justify-between items-center gap-2 text-center align-middle"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <InfoSheet candidate={candidate} disabled={isPending} open={isOpen} />
+                        <InfoSheet key={candidate.id} candidate={candidate} disabled={isPending} open={isOpen} />
+                        <AddNote key={candidate.id} screeningId={screening_id} resumeId={candidate.id} onViwAllNotes={onViwAllNotes} />
                         <MenuButton key={candidate.id} options={MenuOptions} data={candidate} />
                     </td>
                 )}
