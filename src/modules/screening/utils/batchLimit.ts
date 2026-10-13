@@ -14,11 +14,64 @@ export function resolveMaxBatchSize(
   return typeof max === "number" && max >= 0 ? max : null;
 }
 
-/** What to tell a user whose selection is over the cap, or null if it fits. */
-export function batchLimitMessage(selected: number, maxBatchSize: number | null): string | null {
-  if (maxBatchSize === null || selected <= maxBatchSize) return null;
-  const excess = selected - maxBatchSize;
-  return `You selected ${selected} resumes. Your plan can screen up to ${maxBatchSize} at a time. Deselect ${excess} and try again.`;
+/**
+ * The two limits the server applies to a Screen or Rescore request. Null
+ * means unknown or uncapped, and never blocks.
+ */
+export interface ScreenLimits {
+  /** Resumes allowed in one request. */
+  maxBatchSize: number | null;
+  /** Analyses left in the plan's allowance; each resume sent uses one. */
+  quotaRemaining: number | null;
+}
+
+export type ScreenBlockReason = "batch_size" | "quota";
+
+export interface ScreenBlock {
+  reason: ScreenBlockReason;
+  /** The most resumes that would be accepted right now. */
+  allowed: number;
+  /** Full sentence for the toast. */
+  message: string;
+  /** Short label shown beside the selected count. */
+  hint: string;
+}
+
+/**
+ * Why this selection would be refused, or null if it fits. When both limits
+ * are exceeded the tighter one is reported, since meeting it meets both.
+ */
+export function screenBlock(selected: number, limits: ScreenLimits): ScreenBlock | null {
+  const { maxBatchSize, quotaRemaining } = limits;
+  const overBatch = maxBatchSize !== null && selected > maxBatchSize;
+  const overQuota = quotaRemaining !== null && selected > quotaRemaining;
+  if (!overBatch && !overQuota) return null;
+
+  const quotaIsTighter = overQuota && (!overBatch || quotaRemaining < maxBatchSize);
+  if (quotaIsTighter) {
+    if (quotaRemaining === 0) {
+      return {
+        reason: "quota",
+        allowed: 0,
+        message: "You have no resume analyses left on your plan. Upgrade to screen more.",
+        hint: "No analyses left",
+      };
+    }
+    return {
+      reason: "quota",
+      allowed: quotaRemaining,
+      message: `You selected ${selected} resumes but have ${quotaRemaining} analyses left on your plan. Deselect ${selected - quotaRemaining}, or upgrade to screen more.`,
+      hint: `${quotaRemaining} analyses left`,
+    };
+  }
+
+  const cap = maxBatchSize as number;
+  return {
+    reason: "batch_size",
+    allowed: cap,
+    message: `You selected ${selected} resumes. Your plan can screen up to ${cap} at a time. Deselect ${selected - cap} and try again.`,
+    hint: `Max ${cap} per batch`,
+  };
 }
 
 /**

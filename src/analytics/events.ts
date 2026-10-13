@@ -31,6 +31,10 @@ export const AnalyticsEvent = {
   JOB_POST_STARTED: "job_post_started",
   RESUME_UPLOAD_PANEL_OPENED: "resume_upload_panel_opened",
   MULTI_SELECT_ACTION: "multi_select_action",
+  // A Screen or Rescore click that did not start a batch: stopped in the UI
+  // by a plan limit ("blocked") or refused or failed by the server ("failed").
+  SCREENING_BLOCKED: "screening_blocked",
+  SCREENING_FAILED: "screening_failed",
   ROW_MENU_ACTION: "row_menu_action",
 
   RESUME_UPLOADED: "resume_uploaded",

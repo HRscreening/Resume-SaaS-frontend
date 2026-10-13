@@ -1,15 +1,16 @@
 /**
- * The per-batch screening cap, as the user meets it. A user once selected 43
- * resumes on a plan capped at 10 and was told only "Please try again", three
- * times. These pin the two things that were missing: knowing the cap before
- * the request, and repeating the server's reason after it.
+ * The limits a user meets when pressing Screen. A user once selected 43
+ * resumes on a plan capped at 10 per batch and was told only "Please try
+ * again", three times. These pin what was missing: knowing every limit
+ * before the request, saying which one applies and what number to aim for,
+ * and repeating the server's reason if it refuses anyway.
  */
 import { describe, expect, it } from "vitest";
 
 import type { PlanSpec } from "@/types";
 import {
-  batchLimitMessage,
   resolveMaxBatchSize,
+  screenBlock,
   screeningErrorMessage,
 } from "./batchLimit";
 
@@ -33,20 +34,43 @@ describe("resolveMaxBatchSize", () => {
   });
 });
 
-describe("batchLimitMessage", () => {
-  it("allows a selection exactly at the cap", () => {
-    expect(batchLimitMessage(50, 50)).toBeNull();
+describe("screenBlock", () => {
+  const free = { maxBatchSize: 50, quotaRemaining: 50 };
+
+  it("allows a selection that fits both the batch cap and the quota", () => {
+    expect(screenBlock(44, free)).toBeNull();
+    expect(screenBlock(50, free)).toBeNull();
   });
 
-  it("names the cap and how many to deselect when over it", () => {
-    const message = batchLimitMessage(73, 50);
-    expect(message).toContain("73");
-    expect(message).toContain("up to 50");
-    expect(message).toContain("Deselect 23");
+  it("names the batch cap and how many to deselect when over it", () => {
+    const block = screenBlock(73, { maxBatchSize: 50, quotaRemaining: 900 });
+    expect(block?.reason).toBe("batch_size");
+    expect(block?.allowed).toBe(50);
+    expect(block?.message).toContain("up to 50");
+    expect(block?.message).toContain("Deselect 23");
+    expect(block?.hint).toBe("Max 50 per batch");
   });
 
-  it("never blocks when the cap is unknown, leaving the server to decide", () => {
-    expect(batchLimitMessage(10_000, null)).toBeNull();
+  it("names the remaining quota when that is the tighter limit", () => {
+    // 44 of Free's 50 analyses already used: the batch cap of 50 is not the problem.
+    const block = screenBlock(43, { maxBatchSize: 50, quotaRemaining: 6 });
+    expect(block?.reason).toBe("quota");
+    expect(block?.allowed).toBe(6);
+    expect(block?.message).toContain("6 analyses left");
+    expect(block?.message).toContain("Deselect 37");
+    expect(block?.hint).toBe("6 analyses left");
+  });
+
+  it("says the quota is spent instead of asking to deselect everything", () => {
+    const block = screenBlock(3, { maxBatchSize: 50, quotaRemaining: 0 });
+    expect(block?.reason).toBe("quota");
+    expect(block?.message).toContain("no resume analyses left");
+    expect(block?.message).not.toContain("Deselect");
+  });
+
+  it("never blocks on a limit it does not know, leaving the server to decide", () => {
+    expect(screenBlock(10_000, { maxBatchSize: null, quotaRemaining: null })).toBeNull();
+    expect(screenBlock(60, { maxBatchSize: null, quotaRemaining: 100 })).toBeNull();
   });
 });
 
