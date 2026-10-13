@@ -25,6 +25,8 @@ import { useScoringMutation } from "@/modules/screening/hooks/shared/useScoringM
 import { UtilityButton } from "@/modules/screening/components/shared/MultiSelectUtilityButton"
 import MultiShareDialog from "@/modules/screening/components/shared/MultiShareDialog";
 import { useNavigate } from "@tanstack/react-router"
+import { useMaxBatchSize } from "@/modules/screening/hooks/shared/useMaxBatchSize"
+import { batchLimitMessage, screeningErrorMessage } from "@/modules/screening/utils/batchLimit"
 import { useAccount } from "@/hooks/useAccount"
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
@@ -91,6 +93,8 @@ const CandidateMultiSelectToolBar = ({
 
 
   const totalSelected = selectedCandidates.size
+  const maxBatchSize = useMaxBatchSize()
+  const batchLimitWarning = batchLimitMessage(totalSelected, maxBatchSize)
 
   const multiArchiveMutation = useMultiScoredResumeUtility(archiveResumeMulti, TOAST_MESSAGES.ARCHIVE)
   const multiUnarchiveMutation = useMultiScoredResumeUtility(unarchiveResumeMulti, TOAST_MESSAGES.UNARCHIVE)
@@ -141,7 +145,7 @@ const CandidateMultiSelectToolBar = ({
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("Failed to export resumes");
+      // The mutation hook has already told the user why the export failed.
     }
   }
 
@@ -228,6 +232,10 @@ const CandidateMultiSelectToolBar = ({
       toast.error("No candidates selected for Screening.");
       return;
     }
+    if (batchLimitWarning) {
+      toast.error(batchLimitWarning);
+      return;
+    }
 
     try {
       const resume_ids = getIdsFromSet(selectedCandidates);
@@ -236,7 +244,7 @@ const CandidateMultiSelectToolBar = ({
       closeToolBar()
     }
     catch (error) {
-      toast.error("Error Screening candidates. Please try again.");
+      toast.error(screeningErrorMessage(error, "Error Screening candidates. Please try again."));
     }
 
 
@@ -269,6 +277,12 @@ const CandidateMultiSelectToolBar = ({
           <span className="text-sm font-semibold text-[#0F0F0F] whitespace-nowrap">
             {totalSelected} selected
           </span>
+
+          {batchLimitWarning && (
+            <span className="text-xs font-medium text-red-600 whitespace-nowrap" role="alert">
+              Max {maxBatchSize} per batch
+            </span>
+          )}
 
           {!compact && (
             <>
