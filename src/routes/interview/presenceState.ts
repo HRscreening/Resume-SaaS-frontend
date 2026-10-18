@@ -1,5 +1,8 @@
 export type PresenceState = "speaking" | "listening" | "thinking";
 
+// When the agent's own state is known it wins (see the `agentState`
+// argument); the rules below are the fallback.
+//
 // Three states, not two: "the same animation for listening and speaking"
 // and "no distinct thinking state" are the two anti-patterns this screen
 // used to commit (see ThinkingDots). There is no explicit "thinking" signal
@@ -21,7 +24,15 @@ export function derivePresenceState(
   interviewerSpeaking: boolean,
   candidateSpeaking: boolean,
   hasHeardAnything: boolean,
+  agentState?: string | null,
 ): PresenceState {
+  // The agent publishes its real state (`lk.agent.state`), which beats any
+  // guess from audio. "initializing" and "idle" say nothing useful about
+  // what the interviewer is doing, so they fall through to the audio rules
+  // below, as does a missing attribute.
+  if (agentState === "speaking" || agentState === "thinking" || agentState === "listening") {
+    return agentState;
+  }
   if (interviewerSpeaking) return "speaking";
   if (candidateSpeaking) return "listening";
   return hasHeardAnything ? "thinking" : "listening";

@@ -8,6 +8,7 @@ interface TopBarProps {
   durationMinutes: number;
   presenceState: PresenceState;
   reconnecting: boolean;
+  connectionLabel: string | null;
   interviewerAnalyser: AnalyserNode | null;
   interviewerSpeaking: boolean;
   candidateAnalyser: AnalyserNode | null;
@@ -29,6 +30,7 @@ export default function TopBar({
   durationMinutes,
   presenceState,
   reconnecting,
+  connectionLabel,
   interviewerAnalyser,
   interviewerSpeaking,
   candidateAnalyser,
@@ -58,6 +60,18 @@ export default function TopBar({
           />
         )}
         <span className="text-xs font-medium text-[#404040] truncate">{label}</span>
+        {connectionLabel && (
+          <span
+            role="status"
+            className={`text-xs font-medium rounded-full px-2 py-0.5 whitespace-nowrap ${
+              connectionLabel === "Connection lost"
+                ? "bg-[#FBE0DE] text-[#9B1C1C]"
+                : "bg-[#FDECD2] text-[#8A4B08]"
+            }`}
+          >
+            {connectionLabel}
+          </span>
+        )}
         {questionTotal > 0 && (
           <QuestionProgress index={questionIndex} total={questionTotal} compact />
         )}

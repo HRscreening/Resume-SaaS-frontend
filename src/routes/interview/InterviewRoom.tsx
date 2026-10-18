@@ -26,6 +26,9 @@ import { useAudioAnalyser } from "./useAudioAnalyser";
 import { useLocalAudioTrack } from "./useLocalAudioTrack";
 import { useTranscript } from "./useTranscript";
 import { derivePresenceState } from "./presenceState";
+import { useAgentState } from "./useAgentState";
+import { useConnectionQuality } from "./useConnectionQuality";
+import { connectionLabel } from "./connectionLabel";
 
 // The candidate's LiveKit participant identity is always this literal string
 // (minted server-side by mint_candidate_token — see backend service.join()).
@@ -193,10 +196,13 @@ export default function InterviewRoom({
   // anti-patterns this redesign exists to fix. `transcriptTurns.length > 0`
   // is what tells "nobody has spoken yet" apart from "the interviewer just
   // finished listening and is about to respond" — see presenceState.ts.
+  const agentState = useAgentState(activeRoom);
+  const connectionQuality = useConnectionQuality(activeRoom);
   const presenceState = derivePresenceState(
     agentSpeaking,
     candidateSpeaking,
     transcriptTurns.length > 0,
+    agentState,
   );
 
   function handleToggleCaptions() {
@@ -545,6 +551,7 @@ export default function InterviewRoom({
         durationMinutes={durationMinutes}
         presenceState={presenceState}
         reconnecting={callState === "reconnecting"}
+        connectionLabel={connectionLabel(connectionQuality)}
         interviewerAnalyser={agentAnalyser}
         interviewerSpeaking={agentSpeaking}
         candidateAnalyser={candidateAnalyser}
