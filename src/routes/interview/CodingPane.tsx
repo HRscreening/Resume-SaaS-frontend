@@ -88,8 +88,8 @@ function QuestionPane({
   );
 }
 
-  const reducedMotion = usePrefersReducedMotion();
 function EditorPane({ coding, examples }: { coding: UseCodingQuestions; examples: InterviewExample[] }) {
+  const reducedMotion = usePrefersReducedMotion();
   const { buffer, setSource, setLanguage, isRunning, isSubmitting, runBlockedReason, submitBlocked,
     submitBlockedReason, handleRun, handleSubmit, verdict } = coding;
   if (!buffer) return null;
