@@ -17,6 +17,7 @@ import {
 } from "./codingBufferStorage";
 import { useCountdown } from "./useCountdown";
 import { useQuestionSync } from "./useQuestionSync";
+import { reconcileDeadline } from "./questionDeadline";
 import { notifyActivity, notifySubmitted } from "./notifySubmission";
 import {
   runCodeLocally,
@@ -119,7 +120,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
   );
   // The agent-named current question, once a valid, known id has arrived —
   // null (and therefore ignored below) until then or if it never does.
-  const syncedQuestionId = useQuestionSync(room, knownQuestionIds);
+  const { questionId: syncedQuestionId, remainingS } = useQuestionSync(room, knownQuestionIds);
 
   const [state, setState] = useState<CodingState | null>(null);
   const expiringRef = useRef(false);
@@ -264,14 +265,14 @@ export function useCodingQuestions(token: string, room: Room | null) {
   }, [syncedQuestionId, questions, refetch]);
 
   // The timer belongs to whichever question the pointer names, and only
-  // that: give it a fresh countdown against its own `allocated_minutes` the
-  // moment the pointer moves to a different question, forward, backward, or
+  // that: give it a fresh countdown the moment the pointer moves to a different question, forward, backward, or
   // to one the pointer was never on before in this mount. A restored
   // deadline (mount effect above already primed deadlineOwnerRef from
   // `deadlineQuestionId` to match) is left untouched, which is what
   // preserves true remaining time across a reload instead of resetting it
   // to a fresh full allocation the instant the pointer republishes the same
-  // question.
+  // question. The countdown starts from the server's remaining time when the
+  // signal carries one, else from the question's own `allocated_minutes`.
   useEffect(() => {
     const id = current?.id ?? null;
     if (deadlineOwnerRef.current === id) return;
@@ -281,11 +282,28 @@ export function useCodingQuestions(token: string, room: Room | null) {
       if (!current) return { ...prev, deadlineAt: null, deadlineQuestionId: null };
       return {
         ...prev,
-        deadlineAt: Date.now() + minutesToMs(current.allocated_minutes),
+        deadlineAt:
+          remainingS !== null
+            ? Date.now() + remainingS * 1000
+            : Date.now() + minutesToMs(current.allocated_minutes),
         deadlineQuestionId: current.id,
       };
     });
-  }, [current]);
+  }, [current, remainingS]);
+
+  // One authoritative clock: every later signal for the question that owns
+  // the deadline is folded in, but the screen only realigns when it has
+  // drifted past DEADLINE_REALIGN_MS. State is written only on a real change
+  // so the ~5s ticks do not re-render the whole interview screen.
+  const currentId = current?.id ?? null;
+  useEffect(() => {
+    if (currentId === null || deadlineOwnerRef.current !== currentId) return;
+    setState((prev) => {
+      if (!prev) return prev;
+      const next = reconcileDeadline(prev.deadlineAt, remainingS, Date.now());
+      return next === prev.deadlineAt ? prev : { ...prev, deadlineAt: next };
+    });
+  }, [remainingS, currentId]);
 
   const [runResult, setRunResult] = useState<RunCodeResponse | null>(null);
   const [runNotice, setRunNotice] = useState<RunNotice | null>(null);

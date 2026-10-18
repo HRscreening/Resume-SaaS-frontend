@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { Room, TextStreamHandler } from "livekit-client";
 
+import { parseQuestionSignal } from "./questionDeadline";
+
 const TOPIC = "hiresort.question";
 
-// Shape published on this topic: {"index": 2, "question_id": "q3"} — the
-// server's own ordered question pointer (see
+// Shape published on this topic: {"index": 2, "question_id": "q3",
+// "remaining_s": 123.4 | null} — the server's own ordered question pointer
+// (see
 // .superpowers/sdd/2026-09-28-interview-round-authoring/question-state-machine.md:
 // "the server owns an ordered question pointer... hiresort.question
 // publishes the pointer, not an inference"). `index` is not read here even
@@ -12,22 +15,8 @@ const TOPIC = "hiresort.question";
 // already-loaded question list (useCodingQuestions does this) is what
 // guarantees the pinned content, the progress counter, and this id can
 // never disagree, since all three then read one derived value instead of
-// three independently-sent ones.
-interface QuestionSignal {
-  question_id: unknown;
-}
-
-function parseQuestionId(raw: string): string | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (typeof parsed !== "object" || parsed === null) return null;
-  const id = (parsed as QuestionSignal).question_id;
-  return typeof id === "string" && id.length > 0 ? id : null;
-}
+// three independently-sent ones. `remaining_s` is the server's clock for
+// that question, parsed in questionDeadline.ts.
 
 // Subscribes to the `hiresort.question` text-stream topic the server
 // publishes the question pointer on (same transport and pattern as
@@ -60,8 +49,9 @@ function parseQuestionId(raw: string): string | null {
 export function useQuestionSync(
   room: Room | null,
   knownQuestionIds: ReadonlySet<string> | null,
-): string | null {
+): { questionId: string | null; remainingS: number | null } {
   const [questionId, setQuestionId] = useState<string | null>(null);
+  const [remainingS, setRemainingS] = useState<number | null>(null);
 
   // Read inside the handler via a ref so the subscribe effect below depends
   // only on `room`: re-subscribing the text-stream handler every time the
@@ -84,19 +74,24 @@ export function useQuestionSync(
         // after reconnect corrects it.
         return;
       }
-      const id = parseQuestionId(text);
-      if (id === null) return; // malformed payload — ignore, keep the last known-good value
+      const signal = parseQuestionSignal(text);
+      if (signal === null) return;
+      const id = signal.questionId; // malformed payload — ignore, keep the last known-good value
       // No question list yet, or an id it doesn't contain: ignore this tick
       // rather than steering the pane at something nothing can render for.
       // The agent republishes on a short interval, so a later tick — once
       // the list is loaded — corrects this.
       if (!knownIdsRef.current || !knownIdsRef.current.has(id)) return;
       setQuestionId(id);
+      // Updated on every accepted tick, including to null: the server
+      // dropping its clock is information, and the caller then keeps its
+      // local countdown.
+      setRemainingS(signal.remainingS);
     };
 
     room.registerTextStreamHandler(TOPIC, handler);
     return () => room.unregisterTextStreamHandler(TOPIC);
   }, [room]);
 
-  return questionId;
+  return { questionId, remainingS };
 }
