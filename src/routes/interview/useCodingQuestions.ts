@@ -17,7 +17,7 @@ import {
 } from "./codingBufferStorage";
 import { useCountdown } from "./useCountdown";
 import { useQuestionSync } from "./useQuestionSync";
-import { reconcileDeadline } from "./questionDeadline";
+import { reconcileDeadline, shouldClearDeadline } from "./questionDeadline";
 import { notifyActivity, notifySubmitted } from "./notifySubmission";
 import {
   runCodeLocally,
@@ -295,15 +295,31 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // the deadline is folded in, but the screen only realigns when it has
   // drifted past DEADLINE_REALIGN_MS. State is written only on a real change
   // so the ~5s ticks do not re-render the whole interview screen.
+  //
+  // The one exception: a server clock that goes from a number to null for the
+  // SAME question means the server closed it (the last spoken question ended
+  // early, the pointer went FINISHED and the signal stays pinned to it). The
+  // local deadline is cleared then, so no timer runs on into the candidate's
+  // questions. `deadlineQuestionId` is kept so the id-change effect does not
+  // restart a fresh countdown for it.
   const currentId = current?.id ?? null;
+  const lastSignalRef = useRef<{ questionId: string | null; remainingS: number | null }>({
+    questionId: null,
+    remainingS: null,
+  });
   useEffect(() => {
+    const last = lastSignalRef.current;
+    const prevRemainingS = last.questionId === syncedQuestionId ? last.remainingS : null;
+    lastSignalRef.current = { questionId: syncedQuestionId, remainingS };
     if (currentId === null || deadlineOwnerRef.current !== currentId) return;
+    const clear = syncedQuestionId === currentId && shouldClearDeadline(prevRemainingS, remainingS);
     setState((prev) => {
       if (!prev) return prev;
-      const next = reconcileDeadline(prev.deadlineAt, remainingS, Date.now());
+      const next = clear ? null : reconcileDeadline(prev.deadlineAt, remainingS, Date.now());
       return next === prev.deadlineAt ? prev : { ...prev, deadlineAt: next };
     });
-  }, [remainingS, currentId]);
+  }, [remainingS, currentId, syncedQuestionId]);
+  const timerActive = state?.deadlineAt != null;
 
   const [runResult, setRunResult] = useState<RunCodeResponse | null>(null);
   const [runNotice, setRunNotice] = useState<RunNotice | null>(null);
@@ -685,6 +701,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
     setLanguage,
     secondsRemaining,
     warning,
+    timerActive,
     runResult,
     runNotice,
     isRunning,

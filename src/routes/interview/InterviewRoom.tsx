@@ -570,6 +570,7 @@ export default function InterviewRoom({
             prompt={pinnedSpoken.prompt}
             secondsRemaining={coding.secondsRemaining}
             warning={coding.warning}
+            timerActive={coding.timerActive}
           />
         )}
 

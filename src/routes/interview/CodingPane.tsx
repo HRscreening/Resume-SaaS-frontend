@@ -105,11 +105,13 @@ function EditorPane({ coding, examples }: { coding: UseCodingQuestions; examples
       <div className="shrink-0 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <LanguagePicker value={buffer.language} onChange={setLanguage} disabled={isRunning} />
-          <TimerBadge
-            secondsRemaining={coding.secondsRemaining}
-            warning={coding.warning}
-            reducedMotion={reducedMotion}
-          />
+          {coding.timerActive && (
+            <TimerBadge
+              secondsRemaining={coding.secondsRemaining}
+              warning={coding.warning}
+              reducedMotion={reducedMotion}
+            />
+          )}
         </div>
         <div className="flex items-center gap-2">
           <ActionButton

@@ -17,3 +17,11 @@ export function pacingFor(
 ): InterviewQuestionPacing | undefined {
   return pacing?.find((p) => p.question_id === questionId);
 }
+
+/** "m of n min" for the label's tooltip; undefined (no tooltip) when a
+ *  hand-edited metrics row carries a non-numeric time. */
+export function pacingTooltip(p: InterviewQuestionPacing): string | undefined {
+  const { seconds, budget_s: budget } = p;
+  if (!Number.isFinite(seconds) || !Number.isFinite(budget)) return undefined;
+  return `${Math.round(seconds / 60)} of ${Math.round(budget / 60)} min`;
+}

@@ -5,7 +5,7 @@ import {
   otherFields,
   questionIds,
 } from "./interviewScorecardUtils";
-import { pacingFor, pacingLabel } from "./pacingLabel";
+import { pacingFor, pacingLabel, pacingTooltip } from "./pacingLabel";
 
 interface InterviewQuestionDetailProps {
   scorecard: InterviewScorecard;
@@ -41,7 +41,7 @@ export function InterviewQuestionDetail({ scorecard }: InterviewQuestionDetailPr
               <div className="flex shrink-0 items-center gap-2">
                 {pace && paceLabel && (
                   <span
-                    title={`${Math.round(pace.seconds / 60)} of ${Math.round(pace.budget_s / 60)} min`}
+                    title={pacingTooltip(pace)}
                     className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                       pace.reason === "time_up"
                         ? "bg-[#FDE2E2] text-[#9B1C1C]"

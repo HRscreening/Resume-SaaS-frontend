@@ -44,3 +44,15 @@ export function reconcileDeadline(
   if (existing === null) return serverDeadline;
   return Math.abs(existing - serverDeadline) > DEADLINE_REALIGN_MS ? serverDeadline : existing;
 }
+
+// True only when the server's clock for the SAME question goes from a number to
+// null: the server closed the question (e.g. the last spoken one ended early),
+// so the local countdown must stop rather than run on into the next phase.
+// A null that was never preceded by a number is just "no server clock yet",
+// and the local fallback deadline stays.
+export function shouldClearDeadline(
+  prevRemainingS: number | null,
+  nextRemainingS: number | null,
+): boolean {
+  return prevRemainingS !== null && nextRemainingS === null;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseQuestionSignal, reconcileDeadline } from "./questionDeadline";
+import { parseQuestionSignal, reconcileDeadline, shouldClearDeadline } from "./questionDeadline";
 
 describe("parseQuestionSignal", () => {
   it("reads id and remaining seconds", () =>
@@ -15,4 +15,11 @@ describe("reconcileDeadline", () => {
   it("adopts the server deadline when there is none locally", () => expect(reconcileDeadline(null, 90, 1000)).toBe(91000));
   it("ignores drift under the threshold", () => expect(reconcileDeadline(91000, 88, 1000)).toBe(91000));
   it("realigns on drift over the threshold", () => expect(reconcileDeadline(91000, 80, 1000)).toBe(81000));
+});
+
+describe("shouldClearDeadline", () => {
+  it("clears when the server drops its clock for the same question", () => expect(shouldClearDeadline(42, null)).toBe(true));
+  it("keeps the local fallback when the server never had a clock", () => expect(shouldClearDeadline(null, null)).toBe(false));
+  it("keeps the deadline while the server clock runs", () => expect(shouldClearDeadline(42, 37)).toBe(false));
+  it("keeps the deadline when the server clock appears", () => expect(shouldClearDeadline(null, 37)).toBe(false));
 });

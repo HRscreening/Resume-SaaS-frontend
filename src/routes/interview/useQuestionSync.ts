@@ -75,8 +75,8 @@ export function useQuestionSync(
         return;
       }
       const signal = parseQuestionSignal(text);
-      if (signal === null) return;
-      const id = signal.questionId; // malformed payload — ignore, keep the last known-good value
+      if (signal === null) return; // malformed payload — ignore, keep the last known-good value
+      const id = signal.questionId;
       // No question list yet, or an id it doesn't contain: ignore this tick
       // rather than steering the pane at something nothing can render for.
       // The agent republishes on a short interval, so a later tick — once
