@@ -222,6 +222,16 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // identically to the pre-presentation state, by design) is the honest
   // state while this hook waits on the refetch below; showing stale text
   // would not be.
+  // A submitted coding question that is still the server's current one is
+  // kept open as a walkthrough: its pane is closed, so say what is going on.
+  const walkthrough: { title: string } | null =
+    current?.kind === "coding" && isCurrentDismissed
+      ? { title: current.title || "your solution" }
+      : null;
+
+  // Past the last question: the clock on the final question has stopped.
+  const finished = total > 0 && index === total - 1 && state !== null && !state.deadlineAt;
+
   const [pinned, setPinned] = useState<{ id: string; prompt: string } | null>(null);
   useEffect(() => {
     if (current?.kind === "spoken" && typeof current.prompt === "string") {
@@ -694,6 +704,8 @@ export function useCodingQuestions(token: string, room: Room | null) {
     current,
     showPane,
     pinned,
+    walkthrough,
+    finished,
     index,
     total,
     buffer,

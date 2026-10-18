@@ -18,6 +18,7 @@ import {
 import CodingPane from "./CodingPane";
 import TopBar from "./TopBar";
 import PinnedQuestion from "./PinnedQuestion";
+import AgendaBar from "./AgendaBar";
 import Transcript from "./Transcript";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { useElapsedTime } from "./useElapsedTime";
@@ -577,7 +578,7 @@ export default function InterviewRoom({
   // pinned question (one whose text has been revealed), or nothing at all
   // (before anything is presented — the warm-up, same as today: just the
   // conversation, no claim made about a question on screen).
-  const hasPinnedSlot = showCodingPane || pinnedSpoken !== null;
+  const hasPinnedSlot = showCodingPane || pinnedSpoken !== null || coding.walkthrough !== null;
 
   return (
     // h-screen + overflow-hidden (rather than the min-h-screen used by every
@@ -610,6 +611,9 @@ export default function InterviewRoom({
         questionTotal={coding.total}
         onEndInterview={handleEndInterview}
       />
+      {coding.total > 0 && (
+        <AgendaBar total={coding.total} index={coding.index} finished={coding.finished} />
+      )}
 
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* The pinned slot: question in focus, for as long as it is the
@@ -621,6 +625,15 @@ export default function InterviewRoom({
           <div className="flex-1 min-h-0 overflow-hidden">
             <CodingPane coding={coding} />
           </div>
+        )}
+        {!showCodingPane && coding.walkthrough && (
+          <PinnedQuestion
+            label="Walking through your solution"
+            prompt={coding.walkthrough.title}
+            secondsRemaining={coding.secondsRemaining}
+            warning={coding.warning}
+            timerActive={coding.timerActive}
+          />
         )}
         {!showCodingPane && pinnedSpoken && (
           <PinnedQuestion

@@ -31,3 +31,26 @@ describe("PinnedQuestion timer", () => {
     expect(() => CodingPane).not.toThrow();
   });
 });
+
+describe("PinnedQuestion label", () => {
+  it("defaults to Now discussing", () => {
+    const html = renderToStaticMarkup(
+      <PinnedQuestion prompt="Q" secondsRemaining={60} warning={false} timerActive />,
+    );
+    expect(html).toContain("Now discussing");
+  });
+
+  it("renders a custom label", () => {
+    const html = renderToStaticMarkup(
+      <PinnedQuestion
+        label="Walking through your solution"
+        prompt="Two Sum"
+        secondsRemaining={60}
+        warning={false}
+        timerActive
+      />,
+    );
+    expect(html).toContain("Walking through your solution");
+    expect(html).not.toContain("Now discussing");
+  });
+});
