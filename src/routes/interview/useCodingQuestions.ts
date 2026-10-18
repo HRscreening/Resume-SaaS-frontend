@@ -15,6 +15,7 @@ import {
   type CodingState,
   type QuestionBuffer,
 } from "./codingBufferStorage";
+import { isInterviewFinished } from "./agenda";
 import { useCountdown } from "./useCountdown";
 import { useQuestionSync } from "./useQuestionSync";
 import { reconcileDeadline, shouldClearDeadline } from "./questionDeadline";
@@ -230,7 +231,15 @@ export function useCodingQuestions(token: string, room: Room | null) {
       : null;
 
   // Past the last question: the clock on the final question has stopped.
-  const finished = total > 0 && index === total - 1 && state !== null && !state.deadlineAt;
+  const finished =
+    state !== null &&
+    isInterviewFinished({
+      total,
+      index,
+      currentId: current?.id ?? null,
+      deadlineAt: state.deadlineAt,
+      deadlineQuestionId: state.deadlineQuestionId,
+    });
 
   const [pinned, setPinned] = useState<{ id: string; prompt: string } | null>(null);
   useEffect(() => {

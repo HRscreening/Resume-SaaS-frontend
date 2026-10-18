@@ -14,3 +14,24 @@ export function agendaSegments(
     return i === index ? "current" : "upcoming";
   });
 }
+
+interface FinishedInput {
+  total: number;
+  index: number;
+  currentId: string | null;
+  deadlineAt: number | null;
+  deadlineQuestionId: string | null;
+}
+
+// True only once the last question's own clock has been closed. The owner
+// check stops a stale null deadline (left by the previous question) from
+// reading as "finished" for a frame on arrival at the last question.
+export function isInterviewFinished(i: FinishedInput): boolean {
+  return (
+    i.total > 0 &&
+    i.index === i.total - 1 &&
+    i.currentId !== null &&
+    i.deadlineQuestionId === i.currentId &&
+    i.deadlineAt === null
+  );
+}

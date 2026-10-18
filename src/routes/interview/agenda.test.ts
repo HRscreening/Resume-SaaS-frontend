@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { agendaSegments } from "./agenda";
+import { agendaSegments, isInterviewFinished } from "./agenda";
 
 describe("agendaSegments", () => {
   it("marks the first question current at the start", () => {
@@ -17,5 +17,21 @@ describe("agendaSegments", () => {
 
   it("marks everything upcoming during the warm-up", () => {
     expect(agendaSegments(3, null, false)).toEqual(["upcoming", "upcoming", "upcoming"]);
+  });
+});
+
+describe("isInterviewFinished", () => {
+  const base = { total: 3, index: 2, currentId: "q3", deadlineAt: null, deadlineQuestionId: "q3" };
+
+  it("is false on arrival while the deadline owner is stale", () => {
+    expect(isInterviewFinished({ ...base, deadlineQuestionId: "q2" })).toBe(false);
+  });
+
+  it("is true when the same question's clock is closed", () => {
+    expect(isInterviewFinished(base)).toBe(true);
+  });
+
+  it("is false while a deadline is live", () => {
+    expect(isInterviewFinished({ ...base, deadlineAt: 123 })).toBe(false);
   });
 });

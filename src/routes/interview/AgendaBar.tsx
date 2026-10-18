@@ -21,7 +21,11 @@ export default function AgendaBar({ total, index, finished }: AgendaBarProps) {
   return (
     <div
       role="progressbar"
-      aria-label={`Question ${Math.min(Math.max(now, 1), total)} of ${total}`}
+      aria-label={
+        active === null && !finished
+          ? `Interview starting, ${total} questions`
+          : `Question ${now} of ${total}`
+      }
       aria-valuenow={now}
       aria-valuemin={0}
       aria-valuemax={total}
