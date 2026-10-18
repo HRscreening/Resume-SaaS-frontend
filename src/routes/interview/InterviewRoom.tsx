@@ -29,6 +29,9 @@ import { derivePresenceState } from "./presenceState";
 import { useAgentState } from "./useAgentState";
 import { useConnectionQuality } from "./useConnectionQuality";
 import { connectionLabel } from "./connectionLabel";
+import TurnControls from "./TurnControls";
+import { sendCandidateEvent } from "./candidateEvents";
+import { SILENCE_WARNING_COPY, shouldWarnSilence } from "./micSilence";
 
 // The candidate's LiveKit participant identity is always this literal string
 // (minted server-side by mint_candidate_token — see backend service.join()).
@@ -204,6 +207,36 @@ export default function InterviewRoom({
     transcriptTurns.length > 0,
     agentState,
   );
+
+  // Silent-mic warning. `lastHeardAtMs` is the last moment the candidate was
+  // heard, and also restarts whenever the interviewer stops speaking so the
+  // 20 s window starts when they begin waiting. Re-evaluated once a second.
+  const lastHeardAtRef = useRef(Date.now());
+  const [silenceWarning, setSilenceWarning] = useState(false);
+  const agentListening = presenceState === "listening" && !agentSpeaking;
+  const micMuted = !candidateMicTrack || candidateMicTrack.muted || !candidateMicTrack.enabled;
+
+  useEffect(() => {
+    if (candidateSpeaking) lastHeardAtRef.current = Date.now();
+  }, [candidateSpeaking]);
+
+  useEffect(() => {
+    if (!agentSpeaking) lastHeardAtRef.current = Date.now();
+  }, [agentSpeaking]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setSilenceWarning(
+        shouldWarnSilence({
+          micMuted,
+          agentListening,
+          lastHeardAtMs: lastHeardAtRef.current,
+          nowMs: Date.now(),
+        }),
+      );
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [micMuted, agentListening]);
 
   function handleToggleCaptions() {
     setCaptionsEnabled((prev) => {
@@ -546,6 +579,11 @@ export default function InterviewRoom({
           Reconnecting…
         </div>
       )}
+      {callState === "connected" && silenceWarning && (
+        <div role="alert" className="w-full bg-[#FDECD2] text-[#8A4B08] text-xs text-center py-2">
+          {SILENCE_WARNING_COPY}
+        </div>
+      )}
       <TopBar
         elapsedLabel={elapsedLabel}
         durationMinutes={durationMinutes}
@@ -589,6 +627,12 @@ export default function InterviewRoom({
             nothing competing for space (the warm-up, or a spoken question
             pinned above) it takes the entire remaining height as a real,
             readable column. */}
+        <TurnControls
+          showDone={presenceState === "listening"}
+          showRepeat={coding.current !== undefined}
+          onDone={() => sendCandidateEvent(activeRoom, "done_speaking")}
+          onRepeat={() => sendCandidateEvent(activeRoom, "repeat")}
+        />
         {showCodingPane ? (
           <div className="shrink-0 px-4 py-2">
             <Transcript
