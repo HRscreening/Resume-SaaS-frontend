@@ -1,7 +1,7 @@
 import type { Room } from "livekit-client";
 import type { InterviewLanguage } from "@/lib/interviewApi";
 
-const TOPIC = "hiresort.candidate";
+export const TOPIC = "hiresort.candidate";
 
 // Tells the agent, best-effort, that the candidate just submitted a coding
 // question (flow-completion-contract.md, "4. The agent learns the candidate

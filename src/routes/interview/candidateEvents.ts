@@ -1,6 +1,6 @@
 import type { Room } from "livekit-client";
+import { TOPIC } from "./notifySubmission";
 
-const TOPIC = "hiresort.candidate";
 const REPEAT_COOLDOWN_MS = 10_000;
 
 export type CandidateEvent = "done_speaking" | "repeat";

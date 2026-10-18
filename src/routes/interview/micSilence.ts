@@ -6,9 +6,11 @@ export const SILENCE_WARNING_COPY =
 export function shouldWarnSilence(input: {
   micMuted: boolean;
   agentListening: boolean;
+  agentHasSpoken: boolean;
   lastHeardAtMs: number;
   nowMs: number;
 }): boolean {
+  if (!input.agentHasSpoken) return false;
   if (input.micMuted) return true;
   return input.agentListening && input.nowMs - input.lastHeardAtMs >= SILENCE_WARNING_MS;
 }

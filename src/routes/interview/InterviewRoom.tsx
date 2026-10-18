@@ -216,27 +216,39 @@ export default function InterviewRoom({
   const agentListening = presenceState === "listening" && !agentSpeaking;
   const micMuted = !candidateMicTrack || candidateMicTrack.muted || !candidateMicTrack.enabled;
 
-  useEffect(() => {
-    if (candidateSpeaking) lastHeardAtRef.current = Date.now();
-  }, [candidateSpeaking]);
+  // The interviewer has spoken at least once. Until then the candidate has
+  // nothing to answer, so neither the silence rule nor the muted-mic rule
+  // applies (this also covers the join flash where the mic track is not yet
+  // published, and an agent that reports "listening" before its opening line).
+  const [agentHasSpoken, setAgentHasSpoken] = useState(false);
+  const candidateSpeakingRef = useRef(candidateSpeaking);
+  candidateSpeakingRef.current = candidateSpeaking;
 
   useEffect(() => {
-    if (!agentSpeaking) lastHeardAtRef.current = Date.now();
+    if (!agentSpeaking) {
+      lastHeardAtRef.current = Date.now();
+      return;
+    }
+    setAgentHasSpoken(true);
   }, [agentSpeaking]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
+      const now = Date.now();
+      // Continuous speech never changes candidateSpeaking, so refresh here.
+      if (candidateSpeakingRef.current) lastHeardAtRef.current = now;
       setSilenceWarning(
         shouldWarnSilence({
           micMuted,
           agentListening,
+          agentHasSpoken,
           lastHeardAtMs: lastHeardAtRef.current,
-          nowMs: Date.now(),
+          nowMs: now,
         }),
       );
     }, 1000);
     return () => window.clearInterval(id);
-  }, [micMuted, agentListening]);
+  }, [micMuted, agentListening, agentHasSpoken]);
 
   function handleToggleCaptions() {
     setCaptionsEnabled((prev) => {
@@ -628,7 +640,7 @@ export default function InterviewRoom({
             pinned above) it takes the entire remaining height as a real,
             readable column. */}
         <TurnControls
-          showDone={presenceState === "listening"}
+          showDone={presenceState === "listening" && agentHasSpoken}
           showRepeat={coding.current !== undefined}
           onDone={() => sendCandidateEvent(activeRoom, "done_speaking")}
           onRepeat={() => sendCandidateEvent(activeRoom, "repeat")}
