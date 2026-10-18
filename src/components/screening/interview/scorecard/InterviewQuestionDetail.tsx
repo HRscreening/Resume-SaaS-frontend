@@ -5,6 +5,7 @@ import {
   otherFields,
   questionIds,
 } from "./interviewScorecardUtils";
+import { pacingFor, pacingLabel } from "./pacingLabel";
 
 interface InterviewQuestionDetailProps {
   scorecard: InterviewScorecard;
@@ -30,16 +31,32 @@ export function InterviewQuestionDetail({ scorecard }: InterviewQuestionDetailPr
         const entry = scorecard.per_question?.[id];
         const code = scorecard.code?.[id];
         const extra = entry ? otherFields(entry) : [];
+        const pace = pacingFor(scorecard.pacing, id);
+        const paceLabel = pacingLabel(pace);
 
         return (
           <div key={id} className="rounded-lg border border-[#E8E5DF] bg-white p-3">
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs font-semibold text-[#0F0F0F]">Question {id}</p>
-              {entry?.score != null && (
-                <span className="shrink-0 text-xs font-semibold tabular-nums text-[#0F0F0F]">
-                  {entry.score}
-                </span>
-              )}
+              <div className="flex shrink-0 items-center gap-2">
+                {pace && paceLabel && (
+                  <span
+                    title={`${Math.round(pace.seconds / 60)} of ${Math.round(pace.budget_s / 60)} min`}
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      pace.reason === "time_up"
+                        ? "bg-[#FDE2E2] text-[#9B1C1C]"
+                        : "bg-[#F0EEE6] text-[#404040]"
+                    }`}
+                  >
+                    {paceLabel}
+                  </span>
+                )}
+                {entry?.score != null && (
+                  <span className="text-xs font-semibold tabular-nums text-[#0F0F0F]">
+                    {entry.score}
+                  </span>
+                )}
+              </div>
             </div>
 
             {(entry?.summary || entry?.explanation) && (

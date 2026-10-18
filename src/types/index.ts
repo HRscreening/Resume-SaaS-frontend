@@ -855,6 +855,18 @@ export interface HiddenChecksCounts {
   compile_error?: string | null;
 }
 
+// How long a question ran and why it ended, recorded by the server-paced
+// interview. `reason` stays `string` so a value added later still renders.
+export interface InterviewQuestionPacing {
+  question_id: string | null;
+  index: number;
+  kind: string;
+  seconds: number;
+  budget_s: number;
+  reason: "model" | "time_up" | "submitted" | string;
+  agent_turns: number;
+}
+
 export interface InterviewScorecard {
   interview_session_id: string;
   resume_id: string;
@@ -875,6 +887,8 @@ export interface InterviewScorecard {
   // Absent entirely, or empty, on an all-spoken round with no coding
   // question — never assume at least one entry.
   code: Record<string, InterviewScorecardCode> | null;
+  // Absent on scorecards recorded before server-paced interviews shipped.
+  pacing?: InterviewQuestionPacing[];
 }
 
 export interface InterviewScorecardsResponse {
