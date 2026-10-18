@@ -565,7 +565,13 @@ export default function InterviewRoom({
             <CodingPane coding={coding} />
           </div>
         )}
-        {!showCodingPane && pinnedSpoken && <PinnedQuestion prompt={pinnedSpoken.prompt} />}
+        {!showCodingPane && pinnedSpoken && (
+          <PinnedQuestion
+            prompt={pinnedSpoken.prompt}
+            secondsRemaining={coding.secondsRemaining}
+            warning={coding.warning}
+          />
+        )}
 
         {hasPinnedSlot && <div className="border-t border-[#E5E1D8]" />}
 

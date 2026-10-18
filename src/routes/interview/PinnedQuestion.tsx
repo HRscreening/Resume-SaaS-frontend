@@ -1,3 +1,6 @@
+import { TimerBadge } from "./codingPaneParts";
+import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
+
 interface PinnedQuestionProps {
   // Always defined by the time this renders — InterviewRoom only mounts it
   // once a spoken question's text has actually been revealed server-side
@@ -6,6 +9,8 @@ interface PinnedQuestionProps {
   // has not yet presented is not a thing this screen shows anything about,
   // half-rendered or otherwise.
   prompt: string;
+  secondsRemaining: number;
+  warning: boolean;
 }
 
 // "Nobody scrolls back hunting for what was asked." The question that is
@@ -13,12 +18,14 @@ interface PinnedQuestionProps {
 // this is that slot for a spoken question. A coding question uses the same
 // slot in CodingPane instead (problem statement + examples + editor), never
 // both at once; see InterviewRoom for the switch between them.
-export default function PinnedQuestion({ prompt }: PinnedQuestionProps) {
+export default function PinnedQuestion({ prompt, secondsRemaining, warning }: PinnedQuestionProps) {
+  const reducedMotion = usePrefersReducedMotion();
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pt-6 pb-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#A3A3A3] mb-2">
-        Now discussing
-      </p>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#A3A3A3]">Now discussing</p>
+        <TimerBadge secondsRemaining={secondsRemaining} warning={warning} reducedMotion={reducedMotion} />
+      </div>
       <p className="text-[19px] leading-snug text-[#0F0F0F]">{prompt}</p>
     </div>
   );
