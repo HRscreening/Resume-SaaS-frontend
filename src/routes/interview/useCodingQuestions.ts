@@ -121,7 +121,11 @@ export function useCodingQuestions(token: string, room: Room | null) {
   );
   // The agent-named current question, once a valid, known id has arrived —
   // null (and therefore ignored below) until then or if it never does.
-  const { questionId: syncedQuestionId, remainingS } = useQuestionSync(room, knownQuestionIds);
+  const {
+    questionId: syncedQuestionId,
+    remainingS,
+    walkthrough: serverWalkthrough,
+  } = useQuestionSync(room, knownQuestionIds);
 
   const [state, setState] = useState<CodingState | null>(null);
   const expiringRef = useRef(false);
@@ -223,13 +227,6 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // identically to the pre-presentation state, by design) is the honest
   // state while this hook waits on the refetch below; showing stale text
   // would not be.
-  // A submitted coding question that is still the server's current one is
-  // kept open as a walkthrough: its pane is closed, so say what is going on.
-  const walkthrough: { title: string } | null =
-    current?.kind === "coding" && isCurrentDismissed
-      ? { title: current.title || "your solution" }
-      : null;
-
   // Past the last question: the clock on the final question has stopped.
   const finished =
     state !== null &&
@@ -240,6 +237,16 @@ export function useCodingQuestions(token: string, room: Room | null) {
       deadlineAt: state.deadlineAt,
       deadlineQuestionId: state.deadlineQuestionId,
     });
+
+  // The server says it is walking through the current question's submitted
+  // code (its flag arrives on the same tick as the id, so it describes
+  // `current`). Never inferred locally: a timeout auto-save or "Move on"
+  // also dismisses the pane but starts no walkthrough. An older agent that
+  // never sends the flag means no panel, and nothing shows once finished.
+  const walkthrough: { title: string } | null =
+    serverWalkthrough && current?.kind === "coding" && !finished
+      ? { title: current.title || "your solution" }
+      : null;
 
   const [pinned, setPinned] = useState<{ id: string; prompt: string } | null>(null);
   useEffect(() => {
@@ -474,10 +481,10 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // a verdict panel up on a question that is already over.
   const finishedRef = useRef<Set<string>>(new Set());
   const finishQuestion = useCallback(
-    (questionId: string, language: InterviewLanguage) => {
+    (questionId: string, language: InterviewLanguage, options: { movedOn?: boolean } = {}) => {
       if (finishedRef.current.has(questionId)) return;
       finishedRef.current.add(questionId);
-      notifySubmitted(room, questionId, language);
+      notifySubmitted(room, questionId, language, options);
       dismissQuestion(questionId);
     },
     [room, dismissQuestion],
@@ -704,7 +711,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
       return;
     }
     setSubmitNotice({ kind: "saved", message: "Saved." });
-    finishQuestion(questionId, language);
+    finishQuestion(questionId, language, { movedOn: true });
   }, [current, buffer, isSubmitting, persist, finishQuestion]);
 
   return {

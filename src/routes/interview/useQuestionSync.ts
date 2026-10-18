@@ -6,7 +6,7 @@ import { parseQuestionSignal } from "./questionDeadline";
 const TOPIC = "hiresort.question";
 
 // Shape published on this topic: {"index": 2, "question_id": "q3",
-// "remaining_s": 123.4 | null} — the server's own ordered question pointer
+// "remaining_s": 123.4 | null, "walkthrough": bool} — the server's own ordered question pointer
 // (see
 // .superpowers/sdd/2026-09-28-interview-round-authoring/question-state-machine.md:
 // "the server owns an ordered question pointer... hiresort.question
@@ -49,9 +49,12 @@ const TOPIC = "hiresort.question";
 export function useQuestionSync(
   room: Room | null,
   knownQuestionIds: ReadonlySet<string> | null,
-): { questionId: string | null; remainingS: number | null } {
+): { questionId: string | null; remainingS: number | null; walkthrough: boolean } {
   const [questionId, setQuestionId] = useState<string | null>(null);
   const [remainingS, setRemainingS] = useState<number | null>(null);
+  // Whether the server is walking through `questionId`'s submitted code.
+  // Set from the same accepted tick as the id, so it always describes it.
+  const [walkthrough, setWalkthrough] = useState(false);
 
   // Read inside the handler via a ref so the subscribe effect below depends
   // only on `room`: re-subscribing the text-stream handler every time the
@@ -87,11 +90,12 @@ export function useQuestionSync(
       // dropping its clock is information, and the caller then keeps its
       // local countdown.
       setRemainingS(signal.remainingS);
+      setWalkthrough(signal.walkthrough);
     };
 
     room.registerTextStreamHandler(TOPIC, handler);
     return () => room.unregisterTextStreamHandler(TOPIC);
   }, [room]);
 
-  return { questionId, remainingS };
+  return { questionId, remainingS, walkthrough };
 }

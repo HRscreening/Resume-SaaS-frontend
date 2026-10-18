@@ -3,11 +3,22 @@ import { parseQuestionSignal, reconcileDeadline, shouldClearDeadline } from "./q
 
 describe("parseQuestionSignal", () => {
   it("reads id and remaining seconds", () =>
-    expect(parseQuestionSignal('{"index":1,"question_id":"q2","remaining_s":90}')).toEqual({ questionId: "q2", remainingS: 90 }));
+    expect(parseQuestionSignal('{"index":1,"question_id":"q2","remaining_s":90}')).toEqual({ questionId: "q2", remainingS: 90, walkthrough: false }));
   it("treats a missing or non-numeric remaining_s as null", () =>
-    expect(parseQuestionSignal('{"question_id":"q2"}')).toEqual({ questionId: "q2", remainingS: null }));
+    expect(parseQuestionSignal('{"question_id":"q2"}')).toEqual({ questionId: "q2", remainingS: null, walkthrough: false }));
   it("rejects a payload without a string id", () => expect(parseQuestionSignal('{"remaining_s":5}')).toBeNull());
   it("rejects malformed JSON", () => expect(parseQuestionSignal("not json")).toBeNull());
+  it("reads walkthrough true", () =>
+    expect(parseQuestionSignal('{"question_id":"q2","walkthrough":true}')?.walkthrough).toBe(true));
+  it("reads walkthrough false", () =>
+    expect(parseQuestionSignal('{"question_id":"q2","walkthrough":false}')?.walkthrough).toBe(false));
+  it("treats a missing walkthrough (an older agent) as false", () =>
+    expect(parseQuestionSignal('{"question_id":"q2"}')?.walkthrough).toBe(false));
+  it("treats a non-boolean walkthrough as false", () => {
+    for (const v of ['"true"', "1", "null", "{}"]) {
+      expect(parseQuestionSignal(`{"question_id":"q2","walkthrough":${v}}`)?.walkthrough).toBe(false);
+    }
+  });
 });
 
 describe("reconcileDeadline", () => {

@@ -245,11 +245,12 @@ export default function InterviewRoom({
           agentHasSpoken,
           lastHeardAtMs: lastHeardAtRef.current,
           nowMs: now,
+          codingPaneOpen: showCodingPane,
         }),
       );
     }, 1000);
     return () => window.clearInterval(id);
-  }, [micMuted, agentListening, agentHasSpoken]);
+  }, [micMuted, agentListening, agentHasSpoken, showCodingPane]);
 
   function handleToggleCaptions() {
     setCaptionsEnabled((prev) => {
@@ -654,7 +655,7 @@ export default function InterviewRoom({
             readable column. */}
         <TurnControls
           showDone={presenceState === "listening" && agentHasSpoken}
-          showRepeat={coding.current !== undefined}
+          showRepeat={coding.current !== undefined && !coding.finished}
           onDone={() => sendCandidateEvent(activeRoom, "done_speaking")}
           onRepeat={() => sendCandidateEvent(activeRoom, "repeat")}
         />

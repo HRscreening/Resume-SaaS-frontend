@@ -16,14 +16,23 @@ export const TOPIC = "hiresort.candidate";
 // swallowed here rather than surfaced to the caller. A dropped data packet
 // is cosmetic; a submit that looked like it failed because this did would
 // not be.
+//
+// `movedOn` marks "Move on with this answer": the agent must go straight to
+// the next question rather than start a code walkthrough.
 export function notifySubmitted(
   room: Room | null,
   questionId: string,
   language: InterviewLanguage,
+  options: { movedOn?: boolean } = {},
 ): void {
   if (!room) return;
   try {
-    const payload = JSON.stringify({ event: "submitted", question_id: questionId, language });
+    const payload = JSON.stringify({
+      event: "submitted",
+      question_id: questionId,
+      language,
+      ...(options.movedOn ? { moved_on: true } : {}),
+    });
     void room.localParticipant.sendText(payload, { topic: TOPIC }).catch(() => {
       // Best-effort: the agent re-derives state from the candidate's next
       // turn (or its own polling) if this particular packet never arrives.

@@ -7,14 +7,17 @@ export const DEADLINE_REALIGN_MS = 3000;
 export interface QuestionSignal {
   questionId: string;
   remainingS: number | null;
+  // The server is walking through this question's submitted code.
+  walkthrough: boolean;
 }
 
 // Parses the `hiresort.question` payload:
-// {"index": 2, "question_id": "q3", "remaining_s": 123.4 | null}.
+// {"index": 2, "question_id": "q3", "remaining_s": 123.4 | null, "walkthrough": bool}.
 // Returns null unless `question_id` is a non-empty string. `remaining_s` is
 // only trusted when it is a finite number; anything else (absent, null, a
 // string) means "the server has no clock for this question", and the caller
-// falls back to its own countdown.
+// falls back to its own countdown. `walkthrough` is true only when the field
+// is exactly `true`: an older agent that never sends it means no walkthrough.
 export function parseQuestionSignal(raw: string): QuestionSignal | null {
   let parsed: unknown;
   try {
@@ -23,11 +26,16 @@ export function parseQuestionSignal(raw: string): QuestionSignal | null {
     return null;
   }
   if (typeof parsed !== "object" || parsed === null) return null;
-  const { question_id: id, remaining_s: remaining } = parsed as Record<string, unknown>;
+  const {
+    question_id: id,
+    remaining_s: remaining,
+    walkthrough,
+  } = parsed as Record<string, unknown>;
   if (typeof id !== "string" || id.length === 0) return null;
   return {
     questionId: id,
     remainingS: typeof remaining === "number" && Number.isFinite(remaining) ? remaining : null,
+    walkthrough: walkthrough === true,
   };
 }
 

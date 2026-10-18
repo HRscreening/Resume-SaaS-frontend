@@ -9,8 +9,12 @@ export function shouldWarnSilence(input: {
   agentHasSpoken: boolean;
   lastHeardAtMs: number;
   nowMs: number;
+  // Silence is the candidate working while the editor is open: only a muted
+  // mic is worth a warning then.
+  codingPaneOpen: boolean;
 }): boolean {
   if (!input.agentHasSpoken) return false;
   if (input.micMuted) return true;
+  if (input.codingPaneOpen) return false;
   return input.agentListening && input.nowMs - input.lastHeardAtMs >= SILENCE_WARNING_MS;
 }
