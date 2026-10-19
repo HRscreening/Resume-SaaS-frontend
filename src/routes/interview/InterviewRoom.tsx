@@ -367,6 +367,24 @@ export default function InterviewRoom({
     async function connect() {
       setError(null);
       setCallState("connecting");
+      // The mic opens BEFORE the room connects, with the pre-connect buffer
+      // on: anything the candidate says while the room joins and the agent
+      // subscribes ("hello? can you hear me?") is held locally and flushed
+      // to the agent once it is listening (livekit-agents accepts it by
+      // default, RoomInputOptions.pre_connect_audio). Without it those
+      // first words are lost and the interview opens on a misunderstanding.
+      try {
+        await room.localParticipant.setMicrophoneEnabled(true, undefined, { preConnectBuffer: true });
+      } catch (err) {
+        if (!cancelled) {
+          setError({
+            kind: "mic",
+            message:
+              err instanceof Error ? err.message : "Could not access your microphone.",
+          });
+        }
+        return;
+      }
       try {
         await room.connect(grant.url, grant.token);
       } catch (err) {
@@ -375,18 +393,6 @@ export default function InterviewRoom({
             kind: "connection",
             message:
               err instanceof Error ? err.message : "Could not connect to the interview.",
-          });
-        }
-        return;
-      }
-      try {
-        await room.localParticipant.setMicrophoneEnabled(true);
-      } catch (err) {
-        if (!cancelled) {
-          setError({
-            kind: "mic",
-            message:
-              err instanceof Error ? err.message : "Could not access your microphone.",
           });
         }
         return;
