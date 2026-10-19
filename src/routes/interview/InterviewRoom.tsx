@@ -19,6 +19,8 @@ import CodingPane from "./CodingPane";
 import TopBar from "./TopBar";
 import PinnedQuestion from "./PinnedQuestion";
 import AgendaBar from "./AgendaBar";
+import { ENDING_COPY, FIVE_MINUTE_COPY, fiveMinuteNotice, phaseLabel } from "./phaseSignal";
+import { usePhaseSync } from "./usePhaseSync";
 import Transcript from "./Transcript";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { useElapsedTime } from "./useElapsedTime";
@@ -202,6 +204,14 @@ export default function InterviewRoom({
   // finished listening and is about to respond" — see presenceState.ts.
   const agentState = useAgentState(activeRoom);
   const connectionQuality = useConnectionQuality(activeRoom);
+  // The server's phase (warm-up, questions, their questions) and whether the
+  // closing line is playing. See phaseSignal.ts.
+  const phaseSync = usePhaseSync(activeRoom);
+  const showFiveMinuteNotice = fiveMinuteNotice(
+    coding.secondsRemaining,
+    coding.current?.allocated_minutes,
+    coding.timerActive,
+  );
   const presenceState = derivePresenceState(
     agentSpeaking,
     candidateSpeaking,
@@ -598,6 +608,11 @@ export default function InterviewRoom({
           {SILENCE_WARNING_COPY}
         </div>
       )}
+      {callState === "connected" && phaseSync.ending && (
+        <div role="status" className="w-full bg-[#F5F3EE] text-[#404040] text-xs text-center py-2">
+          {ENDING_COPY}
+        </div>
+      )}
       <TopBar
         elapsedLabel={elapsedLabel}
         durationMinutes={durationMinutes}
@@ -610,6 +625,7 @@ export default function InterviewRoom({
         candidateSpeaking={candidateSpeaking}
         questionIndex={coding.index}
         questionTotal={coding.total}
+        phaseLabel={phaseLabel(phaseSync.phase)}
         onEndInterview={handleEndInterview}
       />
       {coding.total > 0 && (
@@ -645,6 +661,11 @@ export default function InterviewRoom({
           />
         )}
 
+        {hasPinnedSlot && showFiveMinuteNotice && (
+          <p role="status" className="w-full max-w-3xl mx-auto px-4 pb-3 text-xs text-[#737373]">
+            {FIVE_MINUTE_COPY}
+          </p>
+        )}
         {hasPinnedSlot && <div className="border-t border-[#E5E1D8]" />}
 
         {/* The conversation. With a coding question open the editor is what

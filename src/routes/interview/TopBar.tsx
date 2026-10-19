@@ -15,6 +15,9 @@ interface TopBarProps {
   candidateSpeaking: boolean;
   questionIndex: number;
   questionTotal: number;
+  // "Warm-up" or "Your questions" from the server's phase signal; null while
+  // the questions run (the counter says it) or before the signal arrives.
+  phaseLabel?: string | null;
   onEndInterview: () => void;
 }
 
@@ -37,6 +40,7 @@ export default function TopBar({
   candidateSpeaking,
   questionIndex,
   questionTotal,
+  phaseLabel = null,
   onEndInterview,
 }: TopBarProps) {
   const label = describePresence(presenceState, reconnecting);
@@ -72,8 +76,12 @@ export default function TopBar({
             {connectionLabel}
           </span>
         )}
-        {questionTotal > 0 && (
-          <QuestionProgress index={questionIndex} total={questionTotal} compact />
+        {phaseLabel ? (
+          <span className="text-xs font-medium rounded-full px-2 py-0.5 whitespace-nowrap bg-[#F5F3EE] text-[#404040]">
+            {phaseLabel}
+          </span>
+        ) : (
+          questionTotal > 0 && <QuestionProgress index={questionIndex} total={questionTotal} compact />
         )}
         <span className="text-xs tabular-nums text-[#737373] whitespace-nowrap">
           {elapsedLabel} of about {durationMinutes} minutes
