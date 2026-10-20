@@ -863,7 +863,7 @@ export interface InterviewQuestionPacing {
   kind: string;
   seconds: number;
   budget_s: number;
-  reason: "model" | "time_up" | "submitted" | string;
+  reason: "model" | "time_up" | "submitted" | "follow_ups" | string;
   agent_turns: number;
 }
 

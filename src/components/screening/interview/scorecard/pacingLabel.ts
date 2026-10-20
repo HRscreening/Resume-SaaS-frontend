@@ -4,6 +4,7 @@ const LABELS: Record<string, string> = {
   time_up: "Time ran out",
   submitted: "Submitted",
   model: "Moved on",
+  follow_ups: "Follow-ups done",
 };
 
 /** Why a question ended, as a short recruiter-facing label; null if unknown. */

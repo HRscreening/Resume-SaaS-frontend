@@ -11,6 +11,7 @@ describe("pacingLabel", () => {
     expect(pacingLabel(entry("time_up"))).toBe("Time ran out");
     expect(pacingLabel(entry("submitted"))).toBe("Submitted");
     expect(pacingLabel(entry("model"))).toBe("Moved on");
+    expect(pacingLabel(entry("follow_ups"))).toBe("Follow-ups done");
   });
 
   it("returns null for undefined or an unknown reason", () => {
