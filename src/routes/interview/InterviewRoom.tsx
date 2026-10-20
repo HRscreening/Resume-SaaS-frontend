@@ -373,31 +373,39 @@ export default function InterviewRoom({
       // to the agent once it is listening (livekit-agents accepts it by
       // default, RoomInputOptions.pre_connect_audio). Without it those
       // first words are lost and the interview opens on a misunderstanding.
-      try {
-        await room.localParticipant.setMicrophoneEnabled(true, undefined, { preConnectBuffer: true });
-      } catch (err) {
-        if (!cancelled) {
-          setError({
-            kind: "mic",
-            message:
-              err instanceof Error ? err.message : "Could not access your microphone.",
-          });
-        }
+      // The two run together, never one after the other: livekit-client
+      // defers a publish until the room is connected, so awaiting the mic
+      // first waits on a connection that never starts and times out after
+      // 15 s ("publishing rejected as engine not connected within timeout").
+      const micDone = room.localParticipant
+        .setMicrophoneEnabled(true, undefined, { preConnectBuffer: true })
+        .then(() => null, (err: unknown) => err);
+      const connectError = await room.connect(grant.url, grant.token).then(
+        () => null,
+        (err: unknown) => err,
+      );
+      if (cancelled) return;
+      if (connectError) {
+        setError({
+          kind: "connection",
+          message:
+            connectError instanceof Error
+              ? connectError.message
+              : "Could not connect to the interview.",
+        });
         return;
       }
-      try {
-        await room.connect(grant.url, grant.token);
-      } catch (err) {
-        if (!cancelled) {
-          setError({
-            kind: "connection",
-            message:
-              err instanceof Error ? err.message : "Could not connect to the interview.",
-          });
-        }
+      const micError = await micDone;
+      if (cancelled) return;
+      if (micError) {
+        setError({
+          kind: "mic",
+          message:
+            micError instanceof Error ? micError.message : "Could not access your microphone.",
+        });
         return;
       }
-      if (!cancelled) setCallState("connected");
+      setCallState("connected");
     }
     connect();
 
