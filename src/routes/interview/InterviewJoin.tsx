@@ -91,6 +91,7 @@ export default function InterviewJoin() {
         grant={grant}
         token={token}
         durationMinutes={data.duration_minutes}
+        requiresCamera={data.requires_camera === true}
         onRejoin={handleJoin}
         onCheckCompleted={checkCompleted}
       />

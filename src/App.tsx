@@ -393,6 +393,16 @@ const devCodingPaneRoute = createRoute({
     : undefined,
 });
 
+// Development only: the spoken stage (interviewer orb) with a synthetic
+// voice level and buttons for each presence state.
+const devSpokenStageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dev/spoken-stage",
+  component: import.meta.env.DEV
+    ? lazyRouteComponent(() => import("@/routes/interview/dev/SpokenStagePreview"))
+    : undefined,
+});
+
 const routeTree = rootRoute.addChildren([
   landingRoute,
   authLayoutRoute.addChildren([loginRoute, signupRoute, forgotPasswordRoute, resetPasswordRoute]),
@@ -401,7 +411,7 @@ const routeTree = rootRoute.addChildren([
   termsRoute,
   privacyRoute,
   interviewJoinRoute,
-  ...(import.meta.env.DEV ? [devCodingPaneRoute] : []),
+  ...(import.meta.env.DEV ? [devCodingPaneRoute, devSpokenStageRoute] : []),
   appLayoutNoSidebarRoute.addChildren([
     upgradePlanRoute,
     contactUsRoute,

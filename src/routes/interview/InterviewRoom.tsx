@@ -18,6 +18,7 @@ import {
 import CodingPane from "./CodingPane";
 import TopBar from "./TopBar";
 import PinnedQuestion from "./PinnedQuestion";
+import SpokenStage from "./SpokenStage";
 import AgendaBar from "./AgendaBar";
 import { ENDING_COPY, FIVE_MINUTE_COPY, fiveMinuteNotice, phaseLabel } from "./phaseSignal";
 import { usePhaseSync } from "./usePhaseSync";
@@ -82,6 +83,9 @@ interface InterviewRoomProps {
   // only to label the elapsed-time counter ("12:04 of about 50 minutes") —
   // never as a countdown or a deadline the UI enforces.
   durationMinutes: number;
+  // The round asks for the camera: the spoken stage shows the candidate a
+  // local preview of themselves in its corner.
+  requiresCamera?: boolean;
   // Resolves once a fresh grant has been applied to props, or rejects (the
   // rejection is what drives the "could not rejoin" error state below).
   onRejoin: () => Promise<unknown>;
@@ -101,6 +105,7 @@ export default function InterviewRoom({
   grant,
   token,
   durationMinutes,
+  requiresCamera = false,
   onRejoin,
   onCheckCompleted,
 }: InterviewRoomProps) {
@@ -604,6 +609,14 @@ export default function InterviewRoom({
   // (before anything is presented — the warm-up, same as today: just the
   // conversation, no claim made about a question on screen).
   const hasPinnedSlot = showCodingPane || pinnedSpoken !== null || coding.walkthrough !== null;
+  const turnControls = (
+    <TurnControls
+      showDone={presenceState === "listening" && agentHasSpoken}
+      showRepeat={coding.current !== undefined && !coding.finished}
+      onDone={() => sendCandidateEvent(activeRoom, "done_speaking")}
+      onRepeat={() => sendCandidateEvent(activeRoom, "repeat")}
+    />
+  );
 
   return (
     // h-screen + overflow-hidden (rather than the min-h-screen used by every
@@ -640,6 +653,7 @@ export default function InterviewRoom({
         questionIndex={coding.index}
         questionTotal={coding.total}
         phaseLabel={phaseLabel(phaseSync.phase)}
+        showPresence={showCodingPane}
         onEndInterview={handleEndInterview}
       />
       {coding.total > 0 && (
@@ -647,73 +661,71 @@ export default function InterviewRoom({
       )}
 
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        {/* The pinned slot: question in focus, for as long as it is the
-            current one. Coding gets nearly all of the available height (a
-            whole problem statement and an editor need it); a spoken
-            question is just its own text and needs only as much height as
-            that takes, leaving the rest to the transcript below. */}
-        {showCodingPane && (
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <CodingPane coding={coding} />
-          </div>
-        )}
-        {!showCodingPane && coding.walkthrough && (
-          <PinnedQuestion
-            label="Walking through your solution"
-            prompt={coding.walkthrough.title}
-            secondsRemaining={coding.secondsRemaining}
-            warning={coding.warning}
-            timerActive={coding.timerActive}
-          />
-        )}
-        {!showCodingPane && pinnedSpoken && (
-          <PinnedQuestion
-            prompt={pinnedSpoken.prompt}
-            secondsRemaining={coding.secondsRemaining}
-            warning={coding.warning}
-            timerActive={coding.timerActive}
-          />
-        )}
-
-        {hasPinnedSlot && showFiveMinuteNotice && (
-          <p role="status" className="w-full max-w-3xl mx-auto px-4 pb-3 text-xs text-[#737373]">
-            {FIVE_MINUTE_COPY}
-          </p>
-        )}
-        {hasPinnedSlot && <div className="border-t border-[#E5E1D8]" />}
-
-        {/* The conversation. With a coding question open the editor is what
-            the candidate is using, so the transcript is a one-strip live
-            caption under it (`compact`) and the pane gets the height. With
-            nothing competing for space (the warm-up, or a spoken question
-            pinned above) it takes the entire remaining height as a real,
-            readable column. */}
-        <TurnControls
-          showDone={presenceState === "listening" && agentHasSpoken}
-          showRepeat={coding.current !== undefined && !coding.finished}
-          onDone={() => sendCandidateEvent(activeRoom, "done_speaking")}
-          onRepeat={() => sendCandidateEvent(activeRoom, "repeat")}
-        />
+        {/* Coding: the problem and the editor get the height, and the
+            conversation shrinks to a one-line caption under them. Everything
+            else (warm-up, spoken questions, the walkthrough, the closing) is
+            talk, and gets the spoken stage: the interviewer at the centre,
+            the question in focus under it. */}
         {showCodingPane ? (
-          <div className="shrink-0 px-4 py-2">
-            <Transcript
-              turns={transcriptTurns}
-              enabled={captionsEnabled}
-              onToggle={handleToggleCaptions}
-              compact
-            />
-          </div>
-        ) : (
-          <div className="flex-1 min-h-0 flex flex-col px-4 py-5">
-            <div className="w-full max-w-2xl mx-auto flex-1 min-h-0 flex flex-col">
+          <>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <CodingPane coding={coding} />
+            </div>
+            {showFiveMinuteNotice && (
+              <p role="status" className="w-full max-w-3xl mx-auto px-4 pb-3 text-xs text-[#737373]">
+                {FIVE_MINUTE_COPY}
+              </p>
+            )}
+            {turnControls}
+            <div className="shrink-0 px-4 py-2">
               <Transcript
                 turns={transcriptTurns}
                 enabled={captionsEnabled}
                 onToggle={handleToggleCaptions}
-                compact={false}
+                compact
               />
             </div>
-          </div>
+          </>
+        ) : (
+          <SpokenStage
+            presenceState={presenceState}
+            reconnecting={callState === "reconnecting"}
+            interviewerAnalyser={agentAnalyser}
+            candidateAnalyser={candidateAnalyser}
+            showSelfView={requiresCamera}
+          >
+            {coding.walkthrough && (
+              <PinnedQuestion
+                label="Walking through your solution"
+                prompt={coding.walkthrough.title}
+                secondsRemaining={coding.secondsRemaining}
+                warning={coding.warning}
+                timerActive={coding.timerActive}
+              />
+            )}
+            {!coding.walkthrough && pinnedSpoken && (
+              <PinnedQuestion
+                prompt={pinnedSpoken.prompt}
+                secondsRemaining={coding.secondsRemaining}
+                warning={coding.warning}
+                timerActive={coding.timerActive}
+              />
+            )}
+            {hasPinnedSlot && showFiveMinuteNotice && (
+              <p role="status" className="w-full max-w-3xl mx-auto px-4 pb-3 text-xs text-[#737373]">
+                {FIVE_MINUTE_COPY}
+              </p>
+            )}
+            {turnControls}
+            <div className="w-full max-w-3xl mx-auto px-4 pb-6">
+              <Transcript
+                turns={transcriptTurns}
+                enabled={captionsEnabled}
+                onToggle={handleToggleCaptions}
+                compact
+              />
+            </div>
+          </SpokenStage>
         )}
       </div>
 
