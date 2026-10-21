@@ -58,6 +58,11 @@ export interface UsageResponse {
    * cadence on the same plan: Free's 50 analyses never refill, its 3 calls do.
    */
   voice_calls_period?: "monthly" | "lifetime";
+  /** AI interviews started this month (first joins), as enforced. */
+  interviews_made?: number;
+  /** Null when the plan has no cap. */
+  interviews_limit?: number | null;
+  interviews_remaining?: number | null;
 }
 
 // Plan catalog — fetched from GET /api/billing/plans. Single source of

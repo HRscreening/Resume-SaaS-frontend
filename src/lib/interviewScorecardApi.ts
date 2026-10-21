@@ -21,3 +21,20 @@ export async function listInterviewScorecards(
     `/api/v1/screenings/${screeningId}/interview-scorecards`,
   );
 }
+
+export type InterviewRecordingStatus = "none" | "processing" | "ready" | "failed";
+
+export interface InterviewRecording {
+  status: InterviewRecordingStatus;
+  /** Signed, short-lived links, oldest first. More than one after a rejoin. */
+  part_urls: string[];
+}
+
+export async function getInterviewRecording(
+  screeningId: string,
+  sessionId: string,
+): Promise<InterviewRecording> {
+  return request<InterviewRecording>(
+    `/api/v1/screenings/${screeningId}/interview-sessions/${sessionId}/recording`,
+  );
+}

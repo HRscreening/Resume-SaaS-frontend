@@ -176,6 +176,14 @@ export default function Dashboard() {
               refillsMonthly={usage.voice_calls_period !== "lifetime"}
               canUpgrade={usage.plan !== "ENTERPRISE"}
             />
+            <QuotaMeter
+              label="AI interviews"
+              noun="AI interviews"
+              used={usage.interviews_made ?? 0}
+              limit={usage.interviews_limit ?? null}
+              refillsMonthly
+              canUpgrade={usage.plan !== "ENTERPRISE"}
+            />
           </div>
         </div>
       )}

@@ -17,12 +17,15 @@ import {
   useDeviceCheck,
 } from "@/routes/interview/DeviceCheck";
 
-// Describes only what the browser round actually does. Audio recording is
-// deliberately gated off for browser sessions (nothing writes
-// audio_recording_url), so claiming it here was false in the one piece of
-// copy whose accuracy is the entire point.
-const RECORDING_DISCLOSURE =
-  "This interview is conducted by an AI interviewer. A written transcript of the conversation is made, so the hiring team can review your answers. Your audio is not recorded. Live captions of both voices appear on screen while you talk. Nothing is shared outside the hiring team for this role.";
+// Describes only what the browser round actually does. `recorded` comes
+// from the server and is true exactly when the recorder is configured, so
+// this copy cannot claim a recording that is not made, or hide one that is.
+function recordingDisclosure(recorded: boolean): string {
+  const capture = recorded
+    ? "Your audio is recorded and a written transcript is made, so the hiring team can review your answers."
+    : "A written transcript of the conversation is made, so the hiring team can review your answers. Your audio is not recorded.";
+  return `This interview is conducted by an AI interviewer. ${capture} Live captions of both voices appear on screen while you talk. Nothing is shared outside the hiring team for this role.`;
+}
 
 // Candidate holds an HMAC-signed invite link with no HireSort account behind
 // it. This route sits directly off rootRoute (see App.tsx) with no AuthGuard
@@ -221,6 +224,14 @@ function PreJoinScreen({
         <p className="text-sm text-[#737373] mb-6">
           Expected duration: about {brief.duration_minutes} minutes.
         </p>
+
+        <div className="rounded-xl border border-[#D4D4D4] bg-white p-4 mb-6">
+          <p className="text-sm text-[#404040]">
+            {recordingDisclosure(brief.recorded === true)}
+          </p>
+        </div>
+
+        <SessionRequirements brief={brief} />
 
         <div className="mb-6">
           <DeviceCheckPanel state={devices} requiresCamera={requiresCamera} />

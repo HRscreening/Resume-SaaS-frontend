@@ -17,6 +17,8 @@ export type InterviewBrief = {
   // turned on.
   requires_camera: boolean;
   requires_screen_share: boolean;
+  /** True when the candidate's audio will be recorded. */
+  recorded?: boolean;
 };
 
 export type InterviewJoinGrant = {
