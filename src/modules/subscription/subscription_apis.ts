@@ -11,7 +11,7 @@ export async function getUserSubscription(): Promise<UserSubscription | null> {
 
 export async function getUserUsageQuotas(): Promise<UserMonthlyUsage> {
     return request(`/api/v1/subscription/quota`, {
-        method: "GET",
+        method: "GET", 
     });
 }
 
