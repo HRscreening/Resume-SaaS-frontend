@@ -4,7 +4,7 @@ import { useCandidateScreeningDetail } from "@/controllers/screening/getCandidat
 import { VoiceScorePill } from "@/components/screening/voice/VoiceScorePill";
 import { useScreening } from "@/controllers/screening/getScreening";
 import { formatDate } from "@/lib/utils";
-import { resumeUploadService } from "@/lib/services"
+import { resumeUploadService } from "@/lib/services/storage"
 
 
 function getTierLabel(score: number) {

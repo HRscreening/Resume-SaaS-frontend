@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addNote, getNotes } from "@/modules/screening/apis/notes";
-import { NoteQueryKeys } from "@/modules/screening/queryKeys";
+import { NoteQueryKeys } from "@/modules/shared/queryKeys/screeningQueryKeys";
 
 export function useNotesQuery({
     screeningId,

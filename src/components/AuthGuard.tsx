@@ -1,6 +1,7 @@
 import { Navigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { safeNext } from "@/lib/utils";
+import {useUserSubscription,useUserUsageQuotas} from "@/modules/subscription/useSubscription"
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -8,6 +9,10 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const { user, loading } = useAuth();
+
+  // Load user subscription and usage quotas only if the user is authenticated
+  const { data: subscriptionData } = useUserSubscription(!!user);
+  const { data: usageData } = useUserUsageQuotas(!!user);
 
   if (loading) {
     return (

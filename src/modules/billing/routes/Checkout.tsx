@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getProfile, getPlans, getBillingQuote } from "@/lib/api";
-import { formatMoney } from "@/lib/currency";
-import { openRazorpayCheckout, type UpgradePlanSlug } from "@/lib/razorpay";
+import { getProfile } from "@/lib/api";
 import { useUserKey } from "@/lib/userKey";
-import PayPalPayButton from "./PayPalPayButton";
-import type { PlanSpec, SubscriptionPlan } from "@/types";
+import type { SubscriptionPlan } from "@/types";
 
+import { useBilling } from "@/modules/billing/useBilling";
+import type { CheckoutQuoteResponse } from "@/types/planCheckout.type";
+import { getCheckoutQuote } from "@/modules/billing/billing_apis";
+
+type UpgradePlanSlug = "pro" | "plus" | "enterprise";
 const VALID_PLANS: UpgradePlanSlug[] = ["pro", "plus", "enterprise"];
 
 function slugToPlanKey(slug: UpgradePlanSlug): SubscriptionPlan {
@@ -28,90 +30,86 @@ export default function Checkout() {
 
   const [agreed, setAgreed] = useState(false);
   const [paying, setPaying] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  const cycle: "monthly" | "yearly" = search.cycle === "yearly" ? "yearly" : "monthly";
 
   useEffect(() => {
     if (!planSlug) navigate({ to: "/upgrade" });
   }, [planSlug, navigate]);
 
+  // ── Profile ──
   const profileQuery = useQuery({
     queryKey: useUserKey("profile"),
     queryFn: getProfile,
     staleTime: 60_000,
   });
-  const plansQuery = useQuery({
-    queryKey: ["plans"],
-    queryFn: getPlans,
-    staleTime: 1000*60*60*24,
-  });
-  const cycle: "monthly" | "yearly" = search.cycle === "yearly" ? "yearly" : "monthly";
-  // The server returns the exact amount it will charge — including the
-  // USD→INR conversion for Indian customers — so the price on this page
-  // and the price in the Razorpay or PayPal popup are the same number.
-  const quoteQuery = useQuery({
-    queryKey: ["billing-quote", planSlug, cycle],
-    queryFn: () => getBillingQuote({ plan: planSlug!, cycle }),
+
+  // ── Checkout quote (includes plan display details + pricing + gateway) ──
+  const quoteQuery = useQuery<CheckoutQuoteResponse>({
+    queryKey: ["checkout-quote", planSlug, cycle],
+    queryFn: () => getCheckoutQuote(slugToPlanKey(planSlug!) as any, cycle),
     enabled: !!planSlug && planSlug !== "enterprise",
-    staleTime: 1000 * 60, // FX moves; don't show a stale rate for long
+    staleTime: 1000 * 60,
   });
 
   const profile = profileQuery.data;
-  const plans = plansQuery.data ?? [];
   const quote = quoteQuery.data;
-  const loading = profileQuery.isLoading || plansQuery.isLoading;
+  const loading =
+    profileQuery.isLoading ||
+    quoteQuery.isLoading ||
+    (!quote && planSlug !== "enterprise" && !quoteQuery.isError);
   const loadError =
     profileQuery.error instanceof Error ? profileQuery.error.message :
-    plansQuery.error instanceof Error ? plansQuery.error.message :
-    null;
-
-  const planSpec = useMemo<PlanSpec | undefined>(() => {
-    if (!planSlug) return undefined;
-    return plans.find((p) => p.key === slugToPlanKey(planSlug));
-  }, [plans, planSlug]);
+      quoteQuery.error instanceof Error ? quoteQuery.error.message :
+        null;
 
   const isAlreadyOnPlan = profile && planSlug && profile.plan === slugToPlanKey(planSlug);
 
   async function finishUpgrade() {
-    if (!planSlug) return;
-    // Refresh caches so dashboard / settings / sidebar show new plan immediately.
-    await queryClient.invalidateQueries({ queryKey: ["profile"] });
-    await queryClient.invalidateQueries({ queryKey: ["usage"] });
-    // If the user signed up via the marketing → checkout flow, they paid
-    // before onboarding. Send them through onboarding now; otherwise go
-    // straight to the dashboard with the upgraded banner.
+    try {
+      // Refresh caches so dashboard / settings / sidebar show new plan immediately.
+      await Promise.allSettled([
+        queryClient.invalidateQueries({ queryKey: ["profile"] }),
+        queryClient.invalidateQueries({ queryKey: ["usage"] }),
+      ]);
+    } catch (e) {
+      console.warn("Failed to invalidate queries:", e);
+    }
+
     if (profile && !profile.onboarding_completed) {
-      navigate({ to: "/onboarding" });
+      try {
+        await navigate({ to: "/onboarding" });
+      } catch {
+        window.location.href = "/onboarding";
+      }
     } else {
-      navigate({ to: "/dashboard", search: { upgraded: planSlug } as any });
+      try {
+        await navigate({ to: "/dashboard" });
+      } catch {
+        window.location.href = "/dashboard";
+      }
     }
   }
 
-  async function handlePay() {
-    if (!profile || !planSlug) return;
-    setPaying(true);
-    setPaymentError(null);
-    try {
-      await openRazorpayCheckout({
-        plan: planSlug,
-        cycle,
-        profile,
-        onStatusChange: setPaymentStatus,
-      });
-      await finishUpgrade();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Payment failed";
-      if (msg !== "cancelled") setPaymentError(msg);
-    } finally {
-      setPaying(false);
-      setPaymentStatus(null);
-    }
-  }
+  const { subscribe, PaymentUI } = useBilling({
+    paymentGateway: quote?.gateway ?? "paypal",
+    plan: planSlug && planSlug !== "enterprise" ? (slugToPlanKey(planSlug) as "PRO" | "PLUS") : "PRO",
+    action: quote?.actionable ?? "upgrade",
+    billingInterval: cycle,
+    onSuccess: finishUpgrade,
+    onError: (err) => setPaymentError(err || "Payment failed"),
+    onCancel: () => setPaymentError(null),
+    onProcessing: setPaying,
+  });
+
+  // ── Early returns ──
 
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-96">
+      <div className="p-8 flex flex-col items-center justify-center min-h-96 gap-3">
         <div className="h-6 w-6 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
+        <p className="text-xs text-[#737373]">Loading checkout details…</p>
       </div>
     );
   }
@@ -128,7 +126,7 @@ export default function Checkout() {
     );
   }
 
-  if (!planSlug || !planSpec) {
+  if (!planSlug) {
     return null;
   }
 
@@ -154,7 +152,7 @@ export default function Checkout() {
       <div className="p-8 max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold text-[#0F0F0F] mb-3">You're already on this plan</h1>
         <p className="text-sm text-[#737373] mb-6">
-          You're already subscribed to the {planSpec.display_name} plan. You can manage your
+          You're already subscribed to the {quote?.display_name} plan. You can manage your
           subscription from settings.
         </p>
         <Link
@@ -167,25 +165,18 @@ export default function Checkout() {
     );
   }
 
-  // A plan the catalog prices as null is contact-sales and never reaches
-  // here — the enterprise branch above returns first.
+  if (!quote) return null;
+
+  // ── Pricing derivation ──
   const monthlyAmount =
-    (cycle === "yearly" ? planSpec.yearly_price_monthly_usd : planSpec.price_monthly_usd) ?? 0;
+    (cycle === "yearly" ? (quote.yearly_price_monthly_usd ?? quote.price_monthly_usd) : quote.price_monthly_usd);
   const totalUsd = cycle === "yearly" ? monthlyAmount * 12 : monthlyAmount;
 
-  // Plans are priced in USD; India pays the rupee equivalent at today's rate.
-  const billedInRupees = quote?.currency === "INR";
-  // Yearly rates carry cents ($39.20); monthly ones don't ($49).
   const monthlyLabel = Number.isInteger(monthlyAmount)
     ? `$${monthlyAmount}`
     : `$${monthlyAmount.toFixed(2)}`;
-  const totalLabel = quote
-    ? formatMoney(quote.amount_major, quote.currency)
-    : `$${totalUsd.toFixed(2)}`;
 
-  const cannotPay = !!quote && !quote.payable;
-  const paypalClientId = quote?.gateway === "paypal" ? quote.paypal_client_id : null;
-  const quoteError = quoteQuery.error instanceof Error ? quoteQuery.error.message : null;
+  const totalLabel = `${quote.currency} ${quote.amount_major.toFixed(2)}`;
 
   const fromPricing = search.from === "pricing";
   const backTo = fromPricing ? "/dashboard" : "/upgrade";
@@ -206,7 +197,7 @@ export default function Checkout() {
 
         <h1 className="text-3xl font-bold text-[#0F0F0F] mb-2">Complete your upgrade</h1>
         <p className="text-sm text-[#737373] mb-8">
-          You're upgrading to the {planSpec.display_name} plan.
+          You're upgrading to the {quote.display_name} plan.
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -216,17 +207,17 @@ export default function Checkout() {
 
             <div className="bg-[#F5F3EE] rounded-xl p-5 mb-5">
               <div className="flex items-baseline justify-between mb-1">
-                <p className="text-lg font-bold text-[#0F0F0F]">{planSpec.display_name}</p>
+                <p className="text-lg font-bold text-[#0F0F0F]">{quote.display_name}</p>
                 <p className="text-2xl font-extrabold text-[#0F0F0F]">{monthlyLabel}<span className="text-sm font-normal text-[#737373]">/mo</span></p>
               </div>
               <p className="text-xs text-[#737373]">
-                {planSpec.max_resumes_per_month.toLocaleString()} resume analyses
-                {planSpec.quota_period === "monthly" ? "/month" : " total"} · billed {cycle}
+                {quote.max_resumes_per_month.toLocaleString()} resume analyses
+                {quote.quota_period === "monthly" ? "/month" : " total"} · billed {cycle}
               </p>
-              {billedInRupees && quote?.fx_rate && (
+              {quote.currency !== "USD" && quote.fx_rate && (
                 <p className="text-[11px] text-[#A0A0A0] mt-2">
-                  Billed in rupees at today's rate: ${totalUsd} = {formatMoney(quote.amount_major, "INR")}
-                  {" "}(1 USD = ₹{quote.fx_rate.toFixed(2)})
+                  Billed in {quote.currency} at today's rate: ${totalUsd} = {quote.currency} {quote.amount_major.toFixed(2)}
+                  {" "}(1 USD = {quote.currency} {quote.fx_rate.toFixed(2)})
                 </p>
               )}
             </div>
@@ -235,7 +226,7 @@ export default function Checkout() {
               What's included
             </p>
             <ul className="space-y-2.5 mb-2">
-              {planSpec.display_features.map((feat) => (
+              {quote.display_features.map((feat) => (
                 <li key={feat} className="flex items-start gap-2 text-sm text-[#0F0F0F]">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 shrink-0">
                     <path d="M3 8.5l3 3 7-7" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -281,46 +272,20 @@ export default function Checkout() {
                 </span>
               </label>
 
-              {paymentStatus && (
-                <p className="text-xs text-[#737373] mb-3">{paymentStatus}</p>
-              )}
-              {cannotPay && (
-                <p className="text-xs text-red-600 mb-3">
-                  {quote?.unavailable_reason} Email{" "}
-                  <a href="mailto:support@hiresort.ai" className="underline">support@hiresort.ai</a>{" "}
-                  and we'll set you up.
-                </p>
-              )}
-              {quoteError && (
-                <p className="text-xs text-red-600 mb-3">{quoteError}</p>
-              )}
               {paymentError && (
                 <p className="text-xs text-red-600 mb-3">{paymentError}</p>
               )}
 
-              {paypalClientId && agreed ? (
-                <PayPalPayButton
-                  clientId={paypalClientId}
-                  plan={planSlug}
-                  cycle={cycle}
-                  onPaid={finishUpgrade}
-                  onPending={() =>
-                    setPaymentStatus(
-                      "PayPal is reviewing your payment. Your plan will upgrade automatically once it clears.",
-                    )
-                  }
-                  onError={setPaymentError}
-                  onBusyChange={(busy) => {
-                    setPaying(busy);
-                    if (busy) setPaymentError(null);
-                  }}
-                />
+              {PaymentUI ? (
+                <PaymentUI />
               ) : (
                 <button
-                  onClick={handlePay}
-                  // PayPal draws its own buttons once the terms are agreed;
-                  // until then this one only ever shows disabled.
-                  disabled={!agreed || paying || cannotPay || quoteQuery.isLoading || !!quoteError || !!paypalClientId}
+                  type="button"
+                  onClick={() => {
+                    if (paying) return;
+                    void subscribe();
+                  }}
+                  disabled={!agreed || paying}
                   className="w-full h-12 bg-[#0F0F0F] text-white text-sm font-semibold rounded-xl hover:bg-[#1C1C1C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                 >
                   {paying && (
@@ -331,9 +296,7 @@ export default function Checkout() {
               )}
 
               <p className="mt-4 text-[11px] text-[#A0A0A0] text-center leading-relaxed">
-                {paypalClientId
-                  ? "Secured by PayPal · PayPal balance · Cards"
-                  : "Secured by Razorpay · UPI · Cards · Netbanking · Wallets"}
+                Secured checkout · Cards · UPI · Wallets
               </p>
             </div>
           </div>

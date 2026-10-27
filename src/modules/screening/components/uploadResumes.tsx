@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { resumeUploadService } from '@/lib/services'
+import { resumeUploadService } from '@/lib/services/storage'
 import { queryClient } from '@/lib/queryClient'
 import { toast } from "sonner"
 import { useAddApplicationsMutation } from '@/modules/screening/hooks/application/queries/application.hook'

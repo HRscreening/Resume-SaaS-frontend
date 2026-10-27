@@ -11,7 +11,7 @@ import { CandidatesTable } from "@/modules/screening/components/Screening/Candid
 import { toast } from "sonner";
 import { useGetBatchesQuery } from "@/modules/screening/hooks/shared/batch.hook";
 import ResumeScoringProgress from "@/modules/screening/components/Screening/resumeScoringProgress";
-import { ApplicationQueryKeys } from "@/modules/screening/queryKeys";
+import { ApplicationQueryKeys } from "@/modules/shared/queryKeys/screeningQueryKeys";
 import { SelectedCandidatesProvider, useSelectedCandidates } from "@/modules/screening/hooks/screening/custom/useSelectedCandidates";
 import type { RankedCandidate, RubricCategory } from "@/types";
 import { DEFAULT_STAGES } from "@/lib/stages";

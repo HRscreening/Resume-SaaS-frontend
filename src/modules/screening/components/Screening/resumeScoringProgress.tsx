@@ -5,7 +5,7 @@ import type { GetScoringResponseType} from "@/modules/screening/apis/getActiveSc
 import type { Application } from "@/modules/screening/types/application.type";
 import { PendingResumeRow } from '@/modules/screening/components/shared/ProcessingResumeRow';
 import { queryClient } from '@/lib/queryClient';
-import { ApplicationQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys,ScreeningResultsQueryKeys, ScreeningUsageQueryKeys } from '@/modules/screening/queryKeys';
+import { ApplicationQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys,ScreeningResultsQueryKeys, ScreeningUsageQueryKeys } from '@/modules/shared/queryKeys/screeningQueryKeys';
 import type { GetActiveBatchesResponse } from '@/modules/screening/apis/activeBatches';
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
 import {

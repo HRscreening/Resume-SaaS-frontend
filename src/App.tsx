@@ -62,8 +62,8 @@ import TranscriptPage from "@/routes/TranscriptPage";
 
 
 // 
-import UgradePlan from "@/routes/pricing/ugradePlan";
-import Checkout from "@/routes/pricing/Checkout";
+import UgradePlan from "@/modules/billing/routes/ugradePlan";
+import Checkout from "@/modules/billing/routes/Checkout";
 import ContactUs from "@/routes/ContactUs";
 
 // ─── Layouts ────────────────────────────────────────────────
