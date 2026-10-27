@@ -28,39 +28,39 @@ function formatDate(isoString: string | null | undefined): string {
 }
 
 export const Subscription = () => {
-    //   const { data: subscription, isLoading, isError } = useUserSubscription();
+      const { data: subscription, isLoading, isError } = useUserSubscription();
 
-    //   if (isLoading) {
-    //     return (
-    //       <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6 sm:p-7 animate-pulse">
-    //         <div className="h-6 bg-[#E8E5DF] rounded-md w-1/3 mb-2" />
-    //         <div className="h-4 bg-[#F5F3EE] rounded-md w-1/2 mb-6" />
-    //         <div className="h-20 bg-[#F9F8F6] rounded-xl border border-[#E8E5DF] mb-5" />
-    //         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-    //           <div className="h-20 bg-[#F5F3EE] rounded-xl" />
-    //           <div className="h-20 bg-[#F5F3EE] rounded-xl" />
-    //           <div className="h-20 bg-[#F5F3EE] rounded-xl" />
-    //         </div>
-    //       </div>
-    //     );
-    //   }
+      if (isLoading) {
+        return (
+          <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6 sm:p-7 animate-pulse">
+            <div className="h-6 bg-[#E8E5DF] rounded-md w-1/3 mb-2" />
+            <div className="h-4 bg-[#F5F3EE] rounded-md w-1/2 mb-6" />
+            <div className="h-20 bg-[#F9F8F6] rounded-xl border border-[#E8E5DF] mb-5" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+              <div className="h-20 bg-[#F5F3EE] rounded-xl" />
+              <div className="h-20 bg-[#F5F3EE] rounded-xl" />
+              <div className="h-20 bg-[#F5F3EE] rounded-xl" />
+            </div>
+          </div>
+        );
+      }
 
-    //   // If subscription details are null, do not show subscription UI
-    //   if (!subscription || isError) {
-    //     return null;
-    //   }
-    const subscription: UserSubscription = {
-        sub_id: "sub_123456789",
-        plan: "PLUS",
-        billing_interval: "monthly",
-        status: "Active",
-        auto_pay_cancelled_at: null,
-        credit_balance: 0,
-        credit_currency: "USD",
-        is_grace_period: false,
-        subscribed_from: "2023-01-01T00:00:00Z",
-        subscription_ends_at: "2023-12-31T23:59:59Z"
-    }
+      // If subscription details are null, do not show subscription UI
+      if (!subscription || isError) {
+        return null;
+      }
+    // const subscription: UserSubscription = {
+    //     sub_id: "sub_123456789",
+    //     plan: "PLUS",
+    //     billing_interval: "monthly",
+    //     status: "Active",
+    //     auto_pay_cancelled_at: null,
+    //     credit_balance: 0,
+    //     credit_currency: "USD",
+    //     is_grace_period: false,
+    //     subscribed_from: "2023-01-01T00:00:00Z",
+    //     subscription_ends_at: "2023-12-31T23:59:59Z"
+    // }
 
     const isCancelled = Boolean(subscription.auto_pay_cancelled_at);
     const isGrace = subscription.is_grace_period;

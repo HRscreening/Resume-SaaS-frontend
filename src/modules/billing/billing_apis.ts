@@ -21,7 +21,7 @@ export async function getCheckoutQuote(plan: SubscriptionActionType, billing_int
     
     const currency = detectBillingCurrency()
     
-    return request(`/api/v1/subscription/charge-quote?plan=${encodeURIComponent(plan)}&cycle=${encodeURIComponent(billing_interval)}&currency=${"USD"}`, {
+    return request(`/api/v1/subscription/charge-quote?plan=${encodeURIComponent(plan)}&cycle=${encodeURIComponent(billing_interval)}&currency=${encodeURIComponent(currency)}`, {
         method: "GET",
     });
 }
