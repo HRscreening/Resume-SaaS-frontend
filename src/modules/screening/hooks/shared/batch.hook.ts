@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ActiveBatchesQueryKeys } from "@/modules/screening/queryKeys";
+import { ActiveBatchesQueryKeys } from "@/modules/shared/queryKeys/screeningQueryKeys";
 import { type GetParsingResponseType } from "@/modules/screening/apis/getActiveParsings";
 import { getActiveBatches } from "@/modules/screening/apis/activeBatches";
 

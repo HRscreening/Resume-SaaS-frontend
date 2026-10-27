@@ -28,7 +28,7 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion";
 import { Application } from "@/modules/screening/types/application.type";
-import { resumeUploadService } from "@/lib/services";
+import { resumeUploadService } from "@/lib/services/storage";
 import { toast } from "sonner";
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 import { AnalyticsEvent, useAnalytics } from "@/analytics";

@@ -1,10 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState,useMemo } from "react"
 import type { Screening } from "@/modules/screening/types/screening.type"
-import { ScreeningQueryKeys } from "@/modules/screening/queryKeys"
+import { ScreeningQueryKeys } from "@/modules/shared/queryKeys/screeningQueryKeys"
 import { useScreeningQuery } from "@/modules/screening/hooks/screening/queries/screening.query"
 import { toast } from 'sonner'
-import { jdStorageService } from "@/lib/services"
+import { jdStorageService } from "@/lib/services/storage"
 import { exportScoredResumes } from "@/modules/screening/apis/screenings.api";
 import {ScreeningSearchParams} from "@/modules/screening/types/searchSchema"
 

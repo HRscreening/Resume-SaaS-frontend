@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type QueryClient, type InfiniteData } from "@tanstack/react-query";
 import { getScoredResumes } from "@/modules/screening/apis/screenings.api"
 import type { CandidateQueryState, Screening, RankedCandidate } from "@/modules/screening/types/screening.type";
-import { ScreeningResultsQueryKeys, ScreeningQueryKeys } from "@/modules/screening/queryKeys"
+import { ScreeningResultsQueryKeys, ScreeningQueryKeys } from "@/modules/shared/queryKeys/screeningQueryKeys"
 import { getScreeningById } from "@/modules/screening/apis/screenings.api"
 import type { ScreeningsSearchParams, ScreeningSearchParams as ScoredResumeSearchFilterSchema } from "@/modules/screening/types/searchSchema";
 import type { PaginatedResults } from "@/modules/screening/types/screening.type";

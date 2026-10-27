@@ -8,7 +8,7 @@ import type { ScreeningSearchParams, ScreeningDetailsSearchParams } from "@/modu
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation"
 import { toast } from "sonner";
 import { type Option } from "@/modules/screening/components/shared/MenuButton";
-import { resumeUploadService } from "@/lib/services/index";
+import { resumeUploadService } from "@/lib/services/storage/index";
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 export function useScreeningActions({

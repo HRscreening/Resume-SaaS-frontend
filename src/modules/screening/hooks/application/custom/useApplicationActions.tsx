@@ -7,7 +7,7 @@ import { archiveResume, unarchiveResume, deleteResume } from "@/modules/screenin
 import type { ApplicationsSearchParams, applicationSearchSchema } from "@/modules/screening/types/searchSchema"
 import { toast } from "sonner";
 import { type Option } from "@/modules/screening/components/shared/MenuButton";
-import { resumeUploadService } from "@/lib/services/index";
+import { resumeUploadService } from "@/lib/services/storage/index";
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ResumeParsingQueryKeys, ResumeScoringQueryKeys } from "@/modules/screening/queryKeys";
+import { ResumeParsingQueryKeys, ResumeScoringQueryKeys } from "@/modules/shared/queryKeys/screeningQueryKeys";
 
 import { getActiveParsings } from "@/modules/screening/apis/getActiveParsings";
 import { getActiveScorings } from "@/modules/screening/apis/getActiveScorings";

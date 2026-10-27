@@ -50,7 +50,6 @@ function regionFromLocale(): string | undefined {
  */
 export function detectBillingCurrency(): BillingCurrency {
   if (regionFromTimezone() === INDIA_REGION) return "INR";
-  if (regionFromLocale() === INDIA_REGION) return "INR";
   return "USD";
 }
 

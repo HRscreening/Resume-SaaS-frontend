@@ -8,6 +8,10 @@ import { useUserKey } from "@/lib/userKey";
 import PayPalPayButton from "./PayPalPayButton";
 import type { PlanSpec, SubscriptionPlan } from "@/types";
 
+import type { BillingIntervalType, SubscriptionActionType } from "@/types/subscription.type";
+import type { CheckoutQuoteResponse } from "@/types/planCheckout.type"
+
+
 const VALID_PLANS: UpgradePlanSlug[] = ["pro", "plus", "enterprise"];
 
 function slugToPlanKey(slug: UpgradePlanSlug): SubscriptionPlan {
@@ -31,6 +35,8 @@ export default function Checkout() {
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
+  const [checkoutQuote, setCheckoutQuote] = useState<CheckoutQuoteResponse | null>(null);
+
   useEffect(() => {
     if (!planSlug) navigate({ to: "/upgrade" });
   }, [planSlug, navigate]);
@@ -43,7 +49,7 @@ export default function Checkout() {
   const plansQuery = useQuery({
     queryKey: ["plans"],
     queryFn: getPlans,
-    staleTime: 1000*60*60*24,
+    staleTime: 1000 * 60 * 60 * 24,
   });
   const cycle: "monthly" | "yearly" = search.cycle === "yearly" ? "yearly" : "monthly";
   // The server returns the exact amount it will charge — including the
@@ -62,8 +68,8 @@ export default function Checkout() {
   const loading = profileQuery.isLoading || plansQuery.isLoading;
   const loadError =
     profileQuery.error instanceof Error ? profileQuery.error.message :
-    plansQuery.error instanceof Error ? plansQuery.error.message :
-    null;
+      plansQuery.error instanceof Error ? plansQuery.error.message :
+        null;
 
   const planSpec = useMemo<PlanSpec | undefined>(() => {
     if (!planSlug) return undefined;
@@ -87,6 +93,7 @@ export default function Checkout() {
     }
   }
 
+
   async function handlePay() {
     if (!profile || !planSlug) return;
     setPaying(true);
@@ -107,6 +114,8 @@ export default function Checkout() {
       setPaymentStatus(null);
     }
   }
+
+
 
   if (loading) {
     return (
@@ -315,20 +324,21 @@ export default function Checkout() {
                     if (busy) setPaymentError(null);
                   }}
                 />
-              ) : (
-                <button
-                  onClick={handlePay}
-                  // PayPal draws its own buttons once the terms are agreed;
-                  // until then this one only ever shows disabled.
-                  disabled={!agreed || paying || cannotPay || quoteQuery.isLoading || !!quoteError || !!paypalClientId}
-                  className="w-full h-12 bg-[#0F0F0F] text-white text-sm font-semibold rounded-xl hover:bg-[#1C1C1C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                >
-                  {paying && (
-                    <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  )}
-                  {paying ? "Processing…" : `Pay ${totalLabel}`}
-                </button>
-              )}
+              ) 
+              : (
+                  <button
+                    onClick={handlePay}
+                    // PayPal draws its own buttons once the terms are agreed;
+                    // until then this one only ever shows disabled.
+                    disabled={!agreed || paying || cannotPay || quoteQuery.isLoading || !!quoteError || !!paypalClientId}
+                    className="w-full h-12 bg-[#0F0F0F] text-white text-sm font-semibold rounded-xl hover:bg-[#1C1C1C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  >
+                    {paying && (
+                      <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    )}
+                    {paying ? "Processing…" : `Pay ${totalLabel}`}
+                  </button>
+                )}
 
               <p className="mt-4 text-[11px] text-[#A0A0A0] text-center leading-relaxed">
                 {paypalClientId

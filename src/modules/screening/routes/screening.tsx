@@ -5,7 +5,7 @@ import { Link, useParams, useNavigate, useSearch } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query";
 import { useScreeningQuery } from "@/modules/screening/hooks/screening/queries/screening.query"
 import { getScreeningUsage } from "@/lib/api";
-import { ScreeningUsageQueryKeys } from "@/modules/screening/queryKeys";
+import { ScreeningUsageQueryKeys } from "@/modules/shared/queryKeys/screeningQueryKeys";
 import {AnalyticsEvent, useAnalytics} from "@/analytics";
 import type { RubricCategory } from "@/types";
 import { formatDate, truncate } from "@/lib/utils";

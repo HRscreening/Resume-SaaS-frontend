@@ -5,7 +5,7 @@ import { sortedStages } from "@/lib/stages";
 import { useEffect } from "react";
 import { useInView } from "react-intersection-observer";
 import { toast } from "sonner";
-import { resumeUploadService } from "@/lib/services/index";
+import { resumeUploadService } from "@/lib/services/storage/index";
 import { CandidateRow, SkeletonRow } from "@/modules/screening/components/Screening/CandidateRow";
 
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";

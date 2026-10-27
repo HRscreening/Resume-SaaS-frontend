@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listScreenings, getScreeningById } from "@/modules/screening/apis/screenings.api";
 import { useUserKey } from "@/lib/userKey";
-import { ScreeningQueryKeys,ApplicationQueryKeys } from "@/modules/screening/queryKeys"
+import { ScreeningQueryKeys,ApplicationQueryKeys } from "@/modules/shared/queryKeys/screeningQueryKeys"
 import type { ScreeningsSearchParams } from "@/modules/screening/types/searchSchema";
 
 // export function usePrefetchScreening() {

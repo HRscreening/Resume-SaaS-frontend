@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type QueryClient, type InfiniteData } from "@tanstack/react-query";
-import { ApplicationQueryKeys, ResumeParsingQueryKeys, ScreeningResultsQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys, ScreeningUsageQueryKeys } from "@/modules/screening/queryKeys";
+import { ApplicationQueryKeys, ResumeParsingQueryKeys, ScreeningResultsQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys, ScreeningUsageQueryKeys } from "@/modules/shared/queryKeys/screeningQueryKeys";
 import { type GetActiveBatchesResponse } from "@/modules/screening/apis/activeBatches";
 import { screenResume } from "@/modules/screening/apis/screenings.api"
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
