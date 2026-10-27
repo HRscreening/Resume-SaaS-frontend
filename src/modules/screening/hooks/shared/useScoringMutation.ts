@@ -53,6 +53,11 @@ export function useScoringMutation(
                 ),
             });
 
+            // Each resume sent spends one analysis, so the remaining quota
+            // the toolbar checks against is stale. ["usage"] prefix-matches
+            // the user-scoped key.
+            queryClient.invalidateQueries({ queryKey: ["usage"] });
+
             // Scoring a resume changes resumes_scored for this job.
             queryClient.invalidateQueries({
                 queryKey: ScreeningUsageQueryKeys.screening(

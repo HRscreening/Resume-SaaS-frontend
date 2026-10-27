@@ -87,7 +87,7 @@ export const uiSearchSchema = z.object({
   appId: z.string().optional(), // for opening the analysis sheet for a specific candidate
   infoTab: z.enum(["profile","note"]).optional(),
   screenId: z.string().optional(), // for opening the analysis sheet for a specific candidate
-  analysisTab: z.enum(["profile","scorecard","voice","note"]).optional(), // for opening the analysis sheet for a specific candidate
+  analysisTab: z.enum(["profile","scorecard","voice","round","note"]).optional(), // for opening the analysis sheet for a specific candidate
 });
 
 export type UISearchParams = z.infer<typeof uiSearchSchema>;

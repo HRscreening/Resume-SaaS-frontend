@@ -28,6 +28,21 @@ export async function getAuthHeader(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${token}` };
 }
 
+// Thrown by request() on a non-OK response. Extends Error so every existing
+// `catch (e) { e instanceof Error ? e.message : ... }` call site keeps
+// working unchanged; `status` is additive. Callers that need to distinguish
+// server-meaningful statuses (409 conflict vs 422 unprocessable vs 403
+// forbidden, for example) should check `error instanceof ApiError` and read
+// `.status` rather than pattern-matching on `.message`.
+export class ApiError extends Error {
+  readonly status: number;
+  constructor(status: number, detail: string) {
+    super(detail);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 function parseErrorDetail(body: unknown, status: number): string {
   if (!body || typeof body !== "object") return `HTTP ${status}`;
   const b = body as Record<string, unknown>;
@@ -61,7 +76,7 @@ export async function request<T>(
   if (!res.ok) {
     if (res.status === 401) clearSessionHint();
     const body = await res.json().catch(() => ({}));
-    throw new Error(parseErrorDetail(body, res.status));
+    throw new ApiError(res.status, parseErrorDetail(body, res.status));
   }
 
   // 204 No Content (e.g. DELETE) has no body to parse.
@@ -773,6 +788,37 @@ export async function saveVoiceConfig(
   return request(`/api/v1/screenings/${screeningId}/voice/config`, {
     method: "PUT",
     body: JSON.stringify(config),
+  });
+}
+
+// ─── Round 1 browser interview (recruiter config + invites) ───────────────
+
+export async function getInterviewConfig(
+  screeningId: string,
+): Promise<import("@/types").InterviewConfigResponse> {
+  return request(`/api/v1/screenings/${screeningId}/interview/config`);
+}
+
+export async function saveInterviewConfig(
+  screeningId: string,
+  config: import("@/types").InterviewConfig,
+): Promise<import("@/types").InterviewConfigResponse> {
+  return request(`/api/v1/screenings/${screeningId}/interview/config`, {
+    method: "PUT",
+    body: JSON.stringify(config),
+  });
+}
+
+/** Invite every listed candidate to the Round 1 interview. Candidates not at
+ * the configured entry stage, or already completed/scored, come back in the
+ * response's `skipped` list rather than as an error. */
+export async function createInterviewInvites(
+  screeningId: string,
+  resumeIds: string[],
+): Promise<import("@/types").InterviewInviteResponse> {
+  return request(`/api/v1/screenings/${screeningId}/interview/invites`, {
+    method: "POST",
+    body: JSON.stringify({ resume_ids: resumeIds }),
   });
 }
 

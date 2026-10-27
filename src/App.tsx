@@ -8,6 +8,7 @@ import {
   stripSearchParams,
   parseSearchWith,
   stringifySearchWith,
+  lazyRouteComponent,
 } from "@tanstack/react-router";
 import qs from 'query-string'
 
@@ -32,6 +33,7 @@ import AuthCallback from "@/routes/AuthCallback";
 import Onboarding from "@/routes/Onboarding";
 import Terms from "@/routes/Terms";
 import Privacy from "@/routes/Privacy";
+import InterviewJoin from "@/routes/interview/InterviewJoin";
 import Dashboard from "@/routes/Dashboard";
 import Screenings from "@/modules/screening/routes/Screenings";
 import Settings from "@/routes/Settings";
@@ -55,6 +57,8 @@ import { searchSchema, screeningsSearchSchema, screeningDetailsSearchSchema } fr
 
 import ResumeDetail from "@/routes/ResumeDetail";
 import EditRubric from "@/modules/screening/routes/EditRubric";
+import InterviewConfigPage from "@/modules/screening/routes/InterviewConfig";
+import RoundAuthoring from "@/modules/screening/routes/RoundAuthoring";
 import VoiceConfigPage from "@/routes/VoiceConfig";
 import VoiceCalls from "@/routes/VoiceCalls";
 import TranscriptPage from "@/routes/TranscriptPage";
@@ -186,6 +190,15 @@ const privacyRoute = createRoute({
   component: Privacy,
 });
 
+// Candidate-facing route: no HireSort account exists behind it, so it hangs
+// directly off rootRoute like termsRoute/privacyRoute above — no AuthGuard,
+// no AppLayout. Never nest this under appLayoutRoute or authOnlyLayoutRoute.
+const interviewJoinRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/interview/$token",
+  component: InterviewJoin,
+});
+
 const appLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "app-layout",
@@ -274,10 +287,31 @@ const voiceConfigRoute = createRoute({
   component: VoiceConfigPage,
 });
 
+// Recruiter-facing config for the Round 1 browser interview. Authenticated,
+// unlike /interview/$token below (the candidate's link) — it belongs beside
+// the other screening routes, not off rootRoute.
+const interviewConfigRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings/$id/interview",
+  component: InterviewConfigPage,
+});
+
 const voiceCallsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/screenings/$id/voice/calls",
   component: VoiceCalls,
+});
+
+// Round authoring screen: a hiring manager chats with an AI to build a
+// round, then publishes it. Recruiter-facing, behind AuthGuard like its
+// sibling screening routes above — never off rootRoute like
+// interviewJoinRoute, which is the candidate's unauthenticated link.
+// Path uses $id (not $screeningId) to match every other /screenings/$id/...
+// route in this file; see api-contract.md R43 for the ruling.
+const roundAuthoringRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/screenings/$id/rounds/$roundId",
+  component: RoundAuthoring,
 });
 
 const resumeDetailRoute = createRoute({
@@ -349,6 +383,16 @@ const checkoutRoute = createRoute({
 
 // ─── Build router ───────────────────────────────────────────
 
+// Development only: the interview coding pane on its own, with no LiveKit
+// room behind it. Lazy, and never registered in a production build.
+const devCodingPaneRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dev/coding-pane",
+  component: import.meta.env.DEV
+    ? lazyRouteComponent(() => import("@/routes/interview/dev/CodingPanePreview"))
+    : undefined,
+});
+
 const routeTree = rootRoute.addChildren([
   landingRoute,
   authLayoutRoute.addChildren([loginRoute, signupRoute, forgotPasswordRoute, resetPasswordRoute]),
@@ -356,6 +400,8 @@ const routeTree = rootRoute.addChildren([
   onboardingRoute,
   termsRoute,
   privacyRoute,
+  interviewJoinRoute,
+  ...(import.meta.env.DEV ? [devCodingPaneRoute] : []),
   appLayoutNoSidebarRoute.addChildren([
     upgradePlanRoute,
     contactUsRoute,
@@ -373,7 +419,9 @@ const routeTree = rootRoute.addChildren([
     screeningDetailRoute,
     editRubricRoute,
     voiceConfigRoute,
+    interviewConfigRoute,
     voiceCallsRoute,
+    roundAuthoringRoute,
     settingsRoute,
     profileRoute,
     changePasswordRoute,
