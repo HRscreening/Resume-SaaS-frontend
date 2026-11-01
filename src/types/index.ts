@@ -894,6 +894,29 @@ export interface InterviewScorecard {
   code: Record<string, InterviewScorecardCode> | null;
   // Absent on scorecards recorded before server-paced interviews shipped.
   pacing?: InterviewQuestionPacing[];
+  // How fast the interviewer was, from the session's recorded metrics.
+  // Absent or null on sessions recorded before the agent persisted it.
+  latency?: InterviewLatencySummary | null;
+}
+
+// One latency component in milliseconds, as the agent summarised it.
+export interface InterviewLatencyStat {
+  avg_ms?: number;
+  p50_ms?: number;
+  p90_ms?: number;
+  p95_ms?: number;
+  max_ms?: number;
+  n?: number;
+}
+
+// `e2e` is the wait the candidate felt: from the end of their speech to the
+// interviewer's voice. `startup` is how long they waited for the first word.
+// Other components (eou_delay, llm_ttft, tts_ttfb, ...) are present for
+// diagnosis and left loosely typed.
+export interface InterviewLatencySummary {
+  e2e?: InterviewLatencyStat;
+  startup?: { join_to_first_word_s?: number; connect_to_first_word_s?: number };
+  [component: string]: unknown;
 }
 
 export interface InterviewScorecardsResponse {

@@ -1,7 +1,8 @@
 import {
   TONE_CHIP, TONE_HEX, recommendationChip, scoreTone,
 } from "@/components/screening/voice/scorecard/scorecardUtils";
-import { formatCompletedAt } from "./interviewScorecardUtils";
+import type { InterviewLatencySummary } from "@/types";
+import { formatCompletedAt, responseTimeLabel } from "./interviewScorecardUtils";
 
 interface InterviewScorecardHeaderProps {
   candidateName: string | null;
@@ -9,6 +10,7 @@ interface InterviewScorecardHeaderProps {
   recommendation: string | null;
   isPartial: boolean;
   completedAt: string | null;
+  latency?: InterviewLatencySummary | null;
 }
 
 /**
@@ -19,12 +21,13 @@ interface InterviewScorecardHeaderProps {
  * comparing two different things without knowing it.
  */
 export function InterviewScorecardHeader({
-  candidateName, score, recommendation, isPartial, completedAt,
+  candidateName, score, recommendation, isPartial, completedAt, latency,
 }: InterviewScorecardHeaderProps) {
   const rec = recommendationChip(recommendation);
   const tone = scoreTone(score);
   const pct = Math.max(0, Math.min(100, score ?? 0));
   const completed = formatCompletedAt(completedAt);
+  const responseTime = responseTimeLabel(latency);
 
   return (
     <div className="rounded-xl border border-[#E8E5DF] bg-white p-3.5">
@@ -67,6 +70,15 @@ export function InterviewScorecardHeader({
             />
           </div>
         </div>
+      )}
+
+      {responseTime && (
+        <p
+          className="mt-2 text-[11px] text-[#A3A3A3]"
+          title="How quickly the AI interviewer replied after the candidate stopped speaking (median and 95th percentile), and how long they waited for its first word."
+        >
+          {responseTime}
+        </p>
       )}
     </div>
   );

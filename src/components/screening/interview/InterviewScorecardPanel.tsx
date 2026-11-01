@@ -64,6 +64,7 @@ export function InterviewScorecardPanel({ screeningId, resumeId }: InterviewScor
         recommendation={scorecard.recommendation}
         isPartial={scorecard.is_partial}
         completedAt={scorecard.completed_at}
+        latency={scorecard.latency}
       />
 
       <InterviewAssessmentSection scorecard={scorecard} />
