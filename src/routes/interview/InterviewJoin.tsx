@@ -95,6 +95,8 @@ export default function InterviewJoin() {
         token={token}
         durationMinutes={data.duration_minutes}
         requiresCamera={data.requires_camera === true}
+        roleTitle={data.role_title}
+        hiringCompany={data.hiring_company}
         onRejoin={handleJoin}
         onCheckCompleted={checkCompleted}
       />

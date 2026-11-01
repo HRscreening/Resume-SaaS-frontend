@@ -15,14 +15,10 @@ import {
   InterviewRetryableError,
   type InterviewJoinGrant,
 } from "@/lib/interviewApi";
-import CodingPane from "./CodingPane";
-import TopBar from "./TopBar";
-import PinnedQuestion from "./PinnedQuestion";
-import SpokenStage from "./SpokenStage";
-import AgendaBar from "./AgendaBar";
-import { ENDING_COPY, FIVE_MINUTE_COPY, fiveMinuteNotice, phaseLabel } from "./phaseSignal";
+import RoomLayout from "./RoomLayout";
+import { minutesLeft } from "./rail";
+import { fiveMinuteNotice } from "./phaseSignal";
 import { usePhaseSync } from "./usePhaseSync";
-import Transcript from "./Transcript";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { useElapsedTime } from "./useElapsedTime";
 import { useCodingQuestions } from "./useCodingQuestions";
@@ -33,9 +29,9 @@ import { derivePresenceState } from "./presenceState";
 import { useAgentState } from "./useAgentState";
 import { useConnectionQuality } from "./useConnectionQuality";
 import { connectionLabel } from "./connectionLabel";
-import TurnControls from "./TurnControls";
-import { sendCandidateEvent } from "./candidateEvents";
-import { SILENCE_WARNING_COPY, shouldWarnSilence } from "./micSilence";
+import { rejoinDelayMs, shouldKeepRejoining } from "./autoRejoin";
+import { MOMENT_MS, sendCandidateEvent, sendCandidateEventAndWait } from "./candidateEvents";
+import { shouldWarnSilence } from "./micSilence";
 
 // The candidate's LiveKit participant identity is always this literal string
 // (minted server-side by mint_candidate_token — see backend service.join()).
@@ -86,6 +82,9 @@ interface InterviewRoomProps {
   // The round asks for the camera: the spoken stage shows the candidate a
   // local preview of themselves in its corner.
   requiresCamera?: boolean;
+  // From the brief, for the rail's heading. Either may be missing.
+  roleTitle?: string | null;
+  hiringCompany?: string | null;
   // Resolves once a fresh grant has been applied to props, or rejects (the
   // rejection is what drives the "could not rejoin" error state below).
   onRejoin: () => Promise<unknown>;
@@ -106,6 +105,8 @@ export default function InterviewRoom({
   token,
   durationMinutes,
   requiresCamera = false,
+  roleTitle = null,
+  hiringCompany = null,
   onRejoin,
   onCheckCompleted,
 }: InterviewRoomProps) {
@@ -184,7 +185,7 @@ export default function InterviewRoom({
   // find their code and their remaining time exactly as they left them, not
   // reset by the reconnect. `activeRoom` is threaded in so it can subscribe
   // to that signal the same way useLiveCaptions subscribes to captions.
-  const coding = useCodingQuestions(token, activeRoom);
+  const coding = useCodingQuestions(token, activeRoom, callState !== "connected");
   // The split view replaces today's screen only once the agent's own
   // `hiresort.question` signal has named a coding question — never on the
   // local fallback index alone, and never for a question the candidate has
@@ -193,13 +194,6 @@ export default function InterviewRoom({
   // renders exactly what this screen has always rendered — there is
   // deliberately no "empty pane" for any of those cases.
   const showCodingPane = coding.showPane;
-  // The pinned slot's spoken half — see useCodingQuestions' `pinned` for
-  // the reveal rules. Null for the entire warm-up (nothing presented yet),
-  // null again whenever a coding question is current instead (CodingPane
-  // fills the slot in that case; the two never render together), and null
-  // for the brief gap after a new spoken question is presented but before
-  // its text has arrived.
-  const pinnedSpoken = coding.pinned;
 
   // Three states, drawn as three different things (see TopBar/VoiceMeter/
   // ThinkingDots): the same animation for listening and speaking, and no
@@ -266,6 +260,40 @@ export default function InterviewRoom({
     }, 1000);
     return () => window.clearInterval(id);
   }, [micMuted, agentListening, agentHasSpoken, showCodingPane]);
+
+  // The candidate's own mute. Muting is allowed (a cough, a doorbell); the
+  // silent-mic warning above still tells them if they forget to unmute.
+  const [micOn, setMicOn] = useState(true);
+  async function handleToggleMic() {
+    const room = roomRef.current;
+    if (!room) return;
+    const next = !micOn;
+    setMicOn(next);
+    try {
+      await room.localParticipant.setMicrophoneEnabled(next);
+    } catch {
+      setMicOn(!next);
+    }
+  }
+
+  // "Give me a moment". Mirrors the agent's own rule: over when they start
+  // speaking, when the moment runs out, or when the question changes.
+  const [momentAt, setMomentAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (candidateSpeaking) setMomentAt(null);
+  }, [candidateSpeaking]);
+  useEffect(() => {
+    setMomentAt(null);
+  }, [coding.index]);
+  useEffect(() => {
+    if (momentAt === null) return;
+    const id = window.setTimeout(() => setMomentAt(null), Math.max(0, momentAt + MOMENT_MS - Date.now()));
+    return () => window.clearTimeout(id);
+  }, [momentAt]);
+  function handleMoment() {
+    setMomentAt(Date.now());
+    sendCandidateEvent(activeRoom, "moment");
+  }
 
   function handleToggleCaptions() {
     setCaptionsEnabled((prev) => {
@@ -444,10 +472,10 @@ export default function InterviewRoom({
     }
   }, [callState, connectedAt]);
 
-  // A candidate who closes the tab mid-interview loses it: close_on_disconnect
-  // means the agent finalizes the session the moment the room drops. The
-  // guard is armed only while a live call is actually up, and torn down the
-  // instant it is not, so it never follows the candidate to another page.
+  // Closing the tab mid-interview no longer loses it (the agent holds a
+  // dropped interview open for a few minutes and it can be resumed), but it
+  // still pauses it, so the browser asks first. The guard is armed only
+  // while a live call is up, so it never follows the candidate elsewhere.
   //
   // The `completed` check matters on its own, not just as a subset of
   // callState: room.disconnect() below is async, and its Disconnected event
@@ -474,16 +502,50 @@ export default function InterviewRoom({
     setShowEndConfirm(false);
   }
 
-  function handleConfirmEnd() {
+  async function handleConfirmEnd() {
     setShowEndConfirm(false);
-    // The backend finalizes the session on disconnect (close_on_disconnect),
-    // so this is the real, irreversible end of the interview for the
-    // candidate — the completion screen below reflects that, not a "you can
-    // rejoin" state.
+    // Leaving the room on its own only puts the interview on hold (the agent
+    // waits for a dropped candidate to come back), so the agent is told this
+    // one is deliberate first. This is the real, irreversible end of the
+    // interview for the candidate: the completion screen reflects that.
     endedByCandidateRef.current = true;
-    roomRef.current?.disconnect();
     setCompleted(true);
+    await sendCandidateEventAndWait(roomRef.current, "end_interview");
+    roomRef.current?.disconnect();
   }
+
+  // Automatic rejoin. A dropped connection is held open by the interviewer
+  // for REJOIN_WINDOW_MS, so the page retries on its own for that long,
+  // quickly at first. `lostAt` is when the connection was lost; it clears
+  // once a connection is back up.
+  const [lostAt, setLostAt] = useState<number | null>(null);
+  const [rejoinAttempt, setRejoinAttempt] = useState(0);
+  const [gaveUp, setGaveUp] = useState(false);
+  useEffect(() => {
+    if (callState === "connected") {
+      setLostAt(null);
+      setRejoinAttempt(0);
+      setGaveUp(false);
+    } else if (callState === "disconnected" && !endedByCandidateRef.current) {
+      setLostAt((prev) => prev ?? Date.now());
+    }
+  }, [callState]);
+  const connectionDown = callState === "disconnected" || error?.kind === "connection";
+  useEffect(() => {
+    if (lostAt === null || completed || checkingIfFinished || rejoining || !connectionDown || gaveUp) return;
+    if (!shouldKeepRejoining(lostAt, Date.now())) {
+      setGaveUp(true);
+      return;
+    }
+    const id = window.setTimeout(() => {
+      setRejoinAttempt((n) => n + 1);
+      void handleRejoin();
+    }, rejoinDelayMs(rejoinAttempt));
+    return () => window.clearTimeout(id);
+    // handleRejoin is recreated every render; the attempt counter is what
+    // schedules the next try.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lostAt, completed, checkingIfFinished, rejoining, connectionDown, gaveUp, rejoinAttempt]);
 
   async function handleRejoin() {
     setRejoining(true);
@@ -553,6 +615,23 @@ export default function InterviewRoom({
     );
   }
 
+  // Lost the connection mid-interview and still inside the window: the
+  // interview is paused on the server, and the page is reconnecting by itself.
+  if (lostAt !== null && !gaveUp && (connectionDown || callState === "connecting") && !checkingIfFinished) {
+    return (
+      <Centered>
+        <div role="status" aria-live="polite" className="max-w-sm text-center flex flex-col items-center gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-[#737373]" />
+          <p className="text-sm font-medium text-[#0F0F0F]">Connection lost. Your interview is paused.</p>
+          <p className="text-sm text-[#404040]">
+            Reconnecting you now. Your place and the time left on your question are kept.
+          </p>
+          <RetryButton onClick={handleRejoin} label="Try now" loading={rejoining} />
+        </div>
+      </Centered>
+    );
+  }
+
   if (error?.kind === "connection") {
     return (
       <Centered>
@@ -585,7 +664,11 @@ export default function InterviewRoom({
     return (
       <Centered>
         <div className="max-w-sm text-center">
-          <p className="text-sm text-[#404040] mb-4">You have left the interview.</p>
+          <p className="text-sm text-[#404040] mb-4">
+            {gaveUp
+              ? "We could not reconnect you. Check your internet connection, then rejoin: your interview can still be picked up for a little while."
+              : "You have left the interview."}
+          </p>
           <RetryButton onClick={handleRejoin} label="Rejoin" loading={rejoining} />
         </div>
       </Centered>
@@ -603,132 +686,41 @@ export default function InterviewRoom({
     );
   }
 
-  // The pinned slot is occupied by exactly one of: the coding pane (an
-  // actually-presented, not-yet-dismissed coding question), the spoken
-  // pinned question (one whose text has been revealed), or nothing at all
-  // (before anything is presented — the warm-up, same as today: just the
-  // conversation, no claim made about a question on screen).
-  const hasPinnedSlot = showCodingPane || pinnedSpoken !== null || coding.walkthrough !== null;
-  const turnControls = (
-    <TurnControls
-      showDone={presenceState === "listening" && agentHasSpoken}
-      showRepeat={coding.current !== undefined && !coding.finished}
-      onDone={() => sendCandidateEvent(activeRoom, "done_speaking")}
-      onRepeat={() => sendCandidateEvent(activeRoom, "repeat")}
-    />
-  );
-
   return (
-    // h-screen + overflow-hidden (rather than the min-h-screen used by every
-    // other state above) so the coding split view below can give its two
-    // columns a real, bounded height to scroll independently within. The
-    // pinned slot must stay on screen for the whole question — it must
-    // never be something the page itself can scroll past.
-    <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: "#F5F3EE" }}>
-      {callState === "reconnecting" && (
-        <div className="w-full bg-[#FDECD2] text-[#8A4B08] text-xs text-center py-2">
-          Reconnecting…
-        </div>
-      )}
-      {callState === "connected" && silenceWarning && (
-        <div role="alert" className="w-full bg-[#FDECD2] text-[#8A4B08] text-xs text-center py-2">
-          {SILENCE_WARNING_COPY}
-        </div>
-      )}
-      {callState === "connected" && phaseSync.ending && (
-        <div role="status" className="w-full bg-[#F5F3EE] text-[#404040] text-xs text-center py-2">
-          {ENDING_COPY}
-        </div>
-      )}
-      <TopBar
-        elapsedLabel={elapsedLabel}
-        durationMinutes={durationMinutes}
+    <>
+      <RoomLayout
+        coding={coding}
+        phase={phaseSync.phase}
+        ending={callState === "connected" && phaseSync.ending}
         presenceState={presenceState}
         reconnecting={callState === "reconnecting"}
-        connectionLabel={connectionLabel(connectionQuality)}
-        interviewerAnalyser={agentAnalyser}
-        interviewerSpeaking={agentSpeaking}
-        candidateAnalyser={candidateAnalyser}
-        candidateSpeaking={candidateSpeaking}
-        questionIndex={coding.index}
-        questionTotal={coding.total}
-        phaseLabel={phaseLabel(phaseSync.phase)}
-        showPresence={showCodingPane}
-        onEndInterview={handleEndInterview}
+        networkLabel={connectionLabel(connectionQuality)}
+        silenceWarning={callState === "connected" && silenceWarning}
+        showFiveMinuteNotice={showFiveMinuteNotice}
+        voice={{
+          interviewerAnalyser: agentAnalyser,
+          candidateAnalyser,
+          interviewerSpeaking: agentSpeaking,
+          candidateSpeaking,
+        }}
+        transcriptTurns={transcriptTurns}
+        captionsEnabled={captionsEnabled}
+        onToggleCaptions={handleToggleCaptions}
+        micOn={micOn}
+        onToggleMic={handleToggleMic}
+        agentHasSpoken={agentHasSpoken}
+        requiresCamera={requiresCamera}
+        roleTitle={roleTitle}
+        hiringCompany={hiringCompany}
+        durationMinutes={durationMinutes}
+        elapsedLabel={elapsedLabel}
+        minutesLeft={minutesLeft(durationMinutes, connectedAt, Date.now())}
+        onRepeat={() => sendCandidateEvent(activeRoom, "repeat")}
+        onDone={() => sendCandidateEvent(activeRoom, "done_speaking")}
+        momentActive={momentAt !== null}
+        onMoment={handleMoment}
+        onLeave={handleEndInterview}
       />
-      {coding.total > 0 && (
-        <AgendaBar total={coding.total} index={coding.index} finished={coding.finished} />
-      )}
-
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        {/* Coding: the problem and the editor get the height, and the
-            conversation shrinks to a one-line caption under them. Everything
-            else (warm-up, spoken questions, the walkthrough, the closing) is
-            talk, and gets the spoken stage: the interviewer at the centre,
-            the question in focus under it. */}
-        {showCodingPane ? (
-          <>
-            <div className="flex-1 min-h-0 overflow-hidden">
-              <CodingPane coding={coding} />
-            </div>
-            {showFiveMinuteNotice && (
-              <p role="status" className="w-full max-w-3xl mx-auto px-4 pb-3 text-xs text-[#737373]">
-                {FIVE_MINUTE_COPY}
-              </p>
-            )}
-            {turnControls}
-            <div className="shrink-0 px-4 py-2">
-              <Transcript
-                turns={transcriptTurns}
-                enabled={captionsEnabled}
-                onToggle={handleToggleCaptions}
-                compact
-              />
-            </div>
-          </>
-        ) : (
-          <SpokenStage
-            presenceState={presenceState}
-            reconnecting={callState === "reconnecting"}
-            interviewerAnalyser={agentAnalyser}
-            candidateAnalyser={candidateAnalyser}
-            showSelfView={requiresCamera}
-          >
-            {coding.walkthrough && (
-              <PinnedQuestion
-                label="Walking through your solution"
-                prompt={coding.walkthrough.title}
-                secondsRemaining={coding.secondsRemaining}
-                warning={coding.warning}
-                timerActive={coding.timerActive}
-              />
-            )}
-            {!coding.walkthrough && pinnedSpoken && (
-              <PinnedQuestion
-                prompt={pinnedSpoken.prompt}
-                secondsRemaining={coding.secondsRemaining}
-                warning={coding.warning}
-                timerActive={coding.timerActive}
-              />
-            )}
-            {hasPinnedSlot && showFiveMinuteNotice && (
-              <p role="status" className="w-full max-w-3xl mx-auto px-4 pb-3 text-xs text-[#737373]">
-                {FIVE_MINUTE_COPY}
-              </p>
-            )}
-            {turnControls}
-            <div className="w-full max-w-3xl mx-auto px-4 pb-6">
-              <Transcript
-                turns={transcriptTurns}
-                enabled={captionsEnabled}
-                onToggle={handleToggleCaptions}
-                compact
-              />
-            </div>
-          </SpokenStage>
-        )}
-      </div>
-
       {showEndConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-6 z-50">
           <div className="max-w-sm w-full rounded-xl border border-[#D4D4D4] bg-white p-5 text-center">
@@ -754,7 +746,7 @@ export default function InterviewRoom({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

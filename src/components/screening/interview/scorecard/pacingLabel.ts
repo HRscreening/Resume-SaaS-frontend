@@ -5,6 +5,10 @@ const LABELS: Record<string, string> = {
   submitted: "Submitted",
   model: "Moved on",
   follow_ups: "Follow-ups done",
+  // The candidate said they didn't know, or asked to skip.
+  dont_know: "Said they didn't know",
+  // The interview hit its time limit before this question was reached.
+  not_asked_time: "Not asked: out of time",
 };
 
 /** Why a question ended, as a short recruiter-facing label; null if unknown. */

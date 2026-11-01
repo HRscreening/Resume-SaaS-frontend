@@ -403,6 +403,16 @@ const devSpokenStageRoute = createRoute({
     : undefined,
 });
 
+// Development only: the whole connected interview screen (agenda rail,
+// spoken and coding layouts) with sample data and no LiveKit room.
+const devInterviewRoomRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dev/interview-room",
+  component: import.meta.env.DEV
+    ? lazyRouteComponent(() => import("@/routes/interview/dev/RoomLayoutPreview"))
+    : undefined,
+});
+
 const routeTree = rootRoute.addChildren([
   landingRoute,
   authLayoutRoute.addChildren([loginRoute, signupRoute, forgotPasswordRoute, resetPasswordRoute]),
@@ -411,7 +421,7 @@ const routeTree = rootRoute.addChildren([
   termsRoute,
   privacyRoute,
   interviewJoinRoute,
-  ...(import.meta.env.DEV ? [devCodingPaneRoute, devSpokenStageRoute] : []),
+  ...(import.meta.env.DEV ? [devCodingPaneRoute, devSpokenStageRoute, devInterviewRoomRoute] : []),
   appLayoutNoSidebarRoute.addChildren([
     upgradePlanRoute,
     contactUsRoute,

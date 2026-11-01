@@ -89,7 +89,13 @@ export type SubmitNotice = { kind: "saved" | "error"; message: string };
 // the candidate has already submitted (`dismissed`) keeps the pane closed
 // for good even if the pointer republishes that id again (a repeated tick,
 // or the interviewer genuinely moving back to it).
-export function useCodingQuestions(token: string, room: Room | null) {
+// `paused`: the call is not connected. The server pauses the question's clock
+// while a dropped candidate is away (backend disconnect_hold), so the local
+// countdown running out then means nothing: no auto-save, no closed pane. The
+// server's own remaining time is adopted again on reconnect.
+export function useCodingQuestions(token: string, room: Room | null, paused = false) {
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const { data, error: questionsError, refetch } = useQuery({
     queryKey: ["interview-questions", token],
     queryFn: () => getInterviewQuestions(token),
@@ -498,6 +504,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // pointer to decide what, if anything, happens next.
   const handleExpire = useCallback(() => {
     if (expiringRef.current || !current || !state) return;
+    if (pausedRef.current) return; // the interview is on hold server-side
     // Already submitted (manually, or by an earlier expiry) — the pane for
     // this id is closed for good (see `showPane`), so there is nothing left
     // to capture and nowhere for a notice to be seen. Without this guard a

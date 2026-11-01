@@ -16,6 +16,13 @@ export function timerBadgeClasses(warning: boolean, reducedMotion: boolean): str
   return reducedMotion ? "bg-[#FDE2E2] text-[#9B1C1C]" : "bg-[#FDE2E2] text-[#9B1C1C] animate-pulse";
 }
 
+/** The badge text. At zero the question is not cut off: the candidate gets to
+ *  finish, so it says so instead of sitting at "0:00 left". */
+export function timerBadgeText(secondsRemaining: number): string {
+  if (!(secondsRemaining > 0)) return "Time's up · finish your thought";
+  return `${formatCountdown(secondsRemaining)} left`;
+}
+
 export function TimerBadge({
   secondsRemaining,
   warning,
@@ -31,7 +38,7 @@ export function TimerBadge({
       aria-live="polite"
       className={`text-xs font-semibold tabular-nums px-2.5 py-1 rounded-full whitespace-nowrap ${timerBadgeClasses(warning, reducedMotion)}`}
     >
-      {formatCountdown(secondsRemaining)} left
+      {timerBadgeText(secondsRemaining)}
     </span>
   );
 }

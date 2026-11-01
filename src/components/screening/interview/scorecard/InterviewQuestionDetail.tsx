@@ -45,7 +45,9 @@ export function InterviewQuestionDetail({ scorecard }: InterviewQuestionDetailPr
                     className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                       pace.reason === "time_up"
                         ? "bg-[#FDE2E2] text-[#9B1C1C]"
-                        : "bg-[#F0EEE6] text-[#404040]"
+                        : pace.reason === "not_asked_time"
+                          ? "bg-[#FFF7ED] text-[#9A3412]"
+                          : "bg-[#F0EEE6] text-[#404040]"
                     }`}
                   >
                     {paceLabel}

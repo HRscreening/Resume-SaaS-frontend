@@ -5,6 +5,7 @@ describe("candidateEventPayload", () => {
   it("serialises each event as {event}", () => {
     expect(candidateEventPayload("done_speaking")).toBe('{"event":"done_speaking"}');
     expect(candidateEventPayload("repeat")).toBe('{"event":"repeat"}');
+    expect(candidateEventPayload("moment")).toBe('{"event":"moment"}');
   });
 });
 
