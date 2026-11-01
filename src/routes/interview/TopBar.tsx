@@ -8,12 +8,19 @@ interface TopBarProps {
   durationMinutes: number;
   presenceState: PresenceState;
   reconnecting: boolean;
+  connectionLabel: string | null;
   interviewerAnalyser: AnalyserNode | null;
   interviewerSpeaking: boolean;
   candidateAnalyser: AnalyserNode | null;
   candidateSpeaking: boolean;
   questionIndex: number;
   questionTotal: number;
+  // "Warm-up" or "Your questions" from the server's phase signal; null while
+  // the questions run (the counter says it) or before the signal arrives.
+  phaseLabel?: string | null;
+  // False on the spoken stage, whose orb and status chip already say who
+  // is talking; the coding layout has no orb and keeps the meter here.
+  showPresence?: boolean;
   onEndInterview: () => void;
 }
 
@@ -29,12 +36,15 @@ export default function TopBar({
   durationMinutes,
   presenceState,
   reconnecting,
+  connectionLabel,
   interviewerAnalyser,
   interviewerSpeaking,
   candidateAnalyser,
   candidateSpeaking,
   questionIndex,
   questionTotal,
+  phaseLabel = null,
+  showPresence = true,
   onEndInterview,
 }: TopBarProps) {
   const label = describePresence(presenceState, reconnecting);
@@ -46,7 +56,7 @@ export default function TopBar({
             ThinkingDots) — so it replaces the meter outright rather than
             sitting next to a meter that would otherwise just sit at 0 and
             look identical to plain silence. */}
-        {!reconnecting && presenceState === "thinking" ? (
+        {showPresence && (!reconnecting && presenceState === "thinking" ? (
           <ThinkingDots />
         ) : (
           <VoiceMeter
@@ -56,10 +66,26 @@ export default function TopBar({
             candidateSpeaking={candidateSpeaking}
             reconnecting={reconnecting}
           />
+        ))}
+        {showPresence && <span className="text-xs font-medium text-[#404040] truncate">{label}</span>}
+        {connectionLabel && (
+          <span
+            role="status"
+            className={`text-xs font-medium rounded-full px-2 py-0.5 whitespace-nowrap ${
+              connectionLabel === "Connection lost"
+                ? "bg-[#FBE0DE] text-[#9B1C1C]"
+                : "bg-[#FDECD2] text-[#8A4B08]"
+            }`}
+          >
+            {connectionLabel}
+          </span>
         )}
-        <span className="text-xs font-medium text-[#404040] truncate">{label}</span>
-        {questionTotal > 0 && (
-          <QuestionProgress index={questionIndex} total={questionTotal} compact />
+        {phaseLabel ? (
+          <span className="text-xs font-medium rounded-full px-2 py-0.5 whitespace-nowrap bg-[#F5F3EE] text-[#404040]">
+            {phaseLabel}
+          </span>
+        ) : (
+          questionTotal > 0 && <QuestionProgress index={questionIndex} total={questionTotal} compact />
         )}
         <span className="text-xs tabular-nums text-[#737373] whitespace-nowrap">
           {elapsedLabel} of about {durationMinutes} minutes

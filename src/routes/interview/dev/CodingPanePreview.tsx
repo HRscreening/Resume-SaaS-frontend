@@ -85,6 +85,7 @@ export default function CodingPanePreview() {
     },
     secondsRemaining: 742,
     warning: false,
+    timerActive: true,
     runResult,
     runNotice: notice ? { kind: "unavailable" as const, message: notice } : null,
     isRunning,

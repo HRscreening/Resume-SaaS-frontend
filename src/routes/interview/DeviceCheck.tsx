@@ -242,7 +242,7 @@ export function DeviceCheckPanel({
           label="Camera"
           detail={
             state.cameraConfirmed
-              ? "Looking good. This round is recorded with video."
+              ? "Looking good."
               : "Starting your camera..."
           }
           done={state.cameraConfirmed}

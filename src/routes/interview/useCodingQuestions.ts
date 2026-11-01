@@ -15,8 +15,10 @@ import {
   type CodingState,
   type QuestionBuffer,
 } from "./codingBufferStorage";
+import { isInterviewFinished } from "./agenda";
 import { useCountdown } from "./useCountdown";
 import { useQuestionSync } from "./useQuestionSync";
+import { reconcileDeadline, shouldClearDeadline } from "./questionDeadline";
 import { notifyActivity, notifySubmitted } from "./notifySubmission";
 import {
   runCodeLocally,
@@ -87,7 +89,13 @@ export type SubmitNotice = { kind: "saved" | "error"; message: string };
 // the candidate has already submitted (`dismissed`) keeps the pane closed
 // for good even if the pointer republishes that id again (a repeated tick,
 // or the interviewer genuinely moving back to it).
-export function useCodingQuestions(token: string, room: Room | null) {
+// `paused`: the call is not connected. The server pauses the question's clock
+// while a dropped candidate is away (backend disconnect_hold), so the local
+// countdown running out then means nothing: no auto-save, no closed pane. The
+// server's own remaining time is adopted again on reconnect.
+export function useCodingQuestions(token: string, room: Room | null, paused = false) {
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const { data, error: questionsError, refetch } = useQuery({
     queryKey: ["interview-questions", token],
     queryFn: () => getInterviewQuestions(token),
@@ -119,7 +127,11 @@ export function useCodingQuestions(token: string, room: Room | null) {
   );
   // The agent-named current question, once a valid, known id has arrived —
   // null (and therefore ignored below) until then or if it never does.
-  const syncedQuestionId = useQuestionSync(room, knownQuestionIds);
+  const {
+    questionId: syncedQuestionId,
+    remainingS,
+    walkthrough: serverWalkthrough,
+  } = useQuestionSync(room, knownQuestionIds);
 
   const [state, setState] = useState<CodingState | null>(null);
   const expiringRef = useRef(false);
@@ -221,6 +233,27 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // identically to the pre-presentation state, by design) is the honest
   // state while this hook waits on the refetch below; showing stale text
   // would not be.
+  // Past the last question: the clock on the final question has stopped.
+  const finished =
+    state !== null &&
+    isInterviewFinished({
+      total,
+      index,
+      currentId: current?.id ?? null,
+      deadlineAt: state.deadlineAt,
+      deadlineQuestionId: state.deadlineQuestionId,
+    });
+
+  // The server says it is walking through the current question's submitted
+  // code (its flag arrives on the same tick as the id, so it describes
+  // `current`). Never inferred locally: a timeout auto-save or "Move on"
+  // also dismisses the pane but starts no walkthrough. An older agent that
+  // never sends the flag means no panel, and nothing shows once finished.
+  const walkthrough: { title: string } | null =
+    serverWalkthrough && current?.kind === "coding" && !finished
+      ? { title: current.title || "your solution" }
+      : null;
+
   const [pinned, setPinned] = useState<{ id: string; prompt: string } | null>(null);
   useEffect(() => {
     if (current?.kind === "spoken" && typeof current.prompt === "string") {
@@ -264,14 +297,14 @@ export function useCodingQuestions(token: string, room: Room | null) {
   }, [syncedQuestionId, questions, refetch]);
 
   // The timer belongs to whichever question the pointer names, and only
-  // that: give it a fresh countdown against its own `allocated_minutes` the
-  // moment the pointer moves to a different question, forward, backward, or
+  // that: give it a fresh countdown the moment the pointer moves to a different question, forward, backward, or
   // to one the pointer was never on before in this mount. A restored
   // deadline (mount effect above already primed deadlineOwnerRef from
   // `deadlineQuestionId` to match) is left untouched, which is what
   // preserves true remaining time across a reload instead of resetting it
   // to a fresh full allocation the instant the pointer republishes the same
-  // question.
+  // question. The countdown starts from the server's remaining time when the
+  // signal carries one, else from the question's own `allocated_minutes`.
   useEffect(() => {
     const id = current?.id ?? null;
     if (deadlineOwnerRef.current === id) return;
@@ -281,11 +314,44 @@ export function useCodingQuestions(token: string, room: Room | null) {
       if (!current) return { ...prev, deadlineAt: null, deadlineQuestionId: null };
       return {
         ...prev,
-        deadlineAt: Date.now() + minutesToMs(current.allocated_minutes),
+        deadlineAt:
+          remainingS !== null
+            ? Date.now() + remainingS * 1000
+            : Date.now() + minutesToMs(current.allocated_minutes),
         deadlineQuestionId: current.id,
       };
     });
-  }, [current]);
+  }, [current, remainingS]);
+
+  // One authoritative clock: every later signal for the question that owns
+  // the deadline is folded in, but the screen only realigns when it has
+  // drifted past DEADLINE_REALIGN_MS. State is written only on a real change
+  // so the ~5s ticks do not re-render the whole interview screen.
+  //
+  // The one exception: a server clock that goes from a number to null for the
+  // SAME question means the server closed it (the last spoken question ended
+  // early, the pointer went FINISHED and the signal stays pinned to it). The
+  // local deadline is cleared then, so no timer runs on into the candidate's
+  // questions. `deadlineQuestionId` is kept so the id-change effect does not
+  // restart a fresh countdown for it.
+  const currentId = current?.id ?? null;
+  const lastSignalRef = useRef<{ questionId: string | null; remainingS: number | null }>({
+    questionId: null,
+    remainingS: null,
+  });
+  useEffect(() => {
+    const last = lastSignalRef.current;
+    const prevRemainingS = last.questionId === syncedQuestionId ? last.remainingS : null;
+    lastSignalRef.current = { questionId: syncedQuestionId, remainingS };
+    if (currentId === null || deadlineOwnerRef.current !== currentId) return;
+    const clear = syncedQuestionId === currentId && shouldClearDeadline(prevRemainingS, remainingS);
+    setState((prev) => {
+      if (!prev) return prev;
+      const next = clear ? null : reconcileDeadline(prev.deadlineAt, remainingS, Date.now());
+      return next === prev.deadlineAt ? prev : { ...prev, deadlineAt: next };
+    });
+  }, [remainingS, currentId, syncedQuestionId]);
+  const timerActive = state?.deadlineAt != null;
 
   const [runResult, setRunResult] = useState<RunCodeResponse | null>(null);
   const [runNotice, setRunNotice] = useState<RunNotice | null>(null);
@@ -421,10 +487,10 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // a verdict panel up on a question that is already over.
   const finishedRef = useRef<Set<string>>(new Set());
   const finishQuestion = useCallback(
-    (questionId: string, language: InterviewLanguage) => {
+    (questionId: string, language: InterviewLanguage, options: { movedOn?: boolean } = {}) => {
       if (finishedRef.current.has(questionId)) return;
       finishedRef.current.add(questionId);
-      notifySubmitted(room, questionId, language);
+      notifySubmitted(room, questionId, language, options);
       dismissQuestion(questionId);
     },
     [room, dismissQuestion],
@@ -438,6 +504,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // pointer to decide what, if anything, happens next.
   const handleExpire = useCallback(() => {
     if (expiringRef.current || !current || !state) return;
+    if (pausedRef.current) return; // the interview is on hold server-side
     // Already submitted (manually, or by an earlier expiry) — the pane for
     // this id is closed for good (see `showPane`), so there is nothing left
     // to capture and nowhere for a notice to be seen. Without this guard a
@@ -651,7 +718,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
       return;
     }
     setSubmitNotice({ kind: "saved", message: "Saved." });
-    finishQuestion(questionId, language);
+    finishQuestion(questionId, language, { movedOn: true });
   }, [current, buffer, isSubmitting, persist, finishQuestion]);
 
   return {
@@ -660,6 +727,8 @@ export function useCodingQuestions(token: string, room: Room | null) {
     current,
     showPane,
     pinned,
+    walkthrough,
+    finished,
     index,
     total,
     buffer,
@@ -667,6 +736,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
     setLanguage,
     secondsRemaining,
     warning,
+    timerActive,
     runResult,
     runNotice,
     isRunning,

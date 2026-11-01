@@ -11,14 +11,34 @@ const LANGUAGES: { value: InterviewLanguage; label: string }[] = [
   { value: "cpp", label: "C++" },
 ];
 
-export function TimerBadge({ secondsRemaining, warning }: { secondsRemaining: number; warning: boolean }) {
+export function timerBadgeClasses(warning: boolean, reducedMotion: boolean): string {
+  if (!warning) return "bg-[#F0EEE6] text-[#404040]";
+  return reducedMotion ? "bg-[#FDE2E2] text-[#9B1C1C]" : "bg-[#FDE2E2] text-[#9B1C1C] animate-pulse";
+}
+
+/** The badge text. At zero the question is not cut off: the candidate gets to
+ *  finish, so it says so instead of sitting at "0:00 left". */
+export function timerBadgeText(secondsRemaining: number): string {
+  if (!(secondsRemaining > 0)) return "Time's up · finish your thought";
+  return `${formatCountdown(secondsRemaining)} left`;
+}
+
+export function TimerBadge({
+  secondsRemaining,
+  warning,
+  reducedMotion,
+}: {
+  secondsRemaining: number;
+  warning: boolean;
+  reducedMotion: boolean;
+}) {
   return (
     <span
-      className={`text-xs font-semibold tabular-nums px-2.5 py-1 rounded-full whitespace-nowrap ${
-        warning ? "bg-[#FDECD2] text-[#8A4B08]" : "bg-[#F0EEE6] text-[#404040]"
-      }`}
+      role="timer"
+      aria-live="polite"
+      className={`text-xs font-semibold tabular-nums px-2.5 py-1 rounded-full whitespace-nowrap ${timerBadgeClasses(warning, reducedMotion)}`}
     >
-      {formatCountdown(secondsRemaining)} left
+      {timerBadgeText(secondsRemaining)}
     </span>
   );
 }
