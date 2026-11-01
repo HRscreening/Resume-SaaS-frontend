@@ -147,23 +147,24 @@ export default function Checkout() {
     );
   }
 
-  if (isAlreadyOnPlan) {
-    return (
-      <div className="p-8 max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-[#0F0F0F] mb-3">You're already on this plan</h1>
-        <p className="text-sm text-[#737373] mb-6">
-          You're already subscribed to the {quote?.display_name} plan. You can manage your
-          subscription from settings.
-        </p>
-        <Link
-          to="/settings"
-          className="inline-flex h-11 px-5 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] items-center"
-        >
-          Go to settings
-        </Link>
-      </div>
-    );
-  }
+  // Now Renewal of plan is allowed, so we don't need to block the user from paying for the same plan again. Hence, commenting out the below code.
+  // if (isAlreadyOnPlan) {
+  //   return (
+  //     <div className="p-8 max-w-2xl mx-auto">
+  //       <h1 className="text-2xl font-bold text-[#0F0F0F] mb-3">You're already on this plan</h1>
+  //       <p className="text-sm text-[#737373] mb-6">
+  //         You're already subscribed to the {quote?.display_name} plan. You can manage your
+  //         subscription from settings.
+  //       </p>
+  //       <Link
+  //         to="/settings"
+  //         className="inline-flex h-11 px-5 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] items-center"
+  //       >
+  //         Go to settings
+  //       </Link>
+  //     </div>
+  //   );
+  // }
 
   if (!quote) return null;
 
@@ -195,7 +196,7 @@ export default function Checkout() {
           {backLabel}
         </Link>
 
-        <h1 className="text-3xl font-bold text-[#0F0F0F] mb-2">Complete your upgrade</h1>
+        <h1 className="text-3xl font-bold text-[#0F0F0F] mb-2">Complete your {isAlreadyOnPlan ? "Renewal" : "Upgrade"}</h1>
         <p className="text-sm text-[#737373] mb-8">
           You're upgrading to the {quote.display_name} plan.
         </p>

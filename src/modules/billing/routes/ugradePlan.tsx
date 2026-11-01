@@ -147,7 +147,7 @@ const Pricing = () => {
 
     function handleBtnTitle(plan: PlanSpec) {
         if (!isLoggedIn) return 'Get started';
-        if (plan.key === currentPlan) return 'Current Plan';
+        if (plan.key === currentPlan) return 'Renew plan';
         if (isDowngrade(plan.key)) return `Downgrade to ${plan.display_name}`;
         if (plan.key === 'ENTERPRISE') return 'Contact Us';
         return plan.key === 'FREE' ? 'Get started' : 'Upgrade Now';
@@ -290,11 +290,7 @@ const Pricing = () => {
                                 ))}
                             </ul>
 
-                            {isCurrent(plan.key) ? (
-                                <span className={`${ctaPrimary} cursor-default opacity-70`}>
-                                    {handleBtnTitle(plan)}
-                                </span>
-                            ) : isEnterprise ? (
+                            { isEnterprise ? (
                                 <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }} className="mt-auto">
                                     {/* <a href={home_page_url + '/contact'} className={ctaSecondary}>
                                         {handleBtnTitle(plan)}
@@ -319,7 +315,7 @@ const Pricing = () => {
                                     params={{ plan: PLAN_SLUG[plan.key as 'PLUS' | 'PRO'] }}
                                     search={{ cycle: isYearly ? 'yearly' : 'monthly', from: 'app' } as any}
                                 >
-                                    <motion.span whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }} className={isFeatured ? ctaPrimary : ctaSecondary}>
+                                    <motion.span whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }} className={`${isFeatured ? ctaPrimary : ctaSecondary} ${isCurrent(plan.key) ? 'cursor-not-allowed bg-black' : ''}`}>
                                         {handleBtnTitle(plan)}
                                     </motion.span>
                                 </Link>
