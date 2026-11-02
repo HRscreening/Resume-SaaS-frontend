@@ -9,8 +9,7 @@ function getBillingProvider(providerName: PaymentProviderType): IBillingProvider
             return new RazorpayProvider();
 
         case PaymentProvider.PAYPAL: {
-            // const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
-            const clientId = "AWo3ymLWfLXYUU7LFloFhHZpY1j509oR9Ffl1V8PiMkWr2W24l8kJT0SbXlnU0i62WhILEh-Z3g0rCWd";
+            const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID;
             if (!clientId) { throw new Error("NEXT_PUBLIC_PAYPAL_CLIENT_ID is not configured"); }
             return new PaypalProvider(clientId);
         }
