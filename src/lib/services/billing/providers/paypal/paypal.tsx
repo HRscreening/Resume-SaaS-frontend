@@ -38,13 +38,15 @@ import {
 export default class PayPalBillingProvider implements IBillingProvider {
     /** Cache SDK instances keyed by sorted component list */
 
-    private readonly environment: "sandbox" | "production" = import.meta.env.VITE_ENVIROMENT === "Production" || import.meta.env.PROD ? "production" : "sandbox";
+    private readonly environment: "sandbox" | "production" =
+        import.meta.env.VITE_PAYPAL_ENVIRONMENT === "production" ? "production" : "sandbox";
     constructor(private readonly clientId: string) { }
 
     /** Pick sandbox or production SDK endpoint based on environment */
     private getSdkUrl(): string {
-        const isProd = import.meta.env.VITE_ENVIROMENT === "Production" || import.meta.env.PROD;
-        return isProd ? "https://www.paypal.com/web-sdk/v6/core" : "https://www.sandbox.paypal.com/web-sdk/v6/core";
+        return this.environment === "production"
+            ? "https://www.paypal.com/web-sdk/v6/core"
+            : "https://www.sandbox.paypal.com/web-sdk/v6/core";
     }
 
     // ─── IBillingProvider — programmatic checkout ────────────────────────────
