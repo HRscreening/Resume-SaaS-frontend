@@ -24,8 +24,18 @@ describe("parseQuestionSignal", () => {
 describe("reconcileDeadline", () => {
   it("keeps the local deadline when the server sends none", () => expect(reconcileDeadline(5000, null, 1000)).toBe(5000));
   it("adopts the server deadline when there is none locally", () => expect(reconcileDeadline(null, 90, 1000)).toBe(91000));
-  it("ignores drift under the threshold", () => expect(reconcileDeadline(91000, 88, 1000)).toBe(91000));
+  it("ignores drift under the threshold", () => {
+    expect(reconcileDeadline(91000, 88, 1000)).toBe(91000);
+    expect(reconcileDeadline(91000, 92, 1000)).toBe(91000);
+  });
   it("realigns on drift over the threshold", () => expect(reconcileDeadline(91000, 80, 1000)).toBe(81000));
+  it("never snaps the deadline upward by small drift", () => {
+    // Server says 5 s and 25 s more than the local clock: keep the local one.
+    expect(reconcileDeadline(91000, 95, 1000)).toBe(91000);
+    expect(reconcileDeadline(91000, 115, 1000)).toBe(91000);
+  });
+  it("accepts a large upward change (a resumed question)", () =>
+    expect(reconcileDeadline(91000, 150, 1000)).toBe(151000));
 });
 
 describe("shouldClearDeadline", () => {

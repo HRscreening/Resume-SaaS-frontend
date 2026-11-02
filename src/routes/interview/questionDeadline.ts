@@ -39,9 +39,16 @@ export function parseQuestionSignal(raw: string): QuestionSignal | null {
   };
 }
 
+// A server deadline LATER than the local one is only adopted past this. The
+// candidate watching their time go back up by a few seconds reads as the
+// clock being broken; a genuinely extended deadline (a resumed question after
+// a reconnect, where the server paused the clock) moves it by much more.
+export const DEADLINE_UPWARD_REALIGN_MS = 30_000;
+
 // Folds the server's remaining time into the local deadline (epoch ms).
 // The server is the one authoritative clock, but it is only adopted when it
-// disagrees with the local deadline by more than DEADLINE_REALIGN_MS.
+// is EARLIER than the local deadline by more than DEADLINE_REALIGN_MS, or
+// LATER by more than DEADLINE_UPWARD_REALIGN_MS.
 export function reconcileDeadline(
   existing: number | null,
   remainingS: number | null,
@@ -50,7 +57,10 @@ export function reconcileDeadline(
   if (remainingS === null) return existing;
   const serverDeadline = nowMs + remainingS * 1000;
   if (existing === null) return serverDeadline;
-  return Math.abs(existing - serverDeadline) > DEADLINE_REALIGN_MS ? serverDeadline : existing;
+  const drift = serverDeadline - existing;
+  if (drift > DEADLINE_UPWARD_REALIGN_MS) return serverDeadline;
+  if (drift < -DEADLINE_REALIGN_MS) return serverDeadline;
+  return existing;
 }
 
 // True only when the server's clock for the SAME question goes from a number to

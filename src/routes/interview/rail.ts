@@ -1,5 +1,6 @@
 import type { InterviewQuestion } from "@/lib/interviewApi";
 import type { InterviewPhase } from "./phaseSignal";
+import { formatCountdown } from "./useCountdown";
 
 // The left rail: the whole interview as one timeline, so the candidate
 // always knows where they are in the hour and what comes next. Every status
@@ -60,10 +61,21 @@ export function stepProgress(allocatedMinutes: number, secondsRemaining: number)
   return Math.min(1, Math.max(0, 1 - secondsRemaining / total));
 }
 
-// Whole minutes left in the interview, rounded up. A guide, not a deadline:
-// the server decides when the interview ends.
-export function minutesLeft(durationMinutes: number, startedAt: number | null, now: number): number {
-  if (startedAt === null) return durationMinutes;
-  const leftS = durationMinutes * 60 - (now - startedAt) / 1000;
-  return Math.max(0, Math.ceil(leftS / 60));
+// Whole seconds left in the interview, rounded up, never negative. A guide,
+// not a deadline: the server decides when the interview ends. Before the
+// call connects the whole duration is left.
+export function interviewSecondsLeft(durationMinutes: number, startedAt: number | null, now: number): number {
+  const totalS = Math.max(0, durationMinutes * 60);
+  if (startedAt === null) return totalS;
+  const leftS = totalS - (now - startedAt) / 1000;
+  return Math.min(totalS, Math.max(0, Math.ceil(leftS)));
+}
+
+// "59:42 left", ticking every second. Whole minutes rounded up read "60" for
+// the entire first minute, which looked frozen through the warm-up. At zero
+// it says so rather than sitting at "0:00 left": the interview is not cut off
+// by this clock.
+export function interviewTimeLeftLabel(secondsLeft: number): string {
+  if (!(secondsLeft > 0)) return "Time's up";
+  return `${formatCountdown(secondsLeft)} left`;
 }
