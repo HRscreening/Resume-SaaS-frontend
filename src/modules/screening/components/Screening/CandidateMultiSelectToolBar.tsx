@@ -25,6 +25,8 @@ import { useScoringMutation } from "@/modules/screening/hooks/shared/useScoringM
 import { UtilityButton } from "@/modules/screening/components/shared/MultiSelectUtilityButton"
 import MultiShareDialog from "@/modules/screening/components/shared/MultiShareDialog";
 import { useNavigate } from "@tanstack/react-router"
+import { useScreenLimits } from "@/modules/screening/hooks/shared/useScreenLimits"
+import { screenBlock, screeningErrorMessage } from "@/modules/screening/utils/batchLimit"
 import { useAccount } from "@/hooks/useAccount"
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
@@ -91,6 +93,8 @@ const CandidateMultiSelectToolBar = ({
 
 
   const totalSelected = selectedCandidates.size
+  const screenLimits = useScreenLimits()
+  const limitBlock = screenBlock(totalSelected, screenLimits)
 
   const multiArchiveMutation = useMultiScoredResumeUtility(archiveResumeMulti, TOAST_MESSAGES.ARCHIVE)
   const multiUnarchiveMutation = useMultiScoredResumeUtility(unarchiveResumeMulti, TOAST_MESSAGES.UNARCHIVE)
@@ -141,7 +145,7 @@ const CandidateMultiSelectToolBar = ({
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("Failed to export resumes");
+      // The mutation hook has already told the user why the export failed.
     }
   }
 
@@ -228,6 +232,11 @@ const CandidateMultiSelectToolBar = ({
       toast.error("No candidates selected for Screening.");
       return;
     }
+    if (limitBlock) {
+      analytics.track(AnalyticsEvent.SCREENING_BLOCKED, { screeningId: screening_id, operation: "rescore", selectedCount: totalSelected, reason: limitBlock.reason, allowed: limitBlock.allowed });
+      toast.error(limitBlock.message);
+      return;
+    }
 
     try {
       const resume_ids = getIdsFromSet(selectedCandidates);
@@ -236,7 +245,9 @@ const CandidateMultiSelectToolBar = ({
       closeToolBar()
     }
     catch (error) {
-      toast.error("Error Screening candidates. Please try again.");
+      const message = screeningErrorMessage(error, "Error Screening candidates. Please try again.");
+      analytics.track(AnalyticsEvent.SCREENING_FAILED, { screeningId: screening_id, operation: "rescore", selectedCount: totalSelected, status: (error as { status?: number } | null)?.status ?? null, message });
+      toast.error(message);
     }
 
 
@@ -269,6 +280,12 @@ const CandidateMultiSelectToolBar = ({
           <span className="text-sm font-semibold text-[#0F0F0F] whitespace-nowrap">
             {totalSelected} selected
           </span>
+
+          {limitBlock && (
+            <span className="text-xs font-medium text-red-600 whitespace-nowrap" role="alert">
+              {limitBlock.hint}
+            </span>
+          )}
 
           {!compact && (
             <>

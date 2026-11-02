@@ -176,6 +176,7 @@ export type MultiMutationOptions = {
 
 
 import { toast } from "sonner"
+import { screeningErrorMessage } from "@/modules/screening/utils/batchLimit"
 
 export function useMultiApplicationResumeUtility<
   TVariables extends BaseMultiResumeVariables = BaseMultiResumeVariables,
@@ -199,9 +200,11 @@ export function useMultiApplicationResumeUtility<
       }
     },
 
-    onError: (_, { screeningId }) => {
-      if (options?.successMessage) {
-        toast.success(options.errorMessage)
+    // A refusal (4xx) carries a reason written for the user, so it is shown
+    // in place of the generic line. This used to fire a success toast.
+    onError: (error) => {
+      if (options?.errorMessage) {
+        toast.error(screeningErrorMessage(error, options.errorMessage))
       }
     }
 

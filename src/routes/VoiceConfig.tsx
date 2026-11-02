@@ -44,6 +44,15 @@ const DEFAULT_CONFIG: VoiceConfig = {
   },
 };
 
+// Display label for the sticky-footer summary. Keyed off InterviewDepth so
+// adding a depth without adding a label here is a type error, not a silent
+// "Screening" mislabel.
+const DEPTH_LABEL: Record<InterviewDepth, string> = {
+  screening: "Screening",
+  deep_dive: "Deep dive",
+  interview: "Interview",
+};
+
 const inputCls =
   "w-full h-9 px-3 border border-[#D4D4D4] rounded-lg text-sm text-[#0F0F0F] focus:outline-none focus:border-[#0F0F0F] transition-colors";
 const labelCls = "block text-xs font-medium text-[#404040] mb-1";
@@ -283,6 +292,12 @@ export default function VoiceConfigPage() {
               label: "Deep dive",
               lead: "5-6 technical questions",
               body: "Probes real, role-level work. About 12 to 15 minutes. Scored mainly on evidence they have actually done it.",
+            },
+            {
+              value: "interview",
+              label: "Interview",
+              lead: "8-12 in-depth questions",
+              body: "A full, structured conversation. About 45 to 60 minutes. Scored on depth of reasoning across every competency.",
             },
           ] as const).map((opt) => {
             const active = (draft.interview_depth ?? "screening") === opt.value;
@@ -810,7 +825,7 @@ export default function VoiceConfigPage() {
             <p className="hidden text-xs text-[#737373] sm:block">
               {stepsDone.company && stepsDone.questions
                 ? `${draft.question_plan.length} question${draft.question_plan.length === 1 ? "" : "s"} · ${
-                    (draft.interview_depth ?? "screening") === "deep_dive" ? "Deep dive" : "Screening"
+                    DEPTH_LABEL[draft.interview_depth ?? "screening"]
                   }`
                 : "Add a hiring company and at least one question to start calling."}
             </p>

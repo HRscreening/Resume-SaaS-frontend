@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/tooltip"
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 import { useAccount } from "@/hooks/useAccount";
+import { InterviewScorecardPanel } from "@/components/screening/interview/InterviewScorecardPanel";
 import NotesTab from "@/modules/screening/components/shared/NotesTab";
 import ProfileTab from "@/modules/screening/components/shared/profileTab";
 
@@ -53,7 +54,7 @@ function criterionBarColor(score: number) {
 }
 
 
-type TabValue = "profile" | "scorecard" | "voice" | "note";
+type TabValue = "profile" | "scorecard" | "voice" | "round" | "note";
 
 type Tab = {
   title: string;
@@ -63,7 +64,11 @@ type Tab = {
 const tabs: Tab[] = [
   { title: "Profile", value: "profile" },
   { title: "Analysis", value: "scorecard" },
+  // "Interview" is the VOICE screen; "Interview Round" is the browser round
+  // that comes after it. Two separate scorers, two separate scorecards, so
+  // they get two tabs rather than one tab that silently changes meaning.
   { title: "Interview", value: "voice" },
+  { title: "Interview Round", value: "round" },
   { title: "Notes", value: "note" },
 ]
 
@@ -541,6 +546,20 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                     resumeId={resume_id}
                     candidateName={resume.candidate_name ?? resume.original_filename}
                   />
+                ) : (
+                  <div className="py-10 text-center text-sm text-[#737373]">
+                    The interview round is not available for this candidate.
+                  </div>
+                )}
+              </div>
+            )
+          }
+          {/* Interview Round: the browser round's scorecard for this candidate */}
+          {
+            tab === "round" && (
+              <div className="px-6 py-2 space-y-5">
+                {screening_id && resume_id ? (
+                  <InterviewScorecardPanel screeningId={screening_id} resumeId={resume_id} />
                 ) : (
                   <div className="py-10 text-center text-sm text-[#737373]">
                     The interview round is not available for this candidate.
