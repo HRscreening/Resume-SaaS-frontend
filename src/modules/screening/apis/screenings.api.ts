@@ -334,8 +334,8 @@ export const screenResume = async (
 ): Promise<ScreenResumesResponse> => {
   try {
     const url = isRescore
-      ? `/api/v1/screenings/${screeningId}/screen-applications-new?is_rescore=true`
-      : `/api/v1/screenings/${screeningId}/screen-applications-new`;
+      ? `/api/v1/screenings/${screeningId}/screen-applications?is_rescore=true`
+      : `/api/v1/screenings/${screeningId}/screen-applications`;
     const res = await request(url, {
       'method': 'POST',
       'body': JSON.stringify(resumeIds)

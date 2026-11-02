@@ -10,7 +10,7 @@ import { useUsage } from "@/hooks/useUsage";
 import { meterColor, usedRatio } from "@/components/usage/QuotaMeter";
 import { cn } from "@/lib/utils";
 import type { SubscriptionPlan } from "@/types";
-import { User} from "lucide-react"
+import { User, Activity } from "lucide-react";
 
 interface NavItem {
   href: string;
@@ -373,6 +373,14 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
               >
                 <UserIcon />
                 Profile
+              </Link>
+              <Link
+                to="/usage"
+                onClick={onNavigate}
+                className="flex items-center gap-3 px-4 py-2 text-sm text-[#404040] hover:bg-[#F5F3EE] transition-colors"
+              >
+                <Activity className="w-4 h-4 text-[#737373]" />
+                Usage & Quotas
               </Link>
               <Link
                 to="/settings"

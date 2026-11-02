@@ -38,6 +38,7 @@ import Dashboard from "@/routes/Dashboard";
 import Screenings from "@/modules/screening/routes/Screenings";
 import Settings from "@/routes/Settings";
 import Profile from "@/routes/Profile";
+import Usage from "@/routes/Usage";
 import ChangePassword from "@/routes/ChangePassword";
 import NewScreening from "@/routes/NewScreening";
 import NotFound from "@/routes/NotFound";
@@ -350,6 +351,12 @@ const profileRoute = createRoute({
   component: Profile,
 });
 
+const usageRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/usage",
+  component: Usage,
+});
+
 const changePasswordRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/settings/password",
@@ -444,6 +451,7 @@ const routeTree = rootRoute.addChildren([
     roundAuthoringRoute,
     settingsRoute,
     profileRoute,
+    usageRoute,
     changePasswordRoute,
   ]),
 ]);

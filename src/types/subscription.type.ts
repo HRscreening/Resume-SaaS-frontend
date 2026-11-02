@@ -109,7 +109,8 @@ export type UserSubscription = {
   subscribed_from: string | null
   subscription_ends_at: string | null
   credit_balance: number
-  credit_currency: "INR" | "USD"
+  credit_currency?: "INR" | "USD" | string
+  credit_unit?: "INR" | "USD" | string
 }
 
 
@@ -133,5 +134,7 @@ export interface Quotas {
 export interface UserMonthlyUsage {
   start: string;
   end: string;
+  is_expired: boolean;
+  is_grace_period: boolean;
   quotas: Quotas;
 }
