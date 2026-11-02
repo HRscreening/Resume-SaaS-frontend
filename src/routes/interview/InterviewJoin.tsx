@@ -43,6 +43,9 @@ export default function InterviewJoin() {
   const [grant, setGrant] = useState<InterviewJoinGrant | null>(null);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+  // The microphone that passed the device check. The room opens this exact
+  // device, so the candidate is heard through what they just tested.
+  const [micDeviceId, setMicDeviceId] = useState<string | null>(null);
 
   // Returns the grant (or throws) so InterviewRoom's Rejoin button can react
   // to a failed rejoin, not just the initial Join click below, which reads
@@ -97,6 +100,7 @@ export default function InterviewJoin() {
         requiresCamera={data.requires_camera === true}
         roleTitle={data.role_title}
         hiringCompany={data.hiring_company}
+        micDeviceId={micDeviceId}
         onRejoin={handleJoin}
         onCheckCompleted={checkCompleted}
       />
@@ -159,7 +163,8 @@ export default function InterviewJoin() {
       // to it); the failure is already surfaced here via joinError state,
       // so swallow the rejection at this call site rather than let it go
       // unhandled.
-      onJoin={() => {
+      onJoin={(testedMicId) => {
+        setMicDeviceId(testedMicId);
         handleJoin().catch(() => {});
       }}
     />
@@ -199,7 +204,7 @@ function PreJoinScreen({
   brief: NonNullable<ReturnType<typeof useQuery<Awaited<ReturnType<typeof getInterviewBrief>>>>["data"]>;
   joining: boolean;
   joinError: string | null;
-  onJoin: () => void;
+  onJoin: (micDeviceId: string | null) => void;
 }) {
   // Camera is checked only when the hiring manager required it for this
   // round: asking for a camera the round does not use is an intrusion, and
@@ -244,7 +249,7 @@ function PreJoinScreen({
         )}
 
         <button
-          onClick={onJoin}
+          onClick={() => onJoin(devices.micDeviceId)}
           disabled={!ready || joining}
           className="w-full h-11 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2"
         >

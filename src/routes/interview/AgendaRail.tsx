@@ -14,7 +14,8 @@ interface AgendaRailProps {
   warning: boolean;
   roleTitle: string | null;
   hiringCompany: string | null;
-  minutesLeft: number;
+  // Overall interview time left, e.g. "59:42 left" (see rail.ts).
+  timeLeftLabel: string;
   onLeave: () => void;
   // Optional block above the time-left row: the interviewer's status and
   // the self-view while a coding question has the main area.
@@ -31,7 +32,7 @@ export default function AgendaRail({
   warning,
   roleTitle,
   hiringCompany,
-  minutesLeft,
+  timeLeftLabel,
   onLeave,
   footer,
 }: AgendaRailProps) {
@@ -66,8 +67,8 @@ export default function AgendaRail({
       <div className="mt-auto flex flex-col gap-3">
         {footer}
         <div className="flex items-center justify-between px-2 text-[13px]">
-          <span className="text-[#404040]">Interview time left</span>
-          <strong className="font-semibold tabular-nums">{minutesLeft} min</strong>
+          <span className="text-[#404040]">Interview time</span>
+          <strong className="font-semibold tabular-nums">{timeLeftLabel}</strong>
         </div>
         <button
           type="button"

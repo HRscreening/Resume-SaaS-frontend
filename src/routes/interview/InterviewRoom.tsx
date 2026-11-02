@@ -16,7 +16,9 @@ import {
   type InterviewJoinGrant,
 } from "@/lib/interviewApi";
 import RoomLayout from "./RoomLayout";
-import { minutesLeft } from "./rail";
+import { interviewSecondsLeft, interviewTimeLeftLabel } from "./rail";
+import { enableMicrophone } from "./micCapture";
+import { useNow } from "./useNow";
 import { fiveMinuteNotice } from "./phaseSignal";
 import { usePhaseSync } from "./usePhaseSync";
 import { useLiveCaptions } from "./useLiveCaptions";
@@ -85,6 +87,9 @@ interface InterviewRoomProps {
   // From the brief, for the rail's heading. Either may be missing.
   roleTitle?: string | null;
   hiringCompany?: string | null;
+  // The microphone that passed the join page's device check. The room opens
+  // this exact device (falling back to the default if it has gone away).
+  micDeviceId?: string | null;
   // Resolves once a fresh grant has been applied to props, or rejects (the
   // rejection is what drives the "could not rejoin" error state below).
   onRejoin: () => Promise<unknown>;
@@ -107,6 +112,7 @@ export default function InterviewRoom({
   requiresCamera = false,
   roleTitle = null,
   hiringCompany = null,
+  micDeviceId = null,
   onRejoin,
   onCheckCompleted,
 }: InterviewRoomProps) {
@@ -147,6 +153,15 @@ export default function InterviewRoom({
   // would tear down and rebuild the LiveKit Room mid-interview.
   const checkCompletedRef = useRef(onCheckCompleted);
   checkCompletedRef.current = onCheckCompleted;
+  // Same reasoning: read by the connect effect and the mic controls without
+  // becoming a dependency that would rebuild the Room.
+  const micDeviceIdRef = useRef(micDeviceId);
+  micDeviceIdRef.current = micDeviceId;
+  const grantRef = useRef(grant);
+  grantRef.current = grant;
+  // The Room a connect has already been started for, so the connect effect
+  // never calls room.connect() twice on one Room.
+  const connectStartedRef = useRef<Room | null>(null);
   // Set when the candidate ends the interview themselves. The Disconnected
   // event that follows needs no round trip to the server: we already know
   // what happened, and the completion screen is already up.
@@ -159,6 +174,13 @@ export default function InterviewRoom({
   const agentSpeaking = [...activeSpeakerIds].some((id) => id !== CANDIDATE_IDENTITY);
   const candidateSpeaking = activeSpeakerIds.has(CANDIDATE_IDENTITY);
   const elapsedLabel = useElapsedTime(connectedAt);
+  // Overall interview time left, ticking every second ("59:42 left"). A
+  // guide only: the server decides when the interview ends.
+  const now = useNow(1000, connectedAt !== null);
+  const timeLeftLabel = interviewTimeLeftLabel(interviewSecondsLeft(durationMinutes, connectedAt, now));
+  // False while the browser's autoplay policy is holding the interviewer's
+  // audio back; the room then shows a button that calls room.startAudio().
+  const [canPlayAudio, setCanPlayAudio] = useState(true);
   // Real amplitude, tapped off the interviewer's audio track (never in
   // series with it — see useAudioAnalyser). `agentSpeaking` above, not this,
   // is what decides the orb's color and the status pill's label: this only
@@ -270,10 +292,22 @@ export default function InterviewRoom({
     const next = !micOn;
     setMicOn(next);
     try {
-      await room.localParticipant.setMicrophoneEnabled(next);
+      if (next) await enableMicrophone(room.localParticipant, micDeviceIdRef.current);
+      else await room.localParticipant.setMicrophoneEnabled(false);
     } catch {
       setMicOn(!next);
     }
+  }
+
+  async function handleEnableAudio() {
+    const room = roomRef.current;
+    if (!room) return;
+    try {
+      await room.startAudio();
+    } catch {
+      // Still blocked; the button stays up for another try.
+    }
+    setCanPlayAudio(room.canPlaybackAudio);
   }
 
   // "Give me a moment". Mirrors the agent's own rule: over when they start
@@ -390,12 +424,58 @@ export default function InterviewRoom({
       if (!cancelled) setActiveSpeakerIds(new Set(speakers.map((p) => p.identity)));
     }
 
+    // The browser refused to autoplay the interviewer's audio (no user
+    // gesture on this page yet, common on Safari and after a reload). Without
+    // this the candidate sits in silence while the interviewer talks.
+    function handleAudioPlaybackStatusChanged() {
+      if (!cancelled) setCanPlayAudio(room.canPlaybackAudio);
+    }
+
     room.on(RoomEvent.TrackSubscribed, handleTrackSubscribed);
     room.on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
     room.on(RoomEvent.Disconnected, handleDisconnected);
     room.on(RoomEvent.Reconnecting, handleReconnecting);
     room.on(RoomEvent.Reconnected, handleReconnected);
     room.on(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakersChanged);
+    room.on(RoomEvent.AudioPlaybackStatusChanged, handleAudioPlaybackStatusChanged);
+
+    return () => {
+      cancelled = true;
+      room.off(RoomEvent.TrackSubscribed, handleTrackSubscribed);
+      room.off(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
+      room.off(RoomEvent.Disconnected, handleDisconnected);
+      room.off(RoomEvent.Reconnecting, handleReconnecting);
+      room.off(RoomEvent.Reconnected, handleReconnected);
+      room.off(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakersChanged);
+      room.off(RoomEvent.AudioPlaybackStatusChanged, handleAudioPlaybackStatusChanged);
+      room.disconnect();
+      audioElsRef.current.forEach((el) => el.remove());
+      audioElsRef.current.clear();
+      roomRef.current = null;
+      setActiveRoom(null);
+      setActiveSpeakerIds(new Set());
+      setAgentAudioTrack(null);
+      setCanPlayAudio(true);
+    };
+    // grant.token changes on every rejoin (a fresh grant is minted each
+    // time), which is exactly when this effect must tear down the old Room
+    // and build a new one.
+  }, [grant.url, grant.token]);
+
+  // Connects the Room built above. Deliberately a separate effect keyed on
+  // `activeRoom`, declared AFTER every hook that subscribes to it
+  // (useLiveCaptions, useCodingQuestions' question sync, usePhaseSync, ...):
+  // effects run in declaration order within one commit, so by the time this
+  // calls room.connect() all text-stream handlers are registered. Connecting
+  // in the effect that creates the Room raced those registrations, and the
+  // interviewer's first caption or question tick could be dropped.
+  useEffect(() => {
+    if (!activeRoom || connectStartedRef.current === activeRoom) return;
+    const room: Room = activeRoom;
+    connectStartedRef.current = room;
+    // This Room was torn down (rejoin, unmount) while connecting.
+    const stale = () => roomRef.current !== room;
+    const { url, token: roomToken } = grantRef.current;
 
     async function connect() {
       setError(null);
@@ -410,14 +490,17 @@ export default function InterviewRoom({
       // defers a publish until the room is connected, so awaiting the mic
       // first waits on a connection that never starts and times out after
       // 15 s ("publishing rejected as engine not connected within timeout").
-      const micDone = room.localParticipant
-        .setMicrophoneEnabled(true, undefined, { preConnectBuffer: true })
-        .then(() => null, (err: unknown) => err);
-      const connectError = await room.connect(grant.url, grant.token).then(
+      // The mic is the one the candidate tested on the join page, with
+      // voice isolation off (see micCapture.ts).
+      const micDone = enableMicrophone(room.localParticipant, micDeviceIdRef.current, {
+        preConnectBuffer: true,
+      }).then(() => null, (err: unknown) => err);
+      const connectError = await room.connect(url, roomToken).then(
         () => null,
         (err: unknown) => err,
       );
-      if (cancelled) return;
+      if (stale()) return;
+      setCanPlayAudio(room.canPlaybackAudio);
       if (connectError) {
         setError({
           kind: "connection",
@@ -429,7 +512,7 @@ export default function InterviewRoom({
         return;
       }
       const micError = await micDone;
-      if (cancelled) return;
+      if (stale()) return;
       if (micError) {
         setError({
           kind: "mic",
@@ -440,28 +523,8 @@ export default function InterviewRoom({
       }
       setCallState("connected");
     }
-    connect();
-
-    return () => {
-      cancelled = true;
-      room.off(RoomEvent.TrackSubscribed, handleTrackSubscribed);
-      room.off(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
-      room.off(RoomEvent.Disconnected, handleDisconnected);
-      room.off(RoomEvent.Reconnecting, handleReconnecting);
-      room.off(RoomEvent.Reconnected, handleReconnected);
-      room.off(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakersChanged);
-      room.disconnect();
-      audioElsRef.current.forEach((el) => el.remove());
-      audioElsRef.current.clear();
-      roomRef.current = null;
-      setActiveRoom(null);
-      setActiveSpeakerIds(new Set());
-      setAgentAudioTrack(null);
-    };
-    // grant.token changes on every rejoin (a fresh grant is minted each
-    // time), which is exactly when this effect must tear down the old Room
-    // and connect a new one.
-  }, [grant.url, grant.token]);
+    void connect();
+  }, [activeRoom]);
 
   // Starts the elapsed-time clock on the first successful connect. The
   // `connectedAt === null` guard makes this fire exactly once per mount, so
@@ -580,7 +643,7 @@ export default function InterviewRoom({
     if (!room) return;
     setError(null);
     try {
-      await room.localParticipant.setMicrophoneEnabled(true);
+      await enableMicrophone(room.localParticipant, micDeviceIdRef.current);
       setCallState("connected");
     } catch (err) {
       setError({
@@ -714,7 +777,8 @@ export default function InterviewRoom({
         hiringCompany={hiringCompany}
         durationMinutes={durationMinutes}
         elapsedLabel={elapsedLabel}
-        minutesLeft={minutesLeft(durationMinutes, connectedAt, Date.now())}
+        timeLeftLabel={timeLeftLabel}
+        onEnableAudio={canPlayAudio ? null : handleEnableAudio}
         onRepeat={() => sendCandidateEvent(activeRoom, "repeat")}
         onDone={() => sendCandidateEvent(activeRoom, "done_speaking")}
         momentActive={momentAt !== null}

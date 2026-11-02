@@ -1,3 +1,5 @@
+import { Volume2 } from "lucide-react";
+
 import AgendaRail from "./AgendaRail";
 import CodingPane from "./CodingPane";
 import ControlBar from "./ControlBar";
@@ -38,7 +40,10 @@ export interface RoomLayoutProps {
   hiringCompany: string | null;
   durationMinutes: number;
   elapsedLabel: string;
-  minutesLeft: number;
+  // Overall interview time left, e.g. "59:42 left". A guide only.
+  timeLeftLabel: string;
+  // Set when the browser is blocking the interviewer's audio until a click.
+  onEnableAudio?: (() => void) | null;
   onRepeat: () => void;
   onDone: () => void;
   momentActive: boolean;
@@ -94,7 +99,7 @@ export default function RoomLayout(p: RoomLayoutProps) {
         warning={coding.warning}
         roleTitle={p.roleTitle}
         hiringCompany={p.hiringCompany}
-        minutesLeft={p.minutesLeft}
+        timeLeftLabel={p.timeLeftLabel}
         onLeave={p.onLeave}
         footer={
           showCodingPane ? (
@@ -115,6 +120,19 @@ export default function RoomLayout(p: RoomLayoutProps) {
           </span>
         </div>
 
+        {p.onEnableAudio && (
+          // The browser blocked autoplay: the interviewer is talking and the
+          // candidate hears nothing. One click (a user gesture) unblocks it.
+          <button
+            type="button"
+            role="alert"
+            onClick={p.onEnableAudio}
+            className={`shrink-0 rounded-xl border px-4 py-3 text-sm font-semibold inline-flex items-center justify-center gap-2 hover:brightness-95 transition ${NOTICE_TONE.warn}`}
+          >
+            <Volume2 className="h-4 w-4" aria-hidden="true" />
+            Click to enable interviewer audio
+          </button>
+        )}
         {p.reconnecting && <Notice tone="warn">Reconnecting you to the interview…</Notice>}
         {!p.reconnecting && p.networkLabel && (
           <Notice tone={p.networkLabel === "Connection lost" ? "error" : "warn"}>{p.networkLabel}</Notice>

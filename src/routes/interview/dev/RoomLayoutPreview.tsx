@@ -155,7 +155,7 @@ export default function RoomLayoutPreview() {
         hiringCompany="Acme"
         durationMinutes={60}
         elapsedLabel="22:14"
-        minutesLeft={38}
+        timeLeftLabel="37:46 left"
         onRepeat={() => undefined}
         onDone={() => undefined}
         momentActive={false}

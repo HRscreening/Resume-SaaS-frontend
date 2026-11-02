@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { minutesLeft, railSteps, stepProgress } from "./rail";
+import { interviewSecondsLeft, interviewTimeLeftLabel, railSteps, stepProgress } from "./rail";
 
 const QUESTIONS = [
   { id: "a", kind: "spoken" as const, allocated_minutes: 5 },
@@ -65,14 +65,41 @@ describe("stepProgress", () => {
   });
 });
 
-describe("minutesLeft", () => {
-  it("rounds up and never goes below zero", () => {
-    expect(minutesLeft(60, 0, 0)).toBe(60);
-    expect(minutesLeft(60, 0, 61_000)).toBe(59);
-    expect(minutesLeft(60, 0, 3 * 3_600_000)).toBe(0);
+describe("interviewSecondsLeft", () => {
+  it("counts down second by second from the connect time", () => {
+    expect(interviewSecondsLeft(60, 0, 0)).toBe(3600);
+    expect(interviewSecondsLeft(60, 0, 1_000)).toBe(3599);
+    expect(interviewSecondsLeft(60, 0, 18_000)).toBe(3582);
+    expect(interviewSecondsLeft(60, 0, 18_400)).toBe(3582); // rounds up
+  });
+
+  it("never goes below zero", () => {
+    expect(interviewSecondsLeft(60, 0, 3 * 3_600_000)).toBe(0);
+  });
+
+  it("never exceeds the duration (clock skew before the connect time)", () => {
+    expect(interviewSecondsLeft(60, 10_000, 0)).toBe(3600);
   });
 
   it("shows the whole duration before the call connects", () => {
-    expect(minutesLeft(45, null, 123)).toBe(45);
+    expect(interviewSecondsLeft(45, null, 123)).toBe(2700);
+  });
+});
+
+describe("interviewTimeLeftLabel", () => {
+  it("is a ticking mm:ss", () => {
+    expect(interviewTimeLeftLabel(3600)).toBe("60:00 left");
+    expect(interviewTimeLeftLabel(3582)).toBe("59:42 left");
+    expect(interviewTimeLeftLabel(5)).toBe("0:05 left");
+  });
+
+  it("changes every second during the first minute (no frozen '60')", () => {
+    const labels = new Set([0, 1, 2, 30, 59].map((s) => interviewTimeLeftLabel(interviewSecondsLeft(60, 0, s * 1000))));
+    expect(labels.size).toBe(5);
+  });
+
+  it("says time is up at zero instead of going negative", () => {
+    expect(interviewTimeLeftLabel(0)).toBe("Time's up");
+    expect(interviewTimeLeftLabel(-3)).toBe("Time's up");
   });
 });
