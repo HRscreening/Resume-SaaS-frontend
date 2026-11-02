@@ -1,6 +1,6 @@
-import IBillingProvider from "./IBillingProvider";
+import IBillingProvider from "../IBillingProvider";
 import { checkoutSubscription, verifyPayment } from "@/modules/billing/billing_apis";
-import { CheckoutSubscription, CheckoutSubscriptionResponse, VerifyPayment,VerifyPaymentResponse, Plan, OrderType, PaymentProvider } from "@/types/subscription.type"
+import { CheckoutSubscription, CheckoutSubscriptionResponse, VerifyPayment, VerifyPaymentResponse, Plan, OrderType, PaymentProvider } from "@/types/subscription.type"
 import type { Callbacks } from "@/lib/services/billing/types";
 import type { Profile } from "@/types";
 import type { User } from "@supabase/supabase-js";
