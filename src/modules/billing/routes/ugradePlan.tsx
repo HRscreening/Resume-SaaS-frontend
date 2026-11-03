@@ -4,8 +4,11 @@ import { useState } from 'react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import type { PlanSpec, SubscriptionPlan } from '@/types/index';
+import type { DwongradablePlan } from '@/types/subscription.type';
 import { Link } from '@tanstack/react-router';
 import { getProfile, getPlans } from '@/lib/api';
+import ConfirmDowngradeDialog from '@/modules/billing/components/DowngradeModal';
+import { useUserSubscription } from '@/modules/subscription/useSubscription';
 
 const ease = [0.22, 1, 0.36, 1] as const;
 const home_page_url = import.meta.env.VITE_HOME_PAGE_URL || 'https://resumeware.com';
@@ -106,6 +109,7 @@ const Pricing = () => {
     // minified React error #300 once the parent re-rendered.)
     const profileQuery = useQuery({ queryKey: ['profile'], queryFn: getProfile, staleTime: 60_000 });
     const plansQuery = useQuery({ queryKey: ['plans'], queryFn: getPlans, staleTime: 1000 * 60 * 60 * 24 });
+    const subscriptionQuery = useUserSubscription(!!profileQuery.data);
     const [isYearly, setIsYearly] = useState(false);
 
     const profile = profileQuery.data;
@@ -141,16 +145,20 @@ const Pricing = () => {
         )
     }
 
-    const isDowngrade = (plan: SubscriptionPlan) =>
+    const isDowngrade = (plan: SubscriptionPlan): plan is DwongradablePlan =>
         isLoggedIn && plan !== currentPlan && PLAN_ORDER.indexOf(plan) < PLAN_ORDER.indexOf(currentPlan);
     const isCurrent = (plan: SubscriptionPlan) => isLoggedIn && plan === currentPlan;
+    const scheduledDowngradePlan = subscriptionQuery.data?.scheduled_downgrade_plan ?? null;
+    const hasScheduledDowngrade = scheduledDowngradePlan !== null;
 
     function handleBtnTitle(plan: PlanSpec) {
         if (!isLoggedIn) return 'Get started';
         if (plan.key === currentPlan) return 'Renew plan';
+        if (isDowngrade(plan.key) && plan.key === scheduledDowngradePlan) return 'Cancel scheduled downgrade';
+        if (isDowngrade(plan.key) && hasScheduledDowngrade) return 'Scheduled downgrade active';
         if (isDowngrade(plan.key)) return `Downgrade to ${plan.display_name}`;
         if (plan.key === 'ENTERPRISE') return 'Contact Us';
-        return plan.key === 'FREE' ? 'Get started' : 'Upgrade Now';
+        return 'Upgrade Now';
     }
 
     const orderedPlans = PLAN_ORDER
@@ -260,7 +268,7 @@ const Pricing = () => {
                                 cardBaseClass,
                                 isEnterprise ? 'bg-[#faf9f6]' : '',
                                 isFeatured ? `${cardFeaturedClass} ${featuredBadgeAfter}` : '',
-                                isCurrent(plan.key) ? '!border-[#2c2c2c]' : '',
+                                isCurrent(plan.key) ? 'border-[#2c2c2c]!' : '',
                             ].filter(Boolean).join(' ')}
                         >
                             <div className={planNameClass}>{plan.display_name}</div>
@@ -303,6 +311,51 @@ const Pricing = () => {
                                         {handleBtnTitle(plan)}
                                     </Link>
                                 </motion.div>
+                            ) : isDowngrade(plan.key) && plan.key === scheduledDowngradePlan ? (
+                                <Link to="/profile">
+                                    <motion.span
+                                        whileHover={{ scale: 1.05, y: -2 }}
+                                        whileTap={{ scale: 0.97 }}
+                                        className={ctaSecondary}
+                                    >
+                                        Cancel scheduled downgrade
+                                    </motion.span>
+                                </Link>
+                            ) : isDowngrade(plan.key) && hasScheduledDowngrade ? (
+                                <span
+                                    aria-disabled="true"
+                                    className={`${ctaSecondary} cursor-not-allowed opacity-60`}
+                                >
+                                    Scheduled downgrade active
+                                </span>
+                            ) : isDowngrade(plan.key) ? (
+                                <ConfirmDowngradeDialog
+                                    plan={plan.key}
+                                    cycle={isYearly ? 'yearly' : 'monthly'}
+                                    trigger={
+                                        <motion.span
+                                            whileHover={{ scale: 1.05, y: -2 }}
+                                            whileTap={{ scale: 0.97 }}
+                                            className={ctaSecondary}
+                                        >
+                                            {handleBtnTitle(plan)}
+                                        </motion.span>
+                                    }
+                                />
+                            ) : isCurrent(plan.key) ? (
+                                <Link
+                                    to="/checkout/$plan"
+                                    params={{ plan: PLAN_SLUG[plan.key as 'PLUS' | 'PRO'] }}
+                                    search={{ cycle: isYearly ? 'yearly' : 'monthly', from: 'app' } as any}
+                                >
+                                    <motion.span
+                                        whileHover={{ scale: 1.05, y: -2 }}
+                                        whileTap={{ scale: 0.97 }}
+                                        className={`${ctaPrimary} !bg-[#0F0F0F] !text-white !border-[#0F0F0F] hover:!bg-[#262626]`}
+                                    >
+                                        Renew plan
+                                    </motion.span>
+                                </Link>
                             ) : isFree ? (
                                 <Link to="/dashboard">
                                     <motion.span whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }} className={ctaSecondary}>
@@ -315,7 +368,7 @@ const Pricing = () => {
                                     params={{ plan: PLAN_SLUG[plan.key as 'PLUS' | 'PRO'] }}
                                     search={{ cycle: isYearly ? 'yearly' : 'monthly', from: 'app' } as any}
                                 >
-                                    <motion.span whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }} className={`${isFeatured ? ctaPrimary : ctaSecondary} ${isCurrent(plan.key) ? 'cursor-not-allowed bg-black' : ''}`}>
+                                    <motion.span whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }} className={`${isFeatured ? ctaPrimary : ctaSecondary}`}>
                                         {handleBtnTitle(plan)}
                                     </motion.span>
                                 </Link>

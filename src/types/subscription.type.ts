@@ -4,6 +4,9 @@ import { z } from "zod";
 
 
 export type Plan = "PRO" | "PLUS" // only these two plans are available for subscription
+
+export type DwongradablePlan = Plan | "FREE"
+
 type PaymentProvider = "razorpay" | "paypal" // only these two providers are available for subscription
 
 
@@ -105,12 +108,11 @@ export type UserSubscription = {
   billing_interval: BillingIntervalType
   status: string
   auto_pay_cancelled_at: string | null
-  is_grace_period: boolean
   subscribed_from: string | null
   subscription_ends_at: string | null
   credit_balance: number
-  credit_currency?: "INR" | "USD" | string
   credit_unit?: "INR" | "USD" | string
+  scheduled_downgrade_plan?: Plan | null
 }
 
 

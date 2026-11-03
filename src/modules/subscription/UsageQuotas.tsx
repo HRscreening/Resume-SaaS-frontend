@@ -28,6 +28,8 @@ interface QuotaCardConfig {
     quota: QuotaUsage | undefined;
 }
 
+import { useUserSubscription } from "@/modules/subscription/useSubscription";
+
 function formatDate(isoString: string | null | undefined): string {
     if (!isoString) return "N/A";
     try {
@@ -44,7 +46,10 @@ function formatDate(isoString: string | null | undefined): string {
 }
 
 export const UsageQuotas = () => {
+    const { data: subscriptionData } = useUserSubscription();
     const { data: usageData, isLoading, isError } = useUserUsageQuotas();
+
+    const isFreeQuota = !subscriptionData;
 
     if (isLoading) {
         return (
@@ -82,7 +87,6 @@ export const UsageQuotas = () => {
 
     const { quotas, start, end } = usageData;
     const isExpired = Boolean(usageData.is_expired);
-    const isGracePeriod = Boolean(usageData.is_grace_period);
 
     const cards: QuotaCardConfig[] = [
         {
@@ -143,27 +147,32 @@ export const UsageQuotas = () => {
                 <div>
                     <div className="flex items-center gap-2.5 flex-wrap">
                         <h2 className="text-base font-semibold text-[#0F0F0F]">Usage & Quotas</h2>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#F5F3EE] text-[#525252] border border-[#E8E5DF]">
-                            Monthly Billing Cycle
-                        </span>
-                        {isExpired && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">
-                                <AlertCircle className="w-3 h-3" />
-                                Cycle Expired
+
+                        {isFreeQuota ?
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#F5F3EE] text-[#525252] border border-[#E8E5DF]">
+                                Free Plan Quotas
                             </span>
-                        )}
-                        {isGracePeriod && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                <Clock className="w-3 h-3" />
-                                Grace Period Active
-                            </span>
-                        )}
-                        {!isExpired && !isGracePeriod && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                Active Cycle
-                            </span>
-                        )}
+                            :
+                            <>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#F5F3EE] text-[#525252] border border-[#E8E5DF]">
+                                    Monthly Billing Cycle
+                                </span>
+                                {isExpired && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">
+                                        <AlertCircle className="w-3 h-3" />
+                                        Cycle Expired
+                                    </span>
+                                )}
+
+                                {!isExpired && (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                        Active Cycle
+                                    </span>
+                                )}
+                            </>
+
+                        }
                     </div>
                     <p className="text-xs text-[#737373] mt-1">
                         Track your feature consumption and limits for the active billing cycle.
@@ -175,13 +184,13 @@ export const UsageQuotas = () => {
                         to="/upgrade"
                         className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-xl border border-[#D4D4D4] text-[#0F0F0F] hover:bg-[#F5F3EE] transition-colors"
                     >
-                        Change plan
+                        {isFreeQuota ? "Upgrade Plan" : "Change Plan"}
                         <ArrowUpRight className="w-3.5 h-3.5 text-[#737373]" />
                     </Link>
                 </div>
             </div>
 
-            {/* Status Notices for Expired and Grace Period */}
+            {/* Status Notices for Expired */}
             {isExpired && (
                 <div className="mt-5 p-4 rounded-xl bg-red-50 border border-red-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-start gap-3">
@@ -203,73 +212,41 @@ export const UsageQuotas = () => {
                 </div>
             )}
 
-            {isGracePeriod && (
-                <div className="mt-5 p-4 rounded-xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                        <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                        <div>
-                            <h4 className="text-xs font-semibold text-amber-900">Grace period active</h4>
-                            <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
-                                Your subscription is currently in a grace period. Feature quotas remain temporarily accessible. Please verify your payment method to ensure uninterrupted service.
+
+            {
+                !isFreeQuota &&
+
+
+                <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-3.5 rounded-xl border border-[#E8E5DF] bg-[#F9F8F6]">
+                        <div className="flex items-center gap-2 text-xs text-[#737373] mb-1">
+                            <Calendar className="w-3.5 h-3.5 text-[#A0A0A0]" />
+                            <span>Billing Period</span>
+                        </div>
+                        <p className="text-sm font-semibold text-[#0F0F0F]">
+                            {formatDate(start)} – {formatDate(end)}
+                        </p>
+                    </div>
+
+
+
+                    <div className="p-3.5 rounded-xl border border-[#E8E5DF] bg-[#F9F8F6]">
+                        <div className="flex items-center gap-2 text-xs text-[#737373] mb-1">
+                            <AlertCircle className="w-3.5 h-3.5 text-[#A0A0A0]" />
+                            <span>Cycle Status</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span
+                                className={`w-2 h-2 rounded-full ${isExpired ? "bg-red-500" : "bg-emerald-500"
+                                    }`}
+                            />
+                            <p className="text-sm font-semibold text-[#0F0F0F]">
+                                {isExpired ? "Expired" : "Active"}
                             </p>
                         </div>
                     </div>
-                    <Link
-                        to="/upgrade"
-                        className="inline-flex items-center gap-1.5 self-start sm:self-auto h-8 px-3.5 text-xs font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors shrink-0 shadow-xs"
-                    >
-                        Manage Billing
-                        <ArrowUpRight className="w-3.5 h-3.5" />
-                    </Link>
                 </div>
-            )}
-
-            {/* Cycle Overview Row */}
-            <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="p-3.5 rounded-xl border border-[#E8E5DF] bg-[#F9F8F6]">
-                    <div className="flex items-center gap-2 text-xs text-[#737373] mb-1">
-                        <Calendar className="w-3.5 h-3.5 text-[#A0A0A0]" />
-                        <span>Billing Period</span>
-                    </div>
-                    <p className="text-sm font-semibold text-[#0F0F0F]">
-                        {formatDate(start)} – {formatDate(end)}
-                    </p>
-                </div>
-
-                <div className="p-3.5 rounded-xl border border-[#E8E5DF] bg-[#F9F8F6]">
-                    <div className="flex items-center gap-2 text-xs text-[#737373] mb-1">
-                        <Clock className="w-3.5 h-3.5 text-[#A0A0A0]" />
-                        <span>Grace Period</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span
-                            className={`w-2 h-2 rounded-full ${
-                                isGracePeriod ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
-                            }`}
-                        />
-                        <p className="text-sm font-semibold text-[#0F0F0F]">
-                            {isGracePeriod ? "Active" : "Inactive"}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl border border-[#E8E5DF] bg-[#F9F8F6]">
-                    <div className="flex items-center gap-2 text-xs text-[#737373] mb-1">
-                        <AlertCircle className="w-3.5 h-3.5 text-[#A0A0A0]" />
-                        <span>Cycle Status</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span
-                            className={`w-2 h-2 rounded-full ${
-                                isExpired ? "bg-red-500" : "bg-emerald-500"
-                            }`}
-                        />
-                        <p className="text-sm font-semibold text-[#0F0F0F]">
-                            {isExpired ? "Expired" : "Active"}
-                        </p>
-                    </div>
-                </div>
-            </div>
+            }
 
             {/* Quota Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-6">
@@ -281,8 +258,8 @@ export const UsageQuotas = () => {
                     const percentage = isUnlimited
                         ? 0
                         : limit > 0
-                        ? Math.min(Math.round((used / limit) * 100), 100)
-                        : 100;
+                            ? Math.min(Math.round((used / limit) * 100), 100)
+                            : 100;
                     const isExhausted = !isUnlimited && used >= limit && limit > 0;
                     const isNearLimit = !isUnlimited && percentage >= 80 && !isExhausted;
 
@@ -309,11 +286,10 @@ export const UsageQuotas = () => {
                                         </span>
                                     ) : (
                                         <span
-                                            className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${
-                                                isNearLimit
-                                                    ? "text-amber-700 bg-amber-50 border-amber-200"
-                                                    : "text-[#737373] bg-[#F5F3EE] border-[#E8E5DF]"
-                                            }`}
+                                            className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${isNearLimit
+                                                ? "text-amber-700 bg-amber-50 border-amber-200"
+                                                : "text-[#737373] bg-[#F5F3EE] border-[#E8E5DF]"
+                                                }`}
                                         >
                                             {percentage}% used
                                         </span>
@@ -348,15 +324,14 @@ export const UsageQuotas = () => {
                                 {/* Progress Bar */}
                                 <div className="w-full h-1.5 bg-[#E8E5DF] rounded-full overflow-hidden">
                                     <div
-                                        className={`h-full rounded-full transition-all duration-500 ${
-                                            isUnlimited
-                                                ? "bg-emerald-500 w-full"
-                                                : isExhausted
+                                        className={`h-full rounded-full transition-all duration-500 ${isUnlimited
+                                            ? "bg-emerald-500 w-full"
+                                            : isExhausted
                                                 ? "bg-red-500"
                                                 : isNearLimit
-                                                ? "bg-amber-500"
-                                                : "bg-[#0F0F0F]"
-                                        }`}
+                                                    ? "bg-amber-500"
+                                                    : "bg-[#0F0F0F]"
+                                            }`}
                                         style={{ width: isUnlimited ? "100%" : `${percentage}%` }}
                                     />
                                 </div>
@@ -365,7 +340,7 @@ export const UsageQuotas = () => {
                     );
                 })}
             </div>
-        </div>
+        </div >
     );
 };
 

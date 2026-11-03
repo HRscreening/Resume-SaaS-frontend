@@ -18,7 +18,15 @@ export async function getUserUsageQuotas(): Promise<UserMonthlyUsage> {
     });
 }
 
+export async function cancelSubscription(): Promise<{
+}> {
+    return request("/api/v1/subscription/cancel-subscription", { method: "POST" });
+}
 
-
+export async function cancelScheduledDowngrade(): Promise<{ success: boolean }> {
+    return request("/api/v1/subscription/cancel-scheduled-downgrade", {
+        method: "POST",
+    });
+}
 
 
