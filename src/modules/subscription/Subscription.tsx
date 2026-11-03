@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useUserSubscription } from "@/modules/subscription/useSubscription";
 import { type UserSubscription } from "@/types/subscription.type";
+import SubscriptionCancellationDialog from "@/modules/subscription/SubscriptionCancellationDialog";
 import { cn } from "@/lib/utils";
 import {
     CreditCard,
@@ -35,6 +36,7 @@ interface SubscriptionProps {
 
 export const Subscription = ({ className, embedded = false }: SubscriptionProps = {}) => {
       const { data: subscription, isLoading, isError } = useUserSubscription();
+      const [confirmation, setConfirmation] = useState<"autopay" | "scheduled" | null>(null);
 
       if (isLoading) {
         if (embedded) {
@@ -75,9 +77,11 @@ export const Subscription = ({ className, embedded = false }: SubscriptionProps 
       }
 
     const isCancelled = Boolean(subscription.auto_pay_cancelled_at);
-    const isGrace = subscription.is_grace_period;
+    const hasScheduledDowngrade = Boolean(subscription.scheduled_downgrade_plan);
+    const scheduledDowngradePlan = subscription.scheduled_downgrade_plan ?? null;
+    
     const isActive = subscription.status?.toLowerCase() === "active";
-    const currencyCode = (subscription.credit_unit || subscription.credit_currency || "USD").toUpperCase();
+    const currencyCode = (subscription.credit_unit  || "USD").toUpperCase();
     const currencySymbol = currencyCode === "INR" ? "₹" : "$";
 
     const containerClasses = embedded
@@ -110,23 +114,24 @@ export const Subscription = ({ className, embedded = false }: SubscriptionProps 
                     </Link>
                 </div>
 
-                {/* Auto-pay Cancelled Notice */}
+                {/* Subscription cancellation notice */}
                 {isCancelled && (
                     <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2.5">
                         <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                         <div className="text-xs text-amber-800 leading-relaxed">
-                            <span className="font-semibold">Auto-pay cancelled:</span> Access continues until{" "}
+                            <span className="font-semibold">Subscription cancelled:</span> Access continues until{" "}
                             <span className="font-semibold">{formatDate(subscription.subscription_ends_at)}</span>.
                         </div>
                     </div>
                 )}
 
-                {/* Grace Period Notice */}
-                {isGrace && (
-                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2.5">
-                        <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                        <div className="text-xs text-amber-800 leading-relaxed">
-                            <span className="font-semibold">Grace period active:</span> Please check your payment method to ensure uninterrupted service.
+                {hasScheduledDowngrade && (
+                    <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 flex items-start justify-between gap-3">
+                        <div className="text-xs text-blue-800 leading-relaxed">
+                            <span className="font-semibold">Scheduled downgrade:</span>{" "}
+                            Your plan will change to{" "}
+                            <span className="font-semibold">{scheduledDowngradePlan}</span>{" "}
+                            from the next billing cycle.
                         </div>
                     </div>
                 )}
@@ -143,6 +148,7 @@ export const Subscription = ({ className, embedded = false }: SubscriptionProps 
                                 • {subscription.billing_interval} billing
                             </span>
                         </div>
+
                     </div>
 
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-[#E8E5DF] text-xs font-medium text-[#0F0F0F] shrink-0">
@@ -205,7 +211,37 @@ export const Subscription = ({ className, embedded = false }: SubscriptionProps 
                         </p>
                     </div>
                 </div>
+
+                {(hasScheduledDowngrade || (!isCancelled && isActive)) && (
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1">
+                        {hasScheduledDowngrade && (
+                            <button
+                                type="button"
+                                onClick={() => setConfirmation("scheduled")}
+                                className="cursor-pointer text-xs font-medium text-[#737373] underline underline-offset-2 transition-colors hover:text-[#2563EB]"
+                            >
+                                Cancel scheduled downgrade
+                            </button>
+                        )}
+                        {!isCancelled && isActive && (
+                            <button
+                                type="button"
+                                onClick={() => setConfirmation("autopay")}
+                                className="cursor-pointer text-xs font-medium text-[#737373] underline underline-offset-2 transition-colors hover:text-red-600"
+                            >
+                                Cancel subscription
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
+
+            <SubscriptionCancellationDialog
+                subscription={subscription}
+                type={confirmation ?? "autopay"}
+                open={confirmation !== null}
+                onOpenChange={(open) => !open && setConfirmation(null)}
+            />
 
             {/* Subscription ID Footer */}
             <div className="mt-4 pt-3 border-t border-[#F0EEE9] flex items-center justify-between text-xs text-[#737373]">
