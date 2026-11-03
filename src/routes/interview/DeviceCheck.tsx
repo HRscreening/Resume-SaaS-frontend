@@ -7,6 +7,7 @@ import {
   meterPercent,
   micCheckProgress,
   rmsDbfs,
+  speechThresholdDbfs,
   stepMicCheck,
   type MicCheckState,
 } from "./micCheck";
@@ -45,6 +46,8 @@ export interface DeviceCheckState {
   micError: string | null;
   cameraError: string | null;
   levelPercent: number;
+  // Where speech starts counting on the meter; follows the room's noise.
+  thresholdPercent: number;
   // 0..1 of the cumulative speech the mic check needs.
   micProgress: number;
   // The deviceId of the microphone that actually passed the check (from the
@@ -68,6 +71,7 @@ export function useDeviceCheck(requiresCamera: boolean): DeviceCheckState {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [levelPercent, setLevelPercent] = useState(0);
   const [micProgress, setMicProgress] = useState(0);
+  const [thresholdPercent, setThresholdPercent] = useState(MIC_THRESHOLD_METER_PERCENT);
   const [tonePlaying, setTonePlaying] = useState(false);
   const [attempt, setAttempt] = useState(0);
   // The device the candidate picked; undefined means the browser default.
@@ -142,9 +146,10 @@ export function useDeviceCheck(requiresCamera: boolean): DeviceCheckState {
         const samples = new Float32Array(analyser.fftSize);
         let lastAt = performance.now();
         let lastProgress = 0;
+        let lastThreshold = MIC_THRESHOLD_METER_PERCENT;
 
         // RMS loudness in dBFS each frame; confirmation needs ~1.2 s of
-        // cumulative speech above the threshold (see micCheck.ts), so
+        // cumulative sound well above the room's own noise (see micCheck.ts), so
         // background noise or one bump of the desk cannot pass it.
         const tick = () => {
           const now = performance.now();
@@ -155,6 +160,11 @@ export function useDeviceCheck(requiresCamera: boolean): DeviceCheckState {
           setLevelPercent(meterPercent(dbfs));
           if (!check.confirmed) {
             check = stepMicCheck(check, dbfs, dt);
+            const threshold = meterPercent(speechThresholdDbfs(check));
+            if (threshold !== lastThreshold) {
+              lastThreshold = threshold;
+              setThresholdPercent(threshold);
+            }
             const progress = micCheckProgress(check);
             if (progress !== lastProgress) {
               lastProgress = progress;
@@ -247,7 +257,7 @@ export function useDeviceCheck(requiresCamera: boolean): DeviceCheckState {
 
   return {
     micConfirmed, speakerConfirmed, cameraConfirmed,
-    micError, cameraError, levelPercent, micProgress,
+    micError, cameraError, levelPercent, thresholdPercent, micProgress,
     micDeviceId, audioInputs, selectMic,
     retry, playTone, confirmSpeaker, tonePlaying, videoRef,
   };
@@ -364,14 +374,14 @@ export function DeviceCheckPanel({
         >
           <div
             className={`h-full transition-[width] duration-75 ${
-              state.levelPercent >= MIC_THRESHOLD_METER_PERCENT ? "bg-[#15803D]" : "bg-[#C85A17]"
+              state.levelPercent >= state.thresholdPercent ? "bg-[#15803D]" : "bg-[#C85A17]"
             }`}
             style={{ width: `${state.levelPercent}%` }}
           />
           <span
             aria-hidden="true"
             className="absolute top-0 h-full w-px bg-[#737373]"
-            style={{ left: `${MIC_THRESHOLD_METER_PERCENT}%` }}
+            style={{ left: `${state.thresholdPercent}%` }}
           />
         </div>
         {!state.micConfirmed && (

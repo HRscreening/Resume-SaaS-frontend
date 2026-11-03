@@ -4,10 +4,12 @@ import {
   INITIAL_MIC_CHECK,
   MIC_CONFIRM_MS,
   MIC_FLOOR_DBFS,
+  MIC_ABOVE_NOISE_DB,
   MIC_SPEECH_DBFS,
   meterPercent,
   micCheckProgress,
   rmsDbfs,
+  speechThresholdDbfs,
   stepMicCheck,
   type MicCheckState,
 } from "./micCheck";
@@ -44,48 +46,75 @@ describe("rmsDbfs", () => {
   });
 });
 
+const frames = (db: number, ms: number): Array<[number, number]> =>
+  Array.from({ length: Math.round(ms / 16) }, () => [db, 16] as [number, number]);
+
+// A quiet room the check has listened to before the candidate speaks.
+const QUIET_ROOM = frames(-70, 600);
+
 describe("stepMicCheck", () => {
-  it("never confirms on background noise below the threshold, however long", () => {
-    const frames = Array.from({ length: 1000 }, () => [-60, 16] as [number, number]);
-    expect(run(frames)).toEqual(INITIAL_MIC_CHECK);
+  it("never confirms on steady background noise, however loud the room", () => {
+    // -38 dBFS is louder than the old fixed -50 threshold (UAT, 2026-11-04).
+    for (const noise of [-70, -50, -38, -30]) {
+      expect(run(frames(noise, 20_000)).voicedMs).toBe(0);
+    }
+  });
+
+  it("never confirms on noise that wobbles a few dB (a fan, traffic, typing)", () => {
+    const wobble = Array.from({ length: 1500 }, (_, i) => [-42 + 6 * Math.sin(i / 7), 16] as [number, number]);
+    expect(run(wobble).confirmed).toBe(false);
+  });
+
+  it("does not count anything during the warm-up", () => {
+    expect(run(frames(-25, 400)).voicedMs).toBe(0);
   });
 
   it("does not confirm on a single loud frame", () => {
-    expect(run([[-20, 16]]).confirmed).toBe(false);
+    expect(run([...QUIET_ROOM, [-20, 16]]).confirmed).toBe(false);
   });
 
-  it("confirms after ~1.2 s of cumulative speech", () => {
-    const frames = Array.from({ length: 74 }, () => [-30, 16] as [number, number]); // 1184 ms
-    expect(run(frames).confirmed).toBe(false);
-    expect(run([...frames, [-30, 16]]).confirmed).toBe(true); // 1200 ms
+  it("confirms after ~1.2 s of cumulative speech above the room", () => {
+    const speech = frames(-30, 1184);
+    expect(run([...QUIET_ROOM, ...speech]).confirmed).toBe(false);
+    expect(run([...QUIET_ROOM, ...speech, [-30, 16]]).confirmed).toBe(true);
+  });
+
+  it("confirms speech in a noisy room when the voice is clearly above it", () => {
+    const room = frames(-45, 600);
+    const speech = Array.from({ length: 120 }, (_, i) => [i % 10 < 7 ? -25 : -45, 16] as [number, number]);
+    expect(run([...room, ...speech, ...speech]).confirmed).toBe(true);
   });
 
   it("accumulates across pauses rather than resetting", () => {
-    const speech = Array.from({ length: 40 }, () => [-30, 16] as [number, number]); // 640 ms
-    const pause = Array.from({ length: 60 }, () => [-80, 16] as [number, number]);
-    expect(run([...speech, ...pause, ...speech]).confirmed).toBe(true);
+    expect(run([...QUIET_ROOM, ...frames(-30, 640), ...frames(-80, 960), ...frames(-30, 640)]).confirmed).toBe(true);
+  });
+
+  it("learns the room while the candidate talks from the very first frame", () => {
+    // No quiet start: the gaps between words reveal the room.
+    const talk = Array.from({ length: 300 }, (_, i) => [i % 8 < 5 ? -28 : -65, 16] as [number, number]);
+    expect(run(talk).confirmed).toBe(true);
   });
 
   it("caps a long frame gap so one stalled frame cannot confirm", () => {
-    const s = stepMicCheck(INITIAL_MIC_CHECK, -20, 5000);
+    const s = run([...QUIET_ROOM, [-20, 5000]]);
     expect(s.confirmed).toBe(false);
     expect(s.voicedMs).toBe(100);
   });
 
   it("ignores negative or non-finite frame durations", () => {
-    expect(stepMicCheck(INITIAL_MIC_CHECK, -20, -50)).toBe(INITIAL_MIC_CHECK);
-    expect(stepMicCheck(INITIAL_MIC_CHECK, -20, Number.NaN)).toBe(INITIAL_MIC_CHECK);
+    const ready = run(QUIET_ROOM);
+    expect(stepMicCheck(ready, -20, -50).voicedMs).toBe(0);
+    expect(stepMicCheck(ready, -20, Number.NaN).voicedMs).toBe(0);
   });
 
   it("stays confirmed once confirmed", () => {
-    const confirmed = { voicedMs: MIC_CONFIRM_MS, confirmed: true };
+    const confirmed = { ...INITIAL_MIC_CHECK, voicedMs: MIC_CONFIRM_MS, confirmed: true };
     expect(stepMicCheck(confirmed, -90, 16)).toBe(confirmed);
   });
 
-  it("honours a tuned threshold and duration", () => {
-    const s = stepMicCheck(INITIAL_MIC_CHECK, -45, 50, { thresholdDbfs: -40, confirmMs: 50 });
-    expect(s.confirmed).toBe(false);
-    expect(stepMicCheck(INITIAL_MIC_CHECK, -35, 50, { thresholdDbfs: -40, confirmMs: 50 }).confirmed).toBe(true);
+  it("raises the bar with the room's noise", () => {
+    expect(speechThresholdDbfs(run(QUIET_ROOM))).toBe(MIC_SPEECH_DBFS);
+    expect(speechThresholdDbfs(run(frames(-40, 600)))).toBeCloseTo(-40 + MIC_ABOVE_NOISE_DB);
   });
 });
 
@@ -99,7 +128,7 @@ describe("meterPercent / micCheckProgress", () => {
   });
   it("reports progress toward confirmation", () => {
     expect(micCheckProgress(INITIAL_MIC_CHECK)).toBe(0);
-    expect(micCheckProgress({ voicedMs: MIC_CONFIRM_MS / 2, confirmed: false })).toBeCloseTo(0.5);
-    expect(micCheckProgress({ voicedMs: 0, confirmed: true })).toBe(1);
+    expect(micCheckProgress({ ...INITIAL_MIC_CHECK, voicedMs: MIC_CONFIRM_MS / 2 })).toBeCloseTo(0.5);
+    expect(micCheckProgress({ ...INITIAL_MIC_CHECK, confirmed: true })).toBe(1);
   });
 });
