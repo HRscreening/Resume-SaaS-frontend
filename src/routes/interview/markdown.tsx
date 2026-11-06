@@ -12,17 +12,56 @@
 // This renders straight to React elements, so there is no HTML string at
 // any point and nothing to sanitize. It covers the subset a question
 // statement actually uses: headings, paragraphs, bold/italic, inline code,
-// fenced code blocks, links, and ordered/unordered lists. It is not a CommonMark
-// implementation and is not meant to become one.
+// fenced code blocks, links, ordered/unordered lists, and simple inline TeX
+// math ($2 \le N \le 10^4$), which the question writer often uses for
+// constraints. It is not a CommonMark implementation and is not meant to
+// become one.
 
 import { Fragment } from "react";
+
+type MathPart = string | { sup: string } | { sub: string };
 
 type InlineToken =
   | { kind: "text"; text: string }
   | { kind: "code"; text: string }
+  | { kind: "math"; parts: MathPart[] }
   | { kind: "bold"; children: InlineToken[] }
   | { kind: "italic"; children: InlineToken[] }
   | { kind: "link"; text: string; href: string };
+
+// The TeX a constraint line uses, as the characters a reader expects.
+// Any other command is dropped and its braced argument kept as text.
+const TEX_SYMBOLS: Record<string, string> = {
+  le: "≤", leq: "≤", ge: "≥", geq: "≥", ne: "≠", neq: "≠", lt: "<", gt: ">",
+  times: "×", cdot: "·", pm: "±", infty: "∞", dots: "…", ldots: "…", cdots: "…",
+  in: "∈", to: "→", rightarrow: "→", log: "log", min: "min", max: "max",
+};
+
+// One $...$ span as text with superscripts and subscripts: 10^{9} and 10^9
+// both become 10 with a raised 9.
+function mathParts(tex: string): MathPart[] {
+  const plain = tex
+    .replace(/\\([a-zA-Z]+)/g, (_, name: string) => TEX_SYMBOLS[name] ?? "")
+    .replace(/\\[,;:! ]/g, " ");
+  const parts: MathPart[] = [];
+  const pushText = (text: string) => {
+    const clean = text.replace(/[{}]/g, "");
+    if (!clean) return;
+    const last = parts[parts.length - 1];
+    if (typeof last === "string") parts[parts.length - 1] = last + clean;
+    else parts.push(clean);
+  };
+  const script = /([\^_])(?:\{([^}]*)\}|([-+]?\w+))/g;
+  let at = 0;
+  for (const m of plain.matchAll(script)) {
+    pushText(plain.slice(at, m.index));
+    const body = (m[2] ?? m[3]).replace(/[{}]/g, "");
+    parts.push(m[1] === "^" ? { sup: body } : { sub: body });
+    at = (m.index ?? 0) + m[0].length;
+  }
+  pushText(plain.slice(at));
+  return parts;
+}
 
 // Scans one line (or paragraph of joined lines) for inline markdown: `code`,
 // **bold**, *italic*, [text](href). Unmatched markers fall back to literal
@@ -38,6 +77,16 @@ function tokenizeInline(text: string): InlineToken[] {
     if (code) {
       tokens.push({ kind: "code", text: code[1] });
       i += code[0].length;
+      continue;
+    }
+
+    // Pandoc's rule: the opening $ is followed by a non-space and the
+    // closing $ preceded by one and not followed by a digit, so "$5 and
+    // $10" stays a pair of prices.
+    const math = /^\$([^\s$](?:[^$]*[^\s$])?)\$(?!\d)/.exec(rest);
+    if (math) {
+      tokens.push({ kind: "math", parts: mathParts(math[1]) });
+      i += math[0].length;
       continue;
     }
 
@@ -65,7 +114,7 @@ function tokenizeInline(text: string): InlineToken[] {
     // No marker matched at this position: consume one plain-text run up to
     // the next character that could start a marker, so runs of ordinary
     // text are not split into one token per character.
-    const next = rest.slice(1).search(/[`*_[]/);
+    const next = rest.slice(1).search(/[`*_[$]/);
     const plainLen = next === -1 ? rest.length : next + 1;
     const plain = rest.slice(0, plainLen);
     const last = tokens[tokens.length - 1];
@@ -90,6 +139,20 @@ function renderInlineTokens(tokens: InlineToken[], keyPrefix: string): React.Rea
           <code key={key} className="px-1 py-0.5 rounded bg-[#F0EEE6] text-[0.85em] font-mono">
             {token.text}
           </code>
+        );
+      case "math":
+        return (
+          <span key={key}>
+            {token.parts.map((part, partIndex) =>
+              typeof part === "string" ? (
+                <Fragment key={partIndex}>{part}</Fragment>
+              ) : "sup" in part ? (
+                <sup key={partIndex}>{part.sup}</sup>
+              ) : (
+                <sub key={partIndex}>{part.sub}</sub>
+              ),
+            )}
+          </span>
         );
       case "bold":
         return <strong key={key}>{renderInlineTokens(token.children, key)}</strong>;
@@ -125,6 +188,8 @@ type Block =
   | { kind: "code"; text: string; lang: string }
   | { kind: "list"; ordered: boolean; items: string[] }
   | { kind: "quote"; text: string };
+
+const BOLD_LINE = /^\s*(\*\*|__)[^*_]+\1:?\s*$/;
 
 function parseBlocks(markdown: string): Block[] {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
@@ -189,6 +254,14 @@ function parseBlocks(markdown: string): Block[] {
       continue;
     }
 
+    // A line that is only bold text ("**Input**") is a section label: its
+    // own line, never run into the sentence under it.
+    if (BOLD_LINE.test(line)) {
+      blocks.push({ kind: "paragraph", text: line.trim() });
+      i += 1;
+      continue;
+    }
+
     // Paragraph: consume consecutive non-blank, non-special lines, soft-wrapped
     // with a space, matching how markdown treats single newlines within a
     // paragraph.
@@ -197,6 +270,7 @@ function parseBlocks(markdown: string): Block[] {
     while (
       i < lines.length &&
       lines[i].trim() !== "" &&
+      !BOLD_LINE.test(lines[i]) &&
       !/^```/.test(lines[i]) &&
       !/^(#{1,6})\s+/.test(lines[i]) &&
       !/^>\s?/.test(lines[i]) &&

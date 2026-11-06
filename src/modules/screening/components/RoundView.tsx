@@ -9,6 +9,7 @@ import {
   ROUND_WRITE_BUSY_MESSAGE,
 } from "@/modules/screening/hooks/round/useRoundWriteLock";
 import type { CodingExample, JudgingSummary, Question, RoundResponse } from "@/types";
+import { Markdown } from "@/routes/interview/markdown";
 
 interface RoundViewProps {
   roundId: string;
@@ -253,8 +254,9 @@ function QuestionRow({
 // Read-only body. Narrows on `kind` (never a cast) because a spoken
 // question and a coding question genuinely carry different fields — TS
 // only lets the coding-only fields through once the discriminant check has
-// happened.
-function QuestionBody({ question }: { question: Question }) {
+// happened. The statement goes through the same renderer as the candidate's
+// coding screen, so the hiring manager reviews exactly what will be shown.
+export function QuestionBody({ question }: { question: Question }) {
   if (question.kind === "spoken") {
     return <p className="mt-2 text-sm text-[#0F0F0F]">{question.prompt}</p>;
   }
@@ -262,7 +264,7 @@ function QuestionBody({ question }: { question: Question }) {
   return (
     <div className="mt-2 flex flex-col gap-2">
       <p className="text-sm font-medium text-[#0F0F0F]">{question.title}</p>
-      <p className="whitespace-pre-wrap text-sm text-[#404040]">{question.statement_md}</p>
+      <Markdown text={question.statement_md} />
       {question.examples.length === 0 ? (
         <p className="text-xs text-[#A3A3A3]">No examples yet.</p>
       ) : (
@@ -339,13 +341,11 @@ function HiddenChecks({ judging }: { judging: JudgingSummary | undefined }) {
 
 function ExampleRow({ example }: { example: CodingExample }) {
   return (
-    <div className="rounded-lg bg-[#F5F3EE] px-2.5 py-1.5 text-xs text-[#404040]">
-      <div>
-        <span className="font-medium text-[#0F0F0F]">Input:</span> {example.input}
-      </div>
-      <div>
-        <span className="font-medium text-[#0F0F0F]">Output:</span> {example.output}
-      </div>
+    <div className="flex flex-col gap-1 rounded-lg bg-[#F5F3EE] px-2.5 py-1.5 text-xs text-[#404040]">
+      <span className="font-medium text-[#0F0F0F]">Input</span>
+      <pre className="whitespace-pre-wrap break-words font-mono">{example.input}</pre>
+      <span className="font-medium text-[#0F0F0F]">Output</span>
+      <pre className="whitespace-pre-wrap break-words font-mono">{example.output}</pre>
       {example.note && <div className="text-[#737373]">{example.note}</div>}
     </div>
   );
