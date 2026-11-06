@@ -699,9 +699,12 @@ export interface CallArtifactsResponse {
 
 export type RoundStatus = "draft" | "published" | "archived";
 
+// Set on the setup card (CandidateSetupCard), never by the assistant. The
+// server refuses chat (409) and publish (422) until `confirmed` is true.
 export interface RoundRequirements {
   camera: boolean;
   screen_share: boolean;
+  confirmed: boolean;
 }
 
 // Deliberately has no `id`, unlike Question: a problem's examples are

@@ -14,7 +14,7 @@ interface RoundViewProps {
   roundId: string;
 }
 
-// The live view of the round itself: budget, requirements, and every
+// The live view of the round itself: budget and every
 // question, sitting beside AuthoringChat (Task 12) where the hiring manager
 // argues with the AI about what to ask. Deliberately reads round state from
 // the same TanStack Query cache entry AuthoringChat writes to on every turn
@@ -81,8 +81,6 @@ export default function RoundView({ roundId }: RoundViewProps) {
         target={target}
         totalMinutes={round.total_minutes}
       />
-
-      <RequirementsLine requirements={round.requirements} />
 
       {/* Every other disabled control on this screen explains itself
           (AuthoringChat's frozen/read-only banners, PublishGate's blocking
@@ -167,36 +165,6 @@ function BudgetLine({
         <span className="ml-2 font-normal text-amber-700">Allocation does not add up.</span>
       )}
     </div>
-  );
-}
-
-// Requirements are read-only here: camera and screen share are set by the
-// conversation (set_requirements is a chat-only tool, never exposed as an
-// inline control), not edited from this view.
-function RequirementsLine({
-  requirements,
-}: {
-  requirements: RoundResponse["requirements"];
-}) {
-  return (
-    <div className="flex flex-wrap gap-2 text-xs text-[#737373]">
-      <RequirementPill label="Camera" required={requirements.camera} />
-      <RequirementPill label="Screen share" required={requirements.screen_share} />
-    </div>
-  );
-}
-
-function RequirementPill({ label, required }: { label: string; required: boolean }) {
-  return (
-    <span
-      className={`rounded-full border px-2.5 py-1 ${
-        required
-          ? "border-[#0F0F0F20] bg-[#F5F3EE] text-[#0F0F0F]"
-          : "border-[#E8E5DF] bg-white text-[#A3A3A3]"
-      }`}
-    >
-      {label}: {required ? "required" : "not required"}
-    </span>
   );
 }
 
