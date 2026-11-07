@@ -192,6 +192,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
     <Sheet open={open} onOpenChange={handleOpenChange} modal={false}>
       <SheetTrigger asChild>
         <button
+        title="View analysis"
           type="button"
           onClick={(e) => {
             e.stopPropagation();

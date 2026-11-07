@@ -18,6 +18,7 @@ interface UtilityButtonProps {
     Icon?: LucideIcon;
     variant?: "default" | "primary" | "ghost" | "danger";
     compact?: boolean;
+    disabledReason?: string;
 }
 
 const VARIANT_STYLES: Record<NonNullable<UtilityButtonProps["variant"]>, string> = {
@@ -40,16 +41,19 @@ export function UtilityButton({
     Icon,
     variant = "default",
     compact = false,
+    disabledReason,
 }: UtilityButtonProps) {
     // icon-only compact form needs an icon to render meaningfully; fall back to
     // showing the label if no icon was passed (e.g. Export without one)
     const iconOnly = compact && !!Icon;
+    const tooltipText = disabled && disabledReason ? disabledReason : title;
 
     const button = (
         <button
             onClick={onClick}
             disabled={disabled || isLoading}
             aria-label={title}
+            title={disabledReason}
             className={`
         inline-flex items-center justify-center gap-1.5
         h-9 rounded-xl
@@ -60,6 +64,7 @@ export function UtilityButton({
         ${VARIANT_STYLES[variant]}
         ${className}
         ${disabled || isLoading ? "opacity-50 cursor-not-allowed hover:bg-transparent" : ""}
+        ${disabled && disabledReason ? "pointer-events-none" : ""}
       `}
         >
             {isLoading ? (
@@ -71,15 +76,20 @@ export function UtilityButton({
         </button>
     )
 
-    if (!iconOnly) return button;
+    if (!iconOnly && !(disabled && disabledReason)) return button;
 
     return (
         <Tooltip>
-            <TooltipTrigger asChild>{button}</TooltipTrigger>
+            <TooltipTrigger asChild>
+                {disabled && disabledReason ? (
+                    <span className="inline-flex cursor-not-allowed">{button}</span>
+                ) : (
+                    button
+                )}
+            </TooltipTrigger>
             <TooltipContent side="top">
-                <p>{title}</p>
+                <p>{tooltipText}</p>
             </TooltipContent>
         </Tooltip>
     )
 }
-

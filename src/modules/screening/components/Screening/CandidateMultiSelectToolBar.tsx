@@ -28,7 +28,6 @@ import { useNavigate } from "@tanstack/react-router"
 import { useAccount } from "@/hooks/useAccount"
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
-
 import {
   getStageMeta,
   sortedStages,
@@ -57,23 +56,22 @@ function getIdsFromSet(set: Set<string>): string[] {
   return Array.from(set);
 }
 
+const NO_RESUME_SELECTED_MESSAGE = "Select at least one resume to use this action.";
+
 interface CandidateMultiSelectToolBarProps {
   type: ResumeSections,
-  isMultiSelectMode?: boolean;
-  setIsMultiSelectMode: (value: boolean) => void;
   analysisOpen: boolean;
   stages: StagesMap | undefined | null;
 }
 
 const CandidateMultiSelectToolBar = ({
   type,
-  isMultiSelectMode = false,
-  setIsMultiSelectMode,
   analysisOpen,
   stages
 }: CandidateMultiSelectToolBarProps) => {
 
   const navigate = useNavigate()
+
   const { screening_id, selectedCandidates, clearSelection, showSelectedOnly, setShowSelectedOnly } = useSelectedCandidates()
   const { canWrite } = useAccount()
   const analytics = useAnalytics();
@@ -85,13 +83,11 @@ const CandidateMultiSelectToolBar = ({
 
   function cancelMultiSelectMode() {
     analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "cancel", selectedCount: totalSelected });
-    setIsMultiSelectMode(false)
     clearSelection()
   }
 
 
   const totalSelected = selectedCandidates.size
-
   const multiArchiveMutation = useMultiScoredResumeUtility(archiveResumeMulti, TOAST_MESSAGES.ARCHIVE)
   const multiUnarchiveMutation = useMultiScoredResumeUtility(unarchiveResumeMulti, TOAST_MESSAGES.UNARCHIVE)
   const multiDeleteMutation = useMultiScoredResumeUtility(deleteResumeMulti, TOAST_MESSAGES.DELETE)
@@ -102,7 +98,6 @@ const CandidateMultiSelectToolBar = ({
   const multiShareMutation = useMultiScoredResumeUtility(shareScreenings, TOAST_MESSAGES.SHARE)
 
   const closeToolBar = () => {
-    setIsMultiSelectMode(false)
     clearSelection()
   }
 
@@ -110,12 +105,13 @@ const CandidateMultiSelectToolBar = ({
     {
       label: "Edit Rubric",
       onClick: () => {
+
         navigate({
           to: "/screenings/$id/rubric",
           params: {
             id: screening_id,
           },
-        search: (prev) => prev,
+          search: (prev) => prev,
         });
       },
       icon: ClipboardPenLine,
@@ -130,6 +126,12 @@ const CandidateMultiSelectToolBar = ({
 
 
   async function handleExport() {
+
+    if (!totalSelected) {
+      toast.error("No candidates selected for export.");
+      return;
+    }
+
     analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "export", selectedCount: totalSelected });
     try {
       // const { blob, filename } = await exportResults(id, queryState);
@@ -146,6 +148,12 @@ const CandidateMultiSelectToolBar = ({
   }
 
   async function handleResumeDownload() {
+
+    if (!totalSelected) {
+      toast.error("No candidates selected for download.");
+      return;
+    }
+
     analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "download", selectedCount: totalSelected });
     setIsResumeDownloading(true);
     try {
@@ -172,6 +180,12 @@ const CandidateMultiSelectToolBar = ({
   }
 
   async function handleCall() {
+
+    if (!totalSelected) {
+      toast.error("No candidates selected for Call.");
+      return;
+    }
+
     analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "call", selectedCount: totalSelected });
     try {
       if (selectedCandidates.size > 10) {
@@ -199,6 +213,12 @@ const CandidateMultiSelectToolBar = ({
   }
 
   async function handleShare(emails: string[], note?: string) {
+
+    if (!totalSelected) {
+      toast.error("No candidates selected for Sharing.");
+      return;
+    }
+
     analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "share", selectedCount: totalSelected });
 
     try {
@@ -210,7 +230,7 @@ const CandidateMultiSelectToolBar = ({
         return;
       }
 
-      const res = await multiShareMutation.mutateAsync({ screeningId: screening_id, resumeIds: resumeIds, emails, note },{ onSuccess: closeToolBar });
+      const res = await multiShareMutation.mutateAsync({ screeningId: screening_id, resumeIds: resumeIds, emails, note }, { onSuccess: closeToolBar });
       setIsShareDialogOpen(false);
     }
     catch {
@@ -223,6 +243,12 @@ const CandidateMultiSelectToolBar = ({
 
 
   async function handleRescore() {
+
+    if (!totalSelected) {
+      toast.error("No candidates selected for Screening.");
+      return;
+    }
+
     analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "rescore", selectedCount: totalSelected });
     if (selectedCandidates.size === 0) {
       toast.error("No candidates selected for Screening.");
@@ -249,8 +275,6 @@ const CandidateMultiSelectToolBar = ({
 
   // compact mode kicks in once the analysis panel eats up horizontal space
   const compact = analysisOpen;
-
-  if (!totalSelected && !isMultiSelectMode) return null
 
   return (
     <div
@@ -294,7 +318,11 @@ const CandidateMultiSelectToolBar = ({
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto scrollbar-hide">
-          <UtilityButton title="Cancel" onClick={cancelMultiSelectMode} variant="ghost" compact={compact} />
+
+          {
+            totalSelected > 0 &&
+            <UtilityButton title="Cancel" onClick={cancelMultiSelectMode} variant="ghost" compact={compact} />
+          }
 
           {canWrite && stages && Object.keys(stages).length > 0 &&
             <StageSelectButton
@@ -311,33 +339,38 @@ const CandidateMultiSelectToolBar = ({
               isLoading={multiChangeStageMutation.isPending}
               stages={stages}
               compact={compact}
+              disabled={!totalSelected}
 
             />
           }
 
 
           {canWrite && (
-             <RescoreButton options={RescoreOptions} isLoading={multiRescoreMutation.isPending} stages={stages ?? {}} compact={compact} />
+            <RescoreButton options={RescoreOptions} isLoading={multiRescoreMutation.isPending} stages={stages ?? {}} compact={compact} disabled={!totalSelected} />
           )}
 
 
           <UtilityButton title="Export"
             onClick={handleExport}
-            Icon={FileText} compact={compact} isLoading={multiExportMutation.isPending} />
+            Icon={FileText} compact={compact} isLoading={multiExportMutation.isPending}
+            disabled={!totalSelected} disabledReason={NO_RESUME_SELECTED_MESSAGE} />
 
 
-          <UtilityButton title="Resume" onClick={handleResumeDownload} Icon={Download} compact={compact} isLoading={isResumeDownloading} />
+          <UtilityButton title="Resume" onClick={handleResumeDownload} Icon={Download} compact={compact} isLoading={isResumeDownloading}
+            disabled={!totalSelected} disabledReason={NO_RESUME_SELECTED_MESSAGE} />
 
           {/* Sharing emails candidate data out of the account, so it is a write
               action even though it changes no row. The server already refuses it
               for a read-only viewer; hiding it keeps the button from failing. */}
           {canWrite && (
-            <UtilityButton title="Share" onClick={() => setIsShareDialogOpen(true)} Icon={Share2} compact={compact} isLoading={multiShareMutation.isPending} />
+            <UtilityButton title="Share" onClick={() => setIsShareDialogOpen(true)} Icon={Share2} compact={compact} isLoading={multiShareMutation.isPending}
+              disabled={!totalSelected} disabledReason={NO_RESUME_SELECTED_MESSAGE} />
           )}
 
 
           {canWrite && (
-            <UtilityButton title="AI Call" onClick={handleCall} Icon={PhoneCall} compact={compact} isLoading={multiCallMutation.isPending} />
+            <UtilityButton title="AI Call" onClick={handleCall} Icon={PhoneCall} compact={compact} isLoading={multiCallMutation.isPending}
+              disabled={!totalSelected} disabledReason={NO_RESUME_SELECTED_MESSAGE} />
           )}
 
           {canWrite && (type === "Active" || type === "Archived") && (
@@ -348,18 +381,21 @@ const CandidateMultiSelectToolBar = ({
             <UtilityButton title="Archive" onClick={() => {
               analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "archive", selectedCount: totalSelected });
               multiArchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar });
-            }} Icon={Archive} variant="danger" compact={compact} isLoading={multiArchiveMutation.isPending} />
+            }} Icon={Archive} variant="danger" compact={compact} isLoading={multiArchiveMutation.isPending}
+              disabled={!totalSelected} disabledReason={NO_RESUME_SELECTED_MESSAGE} />
           )}
           {canWrite && type === "Archived" && (
             <>
               <UtilityButton title="Unarchive" onClick={() => {
                 analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "unarchive", selectedCount: totalSelected });
                 multiUnarchiveMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar });
-              }} Icon={ArchiveRestore} compact={compact} isLoading={multiUnarchiveMutation.isPending} />
+              }} Icon={ArchiveRestore} compact={compact} isLoading={multiUnarchiveMutation.isPending}
+                disabled={!totalSelected} disabledReason={NO_RESUME_SELECTED_MESSAGE} />
               <UtilityButton title="Delete" onClick={() => {
                 analytics.track(AnalyticsEvent.MULTI_SELECT_ACTION, { screeningId: screening_id, operation: "delete", selectedCount: totalSelected });
                 multiDeleteMutation.mutate({ screeningId: screening_id, resumeIds: getIdsFromSet(selectedCandidates) }, { onSuccess: closeToolBar });
-              }} Icon={Trash2} variant="danger" compact={compact} isLoading={multiDeleteMutation.isPending} />
+              }} Icon={Trash2} variant="danger" compact={compact} isLoading={multiDeleteMutation.isPending}
+                disabled={!totalSelected} disabledReason={NO_RESUME_SELECTED_MESSAGE} />
             </>
           )}
 
@@ -424,9 +460,20 @@ function StageSelectButton({
     </DropdownMenuTrigger>
   )
 
+  const triggerWithTooltip = disabled ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex cursor-not-allowed">{trigger}</span>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <p>{NO_RESUME_SELECTED_MESSAGE}</p>
+      </TooltipContent>
+    </Tooltip>
+  ) : trigger;
+
   return (
     <DropdownMenu>
-      {compact ? (
+      {compact && !disabled ? (
         <Tooltip>
           <TooltipTrigger asChild>{trigger}</TooltipTrigger>
           <TooltipContent side="top">
@@ -434,7 +481,7 @@ function StageSelectButton({
           </TooltipContent>
         </Tooltip>
       ) : (
-        trigger
+        triggerWithTooltip
       )}
 
       <DropdownMenuContent
@@ -527,9 +574,20 @@ function RescoreButton({
     </DropdownMenuTrigger>
   )
 
+  const triggerWithTooltip = disabled ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex cursor-not-allowed">{trigger}</span>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <p>{NO_RESUME_SELECTED_MESSAGE}</p>
+      </TooltipContent>
+    </Tooltip>
+  ) : trigger;
+
   return (
     <DropdownMenu>
-      {compact ? (
+      {compact && !disabled ? (
         <Tooltip>
           <TooltipTrigger asChild>{trigger}</TooltipTrigger>
           <TooltipContent side="top">
@@ -537,7 +595,7 @@ function RescoreButton({
           </TooltipContent>
         </Tooltip>
       ) : (
-        trigger
+        triggerWithTooltip
       )}
 
       <DropdownMenuContent

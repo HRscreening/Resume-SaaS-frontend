@@ -25,17 +25,14 @@ import {
 
 import Applications from "@/modules/screening/tabs/applications"
 import Screening from "@/modules/screening/tabs/screeningTab"
-import UploadResumes from "@/modules/screening/components/uploadResumes"
+
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
-import { useAuth } from "@/hooks/useAuth";
 import { useAccount } from "@/hooks/useAccount";
 
 import { useScreening } from "@/modules/screening/hooks/shared/useScreening"
 import { useApplicationQuery } from "@/modules/screening/hooks/application/custom/useApplicationQuery";
 
 import ScreeningSkeleton from "@/modules/screening/components/skeletons/ScreeningSkeleton"
-
-
 
 export const sectionTabs = ["Applications", "Screening"] as const;
 
@@ -47,37 +44,20 @@ export default function ScreeningDetail() {
     const { id } = useParams({ strict: false }) as { id: string };
     const analytics = useAnalytics();
 
-    const { search, navigate, setTab,getScreeningSearchParams } = useScreeningDetailsNavigation();
+    const { search, navigate, setTab } = useScreeningDetailsNavigation();
 
     const currentTab: Sections = search.tab ?? "Applications";
 
+    const { canWrite } = useAccount()
 
-
-    const { user } = useAuth();
-    const { canWrite } = useAccount();
-
-
-    const [sourceMode, setSourceMode] = useState(false);
-    const [showRubric, setShowRubric] = useState(false);
-
-
+    const [showRubric, setShowRubric] = useState(false)
 
 
     const analysisOpen = (search.screenId != null && search.tab == "Screening") || (search.appId != null && search.tab === "Applications");
 
-    // Rescore selection mode — flipped on by the Rescore button in the action
-    // row. `selectedIds` is the cross-page basket; pagination / search / filter
-    // changes only swap the visible rows, never the selection.
-    const [rescoreMode, setRescoreMode] = useState(false);
-
-
-    const [showUploadMore, setShowUploadMore] = useState(false);
 
     const { screening, isPending: isLoading, error, postJob, viewJD, exporting, handleExport } = useScreening(id);
 
-    // Applications are required by this page, so fetch them at page level
-    // and provide the data to the applications table.
-    const ApplicationQuery = useApplicationQuery(id, { limit: 30 });
 
     // Per-job counters (e.g. resumes screened, voice calls made). Shown for
     // every account, not just unlimited ones — these are counts, not limits.
@@ -89,7 +69,6 @@ export default function ScreeningDetail() {
     });
 
 
-    const toastShownRef = useRef(false);
     const viewedRef = useRef(false);
 
     useEffect(() => {
@@ -97,32 +76,7 @@ export default function ScreeningDetail() {
             analytics.track(AnalyticsEvent.SCREENING_VIEWED, { screeningId: id });
             viewedRef.current = true;
         }
-    }, [analytics, id]);
-
-    useEffect(() => {
-        if (search.saved !== 1) {
-            toastShownRef.current = false;
-            return;
-        }
-        if (toastShownRef.current) return;
-        toastShownRef.current = true;
-        toast.success("Rubric saved", { duration: 3500 });
-        setRescoreMode(true);
-        const { saved: _saved, ...rest } = search;
-        navigate({
-            to: "/screenings/$id",
-            params: { id },
-            search: rest as never,
-            replace: true,
-        });
-    }, [search, id, navigate]);
-
-    const totalCandidates = screening?.screened_cnt ?? 0;
-    const totalApplications = (screening?.parsed_cnt ?? 0) + (screening?.screened_cnt ?? 0);
-    const hasAnyCandidates = totalCandidates > 0;
-
-
-
+    }, [analytics, id])
 
 
     const changeTab = useCallback((tab: Sections) => {
@@ -186,16 +140,18 @@ export default function ScreeningDetail() {
                         {/* A job page is reached from the dashboard, the jobs list and
                             deep links, so "back" points at the jobs list rather than at
                             browser history. */}
-                        <BackLink to="/screenings" label="jobs" className="mb-1" />
-                        <div className="flex items-center gap-2 mb-2 text-xs">
+                        {/* <BackLink to="/screenings" label="jobs" className="mb-1" /> */}
+                        {/* <div className="flex items-center gap-2 mb-2 text-xs">
                             <Link to="/screenings" className="text-[#737373] hover:text-[#0F0F0F]">Screenings</Link>
                             <span className="text-[#D4D4D4]">/</span>
                             <span className="text-[#404040]">{truncate(screening.title, 40)}</span>
-                        </div>
+                        </div> */}
+                        <div className="flex flex-row justify-start gap-3 items-end">
                         <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">{screening.title}</h1>
-                        <p className="text-sm text-[#737373] mt-0.5">
+                        | <small className="text-[10px]  text-[#737373] italic">
                              Created {formatDate(screening.created_at)}
-                        </p>
+                        </small>
+                        </div>
                         {screeningUsage.length > 0 && (
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
                                 {screeningUsage.map((counter) => (
@@ -228,24 +184,6 @@ export default function ScreeningDetail() {
 
 
 
-
-                        {currentTab === "Applications" && canWrite && (
-                            <ActionButton
-                                title="Add Resumes"
-                                icon={<Upload size={12} />}
-                                compacted={analysisOpen}
-                                onClick={() => {
-                                    setShowUploadMore((v) => {
-                                        const next = !v;
-                                        if (next) analytics.track(AnalyticsEvent.RESUME_UPLOAD_PANEL_OPENED, {
-                                            screeningId: id,
-                                            uploadedCount: totalApplications,
-                                        });
-                                        return next;
-                                    });
-                                }}
-                            />
-                        )}
                         {true && (
                             // {(candidates.length > 0 || filtersMatchedNothing) && (
                             <>
@@ -297,7 +235,6 @@ export default function ScreeningDetail() {
                                 if (tab === "Applications") {
                                     analytics.track(AnalyticsEvent.APPLICATION_TAB_CLICKED, { screeningId: id });
                                 }
-                                setShowUploadMore(false);
                             }}
                             className={`px-4 py-2 text-sm font-medium rounded-t-lg focus:outline-none ${currentTab === tab ? "bg-[#0F0F0F] text-white" : "bg-[#E8E5DF] text-[#404040] hover:bg-[#D4D4D4]"}`}
                         >
@@ -309,18 +246,10 @@ export default function ScreeningDetail() {
 
             </div>
 
-            {/* --------------------- Uploadresume Section -------------------- */}
-            {
-                showUploadMore &&
-                <div className="my-4 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
-                    {canWrite && <UploadResumes screening_id={id} user_id={user?.id ?? ""} setShowUploadMore={setShowUploadMore} />}
-                </div>
-            }
-
             {/* ----------------------- Tabs ------------------------ */}
             <div className="flex-1 min-h-0 flex flex-col px-4 sm:px-6 md:px-8 gap-4">
-                {currentTab === "Applications" && <Applications onTabChange={changeTab} sourceMode={sourceMode} setSourceMode={setSourceMode} />}
-                {currentTab === "Screening" && <Screening setCurrentTab={changeTab} setSourceMode={setSourceMode} rescoreMode={rescoreMode} setRescoreMode={setRescoreMode} analysisOpen={analysisOpen} />}
+                {currentTab === "Applications" && <Applications onTabChange={changeTab} />}
+                {currentTab === "Screening" && <Screening setCurrentTab={changeTab} />}
             </div>
 
 

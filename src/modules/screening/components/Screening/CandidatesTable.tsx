@@ -48,7 +48,7 @@ export function CandidatesTable({
   candidates,
   categories,
   loading = false,
-  selectable = false,
+  selectable = true,
   stages,
   onCandidateStageChange,
   onManageStages,
@@ -80,6 +80,11 @@ export function CandidatesTable({
   const handleViewAllNotes = (resumeId: string) => {
     setScreenId(resumeId);
     setAnalysisTab("note");
+  };
+
+  const onVoiceIconClick = (resumeId: string) => {
+    setScreenId(resumeId);
+    setAnalysisTab("voice");
   };
 
 
@@ -321,6 +326,7 @@ export function CandidatesTable({
                     MenuOptions={visibleMenuOptions}
                     processingStatus={getRowStatus(c.resume_id)}
                     onViwAllNotes={handleViewAllNotes}
+                    onVoiceIconClick={onVoiceIconClick}
                   />
                 ))}
 

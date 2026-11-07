@@ -12,7 +12,7 @@ import { useAccount } from "@/hooks/useAccount";
 interface ApplicationTableProps {
     screeningId: string;
     candidates: Application[];
-    selectable: boolean;
+    selectable?: boolean;
     loading: boolean;
     backgGroundFetching?: boolean;
     onLoadMore?: () => Promise<unknown>;
@@ -23,7 +23,7 @@ interface ApplicationTableProps {
 export function ApplicationTable({
     screeningId,
     candidates,
-    selectable = false,
+    selectable = true,
     backgGroundFetching = false,
     loading,
     hasMore,
