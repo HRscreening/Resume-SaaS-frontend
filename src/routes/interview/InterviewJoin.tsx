@@ -102,6 +102,10 @@ export default function InterviewJoin() {
         hiringCompany={data.hiring_company}
         micDeviceId={micDeviceId}
         onRejoin={handleJoin}
+        // The join call alone, with its grant discarded: the server
+        // dispatches an interviewer into a room that has none, and the call
+        // in progress keeps its own connection.
+        onRequestInterviewer={() => joinInterview(token)}
         onCheckCompleted={checkCompleted}
       />
     );

@@ -1,5 +1,6 @@
 import { VideoOff } from "lucide-react";
 
+import type { InterviewerArrival } from "./interviewerArrival";
 import ThinkingDots from "./ThinkingDots";
 import type { PresenceState } from "./presenceState";
 import type { TranscriptTurn } from "./useTranscript";
@@ -8,15 +9,19 @@ import VoiceMeter from "./VoiceMeter";
 
 // What the interviewer is doing, in the words the candidate sees. "Quiet"
 // is listening during a coding question: the interviewer is there but will
-// not talk unless spoken to, so silence is not a frozen screen.
-export type InterviewerStatus = "speaking" | "listening" | "thinking" | "quiet" | "reconnecting";
+// not talk unless spoken to, so silence is not a frozen screen. "Joining"
+// is no interviewer in the room yet: without it an empty room read as
+// "Listening to you" (see interviewerArrival.ts).
+export type InterviewerStatus = "speaking" | "listening" | "thinking" | "quiet" | "reconnecting" | "joining";
 
 export function interviewerStatus(
   presence: PresenceState,
   reconnecting: boolean,
   coding: boolean,
+  arrival: InterviewerArrival,
 ): InterviewerStatus {
   if (reconnecting) return "reconnecting";
+  if (arrival !== "present") return "joining";
   if (presence === "listening" && coding) return "quiet";
   return presence;
 }
@@ -27,6 +32,7 @@ const STATUS_LABEL: Record<InterviewerStatus, string> = {
   thinking: "Thinking",
   quiet: "Quiet while you code",
   reconnecting: "Reconnecting",
+  joining: "Joining…",
 };
 
 export interface Voice {

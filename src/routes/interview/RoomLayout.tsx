@@ -4,6 +4,7 @@ import AgendaRail from "./AgendaRail";
 import CodingPane from "./CodingPane";
 import ControlBar from "./ControlBar";
 import { ConversationCard, InterviewerRailCard, SelfView, interviewerStatus, type Voice } from "./InterviewerCard";
+import { INTERVIEWER_DELAYED_COPY, type InterviewerArrival } from "./interviewerArrival";
 import { ENDING_COPY, FIVE_MINUTE_COPY, phaseLabel, type InterviewPhase } from "./phaseSignal";
 import type { PresenceState } from "./presenceState";
 import QuestionCard from "./QuestionCard";
@@ -24,6 +25,8 @@ export interface RoomLayoutProps {
   phase: InterviewPhase | null;
   ending: boolean;
   presenceState: PresenceState;
+  // Whether the interviewer is in the room yet (interviewerArrival.ts).
+  interviewerArrival: InterviewerArrival;
   reconnecting: boolean;
   networkLabel: string | null;
   silenceWarning: boolean;
@@ -56,7 +59,7 @@ const CODING_HINT = "Unclear about the input or output? Just ask. The interviewe
 export default function RoomLayout(p: RoomLayoutProps) {
   const { coding } = p;
   const showCodingPane = coding.showPane;
-  const status = interviewerStatus(p.presenceState, p.reconnecting, showCodingPane);
+  const status = interviewerStatus(p.presenceState, p.reconnecting, showCodingPane, p.interviewerArrival);
   const steps = railSteps({
     questions: coding.questions ?? [],
     index: coding.index,
@@ -134,6 +137,9 @@ export default function RoomLayout(p: RoomLayoutProps) {
           </button>
         )}
         {p.reconnecting && <Notice tone="warn">Reconnecting you to the interview…</Notice>}
+        {!p.reconnecting && p.interviewerArrival === "delayed" && (
+          <Notice tone="warn">{INTERVIEWER_DELAYED_COPY}</Notice>
+        )}
         {!p.reconnecting && p.networkLabel && (
           <Notice tone={p.networkLabel === "Connection lost" ? "error" : "warn"}>{p.networkLabel}</Notice>
         )}

@@ -134,6 +134,7 @@ export default function RoomLayoutPreview() {
         phase={phase}
         ending={false}
         presenceState={presence}
+        interviewerArrival="present"
         reconnecting={false}
         networkLabel={null}
         silenceWarning={false}

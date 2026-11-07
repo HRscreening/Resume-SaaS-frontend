@@ -29,6 +29,7 @@ import { useLocalAudioTrack } from "./useLocalAudioTrack";
 import { useTranscript } from "./useTranscript";
 import { derivePresenceState } from "./presenceState";
 import { useAgentState } from "./useAgentState";
+import { useInterviewerArrival } from "./useInterviewerArrival";
 import { useConnectionQuality } from "./useConnectionQuality";
 import { connectionLabel } from "./connectionLabel";
 import { rejoinDelayMs, shouldKeepRejoining } from "./autoRejoin";
@@ -93,6 +94,9 @@ interface InterviewRoomProps {
   // Resolves once a fresh grant has been applied to props, or rejects (the
   // rejection is what drives the "could not rejoin" error state below).
   onRejoin: () => Promise<unknown>;
+  // Asks the server for an interviewer without touching this call: made
+  // while the room has none (useInterviewerArrival).
+  onRequestInterviewer: () => Promise<unknown>;
   // Re-describes the session: true once the server considers the interview
   // finished. Used to tell the agent ending the interview apart from the
   // candidate dropping out of it, which look identical from the browser.
@@ -114,6 +118,7 @@ export default function InterviewRoom({
   hiringCompany = null,
   micDeviceId = null,
   onRejoin,
+  onRequestInterviewer,
   onCheckCompleted,
 }: InterviewRoomProps) {
   const roomRef = useRef<Room | null>(null);
@@ -224,6 +229,7 @@ export default function InterviewRoom({
   // is what tells "nobody has spoken yet" apart from "the interviewer just
   // finished listening and is about to respond" — see presenceState.ts.
   const agentState = useAgentState(activeRoom);
+  const arrival = useInterviewerArrival(activeRoom, callState === "connected", onRequestInterviewer);
   const connectionQuality = useConnectionQuality(activeRoom);
   // The server's phase (warm-up, questions, their questions) and whether the
   // closing line is playing. See phaseSignal.ts.
@@ -756,6 +762,7 @@ export default function InterviewRoom({
         phase={phaseSync.phase}
         ending={callState === "connected" && phaseSync.ending}
         presenceState={presenceState}
+        interviewerArrival={arrival}
         reconnecting={callState === "reconnecting"}
         networkLabel={connectionLabel(connectionQuality)}
         silenceWarning={callState === "connected" && silenceWarning}
