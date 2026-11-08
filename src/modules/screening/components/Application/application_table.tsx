@@ -12,7 +12,7 @@ import { useAccount } from "@/hooks/useAccount";
 interface ApplicationTableProps {
     screeningId: string;
     candidates: Application[];
-    selectable: boolean;
+    selectable?: boolean;
     loading: boolean;
     backgGroundFetching?: boolean;
     onLoadMore?: () => Promise<unknown>;
@@ -23,7 +23,7 @@ interface ApplicationTableProps {
 export function ApplicationTable({
     screeningId,
     candidates,
-    selectable = false,
+    selectable = true,
     backgGroundFetching = false,
     loading,
     hasMore,
@@ -88,7 +88,7 @@ export function ApplicationTable({
                     <table className="w-full text-sm table-fixed">
                         <colgroup>
                           
-                            <col className="w-5 px-5" />
+                            <col className="w-8 px-5" />
                             <col className={compact ? "w-1/2" : "w-44 sm:w-48"} />
                             <col className={compact ? "w-1/2" : "w-40"} />
                             <col className="w-24" />
@@ -103,7 +103,7 @@ export function ApplicationTable({
                         
 
                                 <th className="w-10 px-3 py-2.5 bg-[#F5F3EE]">
-                                    {!compact && (applicationsSelected || selectable) && (
+                                    { (
                                         <input
                                             type="checkbox"
                                             aria-label={
@@ -170,7 +170,7 @@ export function ApplicationTable({
                             ) : candidates.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={selectable ? (compact ? 4 : 7) : (compact ? 3 : 6)}
+                                        colSpan={ (compact ? 3 : 6)}
                                         className="px-5 py-10 text-center text-sm text-[#737373]"
                                     >
                                         No candidates found.

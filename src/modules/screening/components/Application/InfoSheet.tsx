@@ -124,6 +124,7 @@ const InfoSheet = ({ candidate, open, disabled = false }: { candidate: Applicati
     <Sheet open={open} onOpenChange={handleOpenChange} modal={false}>
       <SheetTrigger asChild>
         <button
+          title="View candidate info"
           type="button"
           disabled={disabled}
           onClick={(e) => {
@@ -144,7 +145,7 @@ const InfoSheet = ({ candidate, open, disabled = false }: { candidate: Applicati
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        className="!w-full sm:!max-w-[600px] overflow-y-auto p-0 !z-40"
+        className="w-full! sm:max-w-150! overflow-y-auto p-0 z-40!"
       >
         <SheetHeader className="shrink-0 px-6 pt-6 border-b border-[#E8E5DF] pb-0">
           <SheetTitle className="text-sm font-semibold text-[#0F0F0F]">
