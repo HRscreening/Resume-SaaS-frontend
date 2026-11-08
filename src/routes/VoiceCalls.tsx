@@ -157,10 +157,6 @@ export default function VoiceCalls() {
         <UpcomingCallsPanel screeningId={id} />
       </section>
 
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-[#0F0F0F] mb-3">Candidates</h2>
-        <VoiceCandidates screeningId={id} />
-      </section>
 
       <h2 className="text-sm font-semibold text-[#0F0F0F] mb-3">Call history</h2>
       {isLoading ? (
