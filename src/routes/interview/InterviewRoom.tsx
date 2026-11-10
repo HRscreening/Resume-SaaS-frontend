@@ -234,6 +234,14 @@ export default function InterviewRoom({
   // The server's phase (warm-up, questions, their questions) and whether the
   // closing line is playing. See phaseSignal.ts.
   const phaseSync = usePhaseSync(activeRoom);
+  // Read by the Disconnected handler inside the connect effect, which must
+  // not depend on phaseSync (that would rebuild the Room every tick). Once
+  // the interviewer has said it is ending, the room closing is the
+  // interview finishing: no completion check, no rejoin. Without this the
+  // page rejoined a finished interview in the seconds before the server
+  // marked it complete, and the candidate heard the opening again.
+  const endingRef = useRef(false);
+  endingRef.current = phaseSync.ending;
   const showFiveMinuteNotice = fiveMinuteNotice(
     coding.secondsRemaining,
     coding.current?.allocated_minutes,
@@ -394,7 +402,11 @@ export default function InterviewRoom({
       if (cancelled) return;
       setCallState("disconnected");
       if (endedByCandidateRef.current) return;
-      // The most-travelled ending of all: the agent finished, end_call
+      if (endingRef.current) {
+        setCompleted(true);
+        return;
+      }
+      // The agent finished without the ending signal reaching us, end_call
       // deleted the room, and the browser learns about it as a bare
       // Disconnected event that looks exactly like a dropped connection. A
       // page refresh lands here too (CLIENT_INITIATED is one of LiveKit's
