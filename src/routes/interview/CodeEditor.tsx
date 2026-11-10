@@ -35,24 +35,20 @@ function languageExtensions(language: InterviewLanguage) {
   return [
     config.support(),
     indentUnit.of(config.indent),
-    config.checksSyntax
-      ? [
-          linter(
-            (view): Diagnostic[] =>
-              syntaxProblems(view.state).map((problem) => ({
-                ...problem,
-                severity: "error",
-                // The parser notices a mistake where it stops making sense,
-                // which is often the line after the one that caused it.
-                message:
-                  "This does not parse. Look for a missing bracket, colon or quote on this line or just above it.",
-              })),
-            { delay: LINT_DELAY_MS },
-          ),
-          // A one-character underline is easy to miss; the gutter dot is not.
-          lintGutter(),
-        ]
-      : [],
+    linter(
+      (view): Diagnostic[] =>
+        syntaxProblems(view.state).map((problem) => ({
+          ...problem,
+          severity: "error",
+          // The parser notices a mistake where it stops making sense,
+          // which is often the line after the one that caused it.
+          message:
+            "This does not parse. Look for a missing bracket, colon or quote on this line or just above it.",
+        })),
+      { delay: LINT_DELAY_MS },
+    ),
+    // A one-character underline is easy to miss; the gutter dot is not.
+    lintGutter(),
   ];
 }
 

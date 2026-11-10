@@ -734,11 +734,22 @@ export interface SpokenQuestion extends QuestionSpine {
   prompt: string;
 }
 
+// The function the candidate implements. The platform generates the editor
+// stub and the driver that calls it from this; each example's `input` is
+// its arguments, one JSON value per line, and `output` the returned value.
+// Absent on a question authored before the harness existed.
+export interface FunctionSignature {
+  name: string;
+  params: { name: string; type: string }[];
+  returns: string;
+}
+
 export interface CodingQuestion extends QuestionSpine {
   kind: "coding";
   title: string;
   statement_md: string;
   examples: CodingExample[];
+  signature?: FunctionSignature;
 }
 
 // One coding question's hidden checks: inputs the candidate never sees,
@@ -843,7 +854,7 @@ export interface InterviewBreakdownItem {
 
 // The candidate's submitted code for one coding question, read from
 // interview_sessions.artifacts["code"]. `language` mirrors
-// lib/interviewApi.ts's InterviewLanguage ("python" | "javascript" | "cpp")
+// lib/interviewApi.ts's InterviewLanguage ("python" | "javascript")
 // but is left as `string` here: this is read-only display of whatever the
 // candidate's browser sent, and a value outside that union must still
 // render rather than fail a type check at the API boundary.

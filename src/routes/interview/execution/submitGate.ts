@@ -1,19 +1,18 @@
-import type { RunCodeResponse } from "@/lib/interviewApi";
+import type { RunResult } from "./runResult";
 
 // Whether Submit can be pressed yet.
 //
-// A candidate submitted a Two Sum answer that was never run once — it was
-// a LeetCode-style method that printed nothing — and the interviewer only
-// found out at scoring time. Submit is the end of the question, so it
-// should mean "I checked this", not "I typed something".
+// A candidate submitted a Two Sum answer that was never run once, and the
+// interviewer only found out at scoring time. Submit is the end of the
+// question, so it should mean "I checked this", not "I typed something".
 //
 // The hard constraint on this rule: it must never trap someone. Submit is
 // the only way to finish a question by hand, so requiring a passing run
-// where no run is POSSIBLE (C++ has no browser runner; Pyodide can fail to
-// load) would leave the candidate with no way out at all. In those cases
-// the gate stands down completely. The question timer's auto-save is a
-// separate path (useCodingQuestions.handleExpire persists directly), so
-// work is still captured even when this gate never opens.
+// where no run is POSSIBLE (Pyodide can fail to load) would leave the
+// candidate with no way out at all. In that case the gate stands down
+// completely. The question timer's auto-save is a separate path
+// (useCodingQuestions.handleExpire persists directly), so work is still
+// captured even when this gate never opens.
 export interface SubmitGate {
   blocked: boolean;
   note: string | null;
@@ -28,7 +27,7 @@ export function submitGateFor({
   // off in that case, by design: see the note above.
   runnable: boolean;
   isRunning: boolean;
-  runResult: RunCodeResponse | null;
+  runResult: RunResult | null;
 }): SubmitGate {
   if (!runnable) return { blocked: false, note: null };
 

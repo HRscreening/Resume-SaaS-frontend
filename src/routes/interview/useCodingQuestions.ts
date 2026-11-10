@@ -7,7 +7,6 @@ import {
   submitCode,
   type SubmitVerdict,
   type InterviewLanguage,
-  type RunCodeResponse,
 } from "@/lib/interviewApi";
 import {
   loadCodingState,
@@ -20,12 +19,8 @@ import { useCountdown } from "./useCountdown";
 import { useQuestionSync } from "./useQuestionSync";
 import { reconcileDeadline, shouldClearDeadline } from "./questionDeadline";
 import { notifyActivity, notifySubmitted } from "./notifySubmission";
-import {
-  runCodeLocally,
-  runWithInput,
-  CppNotRunnableError,
-  PythonNotReadyError,
-} from "./execution/runCodeLocally";
+import { runCodeLocally, runWithInput, PythonNotReadyError } from "./execution/runCodeLocally";
+import type { RunResult } from "./execution/runResult";
 import { pyodideManager } from "./execution/pyodideManager";
 import { usePyodideStatus } from "./execution/usePyodideStatus";
 import { runGateFor } from "./execution/runGate";
@@ -41,9 +36,6 @@ interface PersistResult {
 }
 
 const DEFAULT_LANGUAGE: InterviewLanguage = "python";
-// The languages the pane offers, for isUntouchedStarter: a stub from ANY
-// of them still counts as untouched.
-const LANGUAGE_IDS = ["python", "javascript", "cpp"] as const;
 
 function minutesToMs(minutes: number): number {
   return minutes * 60_000;
@@ -190,11 +182,11 @@ export function useCodingQuestions(token: string, room: Room | null, paused = fa
   const total = questions?.length ?? 0;
   const current = index !== -1 && questions ? questions[index] : undefined;
   const rawBuffer = current ? bufferFor(state?.buffers ?? {}, current.id) : null;
-  // An editor that opens empty makes the candidate guess the harness
-  // before they can start on the problem (starterCode.ts). Seeded at read
-  // time rather than written into state: a stub nobody has typed into is
-  // not the candidate's work, and persisting it would make every later
-  // "has this been touched?" check think it had been.
+  // The editor opens on the function stub the server generated for the
+  // question (starterCode.ts). Seeded at read time rather than written
+  // into state: a stub nobody has typed into is not the candidate's work,
+  // and persisting it would make every later "has this been touched?"
+  // check think it had been.
   const buffer =
     rawBuffer && current && current.kind === "coding" && !rawBuffer.source
       ? { ...rawBuffer, source: starterCodeFor(current, rawBuffer.language) }
@@ -353,7 +345,7 @@ export function useCodingQuestions(token: string, room: Room | null, paused = fa
   }, [remainingS, currentId, syncedQuestionId]);
   const timerActive = state?.deadlineAt != null;
 
-  const [runResult, setRunResult] = useState<RunCodeResponse | null>(null);
+  const [runResult, setRunResult] = useState<RunResult | null>(null);
   const [runNotice, setRunNotice] = useState<RunNotice | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [submitNotice, setSubmitNotice] = useState<SubmitNotice | null>(null);
@@ -364,7 +356,7 @@ export function useCodingQuestions(token: string, room: Room | null, paused = fa
   // last submission", which is exactly what they are working against.
   const [verdict, setVerdict] = useState<SubmitVerdict | null>(null);
   const [customInput, setCustomInput] = useState("");
-  const [customResult, setCustomResult] = useState<RunCodeResponse | null>(null);
+  const [customResult, setCustomResult] = useState<RunResult | null>(null);
 
   // Read inside the async handlers below so a Run or Submit request that is
   // still in flight when the pointer moves the candidate on (mid-request)
@@ -406,10 +398,7 @@ export function useCodingQuestions(token: string, room: Room | null, paused = fa
       setState((prev) => {
         if (!prev || !current) return prev;
         const existing = bufferFor(prev.buffers, current.id);
-        if (
-          current.kind === "coding" &&
-          isUntouchedStarter(existing.source, current, LANGUAGE_IDS)
-        ) {
+        if (current.kind === "coding" && isUntouchedStarter(existing.source, current)) {
           return {
             ...prev,
             buffers: {
@@ -560,31 +549,23 @@ export function useCodingQuestions(token: string, room: Room | null, paused = fa
     return () => window.clearTimeout(id);
   }, [submitNotice]);
 
-  // Whether Run can be pressed, and what to say about it (runGate.ts).
-  // Note and blocked are separate on purpose: "Python is still loading" is
-  // worth telling the candidate but must NOT disable the button, because
-  // the run itself waits for the interpreter. Only a language with no
-  // browser runner, or an interpreter that failed outright, blocks.
+  // What to say about Run (runGate.ts). "Python is still loading" is worth
+  // telling the candidate but never disables the button, because the run
+  // itself waits for the interpreter.
   const runGate = runGateFor(buffer?.language, pythonStatus);
-  const runBlockedReason: string | null = runGate.blocked ? runGate.note : null;
   const runNote: string | null = runGate.note;
 
   // Submit means "I checked this". It waits for a passing run, EXCEPT where
-  // running is impossible (C++, or Pyodide failed to load) -- there it
-  // stands down rather than leaving the candidate no way to finish the
-  // question by hand. `runGate.blocked` is exactly "cannot run here".
-  const submitGate = submitGateFor({
-    // canSucceed, NOT !blocked: a failed Pyodide load leaves Run pressable
-    // (it retries) but means the candidate may never be able to produce a
-    // passing run, so Submit must not hold them to one.
-    runnable: runGate.canSucceed,
-    isRunning,
-    runResult,
-  });
+  // running is impossible (Pyodide failed to load) -- there it stands down
+  // rather than leaving the candidate no way to finish the question by
+  // hand. A failed Pyodide load leaves Run pressable (it retries) but means
+  // the candidate may never be able to produce a passing run, so Submit
+  // must not hold them to one.
+  const submitGate = submitGateFor({ runnable: runGate.canSucceed, isRunning, runResult });
   const submitBlockedReason: string | null = submitGate.note;
 
   const handleRun = useCallback(async () => {
-    if (!current || current.kind !== "coding" || !buffer || isRunning || runBlockedReason) return;
+    if (!current || current.kind !== "coding" || !buffer || isRunning) return;
     const questionId = current.id;
     setIsRunning(true);
     setRunNotice(null);
@@ -594,7 +575,7 @@ export function useCodingQuestions(token: string, room: Room | null, paused = fa
       // so the candidate can check their own work, and nothing here is ever
       // read for scoring, which is what makes running untrusted code in the
       // candidate's own tab safe in the first place.
-      const result = await runCodeLocally(buffer.language, buffer.source, current.examples);
+      const result = await runCodeLocally(buffer.language, buffer.source, current);
       // The pointer can move the candidate past this question (the server
       // advanced it) while a run is still going. A result for a question
       // that is no longer on screen must be dropped, not shown against
@@ -604,7 +585,7 @@ export function useCodingQuestions(token: string, room: Room | null, paused = fa
     } catch (err) {
       if (currentIdRef.current !== questionId) return;
       setRunResult(null);
-      if (err instanceof CppNotRunnableError || err instanceof PythonNotReadyError) {
+      if (err instanceof PythonNotReadyError) {
         setRunNotice({ kind: "unavailable", message: err.message });
       } else {
         setRunNotice({
@@ -621,24 +602,24 @@ export function useCodingQuestions(token: string, room: Room | null, paused = fa
       // never get stuck true because the candidate advanced mid-request.
       setIsRunning(false);
     }
-  }, [current, buffer, isRunning, runBlockedReason]);
+  }, [current, buffer, isRunning]);
 
-  // Runs the code on input the candidate typed, and shows what it printed.
-  // Separate state from `runResult` on purpose: the Submit gate reads
-  // runResult ("did the worked examples pass"), and trying an input of your
+  // Calls the code with arguments the candidate typed, and shows what came
+  // back. Separate state from `runResult` on purpose: the Submit gate reads
+  // runResult ("did the worked examples pass"), and trying a case of your
   // own must neither satisfy that gate nor reset it.
   const handleRunCustom = useCallback(async () => {
-    if (!current || current.kind !== "coding" || !buffer || isRunning || runBlockedReason) return;
+    if (!current || current.kind !== "coding" || !buffer || isRunning) return;
     const questionId = current.id;
     setIsRunning(true);
     try {
-      const result = await runWithInput(buffer.language, buffer.source, customInput);
+      const result = await runWithInput(buffer.language, buffer.source, current, customInput);
       if (currentIdRef.current === questionId) setCustomResult(result);
     } catch (err) {
       if (currentIdRef.current !== questionId) return;
       setCustomResult(null);
       setRunNotice({
-        kind: err instanceof CppNotRunnableError || err instanceof PythonNotReadyError ? "unavailable" : "error",
+        kind: err instanceof PythonNotReadyError ? "unavailable" : "error",
         message:
           err instanceof Error
             ? err.message
@@ -647,7 +628,7 @@ export function useCodingQuestions(token: string, room: Room | null, paused = fa
     } finally {
       setIsRunning(false);
     }
-  }, [current, buffer, isRunning, runBlockedReason, customInput]);
+  }, [current, buffer, isRunning, customInput]);
 
   const handleSubmit = useCallback(async () => {
     if (!current || current.kind !== "coding" || !buffer || isSubmitting) return;
@@ -740,7 +721,6 @@ export function useCodingQuestions(token: string, room: Room | null, paused = fa
     runResult,
     runNotice,
     isRunning,
-    runBlockedReason,
     runNote,
     submitBlocked: submitGate.blocked,
     submitBlockedReason,

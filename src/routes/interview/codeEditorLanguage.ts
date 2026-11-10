@@ -1,4 +1,3 @@
-import { cpp } from "@codemirror/lang-cpp";
 import { javascript } from "@codemirror/lang-javascript";
 import { python } from "@codemirror/lang-python";
 import { ensureSyntaxTree, syntaxTree, type LanguageSupport } from "@codemirror/language";
@@ -9,17 +8,11 @@ import type { InterviewLanguage } from "@/lib/interviewApi";
 interface EditorLanguage {
   support: () => LanguageSupport;
   indent: string;
-  // Whether a parse error from this grammar is trustworthy enough to
-  // underline. C++ is highlighted but not checked: its grammar cannot see
-  // through macros and some templates, and a wrong red underline on code
-  // that compiles is worse for a candidate than no underline at all.
-  checksSyntax: boolean;
 }
 
 export const EDITOR_LANGUAGES: Record<InterviewLanguage, EditorLanguage> = {
-  python: { support: python, indent: "    ", checksSyntax: true },
-  javascript: { support: javascript, indent: "  ", checksSyntax: true },
-  cpp: { support: cpp, indent: "    ", checksSyntax: false },
+  python: { support: python, indent: "    " },
+  javascript: { support: javascript, indent: "  " },
 };
 
 export interface SyntaxProblem {

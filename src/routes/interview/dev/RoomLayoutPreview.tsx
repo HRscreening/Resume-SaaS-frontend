@@ -27,11 +27,19 @@ const QUESTIONS = [
     presented: true,
     title: "Merge overlapping bookings",
     statement_md:
-      "You're given a list of room bookings, each a start and end hour. Merge every pair that overlaps or touches, and print the merged bookings in order of start time.\n\n**Input**: one booking per line, `start end`.\n\n**Output**: the merged bookings, one per line.",
+      "You're given `bookings`, a list of room bookings, each a `[start, end]` pair of hours. Merge every pair that overlaps or touches and return the merged bookings in order of start time.\n\n**Constraints**\n\n- 0 ≤ len(bookings) ≤ 10^4\n- 0 ≤ start < end ≤ 24",
+    signature: {
+      name: "merge_bookings",
+      params: [{ name: "bookings", type: "int[][]" }],
+      returns: "int[][]",
+    },
     examples: [
-      { input: "1 3\n2 6\n8 10\n", output: "1 6\n8 10", note: "1–3 and 2–6 overlap" },
-      { input: "1 4\n4 5\n", output: "1 5", note: "touching bookings merge too" },
+      { input: "[[1,3],[2,6],[8,10]]", output: "[[1,6],[8,10]]", note: "1–3 and 2–6 overlap" },
+      { input: "[[1,4],[4,5]]", output: "[[1,5]]", note: "touching bookings merge too" },
     ],
+    starter_code: {
+      python: "from typing import List\n\n\ndef merge_bookings(bookings: List[List[int]]) -> List[List[int]]:\n    # Write your solution here\n    pass\n",
+    },
   },
   { id: "q5", kind: "spoken" as const, allocated_minutes: 4, presented: false },
   { id: "q6", kind: "spoken" as const, allocated_minutes: 4, presented: false },
@@ -82,7 +90,6 @@ export default function RoomLayoutPreview() {
     runResult: null,
     runNotice: null,
     isRunning: false,
-    runBlockedReason: null,
     runNote: null,
     submitBlocked: true,
     submitBlockedReason: "Run the examples first. Submit unlocks when they all pass.",

@@ -270,7 +270,7 @@ export function QuestionBody({ question }: { question: Question }) {
       ) : (
         <div className="flex flex-col gap-1.5">
           {question.examples.map((example, i) => (
-            <ExampleRow key={i} example={example} />
+            <ExampleRow key={i} example={example} harnessed={Boolean(question.signature)} />
           ))}
         </div>
       )}
@@ -310,8 +310,8 @@ function HiddenChecks({ judging }: { judging: JudgingSummary | undefined }) {
       </summary>
       <div className="flex flex-col gap-1.5 border-t border-[#BBE5CA] bg-white px-2.5 py-2 text-[#404040]">
         <p className="text-[#737373]">
-          The candidate never sees these. Each expected output is what the reference solution
-          printed when it was run.
+          The candidate never sees these. Each expected value is what the reference solution
+          returned when it was run.
         </p>
         {judging.tests.map((test, i) => (
           <div key={i} className="rounded-lg bg-[#F5F3EE] px-2.5 py-1.5">
@@ -339,12 +339,15 @@ function HiddenChecks({ judging }: { judging: JudgingSummary | undefined }) {
   );
 }
 
-function ExampleRow({ example }: { example: CodingExample }) {
+// `harnessed`: the question is a function the platform calls, so an
+// example's input is its arguments (one JSON value per line) and its
+// output the returned value. Otherwise a plain program's stdin and stdout.
+function ExampleRow({ example, harnessed }: { example: CodingExample; harnessed: boolean }) {
   return (
     <div className="flex flex-col gap-1 rounded-lg bg-[#F5F3EE] px-2.5 py-1.5 text-xs text-[#404040]">
-      <span className="font-medium text-[#0F0F0F]">Input</span>
+      <span className="font-medium text-[#0F0F0F]">{harnessed ? "Arguments" : "Input"}</span>
       <pre className="whitespace-pre-wrap break-words font-mono">{example.input}</pre>
-      <span className="font-medium text-[#0F0F0F]">Output</span>
+      <span className="font-medium text-[#0F0F0F]">{harnessed ? "Returns" : "Output"}</span>
       <pre className="whitespace-pre-wrap break-words font-mono">{example.output}</pre>
       {example.note && <div className="text-[#737373]">{example.note}</div>}
     </div>

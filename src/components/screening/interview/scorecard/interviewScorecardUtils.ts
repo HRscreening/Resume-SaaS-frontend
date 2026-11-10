@@ -34,7 +34,6 @@ export function responseTimeLabel(latency: InterviewLatencySummary | null | unde
 const LANGUAGE_LABEL: Record<string, string> = {
   python: "Python",
   javascript: "JavaScript",
-  cpp: "C++",
 };
 
 export function languageLabel(language: string): string {

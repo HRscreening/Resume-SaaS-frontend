@@ -9,7 +9,6 @@ const coding = {
   expected_answer: "", grading_notes: "", title: "Two Sum",
   statement_md: "Find them.\n\n**Input**\n- $N$ integers\n\n**Constraints**\n- $2 \\le N \\le 10^4$",
   examples: [{ input: "4\n2 7 11 15\n9", output: "0 1", note: "" }],
-  starter_code: {},
 } as unknown as Question;
 
 describe("QuestionBody on the round screen", () => {
