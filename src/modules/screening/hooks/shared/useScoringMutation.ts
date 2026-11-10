@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type QueryClient, type InfiniteData } from "@tanstack/react-query";
-import { ApplicationQueryKeys, ResumeParsingQueryKeys, ScreeningResultsQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys, ScreeningUsageQueryKeys } from "@/modules/screening/queryKeys";
+import { ApplicationQueryKeys, ResumeParsingQueryKeys, ScreeningResultsQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys, ScreeningUsageQueryKeys } from "@/modules/shared/queryKeys/screeningQueryKeys";
 import { type GetActiveBatchesResponse } from "@/modules/screening/apis/activeBatches";
 import { screenResume } from "@/modules/screening/apis/screenings.api"
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
@@ -52,6 +52,11 @@ export function useScoringMutation(
                     variables.screeningId,
                 ),
             });
+
+            // Each resume sent spends one analysis, so the remaining quota
+            // the toolbar checks against is stale. ["usage"] prefix-matches
+            // the user-scoped key.
+            queryClient.invalidateQueries({ queryKey: ["usage"] });
 
             // Scoring a resume changes resumes_scored for this job.
             queryClient.invalidateQueries({

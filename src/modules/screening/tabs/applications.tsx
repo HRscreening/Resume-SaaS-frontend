@@ -3,12 +3,13 @@ import { Link, useParams, useNavigate } from "@tanstack/react-router";
 import { ApplicationTable } from "@/modules/screening/components/Application/application_table";
 import { CustomMenuButton } from "@/modules/screening/components/shared/MenuButton";
 import { useSelectedApplications, SelectedApplicationsProvider } from "@/modules/screening/hooks/application/custom/useSelectedApplication";
-
-import { toast } from "sonner";
+import UploadResumes from "@/modules/screening/components/uploadResumes"
+import { useAuth } from "@/hooks/useAuth";
+import { useAccount } from "@/hooks/useAccount";
+import { AnalyticsEvent, useAnalytics } from "@/analytics";
 import ResumeParsingProgress from "@/modules/screening/components/Application/resumeParsingProgress";
 import { useGetBatchesQuery } from "@/modules/screening/hooks/shared/batch.hook";
 import { ApplicationsToolbar } from "@/modules/screening/components/Application/filters/ApplicationToolbar";
-import InfoSheet, { useAnalysisSheetOpen as useInfoSheetOpen, ANALYSIS_SHEET_WIDTH } from "@/modules/screening/components/Application/InfoSheet";
 import { type ScreeningDetailsSearchParams } from "@/modules/screening/types/searchSchema";
 import { Archive, CircleCheck } from 'lucide-react'
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
@@ -33,19 +34,16 @@ const options = [
 
 interface ApplicationPageProps {
     screening_id: string;
-    multiSelectOpen: boolean;
-    setMultiSelectOpen: (mode: boolean) => void;
     onTabChange?: (tab: "Applications" | "Screening") => void;
 
 }
 
-export function ApplicationPage({ screening_id, onTabChange, multiSelectOpen, setMultiSelectOpen }: ApplicationPageProps) {
+export function ApplicationPage({ screening_id, onTabChange }: ApplicationPageProps) {
 
     const { search } = useScreeningDetailsNavigation();
-
-    const infoOpen = useInfoSheetOpen();
-
-
+    const { user } = useAuth();
+    const { canWrite } = useAccount();
+    const analytics = useAnalytics();
 
     const ApplicationQuery = useApplicationQuery(screening_id, { limit: PAGE_SIZE });
     const { query: ApplicationResultsQuery, setType } = ApplicationQuery;
@@ -55,31 +53,9 @@ export function ApplicationPage({ screening_id, onTabChange, multiSelectOpen, se
 
 
     const { selectedApplications, showSelectedOnly, clearSelection } = useSelectedApplications(); // Custom hook to manage selected applications state
+    const [showUploadMore, setShowUploadMore] = useState(false);
 
 
-
-
-    // async function submitScreen() {
-    //     if (selectedApplications.size === 0) {
-    //         setSourceError("No candidates selected for Screening.");
-    //         return;
-    //     }
-    //     setScreening(true);
-
-    //     try {
-    //         const resume_ids = Array.from(selectedApplications);
-    //         const res = await screenResumesMutate({ screening_id, resume_ids });
-    //         toast.success(res.message || "Candidates scoring batch started successfully.");
-    //         exitSourceMode();
-    //         onTabChange?.("Screening");
-    //     }
-    //     catch (error) {
-    //         setSourceError("Error Screening candidates. Please try again.");
-    //     }
-
-    //     setScreening(false);
-
-    // }
 
 
     const hasActiveParsing = (active_batches?.parsing_batch_ids?.length ?? 0) > 0;
@@ -112,11 +88,23 @@ export function ApplicationPage({ screening_id, onTabChange, multiSelectOpen, se
         );
     }
 
-
+    if (applications.length === 0 && !isLoading && !isFetching && !hasActiveParsing && canWrite) {
+        return (
+            <div className="my-4 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
+                {<UploadResumes screening_id={screening_id} user_id={user?.id ?? ""} setShowUploadMore={setShowUploadMore} />}
+            </div>
+        );
+    }
 
 
     return (
         <div >
+            {(showUploadMore) &&
+                <div className="my-4 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
+                    {canWrite && <UploadResumes screening_id={screening_id} user_id={user?.id ?? ""} setShowUploadMore={setShowUploadMore} />}
+                </div>
+            }
+
             <div className="my-4 space-y-3">
                 {active_batches?.parsing_batch_ids?.map((batch_id) => (
                     <ResumeParsingProgress key={`parsing-${batch_id}`} screening_id={screening_id} batch_id={batch_id} />
@@ -127,32 +115,30 @@ export function ApplicationPage({ screening_id, onTabChange, multiSelectOpen, se
                 <ApplicationsToolbar applicationQuery={ApplicationQuery} />
 
                 <div className="shrink-0 flex items-center gap-2">
+                    <button
+                        type="button"
+                        className="my-2 px-3 py-1 rounded-lg bg-[#0F0F0F] text-white text-sm font-medium cursor-pointer"
+                        disabled={!canWrite || search.appType !== "Active"}
+                        onClick={() => {
+                            setShowUploadMore((v) => {
+                                const next = !v;
+                                if (next) analytics.track(AnalyticsEvent.RESUME_UPLOAD_PANEL_OPENED, {
+                                    screeningId: screening_id,
+                                    uploadedCount: applications.length,
+                                });
+                                return next;
+                            });
+                        }}
+                    >
+                        {showUploadMore ? "Cancel" : "Add Resumes"}
+                    </button>
                     <CustomMenuButton selectedOption={search.appType} options={options} handleOptionClick={(e: TableOptions) => {
                         setType(e as ScreeningDetailsSearchParams["appType"]);
                         clearSelection();
                     }} />
 
-                    {(!multiSelectOpen && selectedApplications.size == 0) &&
-                        <button
-                            className="my-2 px-3 py-1 rounded-lg bg-[#0F0F0F] text-white text-sm font-medium cursor-pointer"
-                            disabled={applications.length === 0 || search.appType != "Active"} // Disable if no applications or not on "Active" tab
-                            onClick={() => {
-                                console.log("Applications length:", applications.length, "MultiSelectOpen:", multiSelectOpen, "search.appType:", search.appType);
-                                if (!applications || applications.length === 0) {
-                                    toast.error("No candidates available for Screening.");
-                                    return;
-                                }
 
-                                if (!multiSelectOpen) {
-                                    setMultiSelectOpen(true);
-                                } else {
-                                    clearSelection();
-                                }
-                            }}
-                        >
-                            {multiSelectOpen ? "Cancel" : "Screen Applications"}
-                        </button>
-                    }
+
                 </div>
             </div>
             {
@@ -166,7 +152,6 @@ export function ApplicationPage({ screening_id, onTabChange, multiSelectOpen, se
 
                     return <ApplicationTable
                         candidates={tableApplications}
-                        selectable={multiSelectOpen}
                         hasMore={hasNextPage}
                         loading={isLoading}
                         backgGroundFetching={isFetching}
@@ -183,37 +168,37 @@ export function ApplicationPage({ screening_id, onTabChange, multiSelectOpen, se
             {/* Skeleton placeholder for the info sheet while data is loading.
                 The real InfoSheet mounts inside the application row, so it doesn't
                 exist until candidate data arrives. This fills the 600px gap. */}
-            {(isLoading || applications.length === 0) && !!search.appId && (
-                <InfoSheetSkeleton />
-            )}
+            {
+                (isLoading || applications.length === 0) && !!search.appId && (
+                    <InfoSheetSkeleton />
+                )
+            }
 
 
             {/* Screen action bar — sticky bottom, only in Screen mode */}
-            <ApplicationMultiSelectToolBar
-                onTabChange={onTabChange}
-                isMultiSelectMode={multiSelectOpen}
-                analysisOpen={infoOpen}
-                setIsMultiSelectMode={setMultiSelectOpen}
-                type={search.appType}
-            />
+            {applications.length > 0 && !isLoading && search.tab === "Applications" &&
+                <ApplicationMultiSelectToolBar
+                    onTabChange={onTabChange}
+                    analysisOpen={search.appId !== undefined}
+                    type={search.appType}
+                />
+            }
 
-        </div>
+        </div >
     );
 }
 
 
 interface ApplicationsProps {
     onTabChange?: (tab: "Applications" | "Screening") => void;
-    sourceMode: boolean;
-    setSourceMode: (mode: boolean) => void;
 }
 
 
-export default function Applications({ onTabChange, sourceMode, setSourceMode }: ApplicationsProps) {
+export default function Applications({ onTabChange }: ApplicationsProps) {
     const { id: screening_id } = useParams({ strict: false }) as { id: string; };
     return (
         <SelectedApplicationsProvider screening_id={screening_id} >
-            <ApplicationPage screening_id={screening_id} onTabChange={onTabChange} multiSelectOpen={sourceMode} setMultiSelectOpen={setSourceMode} />
+            <ApplicationPage screening_id={screening_id} onTabChange={onTabChange} />
         </SelectedApplicationsProvider>
     );
 }

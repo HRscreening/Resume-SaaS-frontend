@@ -14,7 +14,7 @@ import { AnalyticsEvent, useAnalytics } from "@/analytics";
 type Step = 1 | 2;
 type JdInputMode = "paste" | "upload" | "ai";
 
-const STEPS = ["Job description", "Review rubric"] as const;
+const STEPS = ["Job description", "Review rubric","Start screening"] as const;
 
 // New-job wizard controller. Owns all wizard state and rubric mutations; the
 // per-step UI lives in src/components/screening/new-screening/*.
@@ -29,7 +29,7 @@ export default function NewScreening() {
   // Step 1 — job description input
   const [title, setTitle] = useState("");
   const [jdText, setJdText] = useState("");
-  const [jdInputMode, setJdInputMode] = useState<JdInputMode>("paste");
+  const [jdInputMode, setJdInputMode] = useState<JdInputMode>("upload");
   const [jdFile, setJdFile] = useState<File | null>(null);
   const [analyzingJD, setAnalyzingJD] = useState(false);
   const [extractingJD, setExtractingJD] = useState(false);

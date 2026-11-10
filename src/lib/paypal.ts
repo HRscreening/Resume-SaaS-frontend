@@ -10,17 +10,17 @@ interface PayPalNamespace {
   Buttons: (options: {
     style?: Record<string, string | number | boolean>;
     createOrder: () => Promise<string>;
-    onApprove: (data: { orderID: string }) => Promise<void>;
+    onApprove: (data: { orderID?: string,subscriptionID?:string }) => Promise<void>;
     onCancel?: () => void;
     onError?: (err: unknown) => void;
   }) => PayPalButtonsInstance;
 }
 
-declare global {
-  interface Window {
-    paypal?: PayPalNamespace;
-  }
-}
+// declare global {
+//   interface Window {
+//     paypal?: PayPalNamespace;
+//   }
+// }
 
 const SDK_URL = "https://www.paypal.com/sdk/js";
 // PayPal only ever takes our USD checkouts; India pays through Razorpay.
@@ -30,7 +30,7 @@ let sdkPromise: Promise<PayPalNamespace> | null = null;
 
 function loadPayPalSdk(clientId: string): Promise<PayPalNamespace> {
   if (typeof window === "undefined") return Promise.reject(new Error("PayPal requires browser"));
-  if (window.paypal) return Promise.resolve(window.paypal);
+  if ((window as any).paypal) return Promise.resolve((window as any).paypal as unknown as PayPalNamespace);
   if (sdkPromise) return sdkPromise;
   sdkPromise = new Promise<PayPalNamespace>((resolve, reject) => {
     const script = document.createElement("script");
@@ -42,7 +42,7 @@ function loadPayPalSdk(clientId: string): Promise<PayPalNamespace> {
     });
     script.src = `${SDK_URL}?${params.toString()}`;
     script.onload = () => {
-      if (window.paypal) resolve(window.paypal);
+      if ((window as any).paypal) resolve((window as any).paypal as unknown as PayPalNamespace);
       else {
         sdkPromise = null;
         reject(new Error("Failed to load PayPal"));
@@ -96,10 +96,18 @@ export async function renderPayPalButtons({
       const order = await createPayPalOrder({ plan, cycle });
       return order.order_id;
     },
-    onApprove: async ({ orderID }) => {
+    onApprove: async ({ orderID,subscriptionID }) => {
+
+      const id = orderID ?? subscriptionID;
+
+      if (!id) {
+        onError("Payment could not be confirmed. Contact support.");
+        return;
+      }
+
       onBusyChange?.(true);
       try {
-        const result = await capturePayPalOrder(orderID);
+        const result = await capturePayPalOrder(id);
         if (result.success) onPaid();
         else if (result.pending) onPending();
         else onError("Payment could not be confirmed. Contact support.");

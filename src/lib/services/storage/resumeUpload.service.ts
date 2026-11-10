@@ -1,4 +1,4 @@
-import { StorageService } from "@/lib/services/storage.service";
+import { StorageService } from "@/lib/services/storage/storage.service";
 import { generateStoragePath, extractExtension, validateResume } from "@/utils/file.utils";
 import { getResumeFileUrl } from "@/lib/api";
 

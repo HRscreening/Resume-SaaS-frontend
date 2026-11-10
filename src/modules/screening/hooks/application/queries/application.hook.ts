@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type QueryClient, type InfiniteData } from "@tanstack/react-query";
-import { ApplicationQueryKeys, ResumeParsingQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys, ScreeningUsageQueryKeys } from "@/modules/screening/queryKeys";
+import { ApplicationQueryKeys, ResumeParsingQueryKeys, ResumeScoringQueryKeys, ActiveBatchesQueryKeys, ScreeningUsageQueryKeys } from "@/modules/shared/queryKeys/screeningQueryKeys";
 import { getApplications } from "@/modules/screening/apis/getApplications";
 import { addApplications } from "@/modules/screening/apis/addApplications";
 import { type GetActiveBatchesResponse } from "@/modules/screening/apis/activeBatches";
@@ -176,6 +176,7 @@ export type MultiMutationOptions = {
 
 
 import { toast } from "sonner"
+import { screeningErrorMessage } from "@/modules/screening/utils/batchLimit"
 
 export function useMultiApplicationResumeUtility<
   TVariables extends BaseMultiResumeVariables = BaseMultiResumeVariables,
@@ -199,9 +200,11 @@ export function useMultiApplicationResumeUtility<
       }
     },
 
-    onError: (_, { screeningId }) => {
-      if (options?.successMessage) {
-        toast.success(options.errorMessage)
+    // A refusal (4xx) carries a reason written for the user, so it is shown
+    // in place of the generic line. This used to fire a success toast.
+    onError: (error) => {
+      if (options?.errorMessage) {
+        toast.error(screeningErrorMessage(error, options.errorMessage))
       }
     }
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Rubric, Subcategory } from "@/types";
 import { RubricCategoryCard } from "./RubricCategoryCard";
 import { AskSourceJobModal } from "./AskSourcingModal";
-
+import { detectBillingCurrency } from "@/lib/currency";
 
 
 
@@ -30,6 +30,7 @@ export function RubricReviewStep({
   saving,
 }: RubricReviewStepProps) {
 
+  const isIndia = detectBillingCurrency() === "INR";
   const [showSourcingModal, setShowSourcingModal] = useState(false);
 
   
@@ -88,7 +89,7 @@ export function RubricReviewStep({
         </button>
       </div>
 
-      {showSourcingModal &&
+      {showSourcingModal && isIndia &&
         <AskSourceJobModal
           onSave={onSave}
           onClose={() => setShowSourcingModal(false)}

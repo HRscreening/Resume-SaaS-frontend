@@ -9,8 +9,8 @@ import { StageSelect } from "@/components/screening/StageSelect";
 import { MenuButton, type Option } from "@/modules/screening/components/shared/MenuButton";
 import ScoreProgressBar from "@/modules/screening/components/shared/ProgressBars/ScoreProgressBar";
 import { generateCategoryProgressBarsInput } from "@/modules/screening/utils/Screeening.utils";
-import AddNote from "@/modules/screening/components/Dialogs/AddNoteDialog" 
-
+import AddNote from "@/modules/screening/components/Dialogs/AddNoteDialog"
+import { PhoneOutgoing } from "lucide-react"
 
 interface CandidateRowProps {
     MenuOptions: Option[];
@@ -29,7 +29,8 @@ interface CandidateRowProps {
     index: number;
     isOpen: boolean;
     setScreenId: (id: string | null) => void;
-    onViwAllNotes: (resumeId:string) => void;
+    onViwAllNotes: (resumeId: string) => void;
+    onVoiceIconClick: (resumeId:string) => void;
 }
 
 export function CandidateRow({
@@ -38,7 +39,7 @@ export function CandidateRow({
     processingStatus,
     candidate, compact, stage, stages, onStageChange, onManageStages, disableStageChange = false,
     selectable, selected, onToggle,
-    index, isOpen, setScreenId, onViwAllNotes
+    index, isOpen, setScreenId, onViwAllNotes,onVoiceIconClick
 }: CandidateRowProps) {
 
 
@@ -73,12 +74,12 @@ export function CandidateRow({
     const progressBarsInput = generateCategoryProgressBarsInput(candidate.category_scores);
 
     const totalColumns =
-        1 /* checkbox */+
+        1 /* checkbox */ +
         1 /* candidate */ +
         1 /* current role */ +
         1 /* experience */ +
         1 /* score */ +
-        (!compact ? 4 : 0); /* education + skills + actions */
+        (!compact ? 5 : 0); /* education + skills + actions */
 
     return (
         <tr
@@ -88,7 +89,7 @@ export function CandidateRow({
 
             <ProcessingOverlay colSpan={totalColumns} action={action} isProcessing={isProcessing}  >
 
-                <td className={`w-10 px-3 py-3 align-middle ${stickyBg}`} onClick={(e) => e.stopPropagation()}>
+                <td className={`w-20 px-3 py-3 align-middle ${stickyBg}`} onClick={(e) => e.stopPropagation()}>
                     <input
                         type="checkbox"
                         aria-label={`Select ${candidate.candidate_name ?? candidate.filename}`}
@@ -101,13 +102,7 @@ export function CandidateRow({
                                 onToggle?.(candidate.resume_id, e as React.MouseEvent);
                             }
                         }}
-                        className={`h-3.5 w-3.5 cursor-pointer accent-[#060505]
-                                    ${compact
-                                ? "opacity-0"
-                                : (selectable || selected)
-                                    ? "opacity-100"
-                                    : "opacity-0 group-hover:opacity-100"}
-                                    `}
+                        className={`h-3.5 w-3.5 cursor-pointer accent-[#060505]`}
                     />
                 </td>
 
@@ -150,7 +145,7 @@ export function CandidateRow({
                 {/* {!compact && ( */}
                 <td className="px-2 py-3 align-middle text-center">
                     <span className="text-sm font-medium text-[#0F0F0F]">
-                        {candidate.experience_years?.toPrecision(2) ?? "—"}
+                        {candidate.experience_years?.toFixed(1) ?? "—"}
                     </span>
                 </td>
                 {/* )} */}
@@ -159,7 +154,7 @@ export function CandidateRow({
                 </td>
                 {/* {!compact && ( */}
                 <td className="px-2 py-3 text-center align-middle">
-                    <VoiceCell candidate={candidate} />
+                    <VoiceCell candidate={candidate} onVoiceIconClick={onVoiceIconClick} />
                 </td>
                 {/* )} */}
 
@@ -187,7 +182,7 @@ export function CandidateRow({
                     </span>
                 </td>
                 {!compact && (
-                    <td className="px-2 py-3 text-center flex justify-between align-middle" onClick={(e) => e.stopPropagation()}>
+                    <td className="gap-1 py-3 text-center flex justify-start align-middle" onClick={(e) => e.stopPropagation()}>
                         <AnalysisSheet resume_id={candidate.resume_id} />
                         <AddNote resumeId={candidate.resume_id} screeningId={screening_id} onViwAllNotes={onViwAllNotes} />
                         <MenuButton key={candidate.resume_id} options={MenuOptions} data={candidate} />
@@ -270,13 +265,22 @@ export function SkeletonRow({
  * and only the last has a number worth reading. So the cell shows the STATE
  * first and the score only once there is one.
  */
-function VoiceCell({ candidate }: { candidate: RankedCandidate }) {
+function VoiceCell({ candidate, onVoiceIconClick}: { candidate: RankedCandidate, onVoiceIconClick: (resumeId:string) => void; }) {
     const status = candidate.voice_status ?? null;
     const score = candidate.voice_score ?? null;
     const rec = candidate.voice_recommendation ?? null;
 
+    function handleVoiceIconClick(e: React.MouseEvent) {
+        e.stopPropagation();
+        onVoiceIconClick(candidate.resume_id);
+    }
+
     if (!status) {
-        return <span className="text-xs text-[#D4D4D4]" title="No call placed yet">—</span>;
+        return <div className="flex flex-row justify-center" title="Call Now">
+            <PhoneOutgoing size={16}
+                className="hover:text-[#C85A17]"
+                onClick={handleVoiceIconClick}
+            /></div>;
     }
 
     if (status !== "ready") {
@@ -304,9 +308,10 @@ function VoiceCell({ candidate }: { candidate: RankedCandidate }) {
     const tone =
         rec === "advance" ? "text-green-700" : rec === "reject" ? "text-red-600" : "text-[#0F0F0F]";
     return (
-        <div className="flex flex-col items-center gap-0.5" title={rec ? `Recommendation: ${rec}` : undefined}>
+        <div className="flex flex-col justify-center items-center gap-0.5" title={rec ? `Recommendation: ${rec}` : undefined}>
             <span className={`text-sm font-bold leading-none ${tone}`}>
-                {score == null ? "—" : Math.round(score)}
+                {score == null ? <PhoneOutgoing  size={16}
+                className="hover:text-[#C85A17]" onClick={handleVoiceIconClick} /> : Math.round(score)}
             </span>
         </div>
     );

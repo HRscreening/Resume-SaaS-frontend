@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { saveScreeningStages, updateCandidateStage } from "@/modules/screening/apis/stages";
 import type { StagesMap, Screening, HiringStage } from "@/modules/screening/types/screening.type";
-import { ScreeningResultsQueryKeys } from "@/modules/screening/queryKeys";
-import  {ScreeningQueryKeys} from "@/modules/screening/queryKeys"
+import { ScreeningResultsQueryKeys } from "@/modules/shared/queryKeys/screeningQueryKeys";
+import  {ScreeningQueryKeys} from "@/modules/shared/queryKeys/screeningQueryKeys"
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
 

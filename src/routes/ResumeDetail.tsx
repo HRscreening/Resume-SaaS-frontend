@@ -6,7 +6,7 @@ import { InterviewScorePill } from "@/components/screening/interview/InterviewSc
 import { InterviewScorecardDrawer } from "@/components/screening/interview/InterviewScorecardDrawer";
 import { useScreening } from "@/controllers/screening/getScreening";
 import { formatDate } from "@/lib/utils";
-import { resumeUploadService } from "@/lib/services"
+import { resumeUploadService } from "@/lib/services/storage"
 
 
 function getTierLabel(score: number) {

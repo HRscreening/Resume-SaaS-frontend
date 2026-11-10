@@ -11,7 +11,7 @@ import { CandidatesTable } from "@/modules/screening/components/Screening/Candid
 import { toast } from "sonner";
 import { useGetBatchesQuery } from "@/modules/screening/hooks/shared/batch.hook";
 import ResumeScoringProgress from "@/modules/screening/components/Screening/resumeScoringProgress";
-import { ApplicationQueryKeys } from "@/modules/screening/queryKeys";
+import { ApplicationQueryKeys } from "@/modules/shared/queryKeys/screeningQueryKeys";
 import { SelectedCandidatesProvider, useSelectedCandidates } from "@/modules/screening/hooks/screening/custom/useSelectedCandidates";
 import type { RankedCandidate, RubricCategory } from "@/types";
 import { DEFAULT_STAGES } from "@/lib/stages";
@@ -41,38 +41,26 @@ type Sections = "Applications" | "Screening";
 const PAGE_SIZE = 30;
 
 interface ScreeningDetailProps {
-    analysisOpen: boolean;
     setCurrentTab: (tab: Sections) => void;
-    setSourceMode: (mode: boolean) => void;
-    rescoreMode?: boolean;
-    setRescoreMode: (mode: boolean) => void;
 }
 
 
 
 function ScreeningDetailContent({
     setCurrentTab,
-    setSourceMode,
-    rescoreMode = false,
-    analysisOpen,
-    setRescoreMode,
 }: ScreeningDetailProps) {
     const { id } = useParams({ strict: false }) as { id: string };
     const { canWrite } = useAccount();
-    const { search, setScreenId, setAnalysisTab } = useScreeningDetailsNavigation()
 
-    const queryClient = useQueryClient();
-
-
+    const { search} = useScreeningDetailsNavigation();
     const { data: active_batches } = useGetBatchesQuery(id);
 
-    const { selectedCandidates,showSelectedOnly,clearSelection } = useSelectedCandidates();
+    const { selectedCandidates, showSelectedOnly, clearSelection } = useSelectedCandidates();
 
-    const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
     const [showStages, setShowStages] = useState(false);
 
 
-    const { screening, isPending: isJobDetailsFetching, error } = useScreening(id);
+    const { screening ,isPending: isJobDetailsFetching, error } = useScreening(id);
 
     const changeStageMutation = useChangeCandidateStageMutation(id);
     const saveStagesMutation = useSaveScreeningStagesMutation(id, screening!);
@@ -88,7 +76,7 @@ function ScreeningDetailContent({
 
 
     const candidates = data?.pages.flatMap((page) => page.items) ?? []
-
+    const analysisOpen = search.tab === "Screening" && search.screenId != undefined;
 
 
 
@@ -140,20 +128,6 @@ function ScreeningDetailContent({
                     className="text-sm text-[#0F0F0F] underline mt-2 inline-block cursor-pointer"
                     onClick={() => {
                         setCurrentTab("Applications");
-
-                        const queries = queryClient.getQueriesData({
-                            queryKey: ApplicationQueryKeys.screening(id),
-                        });
-
-                        if (queries.length > 0) {
-                            const applicationsData = queries[0][1] as InfiniteData<any>;
-                            const hasApplications = applicationsData.pages.some(
-                                (page) => page.items.length > 0
-                            );
-                            setSourceMode(hasApplications);
-                        } else {
-                            setSourceMode(false);
-                        }
                     }}
                 >
                     Start Screening
@@ -194,7 +168,7 @@ function ScreeningDetailContent({
                     <CustomMenuButton selectedOption={search.screenType} options={options} handleOptionClick={(e: TableOptions) => {
                         setScreenType(e as ScreeningDetailsSearchParams["screenType"]);
                         clearSelection();
-                        }} align="end" />
+                    }} align="end" />
                 </div>
 
 
@@ -219,7 +193,6 @@ function ScreeningDetailContent({
                                     backgGroundFetching={isFetching}
 
                                     categories={rubricCategories}
-                                    selectable={rescoreMode}
 
                                     stages={stagesMap}
                                     onCandidateStageChange={handleCandidateStageChange}
@@ -248,14 +221,15 @@ function ScreeningDetailContent({
             </div>
 
 
-
-            <CandidateMultiSelectToolBar
-            isMultiSelectMode={isMultiSelectMode}
+            {/* NOTE: This component can also directly use multiselectopen and setMultiselectopen by calling the same hook.Can be added leaving now */}
+            
+            { candidates.length > 0 && !isLoading && search.tab === "Screening" &&
+                <CandidateMultiSelectToolBar
                 analysisOpen={analysisOpen}
-                setIsMultiSelectMode={setRescoreMode}
                 stages={screening.stages}
                 type={search.screenType}
-            />
+                />
+            }
         </div>
     );
 }
@@ -266,20 +240,12 @@ function ScreeningDetailContent({
 
 export default function ScreeningDetail({
     setCurrentTab,
-    setSourceMode,
-    rescoreMode,
-    setRescoreMode,
-    analysisOpen,
 }: ScreeningDetailProps) {
     const { id, } = useParams({ strict: false }) as { id: string };
     return (
         <SelectedCandidatesProvider screening_id={id} >
             <ScreeningDetailContent
                 setCurrentTab={setCurrentTab}
-                setSourceMode={setSourceMode}
-                rescoreMode={rescoreMode}
-                analysisOpen={analysisOpen}
-                setRescoreMode={setRescoreMode}
             />
         </SelectedCandidatesProvider>
     );
