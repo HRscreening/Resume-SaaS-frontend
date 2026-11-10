@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 
-import type { InterviewLanguage, RunCodeResponse, SubmitVerdict } from "@/lib/interviewApi";
+import type { CodingInterviewQuestion, InterviewLanguage, SubmitVerdict } from "@/lib/interviewApi";
 import CodingPane from "../CodingPane";
 import { pyodideManager } from "../execution/pyodideManager";
 import { runCodeLocally, runWithInput } from "../execution/runCodeLocally";
 import { runGateFor } from "../execution/runGate";
+import type { RunResult } from "../execution/runResult";
 import { submitGateFor } from "../execution/submitGate";
 import { usePyodideStatus } from "../execution/usePyodideStatus";
 import { starterCodeFor } from "../starterCode";
@@ -17,19 +18,48 @@ import type { UseCodingQuestions } from "../useCodingQuestions";
 // LiveKit room, microphone or session needed. It exists because the pane's
 // layout can only be judged by looking at it at a real window size, and the
 // only other way to see it is to sit a whole interview.
-const QUESTION = {
+//
+// The sample question is what GET /questions sends for a harness question:
+// the stub and the driver below are copies of the server's generated code
+// for this signature (backend harness.py), present only so Run works here.
+const QUESTION: CodingInterviewQuestion = {
   id: "q1",
-  kind: "coding" as const,
+  kind: "coding",
   allocated_minutes: 13,
   presented: true,
   title: "Two Sum",
   statement_md:
-    "Given an array of integers `nums` and an integer `target`, return the indices of the two numbers that add up to `target`.\n\nEach input has exactly one solution, and you may not use the same element twice.\n\n**Input** is read from standard input:\n\n- Line 1: the array, as space-separated integers\n- Line 2: the target\n\n**Output**: print the two indices in ascending order, separated by a space.\n\nWorked examples are shown beside this statement. Press Run to check your solution against them.",
+    "Given an array of integers `nums` and an integer `target`, return the indices of the two numbers that add up to `target`, in ascending order.\n\nEach input has exactly one solution, and you may not use the same element twice.\n\n**Constraints**\n\n- 2 ≤ len(nums) ≤ 10^4\n- Exactly one valid answer exists.",
+  signature: {
+    name: "two_sum",
+    params: [{ name: "nums", type: "int[]" }, { name: "target", type: "int" }],
+    returns: "int[]",
+  },
   examples: [
-    { input: "2 7 11 15\n9\n", output: "0 1", note: "nums[0] + nums[1] == 9" },
-    { input: "3 2 4\n6\n", output: "1 2", note: "nums[1] + nums[2] == 6" },
-    { input: "3 3\n6\n", output: "0 1", note: "the same value twice, at two different indices" },
+    { input: "[2,7,11,15]\n9", output: "[0,1]", note: "nums[0] + nums[1] == 9" },
+    { input: "[3,2,4]\n6", output: "[1,2]", note: "nums[1] + nums[2] == 6" },
+    { input: "[3,3]\n6", output: "[0,1]", note: "the same value twice, at two different indices" },
   ],
+  starter_code: {
+    python: "from typing import List\n\n\ndef two_sum(nums: List[int], target: int) -> List[int]:\n    # Write your solution here\n    pass\n",
+    javascript: "/**\n * @param {number[]} nums\n * @param {number} target\n * @returns {number[]}\n */\nfunction twoSum(nums, target) {\n  // Write your solution here\n}\n",
+  },
+  harness: {
+    python: [
+      "import json as __hiresort_json",
+      "import sys as __hiresort_sys",
+      "def __hiresort_main():",
+      "    args = [__hiresort_json.loads(l) for l in __hiresort_sys.stdin.read().splitlines() if l.strip()]",
+      "    print('__HIRESORT_RESULT__ ' + __hiresort_json.dumps(two_sum(*args), separators=(',', ':')))",
+      "__hiresort_main()",
+    ].join("\n"),
+    javascript: [
+      ";(function () {",
+      '  const args = require("fs").readFileSync(0, "utf8").split(/\\r?\\n/).filter((l) => l.trim()).map((l) => JSON.parse(l));',
+      '  console.log("__HIRESORT_RESULT__ " + JSON.stringify(twoSum(...args) ?? null));',
+      "})();",
+    ].join("\n"),
+  },
 };
 
 const PARTIAL_VERDICT: SubmitVerdict = {
@@ -45,8 +75,8 @@ const PARTIAL_VERDICT: SubmitVerdict = {
 export default function CodingPanePreview() {
   const [language, setLanguage] = useState<InterviewLanguage>("python");
   const [source, setSource] = useState(() => starterCodeFor(QUESTION, "python"));
-  const [runResult, setRunResult] = useState<RunCodeResponse | null>(null);
-  const [customResult, setCustomResult] = useState<RunCodeResponse | null>(null);
+  const [runResult, setRunResult] = useState<RunResult | null>(null);
+  const [customResult, setCustomResult] = useState<RunResult | null>(null);
   const [customInput, setCustomInput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -56,14 +86,14 @@ export default function CodingPanePreview() {
   useEffect(() => pyodideManager.preload(), []);
 
   const runGate = runGateFor(language, pythonStatus);
-  const submitGate = submitGateFor({ runnable: runGate.canSucceed && !runGate.blocked, isRunning, runResult });
+  const submitGate = submitGateFor({ runnable: runGate.canSucceed, isRunning, runResult });
 
   async function run(custom: boolean) {
     setIsRunning(true);
     setNotice(null);
     try {
-      if (custom) setCustomResult(await runWithInput(language, source, customInput));
-      else setRunResult(await runCodeLocally(language, source, QUESTION.examples));
+      if (custom) setCustomResult(await runWithInput(language, source, QUESTION, customInput));
+      else setRunResult(await runCodeLocally(language, source, QUESTION));
     } catch (err) {
       setNotice(err instanceof Error ? err.message : "Run failed.");
     } finally {
@@ -89,8 +119,7 @@ export default function CodingPanePreview() {
     runResult,
     runNotice: notice ? { kind: "unavailable" as const, message: notice } : null,
     isRunning,
-    runBlockedReason: runGate.blocked ? runGate.note : null,
-    runNote: runGate.blocked ? null : runGate.note,
+    runNote: runGate.note,
     submitBlocked: submitGate.blocked,
     submitBlockedReason: submitGate.note,
     handleRun: () => void run(false),

@@ -17,6 +17,7 @@ import {
   useRoundWriteLock,
   ROUND_WRITE_BUSY_MESSAGE,
 } from "@/modules/screening/hooks/round/useRoundWriteLock";
+import { publishBlockingReason } from "@/modules/screening/components/roundSetup";
 import type { RoundResponse } from "@/types";
 
 interface PublishGateProps {
@@ -45,8 +46,6 @@ export default function PublishGate({ screeningId, roundId, round }: PublishGate
 
   const allocated = round.questions.reduce((sum, q) => sum + q.allocated_minutes, 0);
   const target = round.total_minutes - round.overhead_minutes;
-  const hasQuestions = round.questions.length > 0;
-  const budgetSatisfied = allocated === target;
   const otherWriteInFlight = isBlocked("publish");
 
   const publishMutation = useMutation({
@@ -145,11 +144,7 @@ export default function PublishGate({ screeningId, roundId, round }: PublishGate
   }
 
   // draft
-  const blockingReason = !hasQuestions
-    ? "Add at least one question before publishing."
-    : !budgetSatisfied
-      ? "The allocation does not add up to the round's time budget yet. Ask the assistant to rebalance."
-      : null;
+  const blockingReason = publishBlockingReason(round);
   const disabled =
     !canWrite || blockingReason !== null || otherWriteInFlight || publishMutation.isPending;
 

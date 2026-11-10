@@ -1,8 +1,9 @@
-import type { InterviewExample } from "@/lib/interviewApi";
+import type { CodingInterviewQuestion } from "@/lib/interviewApi";
 import CodeEditor from "./CodeEditor";
 import CodingConsole from "./CodingConsole";
 import { ActionButton, Banner, LabelledCode, LanguagePicker, TimerBadge } from "./codingPaneParts";
 import { summarizeError } from "./execution/errorTrace";
+import { formatCall } from "./execution/harness";
 import { Markdown } from "./markdown";
 import type { UseCodingQuestions } from "./useCodingQuestions";
 import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
@@ -45,22 +46,15 @@ export default function CodingPane({ coding }: CodingPaneProps) {
       )}
 
       <div className="flex-1 min-h-0 grid grid-cols-1 auto-rows-max gap-3 overflow-y-auto lg:overflow-hidden lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-rows-[minmax(0,1fr)]">
-        <QuestionPane title={current.title} statementMd={current.statement_md} examples={current.examples} />
-        <EditorPane coding={coding} examples={current.examples} />
+        <QuestionPane question={current} />
+        <EditorPane coding={coding} question={current} />
       </div>
     </div>
   );
 }
 
-function QuestionPane({
-  title,
-  statementMd,
-  examples,
-}: {
-  title: string;
-  statementMd: string;
-  examples: InterviewExample[];
-}) {
+function QuestionPane({ question }: { question: CodingInterviewQuestion }) {
+  const { title, statement_md: statementMd, examples, signature } = question;
   // Stays on screen for the whole question and nothing collapses it: the
   // candidate was explicit that the question must not disappear.
   return (
@@ -76,8 +70,17 @@ function QuestionPane({
             {examples.map((example, i) => (
               <div key={i} className="rounded-lg border border-[#E8E5DF] bg-[#FAF9F5] p-3 flex flex-col gap-2">
                 <p className="text-xs font-medium text-[#737373]">Example {i + 1}</p>
-                <LabelledCode label="Input" value={example.input} />
-                <LabelledCode label="Output" value={example.output} />
+                {signature ? (
+                  <>
+                    <LabelledCode label="Called with" value={formatCall(signature, example.input)} />
+                    <LabelledCode label="Returns" value={example.output} />
+                  </>
+                ) : (
+                  <>
+                    <LabelledCode label="Input" value={example.input} />
+                    <LabelledCode label="Output" value={example.output} />
+                  </>
+                )}
                 {example.note && <p className="text-xs text-[#737373] italic">{example.note}</p>}
               </div>
             ))}
@@ -88,17 +91,11 @@ function QuestionPane({
   );
 }
 
-function EditorPane({ coding, examples }: { coding: UseCodingQuestions; examples: InterviewExample[] }) {
+function EditorPane({ coding, question }: { coding: UseCodingQuestions; question: CodingInterviewQuestion }) {
   const reducedMotion = usePrefersReducedMotion();
-  const { buffer, setSource, setLanguage, isRunning, isSubmitting, runBlockedReason, submitBlocked,
+  const { buffer, setSource, setLanguage, isRunning, isSubmitting, submitBlocked,
     submitBlockedReason, handleRun, handleSubmit, verdict } = coding;
   if (!buffer) return null;
-
-  // Run is disabled either because a run is already in flight or for a
-  // structural reason the candidate cannot fix by clicking again (a
-  // language with no browser runner). Either way the button says why.
-  const runDisabled = isRunning || Boolean(runBlockedReason);
-  const runDisabledReason = isRunning ? "A run is already in progress." : (runBlockedReason ?? "");
 
   return (
     <div className="flex flex-col gap-2 lg:min-h-0">
@@ -116,10 +113,10 @@ function EditorPane({ coding, examples }: { coding: UseCodingQuestions; examples
         <div className="flex items-center gap-2">
           <ActionButton
             onClick={handleRun}
-            disabled={runDisabled}
+            disabled={isRunning}
             label={isRunning ? "Running" : "Run"}
             loading={isRunning}
-            disabledReason={runDisabledReason}
+            disabledReason={isRunning ? "A run is already in progress." : ""}
           />
           <ActionButton
             onClick={handleSubmit}
@@ -145,7 +142,7 @@ function EditorPane({ coding, examples }: { coding: UseCodingQuestions; examples
         />
       </div>
 
-      <CodingConsole coding={coding} examples={examples} />
+      <CodingConsole coding={coding} question={question} />
     </div>
   );
 }

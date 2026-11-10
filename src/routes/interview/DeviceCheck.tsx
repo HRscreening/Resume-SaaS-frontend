@@ -4,11 +4,13 @@ import { isMissingDeviceError, micCaptureOptions } from "./micCapture";
 import {
   INITIAL_MIC_CHECK,
   MIC_THRESHOLD_METER_PERCENT,
+  MIC_VOICING_MIN,
   meterPercent,
   micCheckProgress,
   rmsDbfs,
   speechThresholdDbfs,
   stepMicCheck,
+  voicing,
   type MicCheckState,
 } from "./micCheck";
 
@@ -148,9 +150,10 @@ export function useDeviceCheck(requiresCamera: boolean): DeviceCheckState {
         let lastProgress = 0;
         let lastThreshold = MIC_THRESHOLD_METER_PERCENT;
 
-        // RMS loudness in dBFS each frame; confirmation needs ~1.2 s of
-        // cumulative sound well above the room's own noise (see micCheck.ts), so
-        // background noise or one bump of the desk cannot pass it.
+        // Loudness and voicing each frame; confirmation needs ~1.2 s of
+        // voiced speech well above the room's own noise, in separate
+        // stretches (see micCheck.ts), so noise, a tap, a clap or a held hum
+        // cannot pass it.
         const tick = () => {
           const now = performance.now();
           const dt = now - lastAt;
@@ -159,7 +162,8 @@ export function useDeviceCheck(requiresCamera: boolean): DeviceCheckState {
           const dbfs = rmsDbfs(samples);
           setLevelPercent(meterPercent(dbfs));
           if (!check.confirmed) {
-            check = stepMicCheck(check, dbfs, dt);
+            const voiced = voicing(samples, audioCtx.sampleRate) >= MIC_VOICING_MIN;
+            check = stepMicCheck(check, dbfs, dt, voiced);
             const threshold = meterPercent(speechThresholdDbfs(check));
             if (threshold !== lastThreshold) {
               lastThreshold = threshold;

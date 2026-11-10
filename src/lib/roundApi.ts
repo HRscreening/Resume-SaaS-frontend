@@ -30,6 +30,7 @@
 import { request } from "@/lib/api";
 import type {
   ChatTurnResponse,
+  RoundRequirements,
   RoundResponse,
   RoundSummary,
 } from "@/types";
@@ -108,8 +109,8 @@ export async function resetRoundChat(roundId: string): Promise<RoundResponse> {
 // every other question around it.
 //
 // The underlying endpoint (`POST /rounds/{rid}/tool-calls`) accepts any of
-// the six authoring tools, but this wrapper only ever sends
-// `revise_question` — `set_round` is deliberately never exposed here, since
+// the authoring tools, but this wrapper only ever sends `revise_question`
+// — `set_round` is deliberately never exposed here, since
 // `total_minutes`/`overhead_minutes` are the AI's to own, not an inline
 // edit's.
 //
@@ -128,5 +129,19 @@ export async function reviseQuestion(
       name: "revise_question",
       args: { id: questionId, changes },
     }),
+  });
+}
+
+// What the setup card saves: camera, screen share and whether the hiring
+// manager has confirmed them. The assistant has no tool for these, so this
+// direct call is the only way they change. Same 409/422 semantics as
+// reviseQuestion.
+export async function setRequirements(
+  roundId: string,
+  requirements: RoundRequirements,
+): Promise<RoundResponse> {
+  return request<RoundResponse>(`/api/v1/rounds/${roundId}/tool-calls`, {
+    method: "POST",
+    body: JSON.stringify({ name: "set_requirements", args: requirements }),
   });
 }

@@ -8,7 +8,6 @@ import { formatCountdown } from "./useCountdown";
 const LANGUAGES: { value: InterviewLanguage; label: string }[] = [
   { value: "python", label: "Python" },
   { value: "javascript", label: "JavaScript" },
-  { value: "cpp", label: "C++" },
 ];
 
 export function timerBadgeClasses(warning: boolean, reducedMotion: boolean): string {
