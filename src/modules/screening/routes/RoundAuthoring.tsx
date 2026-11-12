@@ -4,6 +4,7 @@ import { BackLink } from "@/components/layout/BackLink";
 import { getRound } from "@/lib/roundApi";
 import { ApiError } from "@/lib/api";
 import AuthoringChat from "@/modules/screening/components/AuthoringChat";
+import CandidateSetupCard from "@/modules/screening/components/CandidateSetupCard";
 import RoundView from "@/modules/screening/components/RoundView";
 import PublishGate from "@/modules/screening/components/PublishGate";
 import { RoundWriteLockProvider } from "@/modules/screening/hooks/round/useRoundWriteLock";
@@ -58,7 +59,7 @@ export default function RoundAuthoring() {
           <h1 className="text-xl font-semibold text-[#0F0F0F]">{round.title}</h1>
           <p className="mt-1 text-sm text-[#404040]">
             {round.status === "draft"
-              ? "Draft. Questions and budget appear as you chat with the authoring assistant."
+              ? "Draft. Confirm the candidate setup, then build the questions with the authoring assistant."
               : round.status === "published"
                 ? "Published and frozen. Invite candidates or clone to revise."
                 : "Archived."}
@@ -74,8 +75,12 @@ export default function RoundAuthoring() {
               without this a chat turn and an inline edit in flight at once
               can silently clobber each other. See
               hooks/round/useRoundWriteLock.tsx; PublishGate below registers
-              under this same provider as a third write surface ("publish"). */}
+              under this same provider as a third write surface ("publish"),
+              and CandidateSetupCard as a fourth ("setup"). */}
           <RoundWriteLockProvider>
+            <div className="mt-4">
+              <CandidateSetupCard roundId={roundId} round={round} />
+            </div>
             <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
               <RoundView roundId={roundId} />
               <AuthoringChat roundId={roundId} round={round} />

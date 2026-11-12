@@ -9,12 +9,13 @@ import {
   ROUND_WRITE_BUSY_MESSAGE,
 } from "@/modules/screening/hooks/round/useRoundWriteLock";
 import type { CodingExample, JudgingSummary, Question, RoundResponse } from "@/types";
+import { Markdown } from "@/routes/interview/markdown";
 
 interface RoundViewProps {
   roundId: string;
 }
 
-// The live view of the round itself: budget, requirements, and every
+// The live view of the round itself: budget and every
 // question, sitting beside AuthoringChat (Task 12) where the hiring manager
 // argues with the AI about what to ask. Deliberately reads round state from
 // the same TanStack Query cache entry AuthoringChat writes to on every turn
@@ -81,8 +82,6 @@ export default function RoundView({ roundId }: RoundViewProps) {
         target={target}
         totalMinutes={round.total_minutes}
       />
-
-      <RequirementsLine requirements={round.requirements} />
 
       {/* Every other disabled control on this screen explains itself
           (AuthoringChat's frozen/read-only banners, PublishGate's blocking
@@ -167,36 +166,6 @@ function BudgetLine({
         <span className="ml-2 font-normal text-amber-700">Allocation does not add up.</span>
       )}
     </div>
-  );
-}
-
-// Requirements are read-only here: camera and screen share are set by the
-// conversation (set_requirements is a chat-only tool, never exposed as an
-// inline control), not edited from this view.
-function RequirementsLine({
-  requirements,
-}: {
-  requirements: RoundResponse["requirements"];
-}) {
-  return (
-    <div className="flex flex-wrap gap-2 text-xs text-[#737373]">
-      <RequirementPill label="Camera" required={requirements.camera} />
-      <RequirementPill label="Screen share" required={requirements.screen_share} />
-    </div>
-  );
-}
-
-function RequirementPill({ label, required }: { label: string; required: boolean }) {
-  return (
-    <span
-      className={`rounded-full border px-2.5 py-1 ${
-        required
-          ? "border-[#0F0F0F20] bg-[#F5F3EE] text-[#0F0F0F]"
-          : "border-[#E8E5DF] bg-white text-[#A3A3A3]"
-      }`}
-    >
-      {label}: {required ? "required" : "not required"}
-    </span>
   );
 }
 
@@ -285,8 +254,9 @@ function QuestionRow({
 // Read-only body. Narrows on `kind` (never a cast) because a spoken
 // question and a coding question genuinely carry different fields — TS
 // only lets the coding-only fields through once the discriminant check has
-// happened.
-function QuestionBody({ question }: { question: Question }) {
+// happened. The statement goes through the same renderer as the candidate's
+// coding screen, so the hiring manager reviews exactly what will be shown.
+export function QuestionBody({ question }: { question: Question }) {
   if (question.kind === "spoken") {
     return <p className="mt-2 text-sm text-[#0F0F0F]">{question.prompt}</p>;
   }
@@ -294,13 +264,13 @@ function QuestionBody({ question }: { question: Question }) {
   return (
     <div className="mt-2 flex flex-col gap-2">
       <p className="text-sm font-medium text-[#0F0F0F]">{question.title}</p>
-      <p className="whitespace-pre-wrap text-sm text-[#404040]">{question.statement_md}</p>
+      <Markdown text={question.statement_md} />
       {question.examples.length === 0 ? (
         <p className="text-xs text-[#A3A3A3]">No examples yet.</p>
       ) : (
         <div className="flex flex-col gap-1.5">
           {question.examples.map((example, i) => (
-            <ExampleRow key={i} example={example} />
+            <ExampleRow key={i} example={example} harnessed={Boolean(question.signature)} />
           ))}
         </div>
       )}
@@ -340,8 +310,8 @@ function HiddenChecks({ judging }: { judging: JudgingSummary | undefined }) {
       </summary>
       <div className="flex flex-col gap-1.5 border-t border-[#BBE5CA] bg-white px-2.5 py-2 text-[#404040]">
         <p className="text-[#737373]">
-          The candidate never sees these. Each expected output is what the reference solution
-          printed when it was run.
+          The candidate never sees these. Each expected value is what the reference solution
+          returned when it was run.
         </p>
         {judging.tests.map((test, i) => (
           <div key={i} className="rounded-lg bg-[#F5F3EE] px-2.5 py-1.5">
@@ -369,15 +339,16 @@ function HiddenChecks({ judging }: { judging: JudgingSummary | undefined }) {
   );
 }
 
-function ExampleRow({ example }: { example: CodingExample }) {
+// `harnessed`: the question is a function the platform calls, so an
+// example's input is its arguments (one JSON value per line) and its
+// output the returned value. Otherwise a plain program's stdin and stdout.
+function ExampleRow({ example, harnessed }: { example: CodingExample; harnessed: boolean }) {
   return (
-    <div className="rounded-lg bg-[#F5F3EE] px-2.5 py-1.5 text-xs text-[#404040]">
-      <div>
-        <span className="font-medium text-[#0F0F0F]">Input:</span> {example.input}
-      </div>
-      <div>
-        <span className="font-medium text-[#0F0F0F]">Output:</span> {example.output}
-      </div>
+    <div className="flex flex-col gap-1 rounded-lg bg-[#F5F3EE] px-2.5 py-1.5 text-xs text-[#404040]">
+      <span className="font-medium text-[#0F0F0F]">{harnessed ? "Arguments" : "Input"}</span>
+      <pre className="whitespace-pre-wrap break-words font-mono">{example.input}</pre>
+      <span className="font-medium text-[#0F0F0F]">{harnessed ? "Returns" : "Output"}</span>
+      <pre className="whitespace-pre-wrap break-words font-mono">{example.output}</pre>
       {example.note && <div className="text-[#737373]">{example.note}</div>}
     </div>
   );

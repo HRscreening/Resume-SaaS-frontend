@@ -58,6 +58,11 @@ export interface UsageResponse {
    * cadence on the same plan: Free's 50 analyses never refill, its 3 calls do.
    */
   voice_calls_period?: "monthly" | "lifetime";
+  /** AI interviews started this month (first joins), as enforced. */
+  interviews_made?: number;
+  /** Null when the plan has no cap. */
+  interviews_limit?: number | null;
+  interviews_remaining?: number | null;
 }
 
 // Plan catalog — fetched from GET /api/billing/plans. Single source of
@@ -695,9 +700,12 @@ export interface CallArtifactsResponse {
 
 export type RoundStatus = "draft" | "published" | "archived";
 
+// Set on the setup card (CandidateSetupCard), never by the assistant. The
+// server refuses chat (409) and publish (422) until `confirmed` is true.
 export interface RoundRequirements {
   camera: boolean;
   screen_share: boolean;
+  confirmed: boolean;
 }
 
 // Deliberately has no `id`, unlike Question: a problem's examples are
@@ -727,11 +735,22 @@ export interface SpokenQuestion extends QuestionSpine {
   prompt: string;
 }
 
+// The function the candidate implements. The platform generates the editor
+// stub and the driver that calls it from this; each example's `input` is
+// its arguments, one JSON value per line, and `output` the returned value.
+// Absent on a question authored before the harness existed.
+export interface FunctionSignature {
+  name: string;
+  params: { name: string; type: string }[];
+  returns: string;
+}
+
 export interface CodingQuestion extends QuestionSpine {
   kind: "coding";
   title: string;
   statement_md: string;
   examples: CodingExample[];
+  signature?: FunctionSignature;
 }
 
 // One coding question's hidden checks: inputs the candidate never sees,
@@ -836,7 +855,7 @@ export interface InterviewBreakdownItem {
 
 // The candidate's submitted code for one coding question, read from
 // interview_sessions.artifacts["code"]. `language` mirrors
-// lib/interviewApi.ts's InterviewLanguage ("python" | "javascript" | "cpp")
+// lib/interviewApi.ts's InterviewLanguage ("python" | "javascript")
 // but is left as `string` here: this is read-only display of whatever the
 // candidate's browser sent, and a value outside that union must still
 // render rather than fail a type check at the API boundary.
@@ -854,6 +873,18 @@ export interface HiddenChecksCounts {
   total: number;
   by_category: Record<string, { passed: number; total: number }>;
   compile_error?: string | null;
+}
+
+// How long a question ran and why it ended, recorded by the server-paced
+// interview. `reason` stays `string` so a value added later still renders.
+export interface InterviewQuestionPacing {
+  question_id: string | null;
+  index: number;
+  kind: string;
+  seconds: number;
+  budget_s: number;
+  reason: "model" | "time_up" | "submitted" | "follow_ups" | string;
+  agent_turns: number;
 }
 
 export interface InterviewScorecard {
@@ -876,6 +907,31 @@ export interface InterviewScorecard {
   // Absent entirely, or empty, on an all-spoken round with no coding
   // question — never assume at least one entry.
   code: Record<string, InterviewScorecardCode> | null;
+  // Absent on scorecards recorded before server-paced interviews shipped.
+  pacing?: InterviewQuestionPacing[];
+  // How fast the interviewer was, from the session's recorded metrics.
+  // Absent or null on sessions recorded before the agent persisted it.
+  latency?: InterviewLatencySummary | null;
+}
+
+// One latency component in milliseconds, as the agent summarised it.
+export interface InterviewLatencyStat {
+  avg_ms?: number;
+  p50_ms?: number;
+  p90_ms?: number;
+  p95_ms?: number;
+  max_ms?: number;
+  n?: number;
+}
+
+// `e2e` is the wait the candidate felt: from the end of their speech to the
+// interviewer's voice. `startup` is how long they waited for the first word.
+// Other components (eou_delay, llm_ttft, tts_ttfb, ...) are present for
+// diagnosis and left loosely typed.
+export interface InterviewLatencySummary {
+  e2e?: InterviewLatencyStat;
+  startup?: { join_to_first_word_s?: number; connect_to_first_word_s?: number };
+  [component: string]: unknown;
 }
 
 export interface InterviewScorecardsResponse {

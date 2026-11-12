@@ -1,5 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { isMissingDeviceError, micCaptureOptions } from "./micCapture";
+import {
+  INITIAL_MIC_CHECK,
+  MIC_THRESHOLD_METER_PERCENT,
+  MIC_VOICING_MIN,
+  meterPercent,
+  micCheckProgress,
+  rmsDbfs,
+  speechThresholdDbfs,
+  stepMicCheck,
+  voicing,
+  type MicCheckState,
+} from "./micCheck";
+
 // Everything a candidate's machine has to prove before they can start.
 //
 // The cost of getting this wrong is asymmetric. A candidate who joins with
@@ -8,7 +22,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // interview has started, and there is no second attempt. So each device is
 // proved by observation, never by permission:
 //
-//   microphone  the level meter actually moved, so sound is reaching us
+//   microphone  they spoke a prompted sentence loud enough, for long enough
+//               (cumulative ~1.2 s above -50 dBFS), so it is their voice
+//               reaching us and not the room's background noise
 //   speaker     they clicked to say they heard the tone
 //   camera      a live video track is rendering, and they can see themselves
 //
@@ -16,7 +32,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // camera with the privacy shutter closed, and headphones routed to a
 // disconnected device all grant permission and all produce nothing.
 
-const MIC_LEVEL_THRESHOLD = 4;
+// The prompted sentence: long enough to clear MIC_CONFIRM_MS of speech at a
+// normal pace, and natural to say out loud.
+export const MIC_PROMPT = "Say: “My name is …, and I'm ready.”";
+
+export interface AudioInputOption {
+  deviceId: string;
+  label: string;
+}
 
 export interface DeviceCheckState {
   micConfirmed: boolean;
@@ -25,6 +48,16 @@ export interface DeviceCheckState {
   micError: string | null;
   cameraError: string | null;
   levelPercent: number;
+  // Where speech starts counting on the meter; follows the room's noise.
+  thresholdPercent: number;
+  // 0..1 of the cumulative speech the mic check needs.
+  micProgress: number;
+  // The deviceId of the microphone that actually passed the check (from the
+  // live track's settings, not the request), handed to the room so it opens
+  // the same device. Null until a track is live.
+  micDeviceId: string | null;
+  audioInputs: AudioInputOption[];
+  selectMic: (deviceId: string) => void;
   retry: () => void;
   playTone: () => void;
   confirmSpeaker: () => void;
@@ -39,26 +72,36 @@ export function useDeviceCheck(requiresCamera: boolean): DeviceCheckState {
   const [micError, setMicError] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [levelPercent, setLevelPercent] = useState(0);
+  const [micProgress, setMicProgress] = useState(0);
+  const [thresholdPercent, setThresholdPercent] = useState(MIC_THRESHOLD_METER_PERCENT);
   const [tonePlaying, setTonePlaying] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // The device the candidate picked; undefined means the browser default.
+  const [requestedMicId, setRequestedMicId] = useState<string | undefined>(undefined);
+  const [micDeviceId, setMicDeviceId] = useState<string | null>(null);
+  const [audioInputs, setAudioInputs] = useState<AudioInputOption[]>([]);
 
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const rafRef = useRef<number | null>(null);
-  const confirmedRef = useRef(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    confirmedRef.current = false;
+    let check: MicCheckState = INITIAL_MIC_CHECK;
+    setMicConfirmed(false);
+    setMicProgress(0);
+    setLevelPercent(0);
 
     async function start() {
       // Audio and video are requested in one call so the candidate sees a
       // single permission prompt rather than two in a row, which reads as
-      // the page malfunctioning.
+      // the page malfunctioning. The audio processing matches what the room
+      // will use (micCaptureOptions), so the check hears what the
+      // interviewer will hear.
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
+          audio: micCaptureOptions(requestedMicId) as MediaTrackConstraints,
           video: requiresCamera,
         });
         if (cancelled) {
@@ -66,6 +109,22 @@ export function useDeviceCheck(requiresCamera: boolean): DeviceCheckState {
           return;
         }
         streamRef.current = stream;
+
+        const audioTrack = stream.getAudioTracks()[0];
+        setMicDeviceId(audioTrack?.getSettings().deviceId ?? requestedMicId ?? null);
+        // Labels are only exposed once permission is granted, so the list
+        // is read after getUserMedia. Failure just hides the picker.
+        navigator.mediaDevices
+          .enumerateDevices()
+          .then((devices) => {
+            if (cancelled) return;
+            setAudioInputs(
+              devices
+                .filter((d) => d.kind === "audioinput" && d.deviceId)
+                .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Microphone ${i + 1}` })),
+            );
+          })
+          .catch(() => {});
 
         if (requiresCamera) {
           const track = stream.getVideoTracks()[0];
@@ -84,24 +143,50 @@ export function useDeviceCheck(requiresCamera: boolean): DeviceCheckState {
         audioCtxRef.current = audioCtx;
         const source = audioCtx.createMediaStreamSource(stream);
         const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 512;
+        analyser.fftSize = 2048;
         source.connect(analyser);
-        const data = new Uint8Array(analyser.frequencyBinCount);
+        const samples = new Float32Array(analyser.fftSize);
+        let lastAt = performance.now();
+        let lastProgress = 0;
+        let lastThreshold = MIC_THRESHOLD_METER_PERCENT;
 
+        // Loudness and voicing each frame; confirmation needs ~1.2 s of
+        // voiced speech well above the room's own noise, in separate
+        // stretches (see micCheck.ts), so noise, a tap, a clap or a held hum
+        // cannot pass it.
         const tick = () => {
-          analyser.getByteFrequencyData(data);
-          const avg = data.reduce((sum, v) => sum + v, 0) / data.length;
-          const pct = Math.min(100, Math.round((avg / 128) * 100));
-          setLevelPercent(pct);
-          if (pct > MIC_LEVEL_THRESHOLD && !confirmedRef.current) {
-            confirmedRef.current = true;
-            setMicConfirmed(true);
+          const now = performance.now();
+          const dt = now - lastAt;
+          lastAt = now;
+          analyser.getFloatTimeDomainData(samples);
+          const dbfs = rmsDbfs(samples);
+          setLevelPercent(meterPercent(dbfs));
+          if (!check.confirmed) {
+            const voiced = voicing(samples, audioCtx.sampleRate) >= MIC_VOICING_MIN;
+            check = stepMicCheck(check, dbfs, dt, voiced);
+            const threshold = meterPercent(speechThresholdDbfs(check));
+            if (threshold !== lastThreshold) {
+              lastThreshold = threshold;
+              setThresholdPercent(threshold);
+            }
+            const progress = micCheckProgress(check);
+            if (progress !== lastProgress) {
+              lastProgress = progress;
+              setMicProgress(progress);
+            }
+            if (check.confirmed) setMicConfirmed(true);
           }
           rafRef.current = requestAnimationFrame(tick);
         };
         tick();
       } catch (err) {
         if (cancelled) return;
+        // The picked microphone was unplugged: go back to the default one
+        // instead of showing an error the candidate cannot act on.
+        if (requestedMicId && isMissingDeviceError(err)) {
+          setRequestedMicId(undefined);
+          return;
+        }
         const message =
           err instanceof Error && err.name === "NotAllowedError"
             ? requiresCamera
@@ -125,7 +210,7 @@ export function useDeviceCheck(requiresCamera: boolean): DeviceCheckState {
       audioCtxRef.current?.close().catch(() => {});
       audioCtxRef.current = null;
     };
-  }, [attempt, requiresCamera]);
+  }, [attempt, requiresCamera, requestedMicId]);
 
   // A short, quiet tone through the same path the interviewer's voice will
   // take. Generated rather than fetched so there is no asset to fail to
@@ -165,9 +250,19 @@ export function useDeviceCheck(requiresCamera: boolean): DeviceCheckState {
     setAttempt((n) => n + 1);
   }, []);
 
+  // Switching microphones restarts the check: the new one has to prove
+  // itself, and it is the one the room will open.
+  const selectMic = useCallback((deviceId: string) => {
+    setMicError(null);
+    setCameraError(null);
+    setCameraConfirmed(false);
+    setRequestedMicId(deviceId || undefined);
+  }, []);
+
   return {
     micConfirmed, speakerConfirmed, cameraConfirmed,
-    micError, cameraError, levelPercent,
+    micError, cameraError, levelPercent, thresholdPercent, micProgress,
+    micDeviceId, audioInputs, selectMic,
     retry, playTone, confirmSpeaker, tonePlaying, videoRef,
   };
 }
@@ -242,7 +337,7 @@ export function DeviceCheckPanel({
           label="Camera"
           detail={
             state.cameraConfirmed
-              ? "Looking good. This round is recorded with video."
+              ? "Looking good."
               : "Starting your camera..."
           }
           done={state.cameraConfirmed}
@@ -263,16 +358,64 @@ export function DeviceCheckPanel({
         detail={
           state.micConfirmed
             ? "We can hear you."
-            : "Say something so we can check we can hear you."
+            : state.micProgress > 0
+              ? "Keep going, a little more..."
+              : "Read the line below out loud at your normal speaking volume."
         }
         done={state.micConfirmed}
       >
-        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[#F0EEE6]">
+        {!state.micConfirmed && (
+          <p className="mt-2 text-sm font-medium text-[#0F0F0F]">{MIC_PROMPT}</p>
+        )}
+        {/* The level meter, with a tick where speech starts counting. */}
+        <div
+          className="relative mt-2 h-2 w-full overflow-hidden rounded-full bg-[#F0EEE6]"
+          role="meter"
+          aria-label="Microphone level"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={state.levelPercent}
+        >
           <div
-            className="h-full bg-[#C85A17] transition-[width] duration-75"
+            className={`h-full transition-[width] duration-75 ${
+              state.levelPercent >= state.thresholdPercent ? "bg-[#15803D]" : "bg-[#C85A17]"
+            }`}
             style={{ width: `${state.levelPercent}%` }}
           />
+          <span
+            aria-hidden="true"
+            className="absolute top-0 h-full w-px bg-[#737373]"
+            style={{ left: `${state.thresholdPercent}%` }}
+          />
         </div>
+        {!state.micConfirmed && (
+          <div
+            className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-[#F0EEE6]"
+            aria-hidden="true"
+          >
+            <div
+              className="h-full bg-[#15803D] transition-[width] duration-150"
+              style={{ width: `${Math.round(state.micProgress * 100)}%` }}
+            />
+          </div>
+        )}
+        {state.audioInputs.length > 1 && (
+          <label className="mt-2 flex items-center gap-2 text-xs text-[#737373]">
+            <span className="shrink-0">Microphone</span>
+            <select
+              value={state.micDeviceId ?? ""}
+              onChange={(e) => state.selectMic(e.target.value)}
+              className="h-8 min-w-0 flex-1 rounded-lg border border-[#D4D4D4] bg-white px-2 text-xs text-[#404040]"
+            >
+              {state.micDeviceId === null && <option value="">Default</option>}
+              {state.audioInputs.map((d) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </CheckRow>
 
       <CheckRow

@@ -48,7 +48,7 @@ export function CandidatesTable({
   candidates,
   categories,
   loading = false,
-  selectable = false,
+  selectable = true,
   stages,
   onCandidateStageChange,
   onManageStages,
@@ -58,12 +58,12 @@ export function CandidatesTable({
   onLoadMore
 }: CandidatesTableProps) {
 
-  const { search, setScreenId,setAnalysisTab } = useScreeningDetailsNavigation()
+  const { search, setScreenId, setAnalysisTab } = useScreeningDetailsNavigation()
   const { canWrite } = useAccount();
 
   const { selectedCandidates, toggleSelection, togglePageSelection } = useSelectedCandidates();
 
-  const { menuOptions, getRowStatus,isShareDialogOpen,shareCandidate,setIsShareDialogOpen,isAddNoteDialogOpen,targetCandidate,setIsAddNoteDialogOpen,clearDialogs } = useScreeningActions({ screeningId: screening_id });
+  const { menuOptions, getRowStatus, isShareDialogOpen, shareCandidate, setIsShareDialogOpen, isAddNoteDialogOpen, targetCandidate, setIsAddNoteDialogOpen, clearDialogs } = useScreeningActions({ screeningId: screening_id });
   // Per-row "..." menu mixes read items (ScoreCard/Profile/Voice/Resume/Expand)
   // with write items wired to live mutations or dialogs (Rescore/Share/Archive/
   // Unarchive/Delete). A viewer only gets the read items.
@@ -80,6 +80,11 @@ export function CandidatesTable({
   const handleViewAllNotes = (resumeId: string) => {
     setScreenId(resumeId);
     setAnalysisTab("note");
+  };
+
+  const onVoiceIconClick = (resumeId: string) => {
+    setScreenId(resumeId);
+    setAnalysisTab("voice");
   };
 
 
@@ -103,7 +108,7 @@ export function CandidatesTable({
   }, [inView, hasMore, loadingMore, onLoadMore]);
 
 
-  const columnCount = 7 + (compact ? 0 : 1) + (selectable ? 1 : 0);
+  const columnCount = 7 + (compact ? 0 : 1) + 2;
 
   const candidatesSelected = selectedCandidates.size > 0;
   // Header checkbox tri-state — reflects the current page's visible rows.
@@ -147,7 +152,7 @@ export function CandidatesTable({
 
 
               <colgroup>
-                <col className="w-6" />
+                <col className="w-8" />
 
                 {/* Candidate */}
                 <col className={compact ? "w-52" : "w-60"} />
@@ -168,6 +173,9 @@ export function CandidatesTable({
                 <col className="w-24" />
                 {/* } */}
 
+                {/* Interview */}
+                <col className="w-36" />
+
                 {/* Stage */}
                 <col className="w-36" />
 
@@ -184,8 +192,7 @@ export function CandidatesTable({
 
                 <tr className="w-10 border-b border-[#E8E5DF] bg-[#F5F3EE]">
 
-                  <th className="px-3 py-2.5 bg-[#F5F3EE]">
-                    {!compact && (candidatesSelected || selectable) &&
+                    <th className="px-3 py-2.5 bg-[#F5F3EE]">
                       <input
                         type="checkbox"
                         aria-label={allVisibleSelected ? "Deselect all on this page" : "Select all on this page"}
@@ -199,40 +206,13 @@ export function CandidatesTable({
                         }}
                         className="h-3.5 w-3.5 cursor-pointer accent-[#000000]"
                       />
-                    }
-                  </th>
 
-
-
-                  {/* !Need Reimplementation */}
-                  {/* {showToolbar ? (
-                  <SortableHeader
-                    field="candidate_name"
-                    sort={sortRules}
-                    onChange={onSortChange!}
-                    className="pl-3 pr-2 py-2.5 sticky left-0 z-10 bg-[#F5F3EE]"
-                  >
-                    Candidate
-                  </SortableHeader>
-                ) : (
-                )} */}
-                  <th className="pl-3 pr-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide sticky left-0 z-10 bg-[#F5F3EE]">Candidate</th>
+                    </th>
+                    <th className="pl-3 pr-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide sticky left-0 z-10 bg-[#F5F3EE]">Candidate</th>
+                  
                   {/* {!compact && ( */}
                   <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide">Role</th>
-                  {/* )} */}
-                  {/* !Need Reimplementation */}
-                  {/* {showToolbar ? (
-                  <SortableHeader
-                    field="experience_years"
-                    sort={sortRules}
-                    onChange={onSortChange!}
-                    align="center"
-                    className="px-2 py-2.5"
-                    subtitle="(yrs)"
-                  >
-                    Experience
-                  </SortableHeader>
-                ) : ()} */}
+
                   <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
                     <span className="block">Experience</span>
                     <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">(yrs)</span>
@@ -328,6 +308,7 @@ export function CandidatesTable({
                     MenuOptions={visibleMenuOptions}
                     processingStatus={getRowStatus(c.resume_id)}
                     onViwAllNotes={handleViewAllNotes}
+                    onVoiceIconClick={onVoiceIconClick}
                   />
                 ))}
 
@@ -350,7 +331,7 @@ export function CandidatesTable({
       </div>
       {canWrite && isShareDialogOpen && shareCandidate && (
         <ShareReportDialog
-        screeningId={screening_id}
+          screeningId={screening_id}
           candidateName={shareCandidate.candidate_name}
           resumeId={shareCandidate.resume_id}
           open={isShareDialogOpen}
@@ -361,7 +342,7 @@ export function CandidatesTable({
           }}
         />
       )}
-      
+
     </>
   );
 }

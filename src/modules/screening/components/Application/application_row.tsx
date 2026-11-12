@@ -125,13 +125,7 @@ export default function CandidateRow({
                         onChange={() => {
                             toggleSelection(candidate.id);
                         }}
-                        className={`h-3.5 w-3.5 cursor-pointer accent-[#060505]
-                                    ${compact
-                                ? "opacity-0"
-                                : (selectable || selected)
-                                    ? "opacity-100"
-                                    : "opacity-0 group-hover:opacity-100"}
-                                    `}
+                        className={`h-3.5 w-3.5 cursor-pointer accent-[#060505]`}
                     />
                 </td>
             
@@ -185,7 +179,7 @@ export default function CandidateRow({
                 {/* Experience */}
                 <td className="px-2 py-3 align-middle text-center">
                     <span className="text-sm font-medium text-[#0F0F0F]">
-                        {candidate.total_experience?.toPrecision(2) ?? "—"}
+                        {candidate.total_experience?.toFixed(1) ?? "—"}
                     </span>
                 </td>
 

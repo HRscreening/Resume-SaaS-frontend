@@ -21,9 +21,9 @@ export interface JsRunResponse {
   stderr: string;
   // True when the candidate's program raised past the top level (a thrown
   // error, a syntax error, reading past the end of stdin). Mirrors the
-  // backend's Judge0-status split in execution.py: `passed` is computed from
-  // stdout ONLY when the run completed without crashing, exactly like
-  // Judge0's `_STATUS_ACCEPTED` gate on `outputs_match`.
+  // backend's Judge0-status split in execution.py: the answer is compared
+  // ONLY when the run completed without crashing, exactly like the judge's
+  // "ok" gate (judge.py).
   crashed: boolean;
 }
 

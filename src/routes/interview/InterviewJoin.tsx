@@ -17,12 +17,15 @@ import {
   useDeviceCheck,
 } from "@/routes/interview/DeviceCheck";
 
-// Describes only what the browser round actually does. Audio recording is
-// deliberately gated off for browser sessions (nothing writes
-// audio_recording_url), so claiming it here was false in the one piece of
-// copy whose accuracy is the entire point.
-const RECORDING_DISCLOSURE =
-  "This interview is conducted by an AI interviewer. A written transcript of the conversation is made, so the hiring team can review your answers. Your audio is not recorded. Live captions of both voices appear on screen while you talk. Nothing is shared outside the hiring team for this role.";
+// Describes only what the browser round actually does. `recorded` comes
+// from the server and is true exactly when the recorder is configured, so
+// this copy cannot claim a recording that is not made, or hide one that is.
+function recordingDisclosure(recorded: boolean): string {
+  const capture = recorded
+    ? "Your audio is recorded and a written transcript is made, so the hiring team can review your answers."
+    : "A written transcript of the conversation is made, so the hiring team can review your answers. Your audio is not recorded.";
+  return `This interview is conducted by an AI interviewer. ${capture} Live captions of both voices appear on screen while you talk. Nothing is shared outside the hiring team for this role.`;
+}
 
 // Candidate holds an HMAC-signed invite link with no HireSort account behind
 // it. This route sits directly off rootRoute (see App.tsx) with no AuthGuard
@@ -40,6 +43,9 @@ export default function InterviewJoin() {
   const [grant, setGrant] = useState<InterviewJoinGrant | null>(null);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+  // The microphone that passed the device check. The room opens this exact
+  // device, so the candidate is heard through what they just tested.
+  const [micDeviceId, setMicDeviceId] = useState<string | null>(null);
 
   // Returns the grant (or throws) so InterviewRoom's Rejoin button can react
   // to a failed rejoin, not just the initial Join click below, which reads
@@ -91,7 +97,15 @@ export default function InterviewJoin() {
         grant={grant}
         token={token}
         durationMinutes={data.duration_minutes}
+        requiresCamera={data.requires_camera === true}
+        roleTitle={data.role_title}
+        hiringCompany={data.hiring_company}
+        micDeviceId={micDeviceId}
         onRejoin={handleJoin}
+        // The join call alone, with its grant discarded: the server
+        // dispatches an interviewer into a room that has none, and the call
+        // in progress keeps its own connection.
+        onRequestInterviewer={() => joinInterview(token)}
         onCheckCompleted={checkCompleted}
       />
     );
@@ -153,7 +167,8 @@ export default function InterviewJoin() {
       // to it); the failure is already surfaced here via joinError state,
       // so swallow the rejection at this call site rather than let it go
       // unhandled.
-      onJoin={() => {
+      onJoin={(testedMicId) => {
+        setMicDeviceId(testedMicId);
         handleJoin().catch(() => {});
       }}
     />
@@ -193,7 +208,7 @@ function PreJoinScreen({
   brief: NonNullable<ReturnType<typeof useQuery<Awaited<ReturnType<typeof getInterviewBrief>>>>["data"]>;
   joining: boolean;
   joinError: string | null;
-  onJoin: () => void;
+  onJoin: (micDeviceId: string | null) => void;
 }) {
   // Camera is checked only when the hiring manager required it for this
   // round: asking for a camera the round does not use is an intrusion, and
@@ -221,6 +236,14 @@ function PreJoinScreen({
           Expected duration: about {brief.duration_minutes} minutes.
         </p>
 
+        <div className="rounded-xl border border-[#D4D4D4] bg-white p-4 mb-6">
+          <p className="text-sm text-[#404040]">
+            {recordingDisclosure(brief.recorded === true)}
+          </p>
+        </div>
+
+        <SessionRequirements brief={brief} />
+
         <div className="mb-6">
           <DeviceCheckPanel state={devices} requiresCamera={requiresCamera} />
         </div>
@@ -230,7 +253,7 @@ function PreJoinScreen({
         )}
 
         <button
-          onClick={onJoin}
+          onClick={() => onJoin(devices.micDeviceId)}
           disabled={!ready || joining}
           className="w-full h-11 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2"
         >
