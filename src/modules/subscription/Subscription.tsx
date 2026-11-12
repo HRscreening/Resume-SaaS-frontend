@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useUserSubscription } from "@/modules/subscription/useSubscription";
 import { type UserSubscription } from "@/types/subscription.type";
 import SubscriptionCancellationDialog from "@/modules/subscription/SubscriptionCancellationDialog";
+import { useResumeSubscriptionMutation } from "@/modules/subscription/useSubscription";
 import { cn } from "@/lib/utils";
 import {
     CreditCard,
@@ -13,6 +14,7 @@ import {
     ArrowUpRight,
     Zap,
 } from "lucide-react";
+import { toast } from "sonner"
 
 function formatDate(isoString: string | null | undefined): string {
     if (!isoString) return "N/A";
@@ -35,54 +37,74 @@ interface SubscriptionProps {
 }
 
 export const Subscription = ({ className, embedded = false }: SubscriptionProps = {}) => {
-      const { data: subscription, isLoading, isError } = useUserSubscription();
-      const [confirmation, setConfirmation] = useState<"autopay" | "scheduled" | null>(null);
+    const { data: subscription, isLoading, isError } = useUserSubscription();
+    const [confirmation, setConfirmation] = useState<boolean | null>(null);
+    const resumeSubscriptionMutation = useResumeSubscriptionMutation();
+    const isResuming = resumeSubscriptionMutation.isPending;
 
-      if (isLoading) {
+    function handleResume() {
+        resumeSubscriptionMutation.mutate(undefined, {
+            onSuccess: () => {
+                toast.success("Subscription Resumed successfully.");
+            },
+            onError: (error) => {
+                toast.error(
+                    error instanceof Error
+                        ? error.message
+                        : "Could not resume your subscription."
+                );
+            },
+        });
+    }
+
+    if (isLoading) {
         if (embedded) {
-          return (
-            <div className="p-6 sm:p-7 border-t border-[#E8E5DF] animate-pulse">
-              <div className="h-6 bg-[#E8E5DF] rounded-md w-1/3 mb-2" />
-              <div className="h-4 bg-[#F5F3EE] rounded-md w-1/2 mb-6" />
-              <div className="h-20 bg-[#F9F8F6] rounded-xl border border-[#E8E5DF] mb-5" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="h-20 bg-[#F5F3EE] rounded-xl" />
-                <div className="h-20 bg-[#F5F3EE] rounded-xl" />
-                <div className="h-20 bg-[#F5F3EE] rounded-xl" />
-                <div className="h-20 bg-[#F5F3EE] rounded-xl" />
-              </div>
-            </div>
-          );
+            return (
+                <div className="p-6 sm:p-7 border-t border-[#E8E5DF] animate-pulse">
+                    <div className="h-6 bg-[#E8E5DF] rounded-md w-1/3 mb-2" />
+                    <div className="h-4 bg-[#F5F3EE] rounded-md w-1/2 mb-6" />
+                    <div className="h-20 bg-[#F9F8F6] rounded-xl border border-[#E8E5DF] mb-5" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="h-20 bg-[#F5F3EE] rounded-xl" />
+                        <div className="h-20 bg-[#F5F3EE] rounded-xl" />
+                        <div className="h-20 bg-[#F5F3EE] rounded-xl" />
+                        <div className="h-20 bg-[#F5F3EE] rounded-xl" />
+                    </div>
+                </div>
+            );
         }
         return (
-          <div className={cn("bg-white rounded-2xl border border-[#E8E5DF] p-6 sm:p-7 shadow-xs animate-pulse flex flex-col justify-between h-full", className)}>
-            <div>
-              <div className="h-6 bg-[#E8E5DF] rounded-md w-1/3 mb-2" />
-              <div className="h-4 bg-[#F5F3EE] rounded-md w-1/2 mb-6" />
-              <div className="h-20 bg-[#F9F8F6] rounded-xl border border-[#E8E5DF] mb-5" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="h-20 bg-[#F5F3EE] rounded-xl" />
-                <div className="h-20 bg-[#F5F3EE] rounded-xl" />
-                <div className="h-20 bg-[#F5F3EE] rounded-xl" />
-                <div className="h-20 bg-[#F5F3EE] rounded-xl" />
-              </div>
+            <div className={cn("bg-white rounded-2xl border border-[#E8E5DF] p-6 sm:p-7 shadow-xs animate-pulse flex flex-col justify-between h-full", className)}>
+                <div>
+                    <div className="h-6 bg-[#E8E5DF] rounded-md w-1/3 mb-2" />
+                    <div className="h-4 bg-[#F5F3EE] rounded-md w-1/2 mb-6" />
+                    <div className="h-20 bg-[#F9F8F6] rounded-xl border border-[#E8E5DF] mb-5" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="h-20 bg-[#F5F3EE] rounded-xl" />
+                        <div className="h-20 bg-[#F5F3EE] rounded-xl" />
+                        <div className="h-20 bg-[#F5F3EE] rounded-xl" />
+                        <div className="h-20 bg-[#F5F3EE] rounded-xl" />
+                    </div>
+                </div>
             </div>
-          </div>
         );
-      }
+    }
 
-      // If subscription details are null, do not show subscription UI
-      if (!subscription || isError) {
+    // If subscription details are null, do not show subscription UI
+    if (!subscription || isError) {
         return null;
-      }
+    }
 
-    const isCancelled = Boolean(subscription.auto_pay_cancelled_at);
+    const isCancelled = Boolean(subscription.cancelled_at);
     const hasScheduledDowngrade = Boolean(subscription.scheduled_downgrade_plan);
     const scheduledDowngradePlan = subscription.scheduled_downgrade_plan ?? null;
-    
+
     const isActive = subscription.status?.toLowerCase() === "active";
-    const currencyCode = (subscription.credit_unit  || "USD").toUpperCase();
+    const currencyCode = (subscription.credit_unit || "USD").toUpperCase();
     const currencySymbol = currencyCode === "INR" ? "₹" : "$";
+
+
+    
 
     const containerClasses = embedded
         ? "p-6 sm:p-7 border-t border-[#E8E5DF]"
@@ -154,10 +176,10 @@ export const Subscription = ({ className, embedded = false }: SubscriptionProps 
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-[#E8E5DF] text-xs font-medium text-[#0F0F0F] shrink-0">
                         <span
                             className={`w-2 h-2 rounded-full ${isActive && !isCancelled
-                                    ? "bg-emerald-500"
-                                    : isCancelled
-                                        ? "bg-amber-500"
-                                        : "bg-gray-400"
+                                ? "bg-emerald-500"
+                                : isCancelled
+                                    ? "bg-amber-500"
+                                    : "bg-gray-400"
                                 }`}
                         />
                         {isCancelled ? "Expires at period end" : subscription.status || "Active"}
@@ -196,49 +218,35 @@ export const Subscription = ({ className, embedded = false }: SubscriptionProps 
                         </p>
                     </div>
 
-                    <div className="p-3 rounded-xl border border-[#E8E5DF] bg-white">
-                        <div className="flex items-center gap-2 text-xs text-[#737373] mb-1">
-                            <CreditCard className="w-3.5 h-3.5 text-[#A0A0A0]" />
-                            <span>Credit Balance</span>
-                        </div>
-                        <p className="text-sm font-semibold text-[#0F0F0F]">
-                            {currencySymbol}
-                            {Number(subscription.credit_balance ?? 0).toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                            })}{" "}
-                            <span className="text-xs font-normal text-[#737373]">{currencyCode}</span>
-                        </p>
-                    </div>
                 </div>
 
-                {(hasScheduledDowngrade || (!isCancelled && isActive)) && (
-                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1">
-                        {hasScheduledDowngrade && (
-                            <button
-                                type="button"
-                                onClick={() => setConfirmation("scheduled")}
-                                className="cursor-pointer text-xs font-medium text-[#737373] underline underline-offset-2 transition-colors hover:text-[#2563EB]"
-                            >
-                                Cancel scheduled downgrade
-                            </button>
-                        )}
-                        {!isCancelled && isActive && (
-                            <button
-                                type="button"
-                                onClick={() => setConfirmation("autopay")}
-                                className="cursor-pointer text-xs font-medium text-[#737373] underline underline-offset-2 transition-colors hover:text-red-600"
-                            >
-                                Cancel subscription
-                            </button>
-                        )}
-                    </div>
-                )}
+
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1">
+                    {!isCancelled && isActive && (
+                        <button
+                            type="button"
+                            onClick={() => setConfirmation(true)}
+                            className="cursor-pointer text-xs font-medium text-[#737373] underline underline-offset-2 transition-colors hover:text-red-600"
+                        >
+                            Cancel subscription
+                        </button>
+                    )}
+                    {isCancelled && subscription.is_resumable && (
+                        <button
+                            type="button"
+                            disabled={isResuming}
+                            onClick={() => handleResume()}
+                            className="cursor-pointer text-xs font-medium text-[#737373] underline underline-offset-2 transition-colors hover:text-green-500"
+                        >
+                            { isResuming ? "Resuming..." : "Resume subscription"}
+                        </button>
+                    )}
+                </div>
+
             </div>
 
             <SubscriptionCancellationDialog
                 subscription={subscription}
-                type={confirmation ?? "autopay"}
                 open={confirmation !== null}
                 onOpenChange={(open) => !open && setConfirmation(null)}
             />
