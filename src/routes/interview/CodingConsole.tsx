@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, ChevronDown, ChevronUp, XCircle } from "lucide-react";
 
-import type { InterviewExample, RunResultItem } from "@/lib/interviewApi";
+import type { CodingInterviewQuestion } from "@/lib/interviewApi";
 import { ActionButton, Banner, LabelledCode } from "./codingPaneParts";
 import { summarizeError } from "./execution/errorTrace";
+import { formatCall } from "./execution/harness";
+import type { RunResultItem } from "./execution/runResult";
 import { verdictSummary } from "./execution/verdictSummary";
 import type { UseCodingQuestions } from "./useCodingQuestions";
 
@@ -11,7 +13,7 @@ type ConsoleTab = "results" | "input";
 
 interface CodingConsoleProps {
   coding: UseCodingQuestions;
-  examples: InterviewExample[];
+  question: CodingInterviewQuestion;
 }
 
 // Everything a run or a submit reports, in one panel under the editor with
@@ -20,7 +22,7 @@ interface CodingConsoleProps {
 // that cannot scroll: the candidate could see that something failed but
 // not what. Now the panel is a fixed share of the column and scrolls
 // inside itself, and it opens on its own whenever there is news.
-export default function CodingConsole({ coding, examples }: CodingConsoleProps) {
+export default function CodingConsole({ coding, question }: CodingConsoleProps) {
   const { runResult, runNotice, runNote, isRunning, verdict, customResult } = coding;
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<ConsoleTab>("results");
@@ -86,10 +88,10 @@ export default function CodingConsole({ coding, examples }: CodingConsoleProps) 
                 <VerdictPanel verdict={verdict} onMoveOn={coding.handleMoveOn} busy={coding.isSubmitting} />
               )}
               {runNote && !isRunning && <Banner tone="warning">{runNote}</Banner>}
-              <RunResults coding={coding} examples={examples} />
+              <RunResults coding={coding} question={question} />
             </>
           ) : (
-            <CustomInput coding={coding} />
+            <CustomInput coding={coding} question={question} />
           )}
         </div>
       )}
@@ -137,8 +139,9 @@ function ResultsBadge({ coding }: { coding: UseCodingQuestions }) {
   );
 }
 
-function RunResults({ coding, examples }: { coding: UseCodingQuestions; examples: InterviewExample[] }) {
+function RunResults({ coding, question }: { coding: UseCodingQuestions; question: CodingInterviewQuestion }) {
   const { runResult, runNotice, isRunning } = coding;
+  const harnessed = Boolean(question.signature);
 
   if (isRunning) return <p className="text-xs text-[#737373]">Running your code.</p>;
   if (runNotice) {
@@ -147,7 +150,9 @@ function RunResults({ coding, examples }: { coding: UseCodingQuestions; examples
   if (!runResult) {
     return (
       <p className="text-xs text-[#737373]">
-        Press Run to check your code against the examples. What it prints, and any error, shows here.
+        {harnessed
+          ? "Press Run to call your function with each example. What it returns, anything it prints, and any error show here."
+          : "Press Run to check your code against the examples. What it prints, and any error, shows here."}
       </p>
     );
   }
@@ -157,24 +162,37 @@ function RunResults({ coding, examples }: { coding: UseCodingQuestions; examples
 
   // A question with no structured examples has nothing to check against, so
   // "1 of 1 examples passed" would be a claim about work never done.
-  const bare = runResult.results[0]?.status === "output" || examples.length === 0;
+  const bare = runResult.results[0]?.status === "output" || question.examples.length === 0;
   return (
     <>
       <p className="text-xs font-medium text-[#404040]">
-        {bare ? "Your code ran. Output below." : `${runResult.passed} of ${runResult.ran} examples passed.`}
+        {bare ? "Your code ran." : `${runResult.passed} of ${runResult.ran} examples passed.`}
       </p>
       {runResult.results.map((result) =>
         bare ? (
-          <BareResult key={result.index} result={result} />
+          <BareResult key={result.index} result={result} harnessed={harnessed} />
         ) : (
-          <ExampleResult key={result.index} result={result} input={examples[result.index]?.input} />
+          <ExampleResult
+            key={result.index}
+            result={result}
+            question={question}
+            input={question.examples[result.index]?.input}
+          />
         ),
       )}
     </>
   );
 }
 
-function ExampleResult({ result, input }: { result: RunResultItem; input: string | undefined }) {
+function ExampleResult({
+  result,
+  question,
+  input,
+}: {
+  result: RunResultItem;
+  question: CodingInterviewQuestion;
+  input: string | undefined;
+}) {
   if (result.passed) {
     return (
       <div className="flex items-center gap-1.5 rounded-lg border border-[#BBE5CA] bg-[#E7F5EC] px-2.5 py-1.5 text-xs font-semibold text-[#166534]">
@@ -183,39 +201,58 @@ function ExampleResult({ result, input }: { result: RunResultItem; input: string
       </div>
     );
   }
+  const signature = question.signature;
   return (
     <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 flex flex-col gap-2">
       <div className="flex items-center gap-1.5 text-xs font-semibold text-red-700">
         <XCircle className="h-3.5 w-3.5 shrink-0" />
-        Example {result.index + 1}: {failureLabel(result)}
+        Example {result.index + 1}: {failureLabel(result, Boolean(signature))}
       </div>
       <ErrorDetail stderr={result.stderr} crashed={result.status !== "ok"} />
-      {input !== undefined && <LabelledCode label="Input" value={input} />}
+      {input !== undefined &&
+        (signature ? (
+          <LabelledCode label="Called with" value={formatCall(signature, input)} />
+        ) : (
+          <LabelledCode label="Input" value={input} />
+        ))}
       {result.status === "ok" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <LabelledCode label="Expected output" value={result.expected ?? ""} />
-          <LabelledCode label="Your output" value={result.actual || "(nothing printed)"} />
+          <LabelledCode label={signature ? "Expected" : "Expected output"} value={result.expected ?? ""} />
+          <LabelledCode
+            label={signature ? "Your function returned" : "Your output"}
+            value={result.actual || (signature ? "(nothing returned)" : "(nothing printed)")}
+          />
         </div>
       ) : (
         result.stdout && <LabelledCode label="Printed before the error" value={result.stdout} />
+      )}
+      {result.status === "ok" && signature && result.stdout && (
+        <LabelledCode label="Printed" value={result.stdout} />
       )}
     </div>
   );
 }
 
-function BareResult({ result }: { result: RunResultItem }) {
+// A run with nothing to compare against: the candidate's own input, or a
+// question with no worked examples.
+function BareResult({ result, harnessed }: { result: RunResultItem; harnessed: boolean }) {
   return (
     <div className="flex flex-col gap-2">
       <ErrorDetail stderr={result.stderr} crashed={!result.passed} />
-      <LabelledCode label="Output" value={result.stdout || "(nothing printed)"} />
+      {harnessed && result.passed && (
+        <LabelledCode label="Your function returned" value={result.actual ?? "(nothing returned)"} />
+      )}
+      {(result.stdout || !harnessed) && (
+        <LabelledCode label={harnessed ? "Printed" : "Output"} value={result.stdout || "(nothing printed)"} />
+      )}
     </div>
   );
 }
 
-function failureLabel(result: RunResultItem): string {
+function failureLabel(result: RunResultItem, harnessed: boolean): string {
   if (result.status === "timeout") return "Timed out";
   if (result.status === "runtime_error") return "Your code raised an error";
-  return "Wrong output";
+  return harnessed ? "Wrong answer" : "Wrong output";
 }
 
 // What went wrong, most useful part first: the error itself and the line of
@@ -248,7 +285,7 @@ function ErrorDetail({ stderr, crashed }: { stderr: string; crashed: boolean }) 
 // Shown after a Submit whose hidden checks did not all pass. The question
 // is not over: the code is saved, and the candidate can fix it and submit
 // again, or leave it as it is. Counts and categories only, because that is
-// all the server sends; which input failed is theirs to work out.
+// all the server sends; which case failed is theirs to work out.
 function VerdictPanel({
   verdict,
   onMoveOn,
@@ -292,11 +329,13 @@ function VerdictPanel({
   );
 }
 
-// Lets the candidate run their code on input of their own, to try a case
-// the worked examples do not cover. Output only: there is nothing to
-// compare it against, and it does not count towards unlocking Submit.
-function CustomInput({ coding }: { coding: UseCodingQuestions }) {
-  const { customInput, setCustomInput, customResult, handleRunCustom, isRunning, runBlockedReason } = coding;
+// Lets the candidate call their function with arguments of their own, to
+// try a case the worked examples do not cover. A result only: there is
+// nothing to compare it against, and it does not count towards unlocking
+// Submit.
+function CustomInput({ coding, question }: { coding: UseCodingQuestions; question: CodingInterviewQuestion }) {
+  const { customInput, setCustomInput, customResult, handleRunCustom, isRunning } = coding;
+  const harnessed = Boolean(question.signature);
   const result = customResult?.results[0];
   return (
     <>
@@ -306,19 +345,23 @@ function CustomInput({ coding }: { coding: UseCodingQuestions }) {
         rows={3}
         spellCheck={false}
         aria-label="Custom input"
-        placeholder="Type the input your program should read, in the same format as the examples."
+        placeholder={
+          harnessed
+            ? "One argument per line, as in the examples: a JSON value for each parameter, in order."
+            : "Type the input your program should read, in the same format as the examples."
+        }
         className="w-full shrink-0 rounded border border-[#E8E5DF] bg-[#FAF9F5] px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[#0F0F0F]"
       />
       <div className="flex justify-end">
         <ActionButton
           onClick={handleRunCustom}
-          disabled={isRunning || Boolean(runBlockedReason)}
+          disabled={isRunning}
           label={isRunning ? "Running" : "Run with this input"}
           loading={isRunning}
-          disabledReason={isRunning ? "A run is already in progress." : (runBlockedReason ?? "")}
+          disabledReason={isRunning ? "A run is already in progress." : ""}
         />
       </div>
-      {result && <BareResult result={result} />}
+      {result && <BareResult result={result} harnessed={harnessed} />}
     </>
   );
 }

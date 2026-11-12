@@ -1,4 +1,31 @@
-import type { HiddenChecksCounts, InterviewScorecard } from "@/types";
+import type { HiddenChecksCounts, InterviewLatencySummary, InterviewScorecard } from "@/types";
+
+function seconds(ms: number): string {
+  return `${(ms / 1000).toFixed(1)} s`;
+}
+
+/**
+ * "Replies in 1.2 s (p50) · 2.8 s (p95) · first word 1.4 s after joining",
+ * or null when the session recorded none of it. Only the numbers a recruiter
+ * can act on: the wait after the candidate stops talking, and the wait for
+ * the first word. Component timings stay in the API for engineers.
+ */
+export function responseTimeLabel(latency: InterviewLatencySummary | null | undefined): string | null {
+  if (!latency) return null;
+  const parts: string[] = [];
+  const e2e = latency.e2e;
+  if (e2e && Number.isFinite(e2e.p50_ms) && (e2e.n ?? 0) > 0) {
+    const p50 = seconds(e2e.p50_ms as number);
+    parts.push(
+      Number.isFinite(e2e.p95_ms) ? `Replies in ${p50} (p50) · ${seconds(e2e.p95_ms as number)} (p95)` : `Replies in ${p50}`,
+    );
+  }
+  const first = latency.startup?.join_to_first_word_s;
+  if (Number.isFinite(first)) {
+    parts.push(`first word ${(first as number).toFixed(1)} s after joining`);
+  }
+  return parts.length ? parts.join(" · ") : null;
+}
 
 // Known code languages the candidate-facing editor offers (lib/interviewApi.ts's
 // InterviewLanguage). Kept as a display-only lookup, not a shared type import:
@@ -7,7 +34,6 @@ import type { HiddenChecksCounts, InterviewScorecard } from "@/types";
 const LANGUAGE_LABEL: Record<string, string> = {
   python: "Python",
   javascript: "JavaScript",
-  cpp: "C++",
 };
 
 export function languageLabel(language: string): string {

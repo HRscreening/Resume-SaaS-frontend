@@ -5,6 +5,7 @@ import { InterviewScorecardHeader } from "./scorecard/InterviewScorecardHeader";
 import { InterviewAssessmentSection } from "./scorecard/InterviewAssessmentSection";
 import { InterviewBreakdownSection } from "./scorecard/InterviewBreakdownSection";
 import { InterviewQuestionDetail } from "./scorecard/InterviewQuestionDetail";
+import { InterviewRecordingSection } from "./scorecard/InterviewRecordingSection";
 
 interface InterviewScorecardPanelProps {
   screeningId: string;
@@ -63,6 +64,7 @@ export function InterviewScorecardPanel({ screeningId, resumeId }: InterviewScor
         recommendation={scorecard.recommendation}
         isPartial={scorecard.is_partial}
         completedAt={scorecard.completed_at}
+        latency={scorecard.latency}
       />
 
       <InterviewAssessmentSection scorecard={scorecard} />
@@ -80,6 +82,15 @@ export function InterviewScorecardPanel({ screeningId, resumeId }: InterviewScor
       >
         <div className="pt-1">
           <InterviewQuestionDetail scorecard={scorecard} />
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Recording">
+        <div className="pt-1">
+          <InterviewRecordingSection
+            screeningId={screeningId}
+            sessionId={scorecard.interview_session_id}
+          />
         </div>
       </CollapsibleSection>
     </div>

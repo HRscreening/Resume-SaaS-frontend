@@ -17,6 +17,8 @@ export type InterviewBrief = {
   // turned on.
   requires_camera: boolean;
   requires_screen_share: boolean;
+  /** True when the candidate's audio will be recorded. */
+  recorded?: boolean;
 };
 
 export type InterviewJoinGrant = {
@@ -106,15 +108,32 @@ export const joinInterview = (token: string) =>
 
 // ─── Coding pane ────────────────────────────────────────────────────────────
 // See .superpowers/sdd/2026-09-28-interview-round-authoring/coding-pane-contract.md
-// for the binding shape of these three endpoints. Field names here are not
-// ours to rename: the backend is built against the same document.
+// for the binding shape of these endpoints. Field names here are not ours
+// to rename: the backend is built against the same document.
 
-export type InterviewLanguage = "python" | "javascript" | "cpp";
+// The languages the harness has a driver for (backend harness.py). The
+// editor offers exactly these.
+export type InterviewLanguage = "python" | "javascript";
 
+// One worked case: the function's arguments, one JSON value per line, and
+// the value it returns (as JSON). On a question published before the
+// harness, a program's stdin and its expected stdout.
 export interface InterviewExample {
   input: string;
   output: string;
   note?: string;
+}
+
+export interface FunctionParam {
+  name: string;
+  type: string;
+}
+
+// The function the candidate implements (backend FunctionSignature).
+export interface FunctionSignature {
+  name: string;
+  params: FunctionParam[];
+  returns: string;
 }
 
 // A spoken question's text is withheld until the interviewer has actually
@@ -126,21 +145,27 @@ export interface InterviewExample {
 // must never allow. Coding questions keep their existing, unconditional
 // content: the pane's statement/examples were already only useful once the
 // pane opens, so there was never read-ahead risk to withhold them against.
+export interface CodingInterviewQuestion {
+  id: string;
+  kind: "coding";
+  allocated_minutes: number;
+  presented: boolean;
+  title: string;
+  statement_md: string;
+  examples: InterviewExample[];
+  // The function the candidate implements, with what the server generated
+  // from it (backend harness.py): the stub the editor opens with and the
+  // driver Run appends before executing, both keyed by language id. All
+  // three are absent on a question published before the harness existed,
+  // which runs as a plain program.
+  signature?: FunctionSignature;
+  starter_code?: Record<string, string>;
+  harness?: Record<string, string>;
+}
+
 export type InterviewQuestion =
   | { id: string; kind: "spoken"; allocated_minutes: number; presented: boolean; prompt?: string }
-  | {
-      id: string;
-      kind: "coding";
-      allocated_minutes: number;
-      presented: boolean;
-      title: string;
-      statement_md: string;
-      examples: InterviewExample[];
-      // Per-language starter code the editor opens with, keyed by language
-      // id. Absent on any question authored before the field existed, which
-      // is why the pane keeps its own generic scaffold (starterCode.ts).
-      starter_code?: Record<string, string>;
-    };
+  | CodingInterviewQuestion;
 
 export interface InterviewQuestionsResponse {
   questions: InterviewQuestion[];
@@ -151,44 +176,9 @@ export const getInterviewQuestions = (token: string) =>
     `/api/v1/interview/${encodeURIComponent(token)}/questions`,
   );
 
-export interface RunCodeRequest {
-  question_id: string;
-  language: InterviewLanguage;
-  source: string;
-}
-
-export interface RunResultItem {
-  index: number;
-  passed: boolean;
-  stdout: string;
-  stderr: string;
-  status: string;
-  // Present only when `passed` is false: what the visible example expected
-  // versus what the candidate's program actually printed.
-  expected?: string;
-  actual?: string;
-}
-
-export interface RunCodeResponse {
-  results: RunResultItem[];
-  // Reported once for the whole run, never per example.
-  compile_error: string | null;
-  ran: number;
-  passed: number;
-}
-
-// Not called from the frontend any more: Run for Python and JavaScript now
-// executes entirely in the candidate's browser (see
-// src/routes/interview/execution/runCodeLocally.ts), and C++ has no runner
-// here yet. The endpoint itself stays exactly as the backend built it —
-// unused by this path today, reserved for a server-side C++ judge later —
-// so this client function is kept, matching the contract, rather than
-// deleted and re-added when that lands.
-export const runCode = (token: string, body: RunCodeRequest) =>
-  publicRequest<RunCodeResponse>(`/api/v1/interview/${encodeURIComponent(token)}/run`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
+// Run has no endpoint: it executes in the candidate's browser
+// (src/routes/interview/execution/runCodeLocally.ts) on the same composed
+// program Submit judges on the sandbox.
 
 export interface SubmitCodeRequest {
   question_id: string;
@@ -201,7 +191,7 @@ export interface SubmitCodeRequest {
 }
 
 // How the submitted code did against the question's hidden checks. Counts
-// only, by design: the server never sends an input, an expected output or
+// only, by design: the server never sends an input, an expected value or
 // anything the program printed, so nothing here can reveal a hidden check.
 export interface SubmitVerdict {
   passed: number;

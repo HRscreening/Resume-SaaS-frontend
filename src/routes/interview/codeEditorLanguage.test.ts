@@ -3,7 +3,13 @@ import { describe, expect, it } from "vitest";
 
 import type { InterviewLanguage } from "@/lib/interviewApi";
 import { EDITOR_LANGUAGES, syntaxProblems } from "./codeEditorLanguage";
-import { starterCodeFor } from "./starterCode";
+
+// The stubs the server generates from a signature (backend harness.py),
+// as the editor receives them.
+const STARTERS: Record<InterviewLanguage, string> = {
+  python: "from typing import List\n\n\ndef two_sum(nums: List[int], target: int) -> List[int]:\n    # Write your solution here\n    pass\n",
+  javascript: "/**\n * @param {number[]} nums\n * @param {number} target\n * @returns {number[]}\n */\nfunction twoSum(nums, target) {\n  // Write your solution here\n}\n",
+};
 
 function problemsIn(language: InterviewLanguage, doc: string) {
   return syntaxProblems(EditorState.create({ doc, extensions: [EDITOR_LANGUAGES[language].support()] }));
@@ -61,10 +67,9 @@ describe("syntaxProblems", () => {
     expect(problemsIn("javascript", JS_TWO_SUM)).toEqual([]);
   });
 
-  it("finds nothing wrong with the scaffold a candidate starts from", () => {
+  it("finds nothing wrong with the stub a candidate starts from", () => {
     for (const language of ["python", "javascript"] as const) {
-      const scaffold = starterCodeFor({ kind: "coding" }, language);
-      expect(problemsIn(language, scaffold)).toEqual([]);
+      expect(problemsIn(language, STARTERS[language])).toEqual([]);
     }
   });
 

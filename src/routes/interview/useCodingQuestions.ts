@@ -7,7 +7,6 @@ import {
   submitCode,
   type SubmitVerdict,
   type InterviewLanguage,
-  type RunCodeResponse,
 } from "@/lib/interviewApi";
 import {
   loadCodingState,
@@ -15,15 +14,13 @@ import {
   type CodingState,
   type QuestionBuffer,
 } from "./codingBufferStorage";
+import { isInterviewFinished } from "./agenda";
 import { useCountdown } from "./useCountdown";
 import { useQuestionSync } from "./useQuestionSync";
+import { reconcileDeadline, shouldClearDeadline } from "./questionDeadline";
 import { notifyActivity, notifySubmitted } from "./notifySubmission";
-import {
-  runCodeLocally,
-  runWithInput,
-  CppNotRunnableError,
-  PythonNotReadyError,
-} from "./execution/runCodeLocally";
+import { runCodeLocally, runWithInput, PythonNotReadyError } from "./execution/runCodeLocally";
+import type { RunResult } from "./execution/runResult";
 import { pyodideManager } from "./execution/pyodideManager";
 import { usePyodideStatus } from "./execution/usePyodideStatus";
 import { runGateFor } from "./execution/runGate";
@@ -39,9 +36,6 @@ interface PersistResult {
 }
 
 const DEFAULT_LANGUAGE: InterviewLanguage = "python";
-// The languages the pane offers, for isUntouchedStarter: a stub from ANY
-// of them still counts as untouched.
-const LANGUAGE_IDS = ["python", "javascript", "cpp"] as const;
 
 function minutesToMs(minutes: number): number {
   return minutes * 60_000;
@@ -87,7 +81,13 @@ export type SubmitNotice = { kind: "saved" | "error"; message: string };
 // the candidate has already submitted (`dismissed`) keeps the pane closed
 // for good even if the pointer republishes that id again (a repeated tick,
 // or the interviewer genuinely moving back to it).
-export function useCodingQuestions(token: string, room: Room | null) {
+// `paused`: the call is not connected. The server pauses the question's clock
+// while a dropped candidate is away (backend disconnect_hold), so the local
+// countdown running out then means nothing: no auto-save, no closed pane. The
+// server's own remaining time is adopted again on reconnect.
+export function useCodingQuestions(token: string, room: Room | null, paused = false) {
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const { data, error: questionsError, refetch } = useQuery({
     queryKey: ["interview-questions", token],
     queryFn: () => getInterviewQuestions(token),
@@ -119,7 +119,11 @@ export function useCodingQuestions(token: string, room: Room | null) {
   );
   // The agent-named current question, once a valid, known id has arrived —
   // null (and therefore ignored below) until then or if it never does.
-  const syncedQuestionId = useQuestionSync(room, knownQuestionIds);
+  const {
+    questionId: syncedQuestionId,
+    remainingS,
+    walkthrough: serverWalkthrough,
+  } = useQuestionSync(room, knownQuestionIds);
 
   const [state, setState] = useState<CodingState | null>(null);
   const expiringRef = useRef(false);
@@ -178,11 +182,11 @@ export function useCodingQuestions(token: string, room: Room | null) {
   const total = questions?.length ?? 0;
   const current = index !== -1 && questions ? questions[index] : undefined;
   const rawBuffer = current ? bufferFor(state?.buffers ?? {}, current.id) : null;
-  // An editor that opens empty makes the candidate guess the harness
-  // before they can start on the problem (starterCode.ts). Seeded at read
-  // time rather than written into state: a stub nobody has typed into is
-  // not the candidate's work, and persisting it would make every later
-  // "has this been touched?" check think it had been.
+  // The editor opens on the function stub the server generated for the
+  // question (starterCode.ts). Seeded at read time rather than written
+  // into state: a stub nobody has typed into is not the candidate's work,
+  // and persisting it would make every later "has this been touched?"
+  // check think it had been.
   const buffer =
     rawBuffer && current && current.kind === "coding" && !rawBuffer.source
       ? { ...rawBuffer, source: starterCodeFor(current, rawBuffer.language) }
@@ -221,6 +225,27 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // identically to the pre-presentation state, by design) is the honest
   // state while this hook waits on the refetch below; showing stale text
   // would not be.
+  // Past the last question: the clock on the final question has stopped.
+  const finished =
+    state !== null &&
+    isInterviewFinished({
+      total,
+      index,
+      currentId: current?.id ?? null,
+      deadlineAt: state.deadlineAt,
+      deadlineQuestionId: state.deadlineQuestionId,
+    });
+
+  // The server says it is walking through the current question's submitted
+  // code (its flag arrives on the same tick as the id, so it describes
+  // `current`). Never inferred locally: a timeout auto-save or "Move on"
+  // also dismisses the pane but starts no walkthrough. An older agent that
+  // never sends the flag means no panel, and nothing shows once finished.
+  const walkthrough: { title: string } | null =
+    serverWalkthrough && current?.kind === "coding" && !finished
+      ? { title: current.title || "your solution" }
+      : null;
+
   const [pinned, setPinned] = useState<{ id: string; prompt: string } | null>(null);
   useEffect(() => {
     if (current?.kind === "spoken" && typeof current.prompt === "string") {
@@ -264,14 +289,14 @@ export function useCodingQuestions(token: string, room: Room | null) {
   }, [syncedQuestionId, questions, refetch]);
 
   // The timer belongs to whichever question the pointer names, and only
-  // that: give it a fresh countdown against its own `allocated_minutes` the
-  // moment the pointer moves to a different question, forward, backward, or
+  // that: give it a fresh countdown the moment the pointer moves to a different question, forward, backward, or
   // to one the pointer was never on before in this mount. A restored
   // deadline (mount effect above already primed deadlineOwnerRef from
   // `deadlineQuestionId` to match) is left untouched, which is what
   // preserves true remaining time across a reload instead of resetting it
   // to a fresh full allocation the instant the pointer republishes the same
-  // question.
+  // question. The countdown starts from the server's remaining time when the
+  // signal carries one, else from the question's own `allocated_minutes`.
   useEffect(() => {
     const id = current?.id ?? null;
     if (deadlineOwnerRef.current === id) return;
@@ -281,13 +306,46 @@ export function useCodingQuestions(token: string, room: Room | null) {
       if (!current) return { ...prev, deadlineAt: null, deadlineQuestionId: null };
       return {
         ...prev,
-        deadlineAt: Date.now() + minutesToMs(current.allocated_minutes),
+        deadlineAt:
+          remainingS !== null
+            ? Date.now() + remainingS * 1000
+            : Date.now() + minutesToMs(current.allocated_minutes),
         deadlineQuestionId: current.id,
       };
     });
-  }, [current]);
+  }, [current, remainingS]);
 
-  const [runResult, setRunResult] = useState<RunCodeResponse | null>(null);
+  // One authoritative clock: every later signal for the question that owns
+  // the deadline is folded in, but the screen only realigns when it has
+  // drifted past DEADLINE_REALIGN_MS. State is written only on a real change
+  // so the ~5s ticks do not re-render the whole interview screen.
+  //
+  // The one exception: a server clock that goes from a number to null for the
+  // SAME question means the server closed it (the last spoken question ended
+  // early, the pointer went FINISHED and the signal stays pinned to it). The
+  // local deadline is cleared then, so no timer runs on into the candidate's
+  // questions. `deadlineQuestionId` is kept so the id-change effect does not
+  // restart a fresh countdown for it.
+  const currentId = current?.id ?? null;
+  const lastSignalRef = useRef<{ questionId: string | null; remainingS: number | null }>({
+    questionId: null,
+    remainingS: null,
+  });
+  useEffect(() => {
+    const last = lastSignalRef.current;
+    const prevRemainingS = last.questionId === syncedQuestionId ? last.remainingS : null;
+    lastSignalRef.current = { questionId: syncedQuestionId, remainingS };
+    if (currentId === null || deadlineOwnerRef.current !== currentId) return;
+    const clear = syncedQuestionId === currentId && shouldClearDeadline(prevRemainingS, remainingS);
+    setState((prev) => {
+      if (!prev) return prev;
+      const next = clear ? null : reconcileDeadline(prev.deadlineAt, remainingS, Date.now());
+      return next === prev.deadlineAt ? prev : { ...prev, deadlineAt: next };
+    });
+  }, [remainingS, currentId, syncedQuestionId]);
+  const timerActive = state?.deadlineAt != null;
+
+  const [runResult, setRunResult] = useState<RunResult | null>(null);
   const [runNotice, setRunNotice] = useState<RunNotice | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [submitNotice, setSubmitNotice] = useState<SubmitNotice | null>(null);
@@ -298,7 +356,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // last submission", which is exactly what they are working against.
   const [verdict, setVerdict] = useState<SubmitVerdict | null>(null);
   const [customInput, setCustomInput] = useState("");
-  const [customResult, setCustomResult] = useState<RunCodeResponse | null>(null);
+  const [customResult, setCustomResult] = useState<RunResult | null>(null);
 
   // Read inside the async handlers below so a Run or Submit request that is
   // still in flight when the pointer moves the candidate on (mid-request)
@@ -340,10 +398,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
       setState((prev) => {
         if (!prev || !current) return prev;
         const existing = bufferFor(prev.buffers, current.id);
-        if (
-          current.kind === "coding" &&
-          isUntouchedStarter(existing.source, current, LANGUAGE_IDS)
-        ) {
+        if (current.kind === "coding" && isUntouchedStarter(existing.source, current)) {
           return {
             ...prev,
             buffers: {
@@ -421,10 +476,10 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // a verdict panel up on a question that is already over.
   const finishedRef = useRef<Set<string>>(new Set());
   const finishQuestion = useCallback(
-    (questionId: string, language: InterviewLanguage) => {
+    (questionId: string, language: InterviewLanguage, options: { movedOn?: boolean } = {}) => {
       if (finishedRef.current.has(questionId)) return;
       finishedRef.current.add(questionId);
-      notifySubmitted(room, questionId, language);
+      notifySubmitted(room, questionId, language, options);
       dismissQuestion(questionId);
     },
     [room, dismissQuestion],
@@ -438,6 +493,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
   // pointer to decide what, if anything, happens next.
   const handleExpire = useCallback(() => {
     if (expiringRef.current || !current || !state) return;
+    if (pausedRef.current) return; // the interview is on hold server-side
     // Already submitted (manually, or by an earlier expiry) — the pane for
     // this id is closed for good (see `showPane`), so there is nothing left
     // to capture and nowhere for a notice to be seen. Without this guard a
@@ -493,31 +549,23 @@ export function useCodingQuestions(token: string, room: Room | null) {
     return () => window.clearTimeout(id);
   }, [submitNotice]);
 
-  // Whether Run can be pressed, and what to say about it (runGate.ts).
-  // Note and blocked are separate on purpose: "Python is still loading" is
-  // worth telling the candidate but must NOT disable the button, because
-  // the run itself waits for the interpreter. Only a language with no
-  // browser runner, or an interpreter that failed outright, blocks.
+  // What to say about Run (runGate.ts). "Python is still loading" is worth
+  // telling the candidate but never disables the button, because the run
+  // itself waits for the interpreter.
   const runGate = runGateFor(buffer?.language, pythonStatus);
-  const runBlockedReason: string | null = runGate.blocked ? runGate.note : null;
   const runNote: string | null = runGate.note;
 
   // Submit means "I checked this". It waits for a passing run, EXCEPT where
-  // running is impossible (C++, or Pyodide failed to load) -- there it
-  // stands down rather than leaving the candidate no way to finish the
-  // question by hand. `runGate.blocked` is exactly "cannot run here".
-  const submitGate = submitGateFor({
-    // canSucceed, NOT !blocked: a failed Pyodide load leaves Run pressable
-    // (it retries) but means the candidate may never be able to produce a
-    // passing run, so Submit must not hold them to one.
-    runnable: runGate.canSucceed,
-    isRunning,
-    runResult,
-  });
+  // running is impossible (Pyodide failed to load) -- there it stands down
+  // rather than leaving the candidate no way to finish the question by
+  // hand. A failed Pyodide load leaves Run pressable (it retries) but means
+  // the candidate may never be able to produce a passing run, so Submit
+  // must not hold them to one.
+  const submitGate = submitGateFor({ runnable: runGate.canSucceed, isRunning, runResult });
   const submitBlockedReason: string | null = submitGate.note;
 
   const handleRun = useCallback(async () => {
-    if (!current || current.kind !== "coding" || !buffer || isRunning || runBlockedReason) return;
+    if (!current || current.kind !== "coding" || !buffer || isRunning) return;
     const questionId = current.id;
     setIsRunning(true);
     setRunNotice(null);
@@ -527,7 +575,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
       // so the candidate can check their own work, and nothing here is ever
       // read for scoring, which is what makes running untrusted code in the
       // candidate's own tab safe in the first place.
-      const result = await runCodeLocally(buffer.language, buffer.source, current.examples);
+      const result = await runCodeLocally(buffer.language, buffer.source, current);
       // The pointer can move the candidate past this question (the server
       // advanced it) while a run is still going. A result for a question
       // that is no longer on screen must be dropped, not shown against
@@ -537,7 +585,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
     } catch (err) {
       if (currentIdRef.current !== questionId) return;
       setRunResult(null);
-      if (err instanceof CppNotRunnableError || err instanceof PythonNotReadyError) {
+      if (err instanceof PythonNotReadyError) {
         setRunNotice({ kind: "unavailable", message: err.message });
       } else {
         setRunNotice({
@@ -554,24 +602,24 @@ export function useCodingQuestions(token: string, room: Room | null) {
       // never get stuck true because the candidate advanced mid-request.
       setIsRunning(false);
     }
-  }, [current, buffer, isRunning, runBlockedReason]);
+  }, [current, buffer, isRunning]);
 
-  // Runs the code on input the candidate typed, and shows what it printed.
-  // Separate state from `runResult` on purpose: the Submit gate reads
-  // runResult ("did the worked examples pass"), and trying an input of your
+  // Calls the code with arguments the candidate typed, and shows what came
+  // back. Separate state from `runResult` on purpose: the Submit gate reads
+  // runResult ("did the worked examples pass"), and trying a case of your
   // own must neither satisfy that gate nor reset it.
   const handleRunCustom = useCallback(async () => {
-    if (!current || current.kind !== "coding" || !buffer || isRunning || runBlockedReason) return;
+    if (!current || current.kind !== "coding" || !buffer || isRunning) return;
     const questionId = current.id;
     setIsRunning(true);
     try {
-      const result = await runWithInput(buffer.language, buffer.source, customInput);
+      const result = await runWithInput(buffer.language, buffer.source, current, customInput);
       if (currentIdRef.current === questionId) setCustomResult(result);
     } catch (err) {
       if (currentIdRef.current !== questionId) return;
       setCustomResult(null);
       setRunNotice({
-        kind: err instanceof CppNotRunnableError || err instanceof PythonNotReadyError ? "unavailable" : "error",
+        kind: err instanceof PythonNotReadyError ? "unavailable" : "error",
         message:
           err instanceof Error
             ? err.message
@@ -580,7 +628,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
     } finally {
       setIsRunning(false);
     }
-  }, [current, buffer, isRunning, runBlockedReason, customInput]);
+  }, [current, buffer, isRunning, customInput]);
 
   const handleSubmit = useCallback(async () => {
     if (!current || current.kind !== "coding" || !buffer || isSubmitting) return;
@@ -651,7 +699,7 @@ export function useCodingQuestions(token: string, room: Room | null) {
       return;
     }
     setSubmitNotice({ kind: "saved", message: "Saved." });
-    finishQuestion(questionId, language);
+    finishQuestion(questionId, language, { movedOn: true });
   }, [current, buffer, isSubmitting, persist, finishQuestion]);
 
   return {
@@ -660,6 +708,8 @@ export function useCodingQuestions(token: string, room: Room | null) {
     current,
     showPane,
     pinned,
+    walkthrough,
+    finished,
     index,
     total,
     buffer,
@@ -667,10 +717,10 @@ export function useCodingQuestions(token: string, room: Room | null) {
     setLanguage,
     secondsRemaining,
     warning,
+    timerActive,
     runResult,
     runNotice,
     isRunning,
-    runBlockedReason,
     runNote,
     submitBlocked: submitGate.blocked,
     submitBlockedReason,

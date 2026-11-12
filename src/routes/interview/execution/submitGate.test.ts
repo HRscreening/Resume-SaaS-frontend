@@ -4,9 +4,9 @@
 // cannot be run here at all, Submit is their only way to finish.
 import { describe, expect, it } from "vitest";
 import { submitGateFor } from "./submitGate";
-import type { RunCodeResponse } from "@/lib/interviewApi";
+import type { RunResult } from "./runResult";
 
-const result = (over: Partial<RunCodeResponse> = {}): RunCodeResponse => ({
+const result = (over: Partial<RunResult> = {}): RunResult => ({
   results: [], compile_error: null, ran: 3, passed: 3, ...over,
 });
 
@@ -51,8 +51,8 @@ describe("submitGateFor", () => {
 
   describe("never traps a candidate who cannot run anything", () => {
     it("stands down entirely when the language has no runner", () => {
-      // C++, or Pyodide failed to load. Submit is the only way out of the
-      // question by hand; requiring a run that cannot happen is a dead end.
+      // Pyodide failed to load. Submit is the only way out of the question
+      // by hand; requiring a run that cannot happen is a dead end.
       expect(submitGateFor({ runnable: false, isRunning: false, runResult: null }))
         .toEqual({ blocked: false, note: null });
     });

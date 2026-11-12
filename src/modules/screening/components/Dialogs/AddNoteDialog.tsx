@@ -14,7 +14,7 @@ import {
 interface AddNoteDialogProps {
     screeningId: string;
     resumeId: string;
-    onViwAllNotes: (resumeId:string) => void;
+    onViwAllNotes: (resumeId: string) => void;
 }
 
 const MAX_TEXT = 500;
@@ -74,9 +74,15 @@ export default function AddNoteDialog({
                 setOpen(isOpen);
             }}
         >
-            <DialogTrigger asChild>
-                    <NotebookPen className="text-[#A0A0A0] hover:text-[#C85A17] cursor-pointer"  size={16} /> 
-            </DialogTrigger>
+            <div
+            title="Add Note"
+            >
+                <DialogTrigger
+                    asChild>
+                    <NotebookPen
+                        className="text-[#A0A0A0] hover:text-[#C85A17] cursor-pointer" size={16} />
+                </DialogTrigger>
+            </div>
 
             <DialogContent
                 showCloseButton={false}
@@ -109,7 +115,7 @@ export default function AddNoteDialog({
                         underline
                         italic
                     "
-                            onClick={()=>{onViwAllNotes(resumeId); setOpen(false)}}
+                            onClick={() => { onViwAllNotes(resumeId); setOpen(false) }}
                         >View All Notes</span>
                     </DialogTitle>
 

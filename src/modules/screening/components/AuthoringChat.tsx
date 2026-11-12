@@ -9,6 +9,7 @@ import {
   useRoundWriteLock,
   ROUND_WRITE_BUSY_MESSAGE,
 } from "@/modules/screening/hooks/round/useRoundWriteLock";
+import { SETUP_PENDING_CHAT_MESSAGE } from "@/modules/screening/components/roundSetup";
 import type { RoundResponse } from "@/types";
 
 interface AuthoringChatProps {
@@ -51,7 +52,11 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
   // wrote second. Named editInFlight for history, but isBlocked("chat") is
   // true whenever EITHER other surface is busy, not just an inline edit.
   const editInFlight = isBlocked("chat");
-  const disabled = isFrozen || !canWrite || editInFlight;
+  // Camera and screen share are decided on the setup card before the
+  // conversation starts. The server refuses a turn until then (409), so
+  // this lock mirrors it rather than being the thing that enforces it.
+  const setupPending = !round.requirements.confirmed;
+  const disabled = isFrozen || !canWrite || editInFlight || setupPending;
 
   const sendTurn = useMutation({
     mutationFn: (message: string) => sendChatTurn(roundId, message),
@@ -65,10 +70,11 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
       setDraft("");
     },
     onError: (err) => {
-      // A 409 means the round was published (or otherwise frozen) by
-      // someone else since this page last loaded it. Refetch so the
-      // composer disables itself and the frozen banner appears, instead of
-      // leaving a live-looking composer that will 409 again on retry.
+      // A 409 means the round's state changed under this page: published
+      // (frozen) by someone else, or its setup un-confirmed in another
+      // tab. Refetch so the composer disables itself and the right banner
+      // appears, instead of leaving a live-looking composer that will 409
+      // again on retry.
       if (err instanceof ApiError && err.status === 409) {
         queryClient.invalidateQueries({ queryKey: ["round", roundId] });
       }
@@ -121,14 +127,12 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
     }
   }
 
+  // The server writes its own 409 and 422 messages for a person to read
+  // (route.py), so they are shown as they are.
   const errorMessage = sendTurn.isError
-    ? sendTurn.error instanceof ApiError
-      ? sendTurn.error.status === 409
-        ? "This round was published while you were away, so it can no longer be edited here. Clone it to keep going."
-        : sendTurn.error.message
-      : sendTurn.error instanceof ReadOnlyError
-        ? sendTurn.error.message
-        : "Could not reach the server. Your message is still here, try again."
+    ? sendTurn.error instanceof ApiError || sendTurn.error instanceof ReadOnlyError
+      ? sendTurn.error.message
+      : "Could not reach the server. Your message is still here, try again."
     : null;
 
   return (
@@ -165,8 +169,8 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
       >
         {round.authoring_chat.length === 0 && !sendTurn.isPending && (
           <p className="text-sm text-[#737373]">
-            Describe the role and what this round should assess. The assistant proposes
-            questions and fits them to your time budget as you go.
+            Tell the assistant what this round should assess. It proposes questions and fits
+            them to your time budget as you go. It only helps with setting up this round.
           </p>
         )}
         {round.authoring_chat.map((msg, i) => (
@@ -196,7 +200,13 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
         </div>
       )}
 
-      {editInFlight && !isFrozen && canWrite && (
+      {setupPending && !isFrozen && canWrite && (
+        <div className="mx-4 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+          <p className="text-xs leading-relaxed text-amber-800">{SETUP_PENDING_CHAT_MESSAGE}</p>
+        </div>
+      )}
+
+      {editInFlight && !isFrozen && canWrite && !setupPending && (
         <div className="mx-4 mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
           <p className="text-xs leading-relaxed text-amber-800">{ROUND_WRITE_BUSY_MESSAGE}</p>
         </div>
@@ -217,7 +227,9 @@ export default function AuthoringChat({ roundId, round }: AuthoringChatProps) {
           placeholder={
             isFrozen
               ? "This round is frozen."
-              : "Describe the role, ask for changes, or request a rebalance..."
+              : setupPending
+                ? "Confirm the candidate setup first."
+                : "Ask for questions, changes to them, or a rebalance..."
           }
           rows={2}
           aria-label="Message to the authoring assistant"

@@ -4,9 +4,9 @@ import { JdAiBuilder } from "./JdAiBuilder";
 type JdInputMode = "paste" | "upload" | "ai";
 
 const MODE_OPTIONS: { value: JdInputMode; label: string }[] = [
-  { value: "paste", label: "Paste" },
   { value: "upload", label: "Upload file" },
   { value: "ai", label: "Build with AI" },
+  { value: "paste", label: "Paste" },
 ];
 
 interface JdInputStepProps {
