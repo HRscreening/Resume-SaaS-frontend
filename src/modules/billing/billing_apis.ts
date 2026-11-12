@@ -1,5 +1,6 @@
 import { request } from "@/lib/api";
-import type { CheckoutSubscription, CheckoutSubscriptionResponse, VerifyPayment, VerifyPaymentResponse, BillingIntervalType, SubscriptionActionType, DwongradablePlan} from "@/types/subscription.type"
+import type { CheckoutSubscription, CheckoutSubscriptionResponse, VerifyPayment, VerifyPaymentResponse, BillingIntervalType, SubscriptionActionType} from "@/types/subscription.type"
+import type { SubscriptionPlan } from "@/types";
 import type { CheckoutQuoteResponse } from "@/types/planCheckout.type"
 import { detectBillingCurrency } from "../../lib/currency";
 // ---------------------------------------- Billing APIs ---------------------------------------- //
@@ -17,7 +18,7 @@ export async function verifyPayment(data: VerifyPayment): Promise<VerifyPaymentR
     });
 }
 
-export async function getCheckoutQuote(plan: SubscriptionActionType, billing_interval: BillingIntervalType): Promise<CheckoutQuoteResponse> {
+export async function getCheckoutQuote(plan: SubscriptionPlan, billing_interval: BillingIntervalType): Promise<CheckoutQuoteResponse> {
     
     const currency = detectBillingCurrency()
     
@@ -26,7 +27,7 @@ export async function getCheckoutQuote(plan: SubscriptionActionType, billing_int
     });
 }
 
-export async function downgrade(plan: DwongradablePlan, billing_interval: BillingIntervalType) {
+export async function downgrade(plan: SubscriptionPlan, billing_interval: BillingIntervalType) {
     
     return request(`/api/v1/subscription/downgrade-subscription?downgrade_plan=${encodeURIComponent(plan)}&billing_cycle=${encodeURIComponent(billing_interval)}`, {
         method: "POST",

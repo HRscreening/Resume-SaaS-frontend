@@ -1,5 +1,5 @@
 import { request } from "@/lib/api";
-import type { UserSubscription,UserMonthlyUsage } from "@/types/subscription.type"
+import type { UserSubscription, UserMonthlyUsage, CreditLog } from "@/types/subscription.type"
 import { detectBillingCurrency } from "../../lib/currency";
 
 export async function getUserSubscription(): Promise<UserSubscription | null> {
@@ -13,18 +13,34 @@ export async function getUserSubscription(): Promise<UserSubscription | null> {
 
 
 export async function getUserUsageQuotas(): Promise<UserMonthlyUsage> {
-    return request(`/api/v1/subscription/quota`, {
+    return request(`/api/v1/quota/usage`, {
         method: "GET",
     });
 }
 
-export async function cancelSubscription(): Promise<{
-}> {
-    return request("/api/v1/subscription/cancel-subscription", { method: "POST" });
+export async function getCreditLogs(
+    quotaPeriodId: string,
+    page: number,
+    limit: number,
+): Promise<CreditLog[]> {
+    const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+    });
+    return request(
+        `/api/v1/quota/credit_logs/${encodeURIComponent(quotaPeriodId)}?${params.toString()}`,
+        { method: "GET" },
+    );
 }
 
-export async function cancelScheduledDowngrade(): Promise<{ success: boolean }> {
-    return request("/api/v1/subscription/cancel-scheduled-downgrade", {
+export async function cancelSubscription(): Promise<{
+}> {
+    return request("/api/v1/subscription/cancel", { method: "POST" });
+}
+
+
+export async function resumeSubscription(): Promise<{ success: boolean }> {
+    return request("/api/v1/subscription/resume", {
         method: "POST",
     });
 }

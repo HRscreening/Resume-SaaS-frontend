@@ -1,6 +1,6 @@
 import type { UserSubscription, UserMonthlyUsage } from "@/types/subscription.type"
-import { getUserSubscription, getUserUsageQuotas, cancelSubscription, cancelScheduledDowngrade } from "@/modules/subscription/subscription_apis"
-import { userSubscriptionQueryKey, UserUsageQuotasQueryKey } from "@/modules/shared/queryKeys/subscriptionQueryKeys"
+import { getUserSubscription, getUserUsageQuotas, getCreditLogs, cancelSubscription,resumeSubscription  } from "@/modules/subscription/subscription_apis"
+import { userSubscriptionQueryKey, UserUsageQuotasQueryKey, CreditLogsQueryKey } from "@/modules/shared/queryKeys/subscriptionQueryKeys"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 
@@ -22,22 +22,21 @@ export function useCancelAutoPayMutation() {
         mutationFn: cancelSubscription,
         onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: [userSubscriptionQueryKey] });
-            await queryClient.invalidateQueries({ queryKey: ["profile"] });
         },
     });
 }
 
-export function useCancelScheduledDowngradeMutation() {
+export function useResumeSubscriptionMutation() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: cancelScheduledDowngrade,
+        mutationFn: resumeSubscription,
         onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: [userSubscriptionQueryKey] });
-            await queryClient.invalidateQueries({ queryKey: ["profile"] });
         },
     });
 }
+
 
 
 export function useUserUsageQuotas(enabled = true) {
@@ -46,5 +45,14 @@ export function useUserUsageQuotas(enabled = true) {
         queryFn: getUserUsageQuotas,
         enabled: enabled,
         staleTime: 60 * 1000 // 1 minute
+    })
+}
+
+export function useCreditLogs(quotaPeriodId: string | null | undefined, page: number, limit: number, enabled = true) {
+    return useQuery({
+        queryKey: [CreditLogsQueryKey, quotaPeriodId, page, limit],
+        queryFn: () => getCreditLogs(quotaPeriodId as string, page, limit),
+        enabled: enabled && Boolean(quotaPeriodId),
+        staleTime: 30 * 1000,
     })
 }

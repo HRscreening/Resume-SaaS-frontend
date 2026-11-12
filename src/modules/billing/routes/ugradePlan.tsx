@@ -1,17 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence, type Variants } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import type { PlanSpec, SubscriptionPlan } from '@/types/index';
-import type { DwongradablePlan } from '@/types/subscription.type';
 import { Link } from '@tanstack/react-router';
 import { getProfile, getPlans } from '@/lib/api';
-import ConfirmDowngradeDialog from '@/modules/billing/components/DowngradeModal';
+import EnterprisePlanCard from "@/modules/billing/components/EnterpriseCard"
+import { CreditUsageSection, ManagedRecruitmentPricing } from "@/modules//billing/components/Utils"
+import { PricingCard } from "@/modules/billing/components/PricingCard"
 import { useUserSubscription } from '@/modules/subscription/useSubscription';
 
 const ease = [0.22, 1, 0.36, 1] as const;
-const home_page_url = import.meta.env.VITE_HOME_PAGE_URL || 'https://resumeware.com';
 
 const headerVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
@@ -21,86 +21,11 @@ const gridVariants: Variants = {
     hidden: {},
     show: { transition: { staggerChildren: 0.15, delayChildren: 0.15 } },
 };
-const cardVariants: Variants = {
-    hidden: { opacity: 0, y: 40, scale: 0.96 },
-    show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.7, ease } },
-};
+const PLAN_ORDER: SubscriptionPlan[] = ['FREE', 'LITE', 'PLUS', 'PRO', 'ENTERPRISE'];
 
-const Check = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="mt-0.5 h-4 w-4 shrink-0 text-[#2d8f6f]">
-        <polyline points="20 6 9 17 4 12" />
-    </svg>
-);
 
-const cardBaseClass =
-    'flex h-full flex-col rounded-xl border border-[#ebe8e2] bg-white p-6 sm:p-7 transition-all hover:shadow-lg';
-const cardFeaturedClass =
-    'relative shadow-[0_8px_40px_rgba(0,0,0,0.10)] !border-[#2c2c2c]';
-const featuredBadgeAfter =
-    'after:absolute after:left-1/2 after:-top-3 after:-translate-x-1/2 after:rounded-full after:bg-[#2c2c2c] after:px-4 after:py-1 after:text-[11.5px] after:font-bold after:tracking-[0.5px] after:text-white after:content-["Most_Popular"]';
-const planNameClass = 'mb-2 text-[15px] font-semibold text-[#7a7a7a]';
-const planDescClass = 'mb-6 text-[13.5px] leading-[1.5] text-[#7a7a7a]';
-const planFeatureClass = 'flex items-start gap-2 text-[13.5px] leading-[1.5] text-[#4a4a4a]';
-const ctaButtonBase =
-    'mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-center text-[14.5px] font-semibold no-underline transition-all';
-const ctaPrimary = `${ctaButtonBase} border border-[#1a1a1a] bg-[#1a1a1a] text-white hover:bg-black `;
-const ctaSecondary = `${ctaButtonBase} border border-[#e0dcd4] bg-white text-[#2c2c2c] hover:border-[#a0a0a0] hover:bg-[#faf9f6]`;
 
-const PriceAmount = ({ amount }: { amount: string }) => (
-    <AnimatePresence mode="wait">
-        <motion.span
-            key={amount}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.3, ease }}
-            className="inline-block text-[34px] sm:text-[40px] font-extrabold tracking-[-1.5px] text-[#2c2c2c]"
-        >
-            {amount}
-        </motion.span>
-    </AnimatePresence>
-);
 
-const PLAN_DESCRIPTIONS: Record<SubscriptionPlan, string> = {
-    FREE: 'Perfect for individuals and small teams getting started with AI-powered resume screening.',
-    PLUS: 'Built for teams that hire regularly and need faster, higher-volume screening.',
-    BUSINESS: 'Built for teams that hire regularly and need faster, higher-volume screening.',
-    PRO: 'Designed for high-volume hiring teams that need scale, flexibility, and greater control over screening workflows.',
-    ENTERPRISE: 'Built for large organizations that need advanced security, customization, and dedicated support at scale.',
-    UNLIMITED: 'Built for teams that need unrestricted screening volume with no monthly quota.',
-};
-
-const PLAN_ORDER: SubscriptionPlan[] = ['FREE', 'PLUS', 'PRO', 'ENTERPRISE'];
-
-const PLAN_SLUG: Record<'PLUS' | 'PRO', 'plus' | 'pro'> = {
-    PLUS: 'plus',
-    PRO: 'pro',
-};
-
-/**
- * A plan the catalog gives no USD price is contact-sales. Keyed off the
- * payload rather than off a plan name, so adding a custom-priced tier needs
- * no change here.
- */
-function isCustomPriced(plan: PlanSpec, isYearly: boolean): boolean {
-    const amount = isYearly ? plan.yearly_price_monthly_usd : plan.price_monthly_usd;
-    return amount === undefined || amount === null;
-}
-
-function formatPrice(plan: PlanSpec, isYearly: boolean): string {
-    if (isCustomPriced(plan, isYearly)) return 'Custom';
-    const amount = (isYearly ? plan.yearly_price_monthly_usd : plan.price_monthly_usd) as number;
-    // Yearly rates carry cents ($39.20); monthly ones don't ($49). Rendering
-    // the raw number would print "$39.2".
-    return Number.isInteger(amount) ? `$${amount}` : `$${amount.toFixed(2)}`;
-}
-
-/** "billed at $470.40/year" — the annual total behind a monthly yearly rate. */
-function formatAnnualTotal(plan: PlanSpec): string | null {
-    const monthly = plan.yearly_price_monthly_usd;
-    if (monthly === undefined || monthly === null || monthly === 0) return null;
-    return `billed at $${(monthly * 12).toFixed(2)}/year`;
-}
 
 const Pricing = () => {
     // All hooks must run on every render in the same order. Hooks are above
@@ -109,8 +34,8 @@ const Pricing = () => {
     // minified React error #300 once the parent re-rendered.)
     const profileQuery = useQuery({ queryKey: ['profile'], queryFn: getProfile, staleTime: 60_000 });
     const plansQuery = useQuery({ queryKey: ['plans'], queryFn: getPlans, staleTime: 1000 * 60 * 60 * 24 });
-    const subscriptionQuery = useUserSubscription(!!profileQuery.data);
     const [isYearly, setIsYearly] = useState(false);
+    const {data:userSubscription} = useUserSubscription()
 
     const profile = profileQuery.data;
     const plansData = plansQuery.data ?? [];
@@ -145,25 +70,22 @@ const Pricing = () => {
         )
     }
 
-    const isDowngrade = (plan: SubscriptionPlan): plan is DwongradablePlan =>
-        isLoggedIn && plan !== currentPlan && PLAN_ORDER.indexOf(plan) < PLAN_ORDER.indexOf(currentPlan);
-    const isCurrent = (plan: SubscriptionPlan) => isLoggedIn && plan === currentPlan;
-    const scheduledDowngradePlan = subscriptionQuery.data?.scheduled_downgrade_plan ?? null;
-    const hasScheduledDowngrade = scheduledDowngradePlan !== null;
+    
 
-    function handleBtnTitle(plan: PlanSpec) {
-        if (!isLoggedIn) return 'Get started';
-        if (plan.key === currentPlan) return 'Renew plan';
-        if (isDowngrade(plan.key) && plan.key === scheduledDowngradePlan) return 'Cancel scheduled downgrade';
-        if (isDowngrade(plan.key) && hasScheduledDowngrade) return 'Scheduled downgrade active';
-        if (isDowngrade(plan.key)) return `Downgrade to ${plan.display_name}`;
-        if (plan.key === 'ENTERPRISE') return 'Contact Us';
-        return 'Upgrade Now';
-    }
 
+    const EXCLUDED_PLANS: SubscriptionPlan[] = ["ENTERPRISE", "BUSINESS", "ENTERPRISE"];
+
+    const isSubscriptionActive = userSubscription?.status.toLowerCase() === 'active'
+    const currentPlanIdx = PLAN_ORDER.indexOf(currentPlan)
+
+
+    
     const orderedPlans = PLAN_ORDER
         .map((k) => plansData.find((p) => p.key === k))
-        .filter((p): p is PlanSpec => !!p);
+        .filter(
+            (p): p is PlanSpec =>
+                !!p && !EXCLUDED_PLANS.includes(p.key)
+        );
 
     return (
         <section id="pricing" className="mx-auto max-w-315 px-4 py-8 sm:px-6 sm:py-12 md:py-16">
@@ -245,138 +167,25 @@ const Pricing = () => {
                 // the comparison row visually unified.
                 className="mx-auto mt-10 sm:mt-14 grid max-w-105 grid-cols-1 gap-6 md:max-w-none md:grid-cols-4 md:gap-4"
             >
-                {orderedPlans.map((plan, planIdx) => {
-                    const isFeatured = plan.key === 'PLUS' && (!isLoggedIn || currentPlan === 'FREE');
-                    const isEnterprise = plan.key === 'ENTERPRISE';
-                    const isFree = plan.key === 'FREE';
-                    const isPaidYearly = isYearly && !isFree && !isEnterprise;
-
-                    return (
-                        <motion.div
-                            key={plan.key}
-                            variants={cardVariants}
-                            whileHover={{ y: isFeatured ? -14 : -10, transition: { type: 'spring', stiffness: 300, damping: 20 } }}
-                            animate={isFeatured ? {
-                                boxShadow: [
-                                    '0 10px 30px rgba(0,0,0,0.08)',
-                                    '0 18px 42px rgba(0,0,0,0.12)',
-                                    '0 10px 30px rgba(0,0,0,0.08)',
-                                ],
-                            } : undefined}
-                            transition={isFeatured ? { duration: 4, repeat: Infinity, ease: 'easeInOut' } : undefined}
-                            className={[
-                                cardBaseClass,
-                                isEnterprise ? 'bg-[#faf9f6]' : '',
-                                isFeatured ? `${cardFeaturedClass} ${featuredBadgeAfter}` : '',
-                                isCurrent(plan.key) ? 'border-[#2c2c2c]!' : '',
-                            ].filter(Boolean).join(' ')}
-                        >
-                            <div className={planNameClass}>{plan.display_name}</div>
-                            <div className="mb-1.5 flex items-baseline gap-1">
-                                <PriceAmount amount={formatPrice(plan, isYearly)} />
-                                {!isCustomPriced(plan, isYearly) && (
-                                    <span className="text-sm text-[#a0a0a0]">/month</span>
-                                )}
-                            </div>
-                            <p className={planDescClass}>
-                                {PLAN_DESCRIPTIONS[plan.key]}{' '}
-                                {isPaidYearly && `(${formatAnnualTotal(plan) ?? 'billed yearly'})`}
-                            </p>
-                            <ul className="mb-7 flex flex-1 list-none flex-col gap-2.5">
-                                {plan.display_features.map((f, i) => (
-                                    <motion.li
-                                        key={f}
-                                        initial={{ opacity: 0, x: -12 }}
-                                        whileInView={{ opacity: 1, x: 0 }}
-                                        viewport={{ once: true }}
-                                        transition={{ delay: 0.3 + planIdx * 0.1 + i * 0.06, duration: 0.4, ease }}
-                                        className={planFeatureClass}
-                                    >
-                                        <Check />
-                                        <span dangerouslySetInnerHTML={{ __html: f.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-[#2c2c2c]">$1</strong>') }} />
-                                    </motion.li>
-                                ))}
-                            </ul>
-
-                            { isEnterprise ? (
-                                <motion.div whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }} className="mt-auto">
-                                    {/* <a href={home_page_url + '/contact'} className={ctaSecondary}>
-                                        {handleBtnTitle(plan)}
-                                    </a> */}
-                                    <Link
-                                        to="/contact"
-                                        search={{ from: 'upgradePlan' } as any}
-                                        className={ctaSecondary}
-                                    >
-                                        {handleBtnTitle(plan)}
-                                    </Link>
-                                </motion.div>
-                            ) : isDowngrade(plan.key) && plan.key === scheduledDowngradePlan ? (
-                                <Link to="/profile">
-                                    <motion.span
-                                        whileHover={{ scale: 1.05, y: -2 }}
-                                        whileTap={{ scale: 0.97 }}
-                                        className={ctaSecondary}
-                                    >
-                                        Cancel scheduled downgrade
-                                    </motion.span>
-                                </Link>
-                            ) : isDowngrade(plan.key) && hasScheduledDowngrade ? (
-                                <span
-                                    aria-disabled="true"
-                                    className={`${ctaSecondary} cursor-not-allowed opacity-60`}
-                                >
-                                    Scheduled downgrade active
-                                </span>
-                            ) : isDowngrade(plan.key) ? (
-                                <ConfirmDowngradeDialog
-                                    plan={plan.key}
-                                    cycle={isYearly ? 'yearly' : 'monthly'}
-                                    trigger={
-                                        <motion.span
-                                            whileHover={{ scale: 1.05, y: -2 }}
-                                            whileTap={{ scale: 0.97 }}
-                                            className={ctaSecondary}
-                                        >
-                                            {handleBtnTitle(plan)}
-                                        </motion.span>
-                                    }
-                                />
-                            ) : isCurrent(plan.key) ? (
-                                <Link
-                                    to="/checkout/$plan"
-                                    params={{ plan: PLAN_SLUG[plan.key as 'PLUS' | 'PRO'] }}
-                                    search={{ cycle: isYearly ? 'yearly' : 'monthly', from: 'app' } as any}
-                                >
-                                    <motion.span
-                                        whileHover={{ scale: 1.05, y: -2 }}
-                                        whileTap={{ scale: 0.97 }}
-                                        className={`${ctaPrimary} !bg-[#0F0F0F] !text-white !border-[#0F0F0F] hover:!bg-[#262626]`}
-                                    >
-                                        Renew plan
-                                    </motion.span>
-                                </Link>
-                            ) : isFree ? (
-                                <Link to="/dashboard">
-                                    <motion.span whileHover={{ scale: 1.04, y: -2 }} whileTap={{ scale: 0.97 }} className={ctaSecondary}>
-                                        {handleBtnTitle(plan)}
-                                    </motion.span>
-                                </Link>
-                            ) : (
-                                <Link
-                                    to="/checkout/$plan"
-                                    params={{ plan: PLAN_SLUG[plan.key as 'PLUS' | 'PRO'] }}
-                                    search={{ cycle: isYearly ? 'yearly' : 'monthly', from: 'app' } as any}
-                                >
-                                    <motion.span whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }} className={`${isFeatured ? ctaPrimary : ctaSecondary}`}>
-                                        {handleBtnTitle(plan)}
-                                    </motion.span>
-                                </Link>
-                            )}
-                        </motion.div>
-                    );
-                })}
+                {orderedPlans.map((plan, planIdx) => (
+                    <PricingCard
+                        key={plan.key}
+                        isSubscriptionActive={isSubscriptionActive}
+                        planIdx={planIdx}
+                        plan={plan}
+                        currentPlan={currentPlan}
+                        currentPlanIdx={currentPlanIdx}
+                        isLoggedIn={isLoggedIn}
+                        isYearly={isYearly}
+                    />
+                ))}
             </motion.div>
+
+            <EnterprisePlanCard />
+            <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-12 lg:grid-cols-2">
+                <ManagedRecruitmentPricing />
+                <CreditUsageSection />
+            </div>
         </section>
     );
 };

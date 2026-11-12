@@ -3,7 +3,7 @@
 import { z } from "zod";
 
 
-export type Plan = "PRO" | "PLUS" // only these two plans are available for subscription
+export type Plan = "LITE" | "PRO" | "PLUS" // only these two plans are available for subscription
 
 export type DwongradablePlan = Plan | "FREE"
 
@@ -107,7 +107,8 @@ export type UserSubscription = {
   plan: Plan
   billing_interval: BillingIntervalType
   status: string
-  auto_pay_cancelled_at: string | null
+  is_resumable:boolean
+  cancelled_at: string | null
   subscribed_from: string | null
   subscription_ends_at: string | null
   credit_balance: number
@@ -118,25 +119,43 @@ export type UserSubscription = {
 
 
 // ------------------- User Usage Quotas ------------------- //
+// Feature counts for the current cycle. Limits live on the credit pool, not per feature.
 export type QuotaUsage = {
-  limit: number;
-  used: number;
-}
-
-export interface Quotas {
-  job_quota: QuotaUsage;
-  jd_creation_quota: QuotaUsage;
-  application_sourced_quota: QuotaUsage;
-  resume_parsing_quota: QuotaUsage;
-  resume_scoring_quota: QuotaUsage;
-  voice_call_quota: QuotaUsage;
-  interview_quota: QuotaUsage;
+  jobs_created: number;
+  resume_parsing: number;
+  resume_scoring: number;
+  sourced_candidates: number;
+  voice_screen: number;
+  interview: number;
 }
 
 export interface UserMonthlyUsage {
+  id: string;
   start: string;
   end: string;
   is_expired: boolean;
   is_grace_period: boolean;
-  quotas: Quotas;
+  // Decimals may arrive as strings from the API.
+  credit_allocated: number | string;
+  credit_used: number | string;
+  additional_allocated: number | string;
+  additional_used: number | string;
+  usage: QuotaUsage;
+}
+
+export const CreditTransactionType = {
+  DEBIT: "debit",
+  CREDIT: "credit",
+  REFUND: "refund",
+  ADJUSTMENT: "adjustment",
+} as const;
+
+export type CreditTransactionTypeValue =
+  (typeof CreditTransactionType)[keyof typeof CreditTransactionType];
+
+export interface CreditLog {
+  transaction_type: CreditTransactionTypeValue | string;
+  credit: number | string;
+  feature: string | null;
+  desc: string | null;
 }

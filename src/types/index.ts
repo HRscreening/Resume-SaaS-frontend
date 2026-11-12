@@ -3,7 +3,7 @@
 // BUSINESS is a legacy label retained in the DB enum so older rows
 // written before the BUSINESS → PLUS rename still deserialize cleanly.
 // New writes use PLUS.
-export type SubscriptionPlan = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE" | "PLUS" | "UNLIMITED";
+export type SubscriptionPlan = "FREE" | "LITE" | "PRO" | "BUSINESS" | "ENTERPRISE" | "PLUS" | "UNLIMITED";
 export type PlanType = SubscriptionPlan;
 
 export type AccountRole = "owner" | "viewer";
@@ -70,6 +70,7 @@ export interface PlanSpec {
   /** Absent on ENTERPRISE, which is custom-priced and sold as contact-sales. */
   price_monthly_usd?: number;
   yearly_price_monthly_usd?: number;
+  credit_limit:number
   price_monthly_inr?: number;
   price_label: string;
   yearly_price_label: string;
