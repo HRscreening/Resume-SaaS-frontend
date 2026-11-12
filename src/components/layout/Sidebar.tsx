@@ -88,6 +88,7 @@ const PLAN_LABEL: Record<SubscriptionPlan, string> = {
   FREE: "Free",
   PRO: "Pro",
   PLUS: "Plus",
+  LITE:"Lite",
   BUSINESS: "Plus",
   ENTERPRISE: "Enterprise",
   UNLIMITED: "Unlimited",
