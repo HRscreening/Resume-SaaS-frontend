@@ -376,9 +376,13 @@ export interface QuestionPlanItem {
   text_hi?: string | null;
 }
 
+// English accent of the agent's voice. The ElevenLabs voice behind each
+// option lives in the agent's environment; the job only stores the choice.
+// Ignored when the interview language is Hindi.
+export type VoiceAccent = "us" | "in";
+
 export interface VoiceSettings {
-  tts_voice_id: string;
-  tier: "default" | "premium";
+  accent: VoiceAccent;
 }
 
 export interface CallingWindow {
