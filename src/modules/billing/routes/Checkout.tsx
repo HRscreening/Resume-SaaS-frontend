@@ -156,13 +156,15 @@ export default function Checkout() {
   // ── Pricing derivation ──
   const monthlyAmount =
     (cycle === "yearly" ? (quote.yearly_price_monthly_usd ?? quote.price_monthly_usd) : quote.price_monthly_usd);
-  const totalUsd = cycle === "yearly" ? monthlyAmount * 12 : monthlyAmount;
 
   const monthlyLabel = Number.isInteger(monthlyAmount)
     ? `$${monthlyAmount}`
     : `$${monthlyAmount.toFixed(2)}`;
 
-  const totalLabel = `${quote.currency} ${quote.amount_major.toFixed(2)}`;
+  const formatMoney = (value: number) =>
+    value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const totalLabel = `${quote.currency} ${formatMoney(quote.amount_major)}`;
 
   const fromPricing = search.from === "pricing";
   const backTo = fromPricing ? "/dashboard" : "/upgrade";
@@ -202,7 +204,7 @@ export default function Checkout() {
               </p>
               {quote.currency !== "USD" && quote.fx_rate && (
                 <p className="text-[11px] text-[#A0A0A0] mt-2">
-                  Billed in {quote.currency} at today's rate: ${totalUsd} = {quote.currency} {quote.amount_major.toFixed(2)}
+                  Billed in {quote.currency} at today's rate: ${formatMoney(quote.usd_amount)} = {quote.currency} {formatMoney(quote.amount_major)}
                   {" "}(1 USD = {quote.currency} {quote.fx_rate.toFixed(2)})
                 </p>
               )}
