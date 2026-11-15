@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getProfile } from "@/lib/api";
-import { useUserKey } from "@/lib/userKey";
+import { useProfile } from "@/hooks/useProfile";
+import { queryKeys } from "@/lib/queryKeys";
 import type { SubscriptionPlan } from "@/types";
 import { userSubscriptionQueryKey, UserUsageQuotasQueryKey } from "@/modules/shared/queryKeys/subscriptionQueryKeys"
 import { useBilling } from "@/modules/billing/useBilling";
@@ -40,11 +40,7 @@ export default function Checkout() {
   }, [planSlug, navigate]);
 
   // ── Profile ──
-  const profileQuery = useQuery({
-    queryKey: useUserKey("profile"),
-    queryFn: getProfile,
-    staleTime: 60_000,
-  });
+  const profileQuery = useProfile();
 
   // ── Checkout quote (includes plan display details + pricing + gateway) ──
   const quoteQuery = useQuery<CheckoutQuoteResponse>({
@@ -71,7 +67,7 @@ export default function Checkout() {
     try {
       // Refresh caches so dashboard / settings / sidebar show new plan immediately.
       await Promise.allSettled([
-        queryClient.invalidateQueries({ queryKey: ["profile"] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.profile() }),
         queryClient.invalidateQueries({ queryKey: ["usage"] }),
         queryClient.invalidateQueries({ queryKey: [userSubscriptionQueryKey] }),
         queryClient.invalidateQueries({ queryKey: [UserUsageQuotasQueryKey] })

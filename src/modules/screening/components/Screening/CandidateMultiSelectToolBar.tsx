@@ -387,7 +387,7 @@ const CandidateMultiSelectToolBar = ({
 
 
           {canWrite && (
-            <UtilityButton title="AI Call" onClick={handleCall} Icon={PhoneCall} compact={compact} isLoading={multiCallMutation.isPending}
+            <UtilityButton title="AI Call" dataGuide="screening_ai_call" onClick={handleCall} Icon={PhoneCall} compact={compact} isLoading={multiCallMutation.isPending}
               disabled={!totalSelected} disabledReason={NO_RESUME_SELECTED_MESSAGE} />
           )}
 

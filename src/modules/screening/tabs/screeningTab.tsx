@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useParams, } from "@tanstack/react-router";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
@@ -24,6 +24,7 @@ import { CircleCheck, Archive } from "lucide-react";
 import AnalysisSheetSkeleton from "@/modules/screening/components/Screening/AnalysisSheetSkeleton";
 import CandidateMultiSelectToolBar from "@/modules/screening/components/Screening/CandidateMultiSelectToolBar";
 import { useAccount } from "@/hooks/useAccount";
+import { useGuide } from "@/guides";
 
 
 const tableOptions = ["All", "Active", "Archived", "Deleted"];
@@ -51,13 +52,16 @@ function ScreeningDetailContent({
 }: ScreeningDetailProps) {
     const { id } = useParams({ strict: false }) as { id: string };
     const { canWrite } = useAccount();
+    const guide = useGuide();
 
     const { search} = useScreeningDetailsNavigation();
-    const { data: active_batches } = useGetBatchesQuery(id);
+    const { data: active_batches, isLoading: isLoadingBatches } = useGetBatchesQuery(id);
 
     const { selectedCandidates, showSelectedOnly, clearSelection } = useSelectedCandidates();
 
     const [showStages, setShowStages] = useState(false);
+    const hasStartedScreeningGuide = useRef(false);
+    const hasStartedScreeningCandidatesGuide = useRef(false);
 
 
     const { screening ,isPending: isJobDetailsFetching, error } = useScreening(id);
@@ -77,6 +81,58 @@ function ScreeningDetailContent({
 
     const candidates = data?.pages.flatMap((page) => page.items) ?? []
     const analysisOpen = search.tab === "Screening" && search.screenId != undefined;
+
+    useEffect(() => {
+        if (
+            !canWrite ||
+            isJobDetailsFetching ||
+            isLoading ||
+            isLoadingBatches ||
+            candidates.length > 0 ||
+            screening?.screened_cnt !== 0 ||
+            (active_batches?.scoring_batch_ids?.length ?? 0) > 0 ||
+            hasStartedScreeningGuide.current ||
+            guide.isRunning
+        ) {
+            return;
+        }
+
+        hasStartedScreeningGuide.current = true;
+        guide.startGuide("screening");
+    }, [
+        canWrite,
+        isJobDetailsFetching,
+        isLoading,
+        isLoadingBatches,
+        candidates.length,
+        screening?.screened_cnt,
+        active_batches?.scoring_batch_ids?.length,
+        guide.isRunning,
+        guide.startGuide,
+    ]);
+
+    useEffect(() => {
+        if (
+            !canWrite ||
+            isJobDetailsFetching ||
+            isLoading ||
+            candidates.length === 0 ||
+            hasStartedScreeningCandidatesGuide.current ||
+            guide.isRunning
+        ) {
+            return;
+        }
+
+        hasStartedScreeningCandidatesGuide.current = true;
+        guide.startGuide("screening_candidates");
+    }, [
+        canWrite,
+        isJobDetailsFetching,
+        isLoading,
+        candidates.length,
+        guide.isRunning,
+        guide.startGuide,
+    ]);
 
 
 
@@ -120,11 +176,14 @@ function ScreeningDetailContent({
         !active_batches?.scoring_batch_ids?.length
     ) {
         return (
-            <div className="p-4 sm:p-6 md:p-8 text-center">
+            <div
+            className="p-4 sm:p-6 md:p-8 text-center"
+            >
                 <p className="text-sm text-[#737373]">
                     No candidates have been scored yet. Upload resumes to start scoring.
                 </p>
                 <span
+                    data-guide="screening_empty_state"
                     className="text-sm text-[#0F0F0F] underline mt-2 inline-block cursor-pointer"
                     onClick={() => {
                         setCurrentTab("Applications");

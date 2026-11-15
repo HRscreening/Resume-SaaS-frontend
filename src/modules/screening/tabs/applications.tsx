@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useParams, useNavigate } from "@tanstack/react-router";
 import { ApplicationTable } from "@/modules/screening/components/Application/application_table";
 import { CustomMenuButton } from "@/modules/screening/components/shared/MenuButton";
@@ -16,6 +16,7 @@ import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/
 import { useApplicationQuery } from "@/modules/screening/hooks/application/custom/useApplicationQuery"
 import InfoSheetSkeleton from "@/modules/screening/components/Application/InfoSheetSkeleton";
 import ApplicationMultiSelectToolBar from "@/modules/screening/components/Application/MultiSelectToolBar";
+import { useGuide } from "@/guides";
 
 const PAGE_SIZE = 30;
 
@@ -44,6 +45,7 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
     const { user } = useAuth();
     const { canWrite } = useAccount();
     const analytics = useAnalytics();
+    const guide = useGuide();
 
     const ApplicationQuery = useApplicationQuery(screening_id, { limit: PAGE_SIZE });
     const { query: ApplicationResultsQuery, setType } = ApplicationQuery;
@@ -54,6 +56,8 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
 
     const { selectedApplications, showSelectedOnly, clearSelection } = useSelectedApplications(); // Custom hook to manage selected applications state
     const [showUploadMore, setShowUploadMore] = useState(false);
+    const hasStartedEmptyApplicationsGuide = useRef(false);
+    const hasStartedApplicationsTableGuide = useRef(false);
 
 
 
@@ -61,8 +65,54 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
     const hasActiveParsing = (active_batches?.parsing_batch_ids?.length ?? 0) > 0;
     const applications = data?.pages.flatMap(page => page.items) ?? [];
 
+    useEffect(() => {
+        if (
+            !user?.id ||
+            isLoading ||
+            isFetching ||
+            applications.length > 0 ||
+            hasActiveParsing ||
+            !canWrite
+        ) {
+            return;
+        }
 
+        if (!hasStartedEmptyApplicationsGuide.current) {
+            hasStartedEmptyApplicationsGuide.current = true;
+            guide.startGuide("applications");
+        }
+    }, [
+        user?.id,
+        guide.startGuide,
+        isLoading,
+        isFetching,
+        applications.length,
+        hasActiveParsing,
+        canWrite,
+    ]);
 
+    useEffect(() => {
+        if (
+            !user?.id ||
+            isLoading ||
+            isFetching ||
+            applications.length === 0 ||
+            hasStartedApplicationsTableGuide.current ||
+            guide.isRunning
+        ) {
+            return;
+        }
+
+        hasStartedApplicationsTableGuide.current = true;
+        guide.startGuide("applications_table");
+    }, [
+        user?.id,
+        guide.startGuide,
+        guide.isRunning,
+        isLoading,
+        isFetching,
+        applications.length,
+    ]);
 
     if (
         applications.length === 0 &&
@@ -176,7 +226,7 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
 
 
             {/* Screen action bar — sticky bottom, only in Screen mode */}
-            {applications.length > 0 && !isLoading && search.tab === "Applications" &&
+            {applications.length > 0 && !isLoading && (search.tab ?? "Applications") === "Applications" &&
                 <ApplicationMultiSelectToolBar
                     onTabChange={onTabChange}
                     analysisOpen={search.appId !== undefined}

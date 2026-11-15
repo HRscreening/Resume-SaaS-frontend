@@ -56,6 +56,7 @@ export function JdInputStep({
             id="title"
             type="text"
             value={title}
+            data-guide="job_title"
             onChange={(e) => onTitleChange(e.target.value)}
             placeholder="e.g. Senior Backend Engineer — April 2026"
             className="w-full h-11 px-3.5 rounded-xl border border-[#D4D4D4] bg-[#F5F3EE] text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] transition-shadow"
@@ -73,7 +74,9 @@ export function JdInputStep({
                 }</span>
             </label>
             {/* Mode toggle */}
-            <div className="flex items-center gap-1 p-0.5 rounded-lg bg-[#F0EDE8] border border-[#D4D4D4]">
+            <div
+            data-guide="jd_input_btns"
+             className="flex items-center gap-1 p-0.5 rounded-lg bg-[#F0EDE8] border border-[#D4D4D4]">
               {MODE_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -125,10 +128,11 @@ export function JdInputStep({
         <button
           onClick={onAnalyze}
           disabled={!canAnalyze}
+          data-guide="generate_rubric"
           className="w-full h-11 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
         >
           {analyzing && <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
-          {analyzing ? "Analyzing job description..." : "Generate scoring rubric →"}
+          {analyzing ? "Analyzing job description..." : "Generate →"}
         </button>
       </div>
     </div>

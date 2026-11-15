@@ -163,7 +163,10 @@ export default function ScreeningDetail() {
                             </div>
                         )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div
+                        data-guide="application_header_actions"
+                        className="w-fit flex flex-wrap items-center gap-2"
+                    >
                         {screening.jd_url &&
                             <ActionButton title="Job Desc." description="Job Desc." icon={<FileText size={12} />} compacted={analysisOpen} disabled={!screening} onClick={() => {
                                 analytics.track(AnalyticsEvent.JD_VIEWED, { screeningId: id });
@@ -196,28 +199,31 @@ export default function ScreeningDetail() {
                                        
 
                                         {/* Voice round button */}
-                                        <ActionButton
-                                            title="Voice round"
-                                            onClick={() => navigate({ to: "/screenings/$id/voice", params: { id } })}
-                                            icon={<Mic size={12} />}
-                                            compacted={analysisOpen}
-                                        />
+                                        <div
+                                            data-guide="screening_header_actions"
+                                            className="flex flex-wrap items-center gap-2"
+                                        >
+                                            <ActionButton
+                                                title="Voice round"
+                                                onClick={() => navigate({ to: "/screenings/$id/voice", params: { id } })}
+                                                icon={<Mic size={12} />}
+                                                compacted={analysisOpen}
+                                            />
 
-                                        {/* Interview round button (Round 1 browser interview) */}
-                                        <ActionButton
-                                            title="Interview round"
-                                            onClick={() => navigate({ to: "/screenings/$id/interview", params: { id } })}
-                                            icon={<Video size={12} />}
-                                            compacted={analysisOpen}
-                                        />
+                                            <ActionButton
+                                                title="Interview round"
+                                                onClick={() => navigate({ to: "/screenings/$id/interview", params: { id } })}
+                                                icon={<Video size={12} />}
+                                                compacted={analysisOpen}
+                                            />
 
-                                        {/* Call History button */}
-                                        <ActionButton
-                                            title="View Calls"
-                                            onClick={() => navigate({ to: "/screenings/$id/voice/calls", params: { id } })}
-                                            icon={<History size={12} />}
-                                            compacted={analysisOpen}
-                                        />
+                                            <ActionButton
+                                                title="View Calls"
+                                                onClick={() => navigate({ to: "/screenings/$id/voice/calls", params: { id } })}
+                                                icon={<History size={12} />}
+                                                compacted={analysisOpen}
+                                            />
+                                        </div>
 
 
 
@@ -239,6 +245,7 @@ export default function ScreeningDetail() {
                     sectionTabs.map((tab) => (
                         <button
                             key={tab}
+                            data-guide={tab === "Screening" ? "applications_screening_tab" : undefined}
                             onClick={() => {
                                 changeTab(tab);
                                 if (tab === "Applications") {

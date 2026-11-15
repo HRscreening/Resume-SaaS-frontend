@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getProfile, getPlans, getBillingQuote } from "@/lib/api";
+import { getPlans, getBillingQuote } from "@/lib/api";
 import { formatMoney } from "@/lib/currency";
 import { openRazorpayCheckout, type UpgradePlanSlug } from "@/lib/razorpay";
-import { useUserKey } from "@/lib/userKey";
+import { useProfile } from "@/hooks/useProfile";
+import { queryKeys } from "@/lib/queryKeys";
 import PayPalPayButton from "./PayPalPayButton";
 import type { PlanSpec, SubscriptionPlan } from "@/types";
 
@@ -41,11 +42,7 @@ export default function Checkout() {
     if (!planSlug) navigate({ to: "/upgrade" });
   }, [planSlug, navigate]);
 
-  const profileQuery = useQuery({
-    queryKey: useUserKey("profile"),
-    queryFn: getProfile,
-    staleTime: 60_000,
-  });
+  const profileQuery = useProfile();
   const plansQuery = useQuery({
     queryKey: ["plans"],
     queryFn: getPlans,
@@ -81,7 +78,7 @@ export default function Checkout() {
   async function finishUpgrade() {
     if (!planSlug) return;
     // Refresh caches so dashboard / settings / sidebar show new plan immediately.
-    await queryClient.invalidateQueries({ queryKey: ["profile"] });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.profile() });
     await queryClient.invalidateQueries({ queryKey: ["usage"] });
     // If the user signed up via the marketing → checkout flow, they paid
     // before onboarding. Send them through onboarding now; otherwise go

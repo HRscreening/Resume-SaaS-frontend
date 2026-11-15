@@ -1,0 +1,159 @@
+.hire-guide-tooltip {
+  width: fit-content;
+  min-width: min(240px, calc(100vw - 24px));
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 16px 18px 14px;
+  border: 1px solid #e8e5e0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(24, 20, 16, 0.16);
+  color: #171411;
+  text-align: left;
+}
+
+.hire-guide-header {
+  display: flex;
+  align-items: center;
+  min-height: 16px;
+}
+
+.hire-guide-close {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  padding: 5px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #78736d;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.hire-guide-close:hover {
+  background: #f5f4f2;
+  color: #171411;
+}
+
+.hire-guide-close svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.hire-guide-next svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.hire-guide-count {
+  color: #8a8580;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.hire-guide-title {
+  margin: 7px 28px 5px 0;
+  color: #171411;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.hire-guide-description {
+  color: #66615b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.hire-guide-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #eeece9;
+}
+
+.hire-guide-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.hire-guide-back,
+.hire-guide-next {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 11px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.hire-guide-back {
+  border: 1px solid #e5e2de;
+  background: #fff;
+  color: #514d48;
+}
+
+.hire-guide-back:hover {
+  background: #f7f6f4;
+}
+
+.hire-guide-next {
+  border: 1px solid #171411;
+  background: #171411;
+  color: #fff;
+}
+
+.hire-guide-next:hover {
+  background: #34312e;
+}
+
+.hire-guide-next svg {
+  width: 16px;
+  height: 16px;
+}
+
+.hire-guide-connector {
+  display: block;
+  overflow: visible;
+  color: #9c958d;
+}
+
+.hire-guide-connector path {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+
+@media (max-width: 480px) {
+  .hire-guide-tooltip {
+    padding: 14px 15px 12px;
+  }
+
+  .hire-guide-title {
+    font-size: 17px;
+  }
+}
