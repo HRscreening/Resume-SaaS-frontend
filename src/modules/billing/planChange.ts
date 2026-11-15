@@ -2,7 +2,10 @@
 // (backend/app/modules/subscription/services/plan_change.py). Used only to
 // label buttons; the server stays authoritative and re-checks every change.
 
-import type { BillingIntervalType } from "@/types/subscription.type";
+import type { BillingIntervalType, ChangePreview } from "@/types/subscription.type";
+import type { SubscriptionPlan } from "@/types";
+import { formatMoney } from "@/lib/currency";
+import { formatDate } from "@/lib/utils";
 
 export type ChangeType = "upgrade" | "downgrade" | "new" | "already_on_plan" | "not_self_serve";
 
@@ -17,11 +20,12 @@ export interface ChangeSubscriptionState {
 // A paid period is running in these statuses. The grace window after it is not live.
 const LIVE_STATUSES = new Set(["active", "cancelled", "waiting_cancellation"]);
 const NOT_SELF_SERVE = new Set(["FREE", "ENTERPRISE", "UNLIMITED", "BUSINESS"]);
-const PLAN_ORDER = ["FREE", "LITE", "PLUS", "PRO"];
+// Mirrors SubscriptionHelper.PLAN_ORDER on the server. BUSINESS is not in it (aliased to PLUS).
+export const PLAN_ORDER: readonly SubscriptionPlan[] = ["FREE", "LITE", "PLUS", "PRO", "ENTERPRISE", "UNLIMITED"];
 // BUSINESS is the legacy label for PLUS.
 const LEGACY_ALIASES: Record<string, string> = { BUSINESS: "PLUS" };
 
-function isLive(current: ChangeSubscriptionState | null, now: Date): current is ChangeSubscriptionState {
+export function isLive(current: ChangeSubscriptionState | null, now: Date): current is ChangeSubscriptionState {
   if (!current || !current.subscription_ends_at) return false;
   if (!LIVE_STATUSES.has(current.status.toLowerCase())) return false;
   return now.getTime() < new Date(current.subscription_ends_at).getTime();
@@ -29,7 +33,7 @@ function isLive(current: ChangeSubscriptionState | null, now: Date): current is 
 
 function rank(plan: string): number {
   const key = plan.toUpperCase();
-  return PLAN_ORDER.indexOf(LEGACY_ALIASES[key] ?? key);
+  return PLAN_ORDER.indexOf((LEGACY_ALIASES[key] ?? key) as SubscriptionPlan);
 }
 
 export function classifyChange(
@@ -43,6 +47,8 @@ export function classifyChange(
 
   const currentRank = rank(current.plan);
   const newRank = rank(plan);
+  // A plan the order does not know cannot be compared; leave it to support.
+  if (currentRank < 0 || newRank < 0) return "not_self_serve";
   if (newRank !== currentRank) return newRank > currentRank ? "upgrade" : "downgrade";
   if (interval === current.billing_interval) return "already_on_plan";
   return interval === "yearly" ? "upgrade" : "downgrade";
@@ -52,24 +58,38 @@ interface PollOptions {
   intervalMs?: number;
   timeoutMs?: number;
   sleep?: (ms: number) => Promise<void>;
+  signal?: AbortSignal;
 }
 
 const DEFAULT_POLL_INTERVAL_MS = 2000;
 const DEFAULT_POLL_TIMEOUT_MS = 30_000;
-const realSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const realSleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve) => {
+    if (signal?.aborted) return resolve();
+    const done = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal?.addEventListener("abort", done);
+  });
 
 /**
  * After a payment the plan switches when the provider webhook lands. Polls
  * until the subscription is active on the purchased plan; false on timeout.
- * A failed fetch counts as "not yet": the next attempt may succeed.
+ * A failed fetch counts as "not yet": the next attempt may succeed. An
+ * aborted signal stops the loop early (also returning false).
  */
 export async function pollUntilPlanActive(
   fetchSubscription: () => Promise<ChangeSubscriptionState | null>,
   plan: string,
-  { intervalMs = DEFAULT_POLL_INTERVAL_MS, timeoutMs = DEFAULT_POLL_TIMEOUT_MS, sleep = realSleep }: PollOptions = {},
+  { intervalMs = DEFAULT_POLL_INTERVAL_MS, timeoutMs = DEFAULT_POLL_TIMEOUT_MS, sleep, signal }: PollOptions = {},
 ): Promise<boolean> {
   const attempts = Math.floor(timeoutMs / intervalMs);
+  const wait = sleep ?? ((ms: number) => realSleep(ms, signal));
   for (let i = 0; i < attempts; i++) {
+    if (signal?.aborted) return false;
     try {
       const sub = await fetchSubscription();
       if (sub && sub.status.toLowerCase() === "active" && sub.plan.toUpperCase() === plan.toUpperCase()) {
@@ -78,7 +98,23 @@ export async function pollUntilPlanActive(
     } catch (err) {
       console.warn("Subscription poll failed, retrying:", err);
     }
-    await sleep(intervalMs);
+    await wait(intervalMs);
   }
   return false;
+}
+
+function formatCarryoverClause(preview: ChangePreview): string {
+  const carryover = Number(preview.carryover_credits);
+  if (!(carryover > 0) || !preview.carryover_expires_at) return "";
+  return `, plus your ${carryover.toLocaleString()} unused credits until ${formatDate(preview.carryover_expires_at)}`;
+}
+
+/** The checkout explanation for an upgrade, all figures from the server preview. */
+export function upgradeSummary(preview: ChangePreview, planName: string): string {
+  const charge = formatMoney(Number(preview.charge_today.amount_major), preview.charge_today.currency);
+  return (
+    `Upgrade to ${planName}. You pay ${charge} today and your billing date moves to today. ` +
+    `You get ${preview.credits_now.toLocaleString()} credits now${formatCarryoverClause(preview)}. ` +
+    `You'll approve autopay for the new plan on the next screen.`
+  );
 }

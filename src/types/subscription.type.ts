@@ -1,6 +1,7 @@
 // Contains Both Billing and Subscription related types and constants. 
 
 import { z } from "zod";
+import type { ChangeType } from "@/modules/billing/planChange";
 
 
 export type Plan = "LITE" | "PRO" | "PLUS" // only these two plans are available for subscription
@@ -41,7 +42,7 @@ export type ChangeBlockedReason =
 
 // Decimal fields arrive as JSON strings; convert with Number() before formatting.
 export type ChangePreview = {
-  change_type: "upgrade" | "downgrade" | "new" | "already_on_plan" | "not_self_serve";
+  change_type: ChangeType;
   blocked_reason: ChangeBlockedReason | null;
   blocked_message: string | null;
   effective_at: string;

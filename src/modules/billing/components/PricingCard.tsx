@@ -5,7 +5,7 @@ import { Link } from "@tanstack/react-router";
 import ConfirmDowngradeDialog from '@/modules/billing/components/DowngradeModal';
 import { useNavigate } from "@tanstack/react-router";
 import type { UserSubscription } from "@/types/subscription.type";
-import { classifyChange } from "@/modules/billing/planChange";
+import { classifyChange, isLive } from "@/modules/billing/planChange";
 
 interface PricingCardProp {
     planIdx: number;
@@ -134,9 +134,14 @@ export function PricingCard({
     function getButtonAction(): PlanButtonAction {
         if (!isLoggedIn) return "GET_STARTED";
         if (isEnterprise) return "CONTACT_SALES";
-        if (isFree) return isCurrent ? "CURRENT_PLAN" : planIdx < currentPlanIdx ? "DOWNGRADE" : "CONTACT_SALES";
+        const now = new Date();
+        if (isFree) {
+            if (isCurrent) return "CURRENT_PLAN";
+            // Only a live paid plan can be downgraded; otherwise Free is just the dashboard.
+            return isLive(subscription ?? null, now) ? "DOWNGRADE" : "GET_STARTED";
+        }
 
-        const change = classifyChange(subscription ?? null, plan.key, isYearly ? "yearly" : "monthly", new Date());
+        const change = classifyChange(subscription ?? null, plan.key, isYearly ? "yearly" : "monthly", now);
         switch (change) {
             case "upgrade": return "UPGRADE";
             case "downgrade": return "DOWNGRADE";

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { classifyChange, pollUntilPlanActive, type ChangeSubscriptionState } from "./planChange";
+import { formatMoney } from "@/lib/currency";
+import type { ChangePreview } from "@/types/subscription.type";
+import { classifyChange, pollUntilPlanActive, upgradeSummary, type ChangeSubscriptionState } from "./planChange";
 
 const NOW = new Date("2026-11-15T12:00:00Z");
 const DAY_MS = 86_400_000;
@@ -33,6 +35,9 @@ const ROWS: [string, ChangeSubscriptionState | null, string, "monthly" | "yearly
   ["unlimited target", sub("LITE", "monthly"), "UNLIMITED", "monthly", "not_self_serve"],
   ["business target", sub("LITE", "monthly"), "BUSINESS", "monthly", "not_self_serve"],
   ["business current ranks as plus", sub("BUSINESS", "monthly"), "PRO", "monthly", "upgrade"],
+  ["enterprise current to lite", sub("ENTERPRISE", "monthly"), "LITE", "monthly", "downgrade"],
+  ["unlimited current to pro", sub("UNLIMITED", "monthly"), "PRO", "monthly", "downgrade"],
+  ["unknown current plan", sub("MYSTERY", "monthly"), "PRO", "monthly", "not_self_serve"],
   ["status case does not matter", sub("LITE", "monthly", "ACTIVE"), "PLUS", "monthly", "upgrade"],
   ["live without an end date is not live", sub("LITE", "monthly", "active", null), "PLUS", "monthly", "new"],
 ];
@@ -61,5 +66,50 @@ describe("pollUntilPlanActive", () => {
     await expect(pollUntilPlanActive(fetchSubscription, "PLUS", options)).resolves.toBe(false);
     // 30s at 2s steps: one attempt per step including the first.
     expect(fetchSubscription).toHaveBeenCalledTimes(15);
+  });
+
+  it("stops early once aborted", async () => {
+    const controller = new AbortController();
+    const fetchSubscription = vi.fn().mockImplementation(async () => {
+      controller.abort();
+      return sub("LITE", "monthly");
+    });
+    await expect(
+      pollUntilPlanActive(fetchSubscription, "PLUS", { ...options, signal: controller.signal }),
+    ).resolves.toBe(false);
+    expect(fetchSubscription).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("upgradeSummary", () => {
+  const preview = (carryover: string, expires: string | null): ChangePreview => ({
+    change_type: "upgrade",
+    blocked_reason: null,
+    blocked_message: null,
+    effective_at: "2026-11-15T12:00:00Z",
+    charge_today: { amount_major: "194.00", currency: "USD" },
+    credits_now: 2100,
+    carryover_credits: carryover,
+    carryover_expires_at: expires,
+    next_renewal_at: "2026-12-15T12:00:00Z",
+    requires_authorisation: true,
+    features_lost: [],
+  });
+  const charge = formatMoney(194, "USD");
+
+  it("omits the carryover clause at zero", () => {
+    const text = upgradeSummary(preview("0", null), "Plus");
+    expect(text).toContain(`You pay ${charge} today`);
+    expect(text).toContain("You get 2,100 credits now. You'll approve");
+    expect(text).not.toContain("unused");
+  });
+
+  it("adds the carryover and its expiry date", () => {
+    const text = upgradeSummary(preview("300", "2026-12-15T12:00:00Z"), "Plus");
+    expect(text).toContain("credits now, plus your 300 unused credits until Dec 15, 2026.");
+  });
+
+  it("omits the clause when there is no expiry date", () => {
+    expect(upgradeSummary(preview("300", null), "Plus")).not.toContain("unused");
   });
 });

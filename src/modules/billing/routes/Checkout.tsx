@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getProfile } from "@/lib/api";
@@ -9,7 +9,7 @@ import { useBilling } from "@/modules/billing/useBilling";
 import type { CheckoutQuoteResponse } from "@/types/planCheckout.type";
 import { getCheckoutQuote, getChangePreview } from "@/modules/billing/billing_apis";
 import { getUserSubscription } from "@/modules/subscription/subscription_apis";
-import { pollUntilPlanActive } from "@/modules/billing/planChange";
+import { pollUntilPlanActive, upgradeSummary } from "@/modules/billing/planChange";
 import { formatMoney } from "@/lib/currency";
 import type { ChangePreview } from "@/types/subscription.type";
 
@@ -20,24 +20,6 @@ const VALID_PLANS: UpgradePlanSlug[] = ["lite", "pro", "plus", "enterprise"];
 const SETTLED_NOTICE_MS = 1500;
 
 type Settling = { phase: "waiting" } | { phase: "done"; message: string };
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-}
-
-function upgradeSummary(preview: ChangePreview, planName: string): string {
-  const charge = formatMoney(Number(preview.charge_today.amount_major), preview.charge_today.currency);
-  const carryover = Number(preview.carryover_credits);
-  const carryoverClause =
-    carryover > 0 && preview.carryover_expires_at
-      ? `, plus your ${carryover.toLocaleString()} unused credits until ${formatDate(preview.carryover_expires_at)}`
-      : "";
-  return (
-    `Upgrade to ${planName}. You pay ${charge} today and your billing date moves to today. ` +
-    `You get ${preview.credits_now.toLocaleString()} credits now${carryoverClause}. ` +
-    `You'll approve autopay for the new plan on the next screen.`
-  );
-}
 
 function slugToPlanKey(slug: UpgradePlanSlug): SubscriptionPlan {
   if (slug === "lite") return "LITE";
@@ -62,6 +44,14 @@ export default function Checkout() {
   const [settling, setSettling] = useState<Settling | null>(null);
 
   const cycle: "monthly" | "yearly" = search.cycle === "yearly" ? "yearly" : "monthly";
+
+  // Aborted on unmount so a slow poll cannot set state or navigate afterwards.
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     if (!planSlug) navigate({ to: "/upgrade" });
@@ -111,23 +101,28 @@ export default function Checkout() {
   const isAlreadyOnPlan = profile && planSlug && profile.plan === slugToPlanKey(planSlug);
 
   // The plan switches when the provider webhook lands, a moment after payment.
-  async function waitForNewPlan() {
-    if (!planSlug || !preview) return;
+  // Resolves false when the page was left meanwhile; callers must then do nothing.
+  async function waitForNewPlan(): Promise<boolean> {
+    const signal = abortRef.current?.signal;
+    if (!planSlug || !preview || !signal) return true;
     const planKey = slugToPlanKey(planSlug);
     setSettling({ phase: "waiting" });
     const active = await pollUntilPlanActive(
       () => queryClient.fetchQuery({ queryKey: [userSubscriptionQueryKey], queryFn: getUserSubscription, staleTime: 0 }),
       planKey,
+      { signal },
     );
+    if (signal.aborted) return false;
     const message = active
       ? `You're on ${quote?.display_name ?? planKey}. ${preview.credits_now.toLocaleString()} credits are ready.`
       : "Payment received. Your plan will update in a minute.";
     setSettling({ phase: "done", message });
     await new Promise((resolve) => setTimeout(resolve, SETTLED_NOTICE_MS));
+    return !signal.aborted;
   }
 
   async function finishUpgrade() {
-    await waitForNewPlan();
+    if (!(await waitForNewPlan())) return;
 
     try {
       // Refresh caches so dashboard / settings / sidebar show new plan immediately.

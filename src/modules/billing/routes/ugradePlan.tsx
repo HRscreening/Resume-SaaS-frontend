@@ -8,6 +8,7 @@ import { Link } from '@tanstack/react-router';
 import { getProfile, getPlans } from '@/lib/api';
 import EnterprisePlanCard from "@/modules/billing/components/EnterpriseCard"
 import { CreditUsageSection, ManagedRecruitmentPricing } from "@/modules//billing/components/Utils"
+import { PLAN_ORDER } from "@/modules/billing/planChange"
 import { PricingCard } from "@/modules/billing/components/PricingCard"
 import { useUserSubscription } from '@/modules/subscription/useSubscription';
 
@@ -21,7 +22,6 @@ const gridVariants: Variants = {
     hidden: {},
     show: { transition: { staggerChildren: 0.15, delayChildren: 0.15 } },
 };
-const PLAN_ORDER: SubscriptionPlan[] = ['FREE', 'LITE', 'PLUS', 'PRO', 'ENTERPRISE'];
 
 
 
@@ -73,7 +73,7 @@ const Pricing = () => {
     
 
 
-    const EXCLUDED_PLANS: SubscriptionPlan[] = ["ENTERPRISE", "BUSINESS", "ENTERPRISE"];
+    const EXCLUDED_PLANS: SubscriptionPlan[] = ["ENTERPRISE", "BUSINESS", "UNLIMITED"];
 
     const currentPlanIdx = PLAN_ORDER.indexOf(currentPlan)
 
