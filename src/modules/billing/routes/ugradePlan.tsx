@@ -75,7 +75,6 @@ const Pricing = () => {
 
     const EXCLUDED_PLANS: SubscriptionPlan[] = ["ENTERPRISE", "BUSINESS", "ENTERPRISE"];
 
-    const isSubscriptionActive = userSubscription?.status.toLowerCase() === 'active'
     const currentPlanIdx = PLAN_ORDER.indexOf(currentPlan)
 
 
@@ -170,7 +169,7 @@ const Pricing = () => {
                 {orderedPlans.map((plan, planIdx) => (
                     <PricingCard
                         key={plan.key}
-                        isSubscriptionActive={isSubscriptionActive}
+                        subscription={userSubscription}
                         planIdx={planIdx}
                         plan={plan}
                         currentPlan={currentPlan}

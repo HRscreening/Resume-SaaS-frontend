@@ -33,6 +33,33 @@ export const BillingInterval = {
 
 export type BillingIntervalType = typeof BillingInterval[keyof typeof BillingInterval];
 
+export type ChangeBlockedReason =
+  | "YEARLY_UPGRADE_CONTACT_SUPPORT"
+  | "DOWNGRADE_NOT_AVAILABLE"
+  | "ALREADY_ON_PLAN"
+  | "PLAN_NOT_SELF_SERVE";
+
+// Decimal fields arrive as JSON strings; convert with Number() before formatting.
+export type ChangePreview = {
+  change_type: "upgrade" | "downgrade" | "new" | "already_on_plan" | "not_self_serve";
+  blocked_reason: ChangeBlockedReason | null;
+  blocked_message: string | null;
+  effective_at: string;
+  charge_today: { amount_major: string; currency: string };
+  credits_now: number;
+  carryover_credits: string;
+  carryover_expires_at: string | null;
+  next_renewal_at: string;
+  requires_authorisation: boolean;
+  features_lost: string[];
+}
+
+export type ChangeSubscriptionRequest = {
+  plan: Plan;
+  interval: BillingIntervalType;
+  provider: PaymentProvider;
+}
+
 export type CheckoutSubscription = {
   new_plan: Plan;
   billing_interval: BillingIntervalType;

@@ -4,11 +4,13 @@ import { PlanSpec, SubscriptionPlan } from "@/types"
 import { Link } from "@tanstack/react-router";
 import ConfirmDowngradeDialog from '@/modules/billing/components/DowngradeModal';
 import { useNavigate } from "@tanstack/react-router";
+import type { UserSubscription } from "@/types/subscription.type";
+import { classifyChange } from "@/modules/billing/planChange";
 
 interface PricingCardProp {
     planIdx: number;
     plan: PlanSpec;
-    isSubscriptionActive: boolean
+    subscription: UserSubscription | null | undefined;
     isYearly: boolean;
     currentPlanIdx: number;
     currentPlan: SubscriptionPlan;
@@ -24,7 +26,7 @@ const PLAN_SLUG: Record<'LITE' | 'PLUS' | 'PRO', 'lite' | 'plus' | 'pro'> = {
     PRO: 'pro'
 };
 
-type PlanButtonAction = "GET_STARTED" | "RENEW" | "DOWNGRADE" | "UPGRADE" | "CONTACT_SALES" | "CURRENT_PLAN";
+type PlanButtonAction = "GET_STARTED" | "GET_PLAN" | "RENEW" | "DOWNGRADE" | "UPGRADE" | "CONTACT_SALES" | "CURRENT_PLAN";
 
 const PLAN_DESCRIPTIONS: Record<SubscriptionPlan, string> = {
     FREE: "Try it on one active role.",
@@ -107,7 +109,7 @@ const ctaSecondary = `${ctaButtonBase} border border-[#e0dcd4] bg-white text-[#2
 
 export function PricingCard({
     plan,
-    isSubscriptionActive,
+    subscription,
     currentPlan,
     isLoggedIn,
     isYearly,
@@ -132,11 +134,17 @@ export function PricingCard({
     function getButtonAction(): PlanButtonAction {
         if (!isLoggedIn) return "GET_STARTED";
         if (isEnterprise) return "CONTACT_SALES";
-        if (isCurrent) return isFree ? "CURRENT_PLAN" : "RENEW";
-        if (planIdx < currentPlanIdx) return "DOWNGRADE";
-        if (planIdx > currentPlanIdx) return "UPGRADE";
+        if (isFree) return isCurrent ? "CURRENT_PLAN" : planIdx < currentPlanIdx ? "DOWNGRADE" : "CONTACT_SALES";
 
-        return "CONTACT_SALES";
+        const change = classifyChange(subscription ?? null, plan.key, isYearly ? "yearly" : "monthly", new Date());
+        switch (change) {
+            case "upgrade": return "UPGRADE";
+            case "downgrade": return "DOWNGRADE";
+            case "already_on_plan": return "CURRENT_PLAN";
+            // Not live: the same plan is a renewal, anything else a fresh purchase.
+            case "new": return isCurrent ? "RENEW" : "GET_PLAN";
+            case "not_self_serve": return "CONTACT_SALES";
+        }
     }
 
     // Button label
@@ -145,11 +153,12 @@ export function PricingCard({
 
         const titles: Record<PlanButtonAction, string> = {
             GET_STARTED: "Get started",
+            GET_PLAN: "Get plan",
             RENEW: "Renew plan",
             DOWNGRADE: "Downgrade",
-            UPGRADE: "Upgrade Now",
+            UPGRADE: "Upgrade",
             CONTACT_SALES: "Contact Us",
-            CURRENT_PLAN: "Current Plan",
+            CURRENT_PLAN: "Current plan",
         };
 
         return titles[action];
@@ -175,16 +184,6 @@ export function PricingCard({
 
     // Button click handler
     function handleBtnClick() {
-        // Cancelled / inactive subscription: always go to checkout
-        if (!isSubscriptionActive) {
-            if (isFree) {
-                navigate({ to: "/dashboard" });
-            } else {
-                navigateToCheckout();
-            }
-            return;
-        }
-
         const action = getButtonAction();
 
         switch (action) {
@@ -210,6 +209,7 @@ export function PricingCard({
                 }
                 return;
 
+            case "GET_PLAN":
             case "RENEW":
             case "UPGRADE":
                 navigateToCheckout();
@@ -289,7 +289,7 @@ export function PricingCard({
             {handleBtnTitle()}
         </motion.button>
 
-        {currentPlanIdx > planIdx &&
+        {getButtonAction() === "DOWNGRADE" &&
             <ConfirmDowngradeDialog open={openDialog} setOpen={setOpenDialog} />
         }
 

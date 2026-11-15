@@ -7,10 +7,37 @@ import type { SubscriptionPlan } from "@/types";
 import { userSubscriptionQueryKey, UserUsageQuotasQueryKey } from "@/modules/shared/queryKeys/subscriptionQueryKeys"
 import { useBilling } from "@/modules/billing/useBilling";
 import type { CheckoutQuoteResponse } from "@/types/planCheckout.type";
-import { getCheckoutQuote } from "@/modules/billing/billing_apis";
+import { getCheckoutQuote, getChangePreview } from "@/modules/billing/billing_apis";
+import { getUserSubscription } from "@/modules/subscription/subscription_apis";
+import { pollUntilPlanActive } from "@/modules/billing/planChange";
+import { formatMoney } from "@/lib/currency";
+import type { ChangePreview } from "@/types/subscription.type";
 
 type UpgradePlanSlug = "lite" | "pro" | "plus" | "enterprise";
 const VALID_PLANS: UpgradePlanSlug[] = ["lite", "pro", "plus", "enterprise"];
+
+// How long the "You're on {Plan}" confirmation stays up before navigating on.
+const SETTLED_NOTICE_MS = 1500;
+
+type Settling = { phase: "waiting" } | { phase: "done"; message: string };
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function upgradeSummary(preview: ChangePreview, planName: string): string {
+  const charge = formatMoney(Number(preview.charge_today.amount_major), preview.charge_today.currency);
+  const carryover = Number(preview.carryover_credits);
+  const carryoverClause =
+    carryover > 0 && preview.carryover_expires_at
+      ? `, plus your ${carryover.toLocaleString()} unused credits until ${formatDate(preview.carryover_expires_at)}`
+      : "";
+  return (
+    `Upgrade to ${planName}. You pay ${charge} today and your billing date moves to today. ` +
+    `You get ${preview.credits_now.toLocaleString()} credits now${carryoverClause}. ` +
+    `You'll approve autopay for the new plan on the next screen.`
+  );
+}
 
 function slugToPlanKey(slug: UpgradePlanSlug): SubscriptionPlan {
   if (slug === "lite") return "LITE";
@@ -32,6 +59,7 @@ export default function Checkout() {
   const [agreed, setAgreed] = useState(false);
   const [paying, setPaying] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [settling, setSettling] = useState<Settling | null>(null);
 
   const cycle: "monthly" | "yearly" = search.cycle === "yearly" ? "yearly" : "monthly";
 
@@ -54,20 +82,53 @@ export default function Checkout() {
     staleTime: 1000 * 60,
   });
 
+  // ── Change preview (what the server will charge and grant; also the block reasons) ──
+  const previewQuery = useQuery<ChangePreview>({
+    queryKey: ["change-preview", planSlug, cycle],
+    queryFn: () => getChangePreview(slugToPlanKey(planSlug!), cycle),
+    enabled: !!planSlug && planSlug !== "enterprise",
+    staleTime: 0,
+    // A refetch after payment would see the new plan and report "already on plan".
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
   const profile = profileQuery.data;
   const quote = quoteQuery.data;
+  const preview = previewQuery.data;
   const loading =
     profileQuery.isLoading ||
     quoteQuery.isLoading ||
-    (!quote && planSlug !== "enterprise" && !quoteQuery.isError);
+    previewQuery.isLoading ||
+    (!quote && planSlug !== "enterprise" && !quoteQuery.isError) ||
+    (!preview && planSlug !== "enterprise" && !previewQuery.isError);
   const loadError =
     profileQuery.error instanceof Error ? profileQuery.error.message :
       quoteQuery.error instanceof Error ? quoteQuery.error.message :
-        null;
+        previewQuery.error instanceof Error ? previewQuery.error.message :
+          null;
 
   const isAlreadyOnPlan = profile && planSlug && profile.plan === slugToPlanKey(planSlug);
 
+  // The plan switches when the provider webhook lands, a moment after payment.
+  async function waitForNewPlan() {
+    if (!planSlug || !preview) return;
+    const planKey = slugToPlanKey(planSlug);
+    setSettling({ phase: "waiting" });
+    const active = await pollUntilPlanActive(
+      () => queryClient.fetchQuery({ queryKey: [userSubscriptionQueryKey], queryFn: getUserSubscription, staleTime: 0 }),
+      planKey,
+    );
+    const message = active
+      ? `You're on ${quote?.display_name ?? planKey}. ${preview.credits_now.toLocaleString()} credits are ready.`
+      : "Payment received. Your plan will update in a minute.";
+    setSettling({ phase: "done", message });
+    await new Promise((resolve) => setTimeout(resolve, SETTLED_NOTICE_MS));
+  }
+
   async function finishUpgrade() {
+    await waitForNewPlan();
+
     try {
       // Refresh caches so dashboard / settings / sidebar show new plan immediately.
       await Promise.allSettled([
@@ -151,7 +212,9 @@ export default function Checkout() {
   }
 
 
-  if (!quote) return null;
+  if (!quote || !preview) return null;
+
+  const blockedMessage = settling ? null : preview.blocked_message;
 
   // ── Pricing derivation ──
   const monthlyAmount =
@@ -161,10 +224,7 @@ export default function Checkout() {
     ? `$${monthlyAmount}`
     : `$${monthlyAmount.toFixed(2)}`;
 
-  const formatMoney = (value: number) =>
-    value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-  const totalLabel = `${quote.currency} ${formatMoney(quote.amount_major)}`;
+  const totalLabel = formatMoney(Number(preview.charge_today.amount_major), preview.charge_today.currency);
 
   const fromPricing = search.from === "pricing";
   const backTo = fromPricing ? "/dashboard" : "/upgrade";
@@ -185,8 +245,18 @@ export default function Checkout() {
 
         <h1 className="text-3xl font-bold text-[#0F0F0F] mb-2">Complete your {isAlreadyOnPlan ? "Renewal" : "Upgrade"}</h1>
         <p className="text-sm text-[#737373] mb-8">
-          You're upgrading to the {quote.display_name} plan.
+          {blockedMessage
+            ? `${quote.display_name} plan`
+            : preview.change_type === "upgrade"
+              ? upgradeSummary(preview, quote.display_name)
+              : `You're upgrading to the ${quote.display_name} plan.`}
         </p>
+
+        {blockedMessage && (
+          <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {blockedMessage}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Order summary */}
@@ -204,7 +274,7 @@ export default function Checkout() {
               </p>
               {quote.currency !== "USD" && quote.fx_rate && (
                 <p className="text-[11px] text-[#A0A0A0] mt-2">
-                  Billed in {quote.currency} at today's rate: ${formatMoney(quote.usd_amount)} = {quote.currency} {formatMoney(quote.amount_major)}
+                  Billed in {quote.currency} at today's rate: {formatMoney(quote.usd_amount, "USD")} = {formatMoney(quote.amount_major, quote.currency)}
                   {" "}(1 USD = {quote.currency} {quote.fx_rate.toFixed(2)})
                 </p>
               )}
@@ -264,7 +334,20 @@ export default function Checkout() {
                 <p className="text-xs text-red-600 mb-3">{paymentError}</p>
               )}
 
-              {PaymentUI ? (
+              {blockedMessage ? (
+                <Link to={backTo} className="block w-full h-12 leading-[3rem] text-center border border-[#E8E5DF] text-sm font-semibold rounded-xl text-[#0F0F0F]">
+                  {backLabel}
+                </Link>
+              ) : settling ? (
+                <p role="status" className="flex items-center justify-center gap-2 text-sm font-medium text-[#0F0F0F] text-center">
+                  {settling.phase === "waiting" ? (
+                    <>
+                      <span className="h-4 w-4 rounded-full border-2 border-[#0F0F0F] border-t-transparent animate-spin" />
+                      Payment received. Activating your plan…
+                    </>
+                  ) : settling.message}
+                </p>
+              ) : PaymentUI ? (
                 <PaymentUI />
               ) : (
                 <button
