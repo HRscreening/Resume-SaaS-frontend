@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useErrorToast } from "@/lib/useErrorToast";
 import { cancelScheduledCall, getScreening, listVoiceCalls, triggerVoiceCalls } from "@/lib/api";
 import type { CallDisplayStatus, CallListItem } from "@/types";
 import { BackLink } from "@/components/layout/BackLink";
@@ -64,6 +65,7 @@ export default function VoiceCalls() {
   });
   const calls: CallListItem[] = data?.calls ?? [];
 
+  const showError = useErrorToast();
   const triggerMut = useMutation({
     mutationFn: () => triggerVoiceCalls(id),
     onSuccess: (res) => {
@@ -78,7 +80,7 @@ export default function VoiceCalls() {
       }
     },
     onError: (e: unknown) =>
-      toast.error(e instanceof Error ? e.message : "Could not start calls"),
+      showError(e, e instanceof Error ? e.message : "Could not start calls"),
   });
 
   const cancelMut = useMutation({

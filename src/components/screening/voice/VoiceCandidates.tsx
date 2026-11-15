@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useErrorToast } from "@/lib/useErrorToast";
 import { listCallCandidates, triggerVoiceCalls } from "@/lib/api";
 import type { CandidateCallReason } from "@/types";
 import { defaultScheduleValue } from "@/lib/scheduleTime";
@@ -47,6 +48,7 @@ export function VoiceCandidates({ screeningId }: VoiceCandidatesProps) {
     queryClient.invalidateQueries({ queryKey: ["voice-candidates", screeningId] });
   };
 
+  const showError = useErrorToast();
   const callMut = useMutation({
     mutationFn: (resumeId: string) => triggerVoiceCalls(screeningId, [resumeId]),
     onSuccess: (res) => {
@@ -58,7 +60,7 @@ export function VoiceCandidates({ screeningId }: VoiceCandidatesProps) {
       }
     },
     onError: (e: unknown) =>
-      toast.error(e instanceof Error ? e.message : "Could not start call"),
+      showError(e, e instanceof Error ? e.message : "Could not start call"),
   });
 
   const scheduleMut = useMutation({
@@ -75,7 +77,7 @@ export function VoiceCandidates({ screeningId }: VoiceCandidatesProps) {
       }
     },
     onError: (e: unknown) =>
-      toast.error(e instanceof Error ? e.message : "Could not schedule call"),
+      showError(e, e instanceof Error ? e.message : "Could not schedule call"),
   });
 
   if (isLoading) return <p className="text-sm text-[#737373]">Loading candidates…</p>;

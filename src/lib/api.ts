@@ -33,14 +33,22 @@ export async function getAuthHeader(): Promise<Record<string, string>> {
 // working unchanged; `status` is additive. Callers that need to distinguish
 // server-meaningful statuses (409 conflict vs 422 unprocessable vs 403
 // forbidden, for example) should check `error instanceof ApiError` and read
-// `.status` rather than pattern-matching on `.message`.
+// `.status` rather than pattern-matching on `.message`. `code` is the server's
+// machine-readable error code (DomainError.error_code), when it sent one.
 export class ApiError extends Error {
   readonly status: number;
-  constructor(status: number, detail: string) {
+  readonly code?: string;
+  constructor(status: number, detail: string, code?: string) {
     super(detail);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
+}
+
+function toApiError(body: unknown, status: number): ApiError {
+  const code = (body as { code?: unknown } | null)?.code;
+  return new ApiError(status, parseErrorDetail(body, status), typeof code === "string" ? code : undefined);
 }
 
 function parseErrorDetail(body: unknown, status: number): string {
@@ -76,7 +84,7 @@ export async function request<T>(
   if (!res.ok) {
     if (res.status === 401) clearSessionHint();
     const body = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, parseErrorDetail(body, res.status));
+    throw toApiError(body, res.status);
   }
 
   // 204 No Content (e.g. DELETE) has no body to parse.
@@ -107,7 +115,7 @@ export async function requestFormData<T>(
   if (!res.ok) {
     if (res.status === 401) clearSessionHint();
     const body = await res.json().catch(() => ({}));
-    throw new Error(parseErrorDetail(body, res.status));
+    throw toApiError(body, res.status);
   }
 
   if (res.status === 204 || res.headers.get("content-length") === "0") {
@@ -196,7 +204,7 @@ async function handleUploadResponse<T>(res: Response): Promise<T> {
       "Your previous upload is still being processed. Please wait a moment before retrying.",
     );
   }
-  throw new Error(parseErrorDetail(body, res.status));
+  throw toApiError(body, res.status);
 }
 
 export async function uploadResumesToJob(

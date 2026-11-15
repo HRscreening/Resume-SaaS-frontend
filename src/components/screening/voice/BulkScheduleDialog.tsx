@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useErrorToast } from "@/lib/useErrorToast";
 import { listCallCandidates, triggerVoiceCalls } from "@/lib/api";
 import type { CallCandidate, CandidateCallReason } from "@/types";
 import { defaultScheduleValue, isFuture, localZoneName } from "@/lib/scheduleTime";
@@ -44,6 +45,7 @@ export function BulkScheduleDialog({ screeningId, open, onClose }: BulkScheduleD
     return [all.filter((c) => c.eligible), all.filter((c) => !c.eligible)];
   }, [data]);
 
+  const showError = useErrorToast();
   const schedule = useMutation({
     mutationFn: () =>
       triggerVoiceCalls(screeningId, [...picked], new Date(when).toISOString()),
@@ -67,7 +69,7 @@ export function BulkScheduleDialog({ screeningId, open, onClose }: BulkScheduleD
       if (res.created.length) close();
     },
     onError: (e: unknown) =>
-      toast.error(e instanceof Error ? e.message : "Could not schedule these interviews"),
+      showError(e, e instanceof Error ? e.message : "Could not schedule these interviews"),
   });
 
   const close = () => { setPicked(new Set()); onClose(); };

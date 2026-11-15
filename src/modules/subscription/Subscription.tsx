@@ -4,6 +4,7 @@ import { useUserSubscription } from "@/modules/subscription/useSubscription";
 import { type UserSubscription } from "@/types/subscription.type";
 import SubscriptionCancellationDialog from "@/modules/subscription/SubscriptionCancellationDialog";
 import { useResumeSubscriptionMutation } from "@/modules/subscription/useSubscription";
+import { LapsedPlanNotice } from "@/modules/subscription/LapsedPlanNotice";
 import { cn } from "@/lib/utils";
 import {
     CreditCard,
@@ -100,6 +101,7 @@ export const Subscription = ({ className, embedded = false }: SubscriptionProps 
     const scheduledDowngradePlan = subscription.scheduled_downgrade_plan ?? null;
 
     const isActive = subscription.status?.toLowerCase() === "active";
+    const isExpired = subscription.status?.toLowerCase() === "expired";
     const currencyCode = (subscription.credit_unit || "USD").toUpperCase();
     const currencySymbol = currencyCode === "INR" ? "₹" : "$";
 
@@ -136,8 +138,10 @@ export const Subscription = ({ className, embedded = false }: SubscriptionProps 
                     </Link>
                 </div>
 
+                {isExpired && <LapsedPlanNotice subscription={subscription} />}
+
                 {/* Subscription cancellation notice */}
-                {isCancelled && (
+                {isCancelled && !isExpired && (
                     <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2.5">
                         <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                         <div className="text-xs text-amber-800 leading-relaxed">

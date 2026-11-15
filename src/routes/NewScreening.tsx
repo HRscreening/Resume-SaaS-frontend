@@ -2,6 +2,7 @@ import { useState,useEffect,useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useErrorToast } from "@/lib/useErrorToast";
 import { analyzeJD, createJob, createJob_v1, parseJDFile } from "@/lib/api";
 import type { Rubric, Subcategory } from "@/types";
 import { MAX_SUBCATEGORIES } from "@/lib/rubric";
@@ -21,6 +22,7 @@ const STEPS = ["Job description", "Review rubric","Start screening"] as const;
 export default function NewScreening() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const showError = useErrorToast();
   const [step, setStep] = useState<Step>(1);
 
   const analytics = useAnalytics();
@@ -210,7 +212,7 @@ export default function NewScreening() {
       navigate({ to: "/screenings/$id", params: { id: screening_id } });
     } catch (err) {
       analytics.track(AnalyticsEvent.JOB_CREATION_FAILED, { reason: "job_save" });
-      toast.error(err instanceof Error ? err.message : "Failed to save job");
+      showError(err, err instanceof Error ? err.message : "Failed to save job");
     } finally {
       setSaving(false);
     }

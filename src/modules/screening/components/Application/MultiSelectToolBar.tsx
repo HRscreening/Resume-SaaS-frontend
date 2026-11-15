@@ -12,6 +12,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useErrorToast } from "@/lib/useErrorToast";
 import { ResumeSections } from "@/modules/screening/types/screening.type"
 import { useMultiApplicationResumeUtility, type MultiMutationOptions } from "@/modules/screening/hooks/application/queries/application.hook"
 import { archiveResumeMulti, deleteResumeMulti, unarchiveResumeMulti, downloadSelectedResumes, } from "@/modules/screening/apis/screenings.api"
@@ -65,6 +66,7 @@ const CandidateMultiSelectToolBar = ({
   const multiUnarchiveMutation = useMultiApplicationResumeUtility(unarchiveResumeMulti, TOAST_MESSAGES.UNARCHIVE)
   const multiDeleteMutation = useMultiApplicationResumeUtility(deleteResumeMulti, TOAST_MESSAGES.DELETE)
   const multiScoreMutation = useScoringMutation(TOAST_MESSAGES.SCORE)
+  const showError = useErrorToast()
   const multiExportMutation = useMultiApplicationResumeUtility(exportSelectedApplications, TOAST_MESSAGES.EXPORT)
 
   const closeToolBar = () => {
@@ -149,7 +151,7 @@ const CandidateMultiSelectToolBar = ({
         catch (error) {
             const message = screeningErrorMessage(error, "Error Screening candidates. Please try again.");
             analytics.track(AnalyticsEvent.SCREENING_FAILED, { screeningId: screening_id, operation: "screen", selectedCount: totalSelected, status: (error as { status?: number } | null)?.status ?? null, message });
-            toast.error(message);
+            showError(error, message);
         }
 
        

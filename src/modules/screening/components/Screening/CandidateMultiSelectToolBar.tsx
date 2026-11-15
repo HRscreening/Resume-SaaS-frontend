@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import LoadingSpinner from '@/modules/screening/components/shared/LoadingSpinner'
 import { toast } from 'sonner'
+import { useErrorToast } from "@/lib/useErrorToast";
 import type { StagesMap } from "@/types";
 import { ResumeSections } from "@/modules/screening/types/screening.type"
 import { useMultiScoredResumeUtility, type MultiMutationOptions } from "@/modules/screening/hooks/screening/queries/screening.query"
@@ -99,6 +100,7 @@ const CandidateMultiSelectToolBar = ({
   const multiCallMutation = useMultiScoredResumeUtility(callSelectedScreenings)
   const multiExportMutation = useMultiScoredResumeUtility(exportSelectedScreenings, TOAST_MESSAGES.EXPORT)
   const multiRescoreMutation = useScoringMutation(TOAST_MESSAGES.RESCORE)
+  const showError = useErrorToast()
   const multiChangeStageMutation = useMultiScoredResumeUtility(changeScreeningsStage, TOAST_MESSAGES.CHANGE_STAGE)
   const multiShareMutation = useMultiScoredResumeUtility(shareScreenings, TOAST_MESSAGES.SHARE)
 
@@ -211,8 +213,8 @@ const CandidateMultiSelectToolBar = ({
 
       }
     }
-    catch {
-      toast.error("Failed to initiate calls");
+    catch (error) {
+      showError(error, screeningErrorMessage(error, "Failed to initiate calls"));
     }
 
   }
@@ -274,7 +276,7 @@ const CandidateMultiSelectToolBar = ({
     catch (error) {
       const message = screeningErrorMessage(error, "Error Screening candidates. Please try again.");
       analytics.track(AnalyticsEvent.SCREENING_FAILED, { screeningId: screening_id, operation: "rescore", selectedCount: totalSelected, status: (error as { status?: number } | null)?.status ?? null, message });
-      toast.error(message);
+      showError(error, message);
     }
 
 

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { resumeUploadService } from '@/lib/services/storage'
 import { queryClient } from '@/lib/queryClient'
 import { toast } from "sonner"
+import { useErrorToast } from "@/lib/useErrorToast";
 import { useAddApplicationsMutation } from '@/modules/screening/hooks/application/queries/application.hook'
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
 
@@ -25,6 +26,7 @@ const UploadResumes = ({ screening_id, user_id, setShowUploadMore }: UploadResum
 
     const { mutateAsync: UploadResumes, isSuccess: isUploadDone, isPending: isUploading } = useAddApplicationsMutation()
     const analytics = useAnalytics();
+    const showError = useErrorToast();
 
     function pickResumeFiles(
         picked: FileList | File[] | null,
@@ -125,7 +127,7 @@ const UploadResumes = ({ screening_id, user_id, setShowUploadMore }: UploadResum
             // error and reset. (e.g. a bad file in the ZIP failing validation.)
             const msg = e instanceof Error ? e.message : "Upload failed. Please try again.";
             setUploadError(msg);
-            toast.error(msg);
+            showError(e, msg);
         } finally {
             setUploading(false);
         }

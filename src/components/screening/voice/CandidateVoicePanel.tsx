@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useErrorToast } from "@/lib/useErrorToast";
 import {
   getVoiceConfig,
   listCallCandidates,
@@ -122,6 +123,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
     queryClient.invalidateQueries({ queryKey: ["voice-candidates", screeningId] });
   };
 
+  const showError = useErrorToast();
   const callMut = useMutation({
     mutationFn: (vars: { iso?: string; phone?: string | null }) =>
       triggerVoiceCalls(screeningId, [resumeId], vars.iso ?? null, vars.phone ?? null),
@@ -142,7 +144,7 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
         toast.error(`Could not start call: ${res.skipped[0]?.reason ?? "unknown"}`);
       }
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Could not start call"),
+    onError: (e: unknown) => showError(e, e instanceof Error ? e.message : "Could not start call"),
   });
 
   const cancelMut = useMutation({
