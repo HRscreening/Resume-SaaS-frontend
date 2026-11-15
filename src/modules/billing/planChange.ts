@@ -54,6 +54,32 @@ export function classifyChange(
   return interval === "yearly" ? "upgrade" : "downgrade";
 }
 
+/** What the poll reads: the classification slice plus the row id. */
+export interface PolledSubscription extends ChangeSubscriptionState {
+  sub_id: string;
+}
+
+/** The plan and interval just paid for. */
+export interface PlanTarget {
+  plan: string;
+  billing_interval: BillingIntervalType;
+}
+
+/** The subscription as it was before payment; null when the user had none. */
+export type SubscriptionSnapshot = Pick<PolledSubscription, "sub_id" | "subscription_ends_at"> | null;
+
+/**
+ * Active on the purchased plan and interval, and no longer the pre-payment row as it was:
+ * an upgrade or new purchase gives a new row, a renewal moves the period end. Without the
+ * snapshot check a same-plan purchase (monthly to yearly, renew in grace) would match the old row.
+ */
+function isSettled(sub: PolledSubscription, target: PlanTarget, before: SubscriptionSnapshot): boolean {
+  if (sub.status.toLowerCase() !== "active") return false;
+  if (sub.plan.toUpperCase() !== target.plan.toUpperCase()) return false;
+  if (sub.billing_interval !== target.billing_interval) return false;
+  return before === null || sub.sub_id !== before.sub_id || sub.subscription_ends_at !== before.subscription_ends_at;
+}
+
 interface PollOptions {
   intervalMs?: number;
   timeoutMs?: number;
@@ -77,13 +103,14 @@ const realSleep = (ms: number, signal?: AbortSignal) =>
 
 /**
  * After a payment the plan switches when the provider webhook lands. Polls
- * until the subscription is active on the purchased plan; false on timeout.
+ * until the purchase has settled (see isSettled); false on timeout.
  * A failed fetch counts as "not yet": the next attempt may succeed. An
  * aborted signal stops the loop early (also returning false).
  */
 export async function pollUntilPlanActive(
-  fetchSubscription: () => Promise<ChangeSubscriptionState | null>,
-  plan: string,
+  fetchSubscription: () => Promise<PolledSubscription | null>,
+  target: PlanTarget,
+  before: SubscriptionSnapshot,
   { intervalMs = DEFAULT_POLL_INTERVAL_MS, timeoutMs = DEFAULT_POLL_TIMEOUT_MS, sleep, signal }: PollOptions = {},
 ): Promise<boolean> {
   const attempts = Math.floor(timeoutMs / intervalMs);
@@ -92,9 +119,7 @@ export async function pollUntilPlanActive(
     if (signal?.aborted) return false;
     try {
       const sub = await fetchSubscription();
-      if (sub && sub.status.toLowerCase() === "active" && sub.plan.toUpperCase() === plan.toUpperCase()) {
-        return true;
-      }
+      if (sub && isSettled(sub, target, before)) return true;
     } catch (err) {
       console.warn("Subscription poll failed, retrying:", err);
     }

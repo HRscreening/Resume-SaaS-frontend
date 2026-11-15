@@ -2,7 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import { formatMoney } from "@/lib/currency";
 import type { ChangePreview } from "@/types/subscription.type";
-import { classifyChange, pollUntilPlanActive, upgradeSummary, type ChangeSubscriptionState } from "./planChange";
+import {
+  classifyChange,
+  pollUntilPlanActive,
+  upgradeSummary,
+  type ChangeSubscriptionState,
+  type PolledSubscription,
+  type SubscriptionSnapshot,
+} from "./planChange";
 
 const NOW = new Date("2026-11-15T12:00:00Z");
 const DAY_MS = 86_400_000;
@@ -51,19 +58,55 @@ describe("classifyChange", () => {
 describe("pollUntilPlanActive", () => {
   const noSleep = () => Promise.resolve();
   const options = { intervalMs: 2000, timeoutMs: 30_000, sleep: noSleep };
+  const row = (id: string, plan: string, interval: "monthly" | "yearly", endsAt = inDays(10)): PolledSubscription => ({
+    ...sub(plan, interval, "active", endsAt),
+    sub_id: id,
+  });
+  const oldLite = row("old", "LITE", "monthly");
+  const before: SubscriptionSnapshot = { sub_id: "old", subscription_ends_at: oldLite.subscription_ends_at };
 
   it("resolves true as soon as the purchased plan is active", async () => {
     const fetchSubscription = vi
       .fn()
-      .mockResolvedValueOnce(sub("LITE", "monthly"))
-      .mockResolvedValueOnce(sub("PLUS", "monthly"));
-    await expect(pollUntilPlanActive(fetchSubscription, "PLUS", options)).resolves.toBe(true);
+      .mockResolvedValueOnce(oldLite)
+      .mockResolvedValueOnce(row("new", "PLUS", "monthly"));
+    const target = { plan: "PLUS", billing_interval: "monthly" } as const;
+    await expect(pollUntilPlanActive(fetchSubscription, target, before, options)).resolves.toBe(true);
+    expect(fetchSubscription).toHaveBeenCalledTimes(2);
+  });
+
+  it("a same-plan purchase waits for the new row, not the pre-payment one", async () => {
+    const graceRow = row("old", "LITE", "monthly", inDays(-1)); // still reported active in grace
+    const graceBefore = { sub_id: "old", subscription_ends_at: graceRow.subscription_ends_at };
+    const fetchSubscription = vi
+      .fn()
+      .mockResolvedValueOnce(graceRow)
+      .mockResolvedValueOnce(row("new", "LITE", "monthly", inDays(30)));
+    const target = { plan: "LITE", billing_interval: "monthly" } as const;
+    await expect(pollUntilPlanActive(fetchSubscription, target, graceBefore, options)).resolves.toBe(true);
+    expect(fetchSubscription).toHaveBeenCalledTimes(2);
+  });
+
+  it("monthly to yearly does not resolve on the old monthly row", async () => {
+    const fetchSubscription = vi.fn().mockResolvedValue({ ...oldLite, sub_id: "new" });
+    const target = { plan: "LITE", billing_interval: "yearly" } as const;
+    await expect(pollUntilPlanActive(fetchSubscription, target, before, options)).resolves.toBe(false);
+  });
+
+  it("a renewal resolves when the period end moves on the same row", async () => {
+    const fetchSubscription = vi
+      .fn()
+      .mockResolvedValueOnce(oldLite)
+      .mockResolvedValueOnce(row("old", "LITE", "monthly", inDays(40)));
+    const target = { plan: "LITE", billing_interval: "monthly" } as const;
+    await expect(pollUntilPlanActive(fetchSubscription, target, before, options)).resolves.toBe(true);
     expect(fetchSubscription).toHaveBeenCalledTimes(2);
   });
 
   it("keeps polling through a fetch error and gives up after the timeout", async () => {
     const fetchSubscription = vi.fn().mockRejectedValue(new Error("network"));
-    await expect(pollUntilPlanActive(fetchSubscription, "PLUS", options)).resolves.toBe(false);
+    const target = { plan: "PLUS", billing_interval: "monthly" } as const;
+    await expect(pollUntilPlanActive(fetchSubscription, target, before, options)).resolves.toBe(false);
     // 30s at 2s steps: one attempt per step including the first.
     expect(fetchSubscription).toHaveBeenCalledTimes(15);
   });
@@ -72,10 +115,11 @@ describe("pollUntilPlanActive", () => {
     const controller = new AbortController();
     const fetchSubscription = vi.fn().mockImplementation(async () => {
       controller.abort();
-      return sub("LITE", "monthly");
+      return oldLite;
     });
+    const target = { plan: "PLUS", billing_interval: "monthly" } as const;
     await expect(
-      pollUntilPlanActive(fetchSubscription, "PLUS", { ...options, signal: controller.signal }),
+      pollUntilPlanActive(fetchSubscription, target, before, { ...options, signal: controller.signal }),
     ).resolves.toBe(false);
     expect(fetchSubscription).toHaveBeenCalledTimes(1);
   });

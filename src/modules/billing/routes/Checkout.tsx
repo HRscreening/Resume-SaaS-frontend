@@ -9,7 +9,7 @@ import { useBilling } from "@/modules/billing/useBilling";
 import type { CheckoutQuoteResponse } from "@/types/planCheckout.type";
 import { getCheckoutQuote, getChangePreview } from "@/modules/billing/billing_apis";
 import { getUserSubscription } from "@/modules/subscription/subscription_apis";
-import { pollUntilPlanActive, upgradeSummary } from "@/modules/billing/planChange";
+import { pollUntilPlanActive, upgradeSummary, type SubscriptionSnapshot } from "@/modules/billing/planChange";
 import { formatMoney } from "@/lib/currency";
 import type { ChangePreview } from "@/types/subscription.type";
 
@@ -83,11 +83,27 @@ export default function Checkout() {
     refetchOnReconnect: false,
   });
 
+  // ── Pre-payment subscription: the poll waits for something other than this row ──
+  const subscriptionQuery = useQuery({
+    queryKey: [userSubscriptionQueryKey],
+    queryFn: getUserSubscription,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+  // Frozen at first load: later fetches (the poll writes this cache) must not move it.
+  const snapshotRef = useRef<SubscriptionSnapshot | undefined>(undefined);
+  if (snapshotRef.current === undefined && subscriptionQuery.isSuccess) {
+    const sub = subscriptionQuery.data;
+    snapshotRef.current = sub ? { sub_id: sub.sub_id, subscription_ends_at: sub.subscription_ends_at } : null;
+  }
+
   const profile = profileQuery.data;
   const quote = quoteQuery.data;
   const preview = previewQuery.data;
   const loading =
     profileQuery.isLoading ||
+    subscriptionQuery.isLoading ||
     quoteQuery.isLoading ||
     previewQuery.isLoading ||
     (!quote && planSlug !== "enterprise" && !quoteQuery.isError) ||
@@ -98,7 +114,10 @@ export default function Checkout() {
         previewQuery.error instanceof Error ? previewQuery.error.message :
           null;
 
-  const isAlreadyOnPlan = profile && planSlug && profile.plan === slugToPlanKey(planSlug);
+  // The server classifies the change; an upgrade or a new purchase always goes through
+  // the upgrade checkout, even when the plan name matches (e.g. monthly to yearly, or grace).
+  const isPlanChange = preview?.change_type === "upgrade" || preview?.change_type === "new";
+  const checkoutAction = isPlanChange ? "upgrade" : (quote?.actionable ?? "upgrade");
 
   // The plan switches when the provider webhook lands, a moment after payment.
   // Resolves false when the page was left meanwhile; callers must then do nothing.
@@ -109,7 +128,8 @@ export default function Checkout() {
     setSettling({ phase: "waiting" });
     const active = await pollUntilPlanActive(
       () => queryClient.fetchQuery({ queryKey: [userSubscriptionQueryKey], queryFn: getUserSubscription, staleTime: 0 }),
-      planKey,
+      { plan: planKey, billing_interval: cycle },
+      snapshotRef.current ?? null,
       { signal },
     );
     if (signal.aborted) return false;
@@ -154,7 +174,7 @@ export default function Checkout() {
   const { subscribe, PaymentUI } = useBilling({
     paymentGateway: quote?.gateway ?? "paypal",
     plan: planSlug && planSlug !== "enterprise" ? (slugToPlanKey(planSlug) as "PRO" | "PLUS" | "LITE") : "PRO",
-    action: quote?.actionable ?? "upgrade",
+    action: checkoutAction,
     billingInterval: cycle,
     onSuccess: finishUpgrade,
     onError: (err) => setPaymentError(err || "Payment failed"),
@@ -238,7 +258,7 @@ export default function Checkout() {
           {backLabel}
         </Link>
 
-        <h1 className="text-3xl font-bold text-[#0F0F0F] mb-2">Complete your {isAlreadyOnPlan ? "Renewal" : "Upgrade"}</h1>
+        <h1 className="text-3xl font-bold text-[#0F0F0F] mb-2">Complete your {preview.change_type === "already_on_plan" ? "Renewal" : "Upgrade"}</h1>
         <p className="text-sm text-[#737373] mb-8">
           {blockedMessage
             ? `${quote.display_name} plan`
