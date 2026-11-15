@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useUserUsageQuotas, useUserSubscription } from "@/modules/subscription/useSubscription";
 import { CreditLogsDialog } from "@/modules/subscription/CreditLogsDialog";
+import { creditBalance } from "@/modules/subscription/credits";
 import {
     Briefcase,
     FileSearch,
@@ -39,11 +40,6 @@ function formatDate(isoString: string | null | undefined): string {
     } catch {
         return "N/A";
     }
-}
-
-function toCredit(value: number | string | null | undefined): number {
-    const n = typeof value === "number" ? value : Number(value ?? 0);
-    return Number.isFinite(n) ? n : 0;
 }
 
 function formatCredit(value: number): string {
@@ -113,16 +109,17 @@ export const UsageQuotas = () => {
     const isExpired = Boolean(usageData.is_expired);
     const isGracePeriod = Boolean(usageData.is_grace_period);
 
-    const planAllocated = toCredit(usageData.credit_allocated);
-    const planUsed = toCredit(usageData.credit_used);
-    const additionalAllocated = toCredit(usageData.additional_allocated);
-    const additionalUsed = toCredit(usageData.additional_used);
-
-    const planRemaining = Math.max(planAllocated - planUsed, 0);
-    const additionalRemaining = Math.max(additionalAllocated - additionalUsed, 0);
-    const totalAllocated = planAllocated + additionalAllocated;
-    const totalUsed = planUsed + additionalUsed;
-    const totalRemaining = planRemaining + additionalRemaining;
+    const {
+        planAllocated,
+        planUsed,
+        planRemaining,
+        additionalAllocated,
+        additionalUsed,
+        additionalRemaining,
+        totalAllocated,
+        totalUsed,
+        totalRemaining,
+    } = creditBalance(usageData);
     const totalShare = creditShare(totalUsed, totalAllocated);
 
     const formatAmount = (value: number) =>

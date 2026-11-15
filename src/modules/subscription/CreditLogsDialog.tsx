@@ -7,6 +7,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { useCreditLogs } from "@/modules/subscription/useSubscription";
+import { toCredit } from "@/modules/subscription/credits";
 import { CreditTransactionType, type CreditLog } from "@/types/subscription.type";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -29,11 +30,6 @@ interface CreditLogsDialogProps {
 }
 
 
-
-function toCredit(value: number | string | null | undefined): number {
-    const n = typeof value === "number" ? value : Number(value ?? 0);
-    return Number.isFinite(n) ? n : 0;
-}
 
 function formatCredit(value: number): string {
     return value.toLocaleString(undefined, {

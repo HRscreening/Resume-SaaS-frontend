@@ -9,7 +9,7 @@ import { useAccount } from "@/hooks/useAccount";
 import { useUsage } from "@/hooks/useUsage";
 import { meterColor, usedRatio } from "@/components/usage/QuotaMeter";
 import { cn } from "@/lib/utils";
-import type { SubscriptionPlan } from "@/types";
+import { PLAN_LABEL } from "@/lib/planLabels";
 import { User, Activity } from "lucide-react";
 
 interface NavItem {
@@ -83,16 +83,6 @@ const navItems: NavItem[] = [
   { href: "/screenings/new", label: "New Job", icon: <PlusIcon />, exact: true },
   // { href: "/candidates", label: "Candidates", icon: <User size={14} />, exact: true },
 ];
-
-const PLAN_LABEL: Record<SubscriptionPlan, string> = {
-  FREE: "Free",
-  PRO: "Pro",
-  PLUS: "Plus",
-  LITE:"Lite",
-  BUSINESS: "Plus",
-  ENTERPRISE: "Enterprise",
-  UNLIMITED: "Unlimited",
-};
 
 function getInitials(name: string | null | undefined, email: string | null | undefined): string {
   if (name?.trim()) {
