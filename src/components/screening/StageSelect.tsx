@@ -105,6 +105,7 @@ export function StageSelect({ value, stages, onChange, onManage, disabled = fals
     <div className="relative inline-flex items-center gap-1">
       <button
         ref={triggerRef}
+        data-guide="screening_candidate_stage"
         type="button"
         disabled={disabled}
         onClick={(e) => { e.stopPropagation(); if (disabled) return; setOpen((v) => !v); }}

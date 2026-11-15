@@ -100,6 +100,7 @@ export default function CandidateRow({
 
     return (
         <tr
+            data-guide="application_candidate_row"
             onClick={(e) => {
                 if (isProcessing) return;
                 if (selectable) {
@@ -228,6 +229,7 @@ export default function CandidateRow({
                 {/* View Details / Actions */}
                 {!compact && (
                     <td
+                        data-guide="application_row_actions"
                         className="w-24 px-2 py-3 flex justify-between items-center gap-2 text-center align-middle"
                         onClick={(e) => e.stopPropagation()}
                     >

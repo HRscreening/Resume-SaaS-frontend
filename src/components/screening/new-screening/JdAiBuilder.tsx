@@ -10,7 +10,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-
+import { useGuide} from "@/guides"
 // Compact field styling for the details grid — smaller than the wizard's main
 // inputs so the seven fields don't dominate the step.
 const fieldClass =
@@ -51,6 +51,7 @@ interface JdAiBuilderProps {
 // can reprompt a limited number of times (attemptsLeft), passing the current
 // JD back so the AI refines rather than starts over.
 export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderProps) {
+  const guide = useGuide()
   const [prompt, setPrompt] = useState("");
   // Structured details that ground the generation (sent as `jd_details`). The
   // first four are required by the backend; the rest are optional.
@@ -118,6 +119,11 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
     detailsComplete &&
     !generating &&
     !downloading;
+
+
+    useEffect(()=>{
+      guide.startGuide("build_jd_ai")
+    },[])
 
   // Assemble the structured `jd_details` payload shared by generation and PDF
   // export. Optional numeric/text fields collapse to null when blank.
@@ -282,6 +288,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
       {/* Job details — structured fields that ground the generation. Open by
           default so the user fills them in; collapsible once done. */}
       <Accordion
+        data-guide="job_details"
         type="single"
         collapsible
         defaultValue="details"
@@ -509,6 +516,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
             id="jd-ai-prompt"
             type="text"
             value={prompt}
+            data-guide="prompt_input"
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleGenerate(); } }}
             disabled={generating}
@@ -521,6 +529,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
           />
           <button
             type="button"
+            data-guide="generate_jd"
             onClick={handleGenerate}
             disabled={!canGenerate}
             className="h-11 px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shrink-0"

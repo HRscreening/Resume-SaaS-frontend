@@ -8,13 +8,17 @@ interface SubcategoryRowProps {
 }
 
 // A single editable subcategory: name + description inputs, a 1–5 importance
-// picker, and a delete button. "Must Have" / "External Signal" badges are
-// read-only here — they reflect what the AI inferred from the JD.
+// picker, and controls for marking or removing the criterion.
 export function SubcategoryRow({ subcategory: sub, onChange, onRemove }: SubcategoryRowProps) {
   return (
-    <div className={`rounded-xl p-3.5 border ${sub.is_non_negotiable ? "border-red-300 bg-red-50/40" : "border-[#E8E5DF]"}`}>
+    <div
+      data-guide="rubric_subcategory"
+      className={`rounded-xl p-3.5 border ${sub.is_non_negotiable ? "border-red-300 bg-red-50/40" : "border-[#E8E5DF]"}`}
+    >
       {/* Badges */}
-      <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+      <div
+        className="flex items-center gap-1.5 mb-2 flex-wrap w-fit"
+      >
         <button
           type="button"
           onClick={() => onChange({ is_non_negotiable: !sub.is_non_negotiable })}
@@ -82,13 +86,18 @@ export function SubcategoryRow({ subcategory: sub, onChange, onRemove }: Subcate
         {/* Importance 1-5 picker + delete. Mobile: full-width row below the
             inputs, weights left, X far right. sm+: original right-cluster. */}
         <div className="flex items-center justify-between gap-2 sm:justify-end sm:shrink-0">
-          <div className="flex flex-col items-start sm:items-end gap-1">
-            <div className="flex items-center gap-1">
+          <div
+           
+            className="flex flex-col items-start sm:items-end gap-1"
+          >
+            <div
+            data-guide="rubric_subcategory_weight"
+            className="flex items-center gap-1">
               {([1, 2, 3, 4, 5] as const).map((lvl) => (
                 <button
                   key={lvl}
                   type="button"
-                  onClick={() => onChange({ weight: lvl })}
+                   onClick={() => onChange({ weight: lvl })}
                   title={IMPORTANCE_LABELS[lvl - 1]}
                   className={`h-7 w-7 sm:h-6 sm:w-6 rounded-md text-xs font-bold transition-colors ${lvl <= sub.weight ? "bg-[#0F0F0F] text-white" : "bg-[#F0EDE8] text-[#A0A0A0] hover:bg-[#E8E5DF]"
                     }`}
@@ -100,6 +109,7 @@ export function SubcategoryRow({ subcategory: sub, onChange, onRemove }: Subcate
             <span className="text-[10px] text-[#A0A0A0] font-medium">{IMPORTANCE_LABELS[sub.weight - 1] ?? ""}</span>
           </div>
           <button
+            data-guide="rubric_subcategory_delete"
             onClick={onRemove}
             title="Delete subcategory"
             className="h-9 w-9 sm:h-7 sm:w-7 rounded-lg border border-[#E8E5DF] text-[#737373] hover:text-red-600 hover:border-red-300 hover:bg-red-50 flex items-center justify-center transition-colors shrink-0"

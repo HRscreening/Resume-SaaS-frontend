@@ -261,7 +261,6 @@ body {
   background: var(--ivory-dark);
 }
 
-
 /* Bg Processing Overlay */
 @keyframes row-shimmer-sweep {
   0% {

@@ -63,6 +63,7 @@ export function RubricCategoryCard({
           </p>
         ) : (
           <button
+            data-guide="rubric_subcategory_add"
             onClick={onAddSubcategory}
             className="w-full mt-1 rounded-xl border border-dashed border-[#D4D4D4] hover:border-[#0F0F0F] hover:bg-[#FAFAF7] py-3 text-sm text-[#737373] hover:text-[#0F0F0F] flex items-center justify-center gap-1.5 transition-colors"
           >

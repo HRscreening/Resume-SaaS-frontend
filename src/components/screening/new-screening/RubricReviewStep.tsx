@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Rubric, Subcategory } from "@/types";
 import { RubricCategoryCard } from "./RubricCategoryCard";
 import { AskSourceJobModal } from "./AskSourcingModal";
 import { detectBillingCurrency } from "@/lib/currency";
-
+import { useGuide } from "@/guides"
 
 
 interface RubricReviewStepProps {
@@ -13,7 +13,7 @@ interface RubricReviewStepProps {
   onRemoveSubcategory: (catIdx: number, subIdx: number) => void;
   onAddSubcategory: (catIdx: number) => void;
   onBack: () => void;
-  onSave: (allowSourcing:boolean) => void;
+  onSave: (allowSourcing: boolean) => void;
   saving: boolean;
 }
 
@@ -30,11 +30,13 @@ export function RubricReviewStep({
   saving,
 }: RubricReviewStepProps) {
 
+  const guide = useGuide()
   const isIndia = detectBillingCurrency() === "INR";
   const [showSourcingModal, setShowSourcingModal] = useState(false);
 
-  
- 
+  useEffect(() => {
+    guide.startGuide("rubric");
+  }, [guide.startGuide]);
 
   return (
     <div className="space-y-4">
@@ -77,8 +79,8 @@ export function RubricReviewStep({
           ← Back
         </button>
         <button
-          onClick={()=>{
-            if(rubric.job_market_scope == "non_india"){onSave(false); return;}
+          onClick={() => {
+            if (rubric.job_market_scope == "non_india") { onSave(false); return; }
             setShowSourcingModal(true);
           }}
           disabled={saving}

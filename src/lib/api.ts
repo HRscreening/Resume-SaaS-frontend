@@ -126,7 +126,7 @@ export async function getProfile(): Promise<Profile> {
 }
 
 export async function updateProfile(
-  data: Partial<Pick<Profile, "full_name" | "company_name" | "reported_role">>
+  data: Partial<Pick<Profile, "full_name" | "company_name" | "reported_role" | "guide">>
 ): Promise<Profile> {
   return request<Profile>("/api/user/profile", {
     method: "PATCH",
@@ -144,6 +144,7 @@ export async function completeOnboarding(data: {
     body: JSON.stringify(data),
   });
 }
+
 
 export async function getUsage(): Promise<UsageResponse> {
   return request<UsageResponse>("/api/user/usage");

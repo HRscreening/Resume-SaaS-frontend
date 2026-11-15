@@ -1,5 +1,8 @@
 // lib/queryKeys.ts
 export const queryKeys = {
+  profile: () =>
+    ['profile'] as const,
+
   screening: (screeningId: string, resumeId: string) =>
     ['screening', screeningId, resumeId] as const,
 

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getProfile, updateProfile } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { updateProfile } from "@/lib/api";
+import { useProfile, useProfileQueryKey } from "@/hooks/useProfile";
 import { Subscription } from "@/modules/subscription/Subscription";
 import { Check, Mail, Building, User as UserIcon, Activity } from "lucide-react";
 
@@ -32,7 +33,8 @@ function formatDate(isoString: string | null | undefined): string {
 
 export default function Profile() {
   const queryClient = useQueryClient();
-  const profileQuery = useQuery({ queryKey: ["profile"], queryFn: getProfile, staleTime: 60_000 });
+  const profileQueryKey = useProfileQueryKey();
+  const profileQuery = useProfile();
   const profile = profileQuery.data;
 
   const [saving, setSaving] = useState(false);
@@ -65,7 +67,7 @@ export default function Profile() {
         full_name: name.trim() || undefined,
         company_name: company.trim() || undefined,
       });
-      queryClient.setQueryData(["profile"], updated);
+      queryClient.setQueryData(profileQueryKey, updated);
       setName(updated.full_name ?? "");
       setCompany(updated.company_name ?? "");
       setSaved(true);

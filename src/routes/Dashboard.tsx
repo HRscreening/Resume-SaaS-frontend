@@ -1,13 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listScreenings, getUsage, getScreening} from "@/lib/api";
+import { listScreenings, getUsage, getScreening } from "@/lib/api";
 import { useUserKey } from "@/lib/userKey";
+import { useEffect } from "react";
 import { formatRelativeDate } from "@/lib/utils";
 import type { Screening } from "@/modules/screening/types/screening.type";
 import { useAccount } from "@/hooks/useAccount";
 import { useUsage } from "@/hooks/useUsage";
 import { QuotaMeter } from "@/components/usage/QuotaMeter";
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
+
+import { useGuide } from "@/guides"
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -34,6 +37,7 @@ function StatusPill({ status }: { status: string }) {
 export default function Dashboard() {
   const { canWrite } = useAccount();
   const analytics = useAnalytics();
+  const { startGuide } = useGuide()
   const { unlimited } = useUsage();
   const qc = useQueryClient();
   function prefetch(id: string) {
@@ -50,6 +54,12 @@ export default function Dashboard() {
     refetchOnWindowFocus: true,
   });
   const isFree = usage?.plan === "FREE";
+
+
+  useEffect(() => {
+    startGuide("onboarding")
+  }, [])
+
 
   // Don't block the whole page on data loads — render the shell immediately.
   // Stat cards and the recent-screenings list show their own loading affordances.
@@ -73,7 +83,7 @@ export default function Dashboard() {
             className="h-10 px-3 sm:px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center gap-2 shrink-0"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M7 1.5v11M1.5 7h11"/>
+              <path d="M7 1.5v11M1.5 7h11" />
             </svg>
             <span className="hidden sm:inline">New screening</span>
             <span className="sm:hidden">New</span>
@@ -216,8 +226,8 @@ export default function Dashboard() {
           <div className="px-6 py-16 text-center">
             <div className="h-12 w-12 rounded-full bg-[#F5F3EE] flex items-center justify-center mx-auto mb-4">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#A0A0A0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2.5" y="3" width="15" height="14" rx="2"/>
-                <path d="M6 7h8M6 10h5"/>
+                <rect x="2.5" y="3" width="15" height="14" rx="2" />
+                <path d="M6 7h8M6 10h5" />
               </svg>
             </div>
             <p className="text-sm font-medium text-[#404040] mb-1">No screenings yet</p>

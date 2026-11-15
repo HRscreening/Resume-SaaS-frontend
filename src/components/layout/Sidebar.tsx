@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { clearAuthCache } from "@/lib/auth";
 import { getUsage, listScreenings } from "@/lib/api";
@@ -12,75 +12,21 @@ import { cn } from "@/lib/utils";
 import type { SubscriptionPlan } from "@/types";
 import { User, Activity } from "lucide-react";
 
+import { ChevronRight, GearIcon, HelpIcon, LogoutIcon, StarIcon, UserIcon, HomeIcon, ListIcon, PlusIcon } from "@/components/layout/sidebarIcons"
+
+
 interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
   exact?: boolean;
+  data_guide? : string;
 }
-
-const HomeIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1.5 6.5L8 1.5l6.5 5V14a.5.5 0 0 1-.5.5H10V10H6v4.5H2a.5.5 0 0 1-.5-.5V6.5Z" />
-  </svg>
-);
-
-const ListIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 4h12M2 8h12M2 12h8" />
-  </svg>
-);
-
-const PlusIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M8 2v12M2 8h12" />
-  </svg>
-);
-
-const UserIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="8" cy="6" r="3" />
-    <circle cx="8" cy="8" r="6.5" />
-  </svg>
-);
-
-const StarIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M8 1.5l1.4 3.7c.2.4.5.7.9.9L14 7.5l-3.7 1.4c-.4.2-.7.5-.9.9L8 13.5l-1.4-3.7c-.2-.4-.5-.7-.9-.9L2 7.5l3.7-1.4c.4-.2.7-.5.9-.9L8 1.5z" />
-  </svg>
-);
-
-const GearIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="8" cy="8" r="2.2" />
-    <path d="M13 9.4a1 1 0 0 0 .2 1.1l.04.04a1.2 1.2 0 1 1-1.7 1.7l-.04-.04a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V13a1.2 1.2 0 1 1-2.4 0v-.06a1 1 0 0 0-.66-.92 1 1 0 0 0-1.1.2l-.04.04A1.2 1.2 0 1 1 3.86 10.56l.04-.04a1 1 0 0 0 .2-1.1 1 1 0 0 0-.92-.6H3a1.2 1.2 0 1 1 0-2.4h.06a1 1 0 0 0 .92-.66 1 1 0 0 0-.2-1.1l-.04-.04A1.2 1.2 0 1 1 5.44 2.94l.04.04a1 1 0 0 0 1.1.2H6.6a1 1 0 0 0 .6-.92V2.2a1.2 1.2 0 1 1 2.4 0v.06a1 1 0 0 0 .6.92 1 1 0 0 0 1.1-.2l.04-.04a1.2 1.2 0 1 1 1.7 1.7l-.04.04a1 1 0 0 0-.2 1.1V5.94a1 1 0 0 0 .92.6H14a1.2 1.2 0 1 1 0 2.4h-.06a1 1 0 0 0-.92.6z" />
-  </svg>
-);
-
-const HelpIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="8" cy="8" r="6.5" />
-    <path d="M6.3 6a1.7 1.7 0 0 1 3.3.5c0 1-1.6 1.5-1.6 1.5" />
-    <circle cx="8" cy="11" r="0.4" fill="currentColor" />
-  </svg>
-);
-
-const LogoutIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M11 11l3-3-3-3M14 8H6" />
-  </svg>
-);
-
-const ChevronRight = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M5 3l4 4-4 4" />
-  </svg>
-);
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: <HomeIcon />, exact: true },
-  { href: "/screenings", label: "Jobs", icon: <ListIcon /> },
-  { href: "/screenings/new", label: "New Job", icon: <PlusIcon />, exact: true },
+  { href: "/screenings/new", label: "New Job", icon: <PlusIcon />, exact: true , data_guide: "new_jobs" },
+  { href: "/screenings", label: "Jobs", icon: <ListIcon /> , data_guide:"existing_jobs"},
   // { href: "/candidates", label: "Candidates", icon: <User size={14} />, exact: true },
 ];
 
@@ -88,7 +34,7 @@ const PLAN_LABEL: Record<SubscriptionPlan, string> = {
   FREE: "Free",
   PRO: "Pro",
   PLUS: "Plus",
-  LITE:"Lite",
+  LITE: "Lite",
   BUSINESS: "Plus",
   ENTERPRISE: "Enterprise",
   UNLIMITED: "Unlimited",
@@ -117,6 +63,7 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
   const { canWrite, ownerName, role } = useAccount();
   const { unlimited, totals } = useUsage();
 
+
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -124,7 +71,6 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
 
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const queryClient = useQueryClient();
 
   const { data: usage } = useQuery({
     queryKey: useUserKey("usage"),
@@ -241,6 +187,7 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
               onMouseEnter={wantsScreenings ? prefetchScreenings : undefined}
               onFocus={wantsScreenings ? prefetchScreenings : undefined}
               onClick={onNavigate}
+              data-guide={item.data_guide}
               className={cn(
                 "flex items-center gap-2.5 px-3 py-2.5 md:py-2 rounded-lg text-sm font-medium transition-colors duration-150",
                 active
