@@ -135,7 +135,10 @@ const UploadResumes = ({ screening_id, user_id, setShowUploadMore }: UploadResum
     }
     return (
         <div>
-            <div className="bg-white rounded-2xl border border-[#E8E5DF] p-6">
+            <div
+                
+                className="bg-white rounded-2xl border border-[#E8E5DF] p-6"
+            >
                 <div className="flex items-center justify-between mb-1">
                     <div>
                         <div className="flex items-center gap-2">
@@ -152,9 +155,13 @@ const UploadResumes = ({ screening_id, user_id, setShowUploadMore }: UploadResum
                 {uploadError && (
                     <div className="mt-3 mb-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">{uploadError}</div>
                 )}
-                <input ref={uploadMoreFileInputRef} type="file" accept=".zip,.pdf,.doc,.docx" multiple className="hidden"
+                <input
+                
+                ref={uploadMoreFileInputRef} type="file" accept=".zip,.pdf,.doc,.docx" multiple className="hidden"
                     onChange={(e) => { acceptUploadMoreFiles(e.target.files); e.target.value = ""; }} />
-                <div className="mt-4">
+                <div className="mt-4"
+                data-guide="application_upload_card"
+                >
                     {uploadMoreFiles.length > 0 ? (
                         <div className="border border-[#D4D4D4] rounded-2xl p-4 bg-[#FAFAF8]">
                             <div className="flex items-center justify-between mb-3">

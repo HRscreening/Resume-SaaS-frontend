@@ -1,5 +1,7 @@
 // ─── Auth / Profile ──────────────────────────────────────────────────────────
 
+import type { GuideId } from "@/guides";
+
 // BUSINESS is a legacy label retained in the DB enum so older rows
 // written before the BUSINESS → PLUS rename still deserialize cleanly.
 // New writes use PLUS.
@@ -13,6 +15,7 @@ export interface ActiveAccount {
   role: AccountRole;
 }
 
+
 export interface Profile {
   id: string;
   email: string;
@@ -22,6 +25,7 @@ export interface Profile {
   company_name: string | null;
   plan: SubscriptionPlan;
   onboarding_completed: boolean;
+  guide: Partial<Record<GuideId, "completed" | "skipped">> | null;
   stripe_customer_id: string | null;
   active_account?: ActiveAccount;
   created_at: string;
@@ -389,9 +393,13 @@ export interface QuestionPlanItem {
   weight?: number;
 }
 
+// English accent of the agent's voice. The ElevenLabs voice behind each
+// option lives in the agent's environment; the job only stores the choice.
+// Ignored when the interview language is Hindi.
+export type VoiceAccent = "us" | "in";
+
 export interface VoiceSettings {
-  tts_voice_id: string;
-  tier: "default" | "premium";
+  accent: VoiceAccent;
 }
 
 export interface CallingWindow {

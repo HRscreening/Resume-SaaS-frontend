@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getProfile, getUsage, getPlans, deleteAccount, cancelSubscription } from "@/lib/api";
+import { getUsage, getPlans, deleteAccount, cancelSubscription } from "@/lib/api";
 import { clearAuthCache } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { useUserKey } from "@/lib/userKey";
+import { useProfile } from "@/hooks/useProfile";
+import { queryKeys } from "@/lib/queryKeys";
 import { useUsage } from "@/hooks/useUsage";
 import { cn } from "@/lib/utils";
 import type { SubscriptionPlan } from "@/types";
@@ -114,7 +116,7 @@ function ComingSoon({ title }: { title: string }) {
 
 function AccountPanel() {
   const navigate = useNavigate();
-  const profileQuery = useQuery({ queryKey: ["profile"], queryFn: getProfile, staleTime: 60_000 });
+  const profileQuery = useProfile();
   const profile = profileQuery.data;
 
   const [loggingOut, setLoggingOut] = useState(false);
@@ -300,7 +302,7 @@ function UsagePanel() {
 
 function BillingPanel() {
   const queryClient = useQueryClient();
-  const profileQuery = useQuery({ queryKey: useUserKey("profile"), queryFn: getProfile, staleTime: 60_000 });
+  const profileQuery = useProfile();
   const usageQuery = useQuery({ queryKey: useUserKey("usage"), queryFn: getUsage, staleTime: 30_000 });
   // Plans are public catalog data — not user-scoped. Keep the global key.
   const plansQuery = useQuery({ queryKey: ["plans"], queryFn: getPlans, staleTime: Infinity });
@@ -318,7 +320,7 @@ function BillingPanel() {
     setCancelError(null);
     try {
       await cancelSubscription();
-      await queryClient.invalidateQueries({ queryKey: ["profile"] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.profile() });
       await queryClient.invalidateQueries({ queryKey: ["usage"] });
       setShowCancelConfirm(false);
     } catch (err) {

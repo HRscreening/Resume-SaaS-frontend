@@ -19,6 +19,7 @@ interface UtilityButtonProps {
     variant?: "default" | "primary" | "ghost" | "danger";
     compact?: boolean;
     disabledReason?: string;
+    dataGuide?: string;
 }
 
 const VARIANT_STYLES: Record<NonNullable<UtilityButtonProps["variant"]>, string> = {
@@ -42,6 +43,7 @@ export function UtilityButton({
     variant = "default",
     compact = false,
     disabledReason,
+    dataGuide,
 }: UtilityButtonProps) {
     // icon-only compact form needs an icon to render meaningfully; fall back to
     // showing the label if no icon was passed (e.g. Export without one)
@@ -50,6 +52,7 @@ export function UtilityButton({
 
     const button = (
         <button
+            data-guide={dataGuide}
             onClick={onClick}
             disabled={disabled || isLoading}
             aria-label={title}

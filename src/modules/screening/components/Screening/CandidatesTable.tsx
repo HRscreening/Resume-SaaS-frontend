@@ -213,7 +213,9 @@ export function CandidatesTable({
                   {/* {!compact && ( */}
                   <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide">Role</th>
 
-                  <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
+                  <th
+                    className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide"
+                  >
                     <span className="block">Experience</span>
                     <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">(yrs)</span>
                   </th>
@@ -229,12 +231,17 @@ export function CandidatesTable({
                     Score
                   </SortableHeader>
                 ) : ()} */}
-                  <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
+                  <th
+                    className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide"
+                  >
                     <span className="block">Score</span>
                     <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">/ 100</span>
                   </th>
                   {/* {!compact && ( */}
-                  <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
+                  <th
+                    data-guide="screening_voice_header"
+                    className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide"
+                  >
                     <span className="block">Voice</span>
                     <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">
                       screen
@@ -242,7 +249,10 @@ export function CandidatesTable({
                   </th>
                   {/* )} */}
 
-                  <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
+                  <th
+                    data-guide="screening_interview_header"
+                    className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide"
+                  >
                     <span className="block">Interview</span>
                     <span className="block font-normal text-[10px] text-[#BDB8AE] normal-case tracking-normal">
                       round

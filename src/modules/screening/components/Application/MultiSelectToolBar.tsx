@@ -246,6 +246,7 @@ const CandidateMultiSelectToolBar = ({
 
           {canWrite && (
             <UtilityButton title="Screen"
+              dataGuide="applications_screen"
               onClick={submitScreen}
               Icon={ScanSearch} compact={compact} isLoading={multiScoreMutation.isPending} variant='primary'
               disabled={!totalSelected} disabledReason={NO_APPLICATION_SELECTED_MESSAGE} />

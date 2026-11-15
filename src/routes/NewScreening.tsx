@@ -1,4 +1,4 @@
-import { useState,useEffect,useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -10,12 +10,12 @@ import { StepIndicator } from "@/components/screening/new-screening/StepIndicato
 import { JdInputStep } from "@/components/screening/new-screening/JdInputStep";
 import { RubricReviewStep } from "@/components/screening/new-screening/RubricReviewStep";
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
-
+import { useGuide, GuideId } from "@/guides"
 
 type Step = 1 | 2;
 type JdInputMode = "paste" | "upload" | "ai";
 
-const STEPS = ["Job description", "Review rubric","Start screening"] as const;
+const STEPS = ["Job description", "Review rubric", "Start screening"] as const;
 
 // New-job wizard controller. Owns all wizard state and rubric mutations; the
 // per-step UI lives in src/components/screening/new-screening/*.
@@ -26,6 +26,7 @@ export default function NewScreening() {
   const [step, setStep] = useState<Step>(1);
 
   const analytics = useAnalytics();
+  const guide = useGuide()
   const hasTrackedAbandonment = useRef(false);
 
   // Step 1 — job description input
@@ -38,6 +39,7 @@ export default function NewScreening() {
 
   // Step 2 — rubric editor
   const [rubric, setRubric] = useState<Rubric | null>(null);
+  // const [rubric, setRubric] = useState<Rubric | null>(sampleRubric as Rubric);
   const [saving, setSaving] = useState(false);
   const draftRef = useRef({ step, title: "", jdText: "", hasRubric: false, saving: false });
   draftRef.current = { step, title, jdText, hasRubric: Boolean(rubric), saving };
@@ -59,6 +61,12 @@ export default function NewScreening() {
       }
     };
   }, [analytics]);
+
+  useEffect(() => {
+    if (step == 1) {
+      guide.startGuide("new_job")
+    }
+  }, [])
 
   function handleModeChange(mode: JdInputMode) {
     setJdInputMode(mode);

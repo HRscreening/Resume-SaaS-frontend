@@ -83,6 +83,7 @@ export function CandidateRow({
 
     return (
         <tr
+            data-guide="screening_candidate_row"
             onClick={handleRowClick}
             className={`group cursor-pointer transition-colors ${rowBg} ${selected ? "shadow-[inset_2px_0_0_0_#C85A17]" : ""}`}
         >
@@ -149,7 +150,10 @@ export function CandidateRow({
                     </span>
                 </td>
                 {/* )} */}
-                <td className="px-2 py-3 text-center align-middle">
+                <td
+                    data-guide="screening_candidate_score"
+                    className="px-2 py-3 text-center align-middle"
+                >
                     <ScoreProgressBar items={progressBarsInput} overall_score={candidate.overall_score} />
                 </td>
                 {/* {!compact && ( */}
@@ -169,7 +173,10 @@ export function CandidateRow({
                     />
                 </td>
 
-                <td className="px-2 py-3 align-middle" onClick={(e) => e.stopPropagation()}>
+                <td
+                    className="px-2 py-3 align-middle"
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <StageSelect value={stage} stages={stages} onChange={onStageChange} onManage={onManageStages} disabled={disableStageChange} />
                 </td>
                 <td className="px-2 py-3 align-middle">

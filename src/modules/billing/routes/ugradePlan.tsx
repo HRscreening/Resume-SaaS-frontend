@@ -5,7 +5,8 @@ import { motion, type Variants } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import type { PlanSpec, SubscriptionPlan } from '@/types/index';
 import { Link } from '@tanstack/react-router';
-import { getProfile, getPlans } from '@/lib/api';
+import { getPlans } from '@/lib/api';
+import { useProfile } from '@/hooks/useProfile';
 import EnterprisePlanCard from "@/modules/billing/components/EnterpriseCard"
 import { CreditUsageSection, ManagedRecruitmentPricing } from "@/modules//billing/components/Utils"
 import { PLAN_ORDER } from "@/modules/billing/planChange"
@@ -32,7 +33,7 @@ const Pricing = () => {
     // any conditional return; do not move them. (Earlier version had useState
     // below an isError early-return, dropping the hook count and surfacing as
     // minified React error #300 once the parent re-rendered.)
-    const profileQuery = useQuery({ queryKey: ['profile'], queryFn: getProfile, staleTime: 60_000 });
+    const profileQuery = useProfile();
     const plansQuery = useQuery({ queryKey: ['plans'], queryFn: getPlans, staleTime: 1000 * 60 * 60 * 24 });
     const [isYearly, setIsYearly] = useState(false);
     const {data:userSubscription} = useUserSubscription()

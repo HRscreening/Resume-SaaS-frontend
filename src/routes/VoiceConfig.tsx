@@ -10,7 +10,9 @@ import {
   saveVoiceConfig,
   generateQuestionPlan,
 } from "@/lib/api";
-import type { Rubric, VoiceConfig, QuestionPlanItem, QualificationConfig, InterviewDepth } from "@/types";
+import type {
+  Rubric, VoiceConfig, QuestionPlanItem, QualificationConfig, InterviewDepth, InterviewLanguage, VoiceAccent,
+} from "@/types";
 import { truncate } from "@/lib/utils";
 import { useAccount } from "@/hooks/useAccount";
 
@@ -29,7 +31,7 @@ const DEFAULT_CONFIG: VoiceConfig = {
   enabled: true,
   question_plan: [],
   hiring_company: "",
-  voice: { tts_voice_id: "default", tier: "default" },
+  voice: { accent: "us" },
   language: "en",
   // TEMPORARY (2026-07-13): default to a 24h window during testing. Restore to
   // { start: "09:00", end: "21:00" } to reinstate quiet hours. The dispatcher
@@ -56,6 +58,57 @@ const DEPTH_LABEL: Record<InterviewDepth, string> = {
 const inputCls =
   "w-full h-9 px-3 border border-[#D4D4D4] rounded-lg text-sm text-[#0F0F0F] focus:outline-none focus:border-[#0F0F0F] transition-colors";
 const labelCls = "block text-xs font-medium text-[#404040] mb-1";
+
+const DEPTHS: Choice<InterviewDepth>[] = [
+  {
+    value: "screening",
+    label: "Screening",
+    lead: "3-4 quick questions",
+    body: "Confirms background and basic fit. About 7 to 10 minutes. Scored mainly on whether they understand the work.",
+  },
+  {
+    value: "deep_dive",
+    label: "Deep dive",
+    lead: "5-6 technical questions",
+    body: "Probes real, role-level work. About 12 to 15 minutes. Scored mainly on evidence they have actually done it.",
+  },
+  {
+    value: "interview",
+    label: "Interview",
+    lead: "8-12 in-depth questions",
+    body: "A full, structured conversation. About 45 to 60 minutes. Scored on depth of reasoning across every competency.",
+  },
+];
+
+const LANGUAGES: Choice<InterviewLanguage>[] = [
+  {
+    value: "en",
+    label: "English",
+    lead: "Default",
+    body: "The agent asks your questions as written and the transcript is in English.",
+  },
+  {
+    value: "hi",
+    label: "Hindi",
+    lead: "Natural Hinglish",
+    body: "The agent speaks Hindi, keeping technical terms in English. Transcript is Hindi; scores and reports stay English.",
+  },
+];
+
+const ACCENTS: Choice<VoiceAccent>[] = [
+  {
+    value: "us",
+    label: "American English",
+    lead: "Default",
+    body: "The voice candidates have heard on every call so far.",
+  },
+  {
+    value: "in",
+    label: "Indian English",
+    lead: "Familiar to candidates in India",
+    body: "Same agent, same questions, spoken in an Indian accent.",
+  },
+];
 
 /** Subcategory names usable as competency tags (excludes external-context). */
 function interviewableCompetencies(rubric: Rubric | null): string[] {
@@ -104,7 +157,13 @@ export default function VoiceConfigPage() {
   useEffect(() => {
     if (hydrated || configLoading) return;
     const saved = configResp?.voice_config;
-    setDraft({ ...DEFAULT_CONFIG, ...(saved ?? {}) });
+    // The voice block is spread on its own so a round saved before the
+    // accent option existed hydrates with the default rather than no accent.
+    setDraft({
+      ...DEFAULT_CONFIG,
+      ...(saved ?? {}),
+      voice: { ...DEFAULT_CONFIG.voice, ...(saved?.voice ?? {}) },
+    });
     setIsEditing(Boolean(saved && (saved.enabled || (saved.question_plan?.length ?? 0) > 0)));
     setHydrated(true);
   }, [hydrated, configLoading, configResp]);
@@ -279,133 +338,57 @@ export default function VoiceConfigPage() {
           one: it changes how many questions are generated, how technical they
           are, how long the call runs, and how the answers are scored. */}
       <Step n={1} title="Interview type" hint="Sets question count, depth and how answers are scored.">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {([
-            {
-              value: "screening",
-              label: "Screening",
-              lead: "3-4 quick questions",
-              body: "Confirms background and basic fit. About 7 to 10 minutes. Scored mainly on whether they understand the work.",
-            },
-            {
-              value: "deep_dive",
-              label: "Deep dive",
-              lead: "5-6 technical questions",
-              body: "Probes real, role-level work. About 12 to 15 minutes. Scored mainly on evidence they have actually done it.",
-            },
-            {
-              value: "interview",
-              label: "Interview",
-              lead: "8-12 in-depth questions",
-              body: "A full, structured conversation. About 45 to 60 minutes. Scored on depth of reasoning across every competency.",
-            },
-          ] as const).map((opt) => {
-            const active = (draft.interview_depth ?? "screening") === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                aria-pressed={active}
-                disabled={!canWrite}
-                onClick={() => {
-                  if (active || generateMutation.isPending) return;
-                  setDraft((d) => ({ ...d, interview_depth: opt.value }));
-                  // Screening and deep dive differ in question count and kind,
-                  // so a plan generated for the other depth is stale the moment
-                  // the type changes. Only regenerate once a plan exists —
-                  // before that there is nothing to bring in line, and the
-                  // recruiter has not asked for questions yet.
-                  if ((draft.question_plan?.length ?? 0) > 0) {
-                    generateMutation.mutate(opt.value);
-                  }
-                }}
-                className={`rounded-xl border p-3.5 text-left transition-colors ${
-                  active
-                    ? "border-[#0F0F0F] bg-[#0F0F0F] text-white"
-                    : "border-[#D4D4D4] bg-white hover:border-[#0F0F0F]/40"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">{opt.label}</span>
-                  <span className={`h-3.5 w-3.5 rounded-full border-2 ${
-                    active ? "border-white bg-white" : "border-[#D4D4D4]"
-                  }`} />
-                </div>
-                <p className={`mt-0.5 text-xs font-medium ${active ? "text-white/80" : "text-[#404040]"}`}>
-                  {opt.lead}
-                </p>
-                <p className={`mt-1.5 text-xs leading-relaxed ${active ? "text-white/70" : "text-[#737373]"}`}>
-                  {opt.body}
-                </p>
-              </button>
-            );
-          })}
-        </div>
+        <ChoiceGrid
+          choices={DEPTHS}
+          value={draft.interview_depth ?? "screening"}
+          disabled={!canWrite}
+          onChange={(interview_depth) => {
+            if (generateMutation.isPending) return;
+            setDraft((d) => ({ ...d, interview_depth }));
+            // Screening and deep dive differ in question count and kind, so a
+            // plan generated for the other depth is stale the moment the type
+            // changes. Only regenerate once a plan exists: before that there
+            // is nothing to bring in line, and the recruiter has not asked for
+            // questions yet.
+            if ((draft.question_plan?.length ?? 0) > 0) {
+              generateMutation.mutate(interview_depth);
+            }
+          }}
+        />
       </Step>
 
-      {/* ── Interview language ───────────────────────────────────────────────
-          Read when each call is placed, so changing it here affects calls
-          dialled afterwards and never one already in progress. Switching to
-          Hindi translates the questions on save; the recruiter reviews and can
-          correct that wording before anyone is called. */}
+      {/* ── Language and voice ───────────────────────────────────────────────
+          Both read when each call is placed, so changing them here affects
+          calls dialled afterwards and never one already in progress. Switching
+          to Hindi translates the questions on save; the recruiter reviews and
+          can correct that wording before anyone is called. */}
       <Step
         n={2}
-        title="Interview language"
-        hint="The language the agent speaks. Applies to calls placed after you save."
+        title="Language and voice"
+        hint="What the agent speaks, and in which voice. Applies to calls placed after you save."
       >
-        <div className="grid gap-3 sm:grid-cols-2">
-          {([
-            {
-              value: "en" as const,
-              label: "English",
-              lead: "Default",
-              body: "The agent asks your questions as written and the transcript is in English.",
-            },
-            {
-              value: "hi" as const,
-              label: "Hindi",
-              lead: "Natural Hinglish",
-              body: "The agent speaks Hindi, keeping technical terms in English. Transcript is Hindi; scores and reports stay English.",
-            },
-          ]).map((opt) => {
-            const active = (draft.language ?? "en") === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                aria-pressed={active}
-                disabled={!canWrite}
-                onClick={() => {
-                  if (active) return;
-                  setDraft((d) => ({ ...d, language: opt.value }));
-                }}
-                className={`rounded-xl border p-3.5 text-left transition-colors ${
-                  active
-                    ? "border-[#0F0F0F] bg-[#0F0F0F] text-white"
-                    : "border-[#D4D4D4] bg-white hover:border-[#0F0F0F]/40"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">{opt.label}</span>
-                  <span className={`h-3.5 w-3.5 rounded-full border-2 ${
-                    active ? "border-white bg-white" : "border-[#D4D4D4]"
-                  }`} />
-                </div>
-                <p className={`mt-0.5 text-xs font-medium ${active ? "text-white/80" : "text-[#404040]"}`}>
-                  {opt.lead}
-                </p>
-                <p className={`mt-1.5 text-xs leading-relaxed ${active ? "text-white/70" : "text-[#737373]"}`}>
-                  {opt.body}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-        {(draft.language ?? "en") === "hi" && (
+        <ChoiceGrid
+          choices={LANGUAGES}
+          value={draft.language ?? "en"}
+          disabled={!canWrite}
+          onChange={(language) => setDraft((d) => ({ ...d, language }))}
+        />
+        {(draft.language ?? "en") === "hi" ? (
           <p className="mt-3 text-xs leading-relaxed text-[#737373]">
             Your questions are translated when you save. Review the Hindi below and
             edit anything that reads wrong: that wording is what the agent asks.
           </p>
+        ) : (
+          /* The accent only applies to English: Hindi has one voice. */
+          <div className="mt-4">
+            <p className={labelCls}>Voice</p>
+            <ChoiceGrid
+              choices={ACCENTS}
+              value={draft.voice.accent}
+              disabled={!canWrite}
+              onChange={(accent) => setDraft((d) => ({ ...d, voice: { ...d.voice, accent } }))}
+            />
+          </div>
         )}
       </Step>
 
@@ -864,6 +847,63 @@ export default function VoiceConfigPage() {
  * default country code. Numbering plus card grouping gives the page a reading
  * order, and each step states what it changes about the call.
  */
+interface Choice<T extends string> {
+  value: T;
+  label: string;
+  lead: string;
+  body: string;
+}
+
+/** One-of-N picker drawn as cards: the interview language, the voice. */
+function ChoiceGrid<T extends string>({
+  choices,
+  value,
+  disabled,
+  onChange,
+}: {
+  choices: Choice<T>[];
+  value: T;
+  disabled: boolean;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {choices.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            aria-pressed={active}
+            disabled={disabled}
+            onClick={() => {
+              if (!active) onChange(opt.value);
+            }}
+            className={`rounded-xl border p-3.5 text-left transition-colors ${
+              active
+                ? "border-[#0F0F0F] bg-[#0F0F0F] text-white"
+                : "border-[#D4D4D4] bg-white hover:border-[#0F0F0F]/40"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">{opt.label}</span>
+              <span className={`h-3.5 w-3.5 rounded-full border-2 ${
+                active ? "border-white bg-white" : "border-[#D4D4D4]"
+              }`} />
+            </div>
+            <p className={`mt-0.5 text-xs font-medium ${active ? "text-white/80" : "text-[#404040]"}`}>
+              {opt.lead}
+            </p>
+            <p className={`mt-1.5 text-xs leading-relaxed ${active ? "text-white/70" : "text-[#737373]"}`}>
+              {opt.body}
+            </p>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function Step({
   n,
   title,
