@@ -154,20 +154,6 @@ const CandidateMultiSelectToolBar = ({
             showError(error, message);
         }
 
-       
-    try {
-      const resume_ids = Array.from(selectedApplications);
-      const res = await multiScoreMutation.mutateAsync({ screeningId: screening_id, resumeIds: resume_ids });
-      toast.success(res.message || "Candidates scoring batch started successfully.");
-      closeToolBar()
-      onTabChange?.("Screening");
-    }
-    catch (error) {
-      toast.error("Error Screening candidates. Please try again.");
-    }
-
-
-
   }
 
 
