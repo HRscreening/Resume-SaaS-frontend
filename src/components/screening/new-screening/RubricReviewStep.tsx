@@ -1,8 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import type { Rubric, Subcategory } from "@/types";
 import { RubricCategoryCard } from "./RubricCategoryCard";
-import { AskSourceJobModal } from "./AskSourcingModal";
-import { detectBillingCurrency } from "@/lib/currency";
 import { useGuide } from "@/guides"
 
 
@@ -12,8 +10,7 @@ interface RubricReviewStepProps {
   onSubcategoryChange: (catIdx: number, subIdx: number, updates: Partial<Subcategory>) => void;
   onRemoveSubcategory: (catIdx: number, subIdx: number) => void;
   onAddSubcategory: (catIdx: number) => void;
-  onBack: () => void;
-  onSave: (allowSourcing: boolean) => void;
+  onSave: () => void;
   saving: boolean;
 }
 
@@ -25,14 +22,11 @@ export function RubricReviewStep({
   onSubcategoryChange,
   onRemoveSubcategory,
   onAddSubcategory,
-  onBack,
   onSave,
   saving,
 }: RubricReviewStepProps) {
 
   const guide = useGuide()
-  const isIndia = detectBillingCurrency() === "INR";
-  const [showSourcingModal, setShowSourcingModal] = useState(false);
 
   useEffect(() => {
     guide.startGuide("rubric");
@@ -73,30 +67,16 @@ export function RubricReviewStep({
       {/* Actions */}
       <div className="flex gap-3 pt-2">
         <button
-          onClick={onBack}
-          className="h-10 px-4 border border-[#D4D4D4] text-sm font-medium text-[#404040] rounded-xl hover:bg-[#F5F3EE] transition-colors"
-        >
-          ← Back
-        </button>
-        <button
-          onClick={() => {
-            if (rubric.job_market_scope == "non_india") { onSave(false); return; }
-            setShowSourcingModal(true);
-          }}
+          onClick={onSave}
           disabled={saving}
           className="flex-1 h-10 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
         >
           {saving && <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
-          {saving ? "Saving job..." : "Save job"}
+          {saving ? "Saving rubric..." : "Save rubric"}
         </button>
       </div>
 
-      {showSourcingModal && isIndia &&
-        <AskSourceJobModal
-          onSave={onSave}
-          onClose={() => setShowSourcingModal(false)}
-        />
-      }
+
     </div>
   );
 }

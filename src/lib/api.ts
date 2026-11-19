@@ -187,6 +187,12 @@ export async function createJob_v1(
   return requestFormData("/api/v1/screenings/create-job", data);
 }
 
+export async function createJobNew(
+  data: FormData,
+): Promise<{ screening_id: string; rubric: Rubric }> {
+  return requestFormData("/api/v1/screenings/create-job-new", data);
+}
+
 function buildUploadHeaders(
   authHeaders: Record<string, string>,
   idempotencyKey: string | undefined,

@@ -162,7 +162,7 @@ export default function ScreeningDetail() {
                     </div>
                     <div
                         data-guide="application_header_actions"
-                        className="w-fit flex flex-wrap items-center gap-2"
+                        className="flex min-w-0 flex-wrap items-center gap-2 md:ml-auto md:justify-end"
                     >
                         {screening.jd_url &&
                             <ActionButton title="Job Desc." description="Job Desc." icon={<FileText size={12} />} compacted={analysisOpen} disabled={!screening} onClick={() => {
@@ -198,7 +198,7 @@ export default function ScreeningDetail() {
                                         {/* Voice round button */}
                                         <div
                                             data-guide="screening_header_actions"
-                                            className="flex flex-wrap items-center gap-2"
+                                            className="flex flex-wrap items-center gap-2 md:justify-end"
                                         >
                                             <ActionButton
                                                 title="Voice round"

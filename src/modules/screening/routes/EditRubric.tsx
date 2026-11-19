@@ -1,3 +1,5 @@
+import { useUndoRedo } from "@/hooks/useUndoRedo";
+import { RubricHistoryControls } from "@/components/screening/RubricHistoryControls";
 import { RubricCategoryTable } from "@/components/screening/RubricCategoryTable";
 import { useAuth } from "@/hooks/useAuth";
 import { readPendingRescore, markPendingRescoreReady, discardPendingRescore } from "@/modules/screening/utils/pendingRescore";
@@ -36,7 +38,8 @@ export default function EditRubric() {
     [screening],
   );
 
-  const [draft, setDraft] = useState<RubricCategory[]>([]);
+  const draftHistory = useUndoRedo<RubricCategory[]>([]);
+  const { value: draft, set: setDraft, reset: resetDraft } = draftHistory;
   const [hydrated, setHydrated] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,10 +48,10 @@ export default function EditRubric() {
   // background screening refetch returns identical categories.
   useEffect(() => {
     if (!hydrated && initialCategories.length > 0) {
-      setDraft(deepClone(initialCategories));
+      resetDraft(deepClone(initialCategories));
       setHydrated(true);
     }
-  }, [hydrated, initialCategories]);
+  }, [hydrated, initialCategories, resetDraft]);
 
   // const totalWeight = draft.reduce((s, c) => s + c.weight, 0);
   const dirty = JSON.stringify(draft) !== JSON.stringify(initialCategories);
@@ -62,6 +65,7 @@ export default function EditRubric() {
         const subs = cat.subcategories.map((s, si) => (si === subIdx ? { ...s, ...updates } : s));
         return { ...cat, subcategories: subs };
       }),
+      `subcategory:${catIdx}:${subIdx}:${Object.keys(updates).sort().join(",")}`,
     );
   }
 
@@ -185,6 +189,8 @@ export default function EditRubric() {
       )}
 
       {/* Categories */}
+      <fieldset disabled={saving || !canWrite} className="min-w-0" {...draftHistory.editorProps(canWrite && !saving)}>
+      <RubricHistoryControls {...draftHistory} disabled={saving || !canWrite} />
       <div className="space-y-3">
         {draft.map((cat, catIdx) => (
           <RubricCategoryTable
@@ -197,6 +203,8 @@ export default function EditRubric() {
           />
         ))}
       </div>
+
+      </fieldset>
 
       {/* Footer actions */}
       <div className="sticky bottom-0 mt-6 -mx-8 px-8 py-4 bg-white/95 backdrop-blur border-t border-[#E8E5DF]">

@@ -30,7 +30,7 @@ export function JdFileUpload({ file, extractedText, extracting, onSelect, onRemo
     return (
       <div className="border border-[#D4D4D4] rounded-xl p-6 flex items-center gap-3 bg-[#FAFAF8]">
         <div className="h-5 w-5 rounded-full border-2 border-[#C85A17] border-t-transparent animate-spin shrink-0" />
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-[#0F0F0F]">Extracting text…</p>
           <p className="text-xs text-[#737373] mt-0.5 truncate max-w-xs">{file?.name}</p>
         </div>

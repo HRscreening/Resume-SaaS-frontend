@@ -46,7 +46,7 @@ export function JdInputStep({
     <div className="bg-white rounded-2xl border border-[#E8E5DF] p-5 sm:p-6 md:p-8">
       <h2 className="text-lg font-semibold text-[#0F0F0F] mb-1">Job description</h2>
       <p className="text-sm text-[#737373] mb-6">We'll auto-generate a 3-category scoring rubric from your JD.</p>
-      <div className="space-y-5">
+      <fieldset disabled={analyzing} className="min-w-0 w-full space-y-5">
         {/* Job title */}
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-[#0F0F0F] mb-1.5">
@@ -131,9 +131,14 @@ export function JdInputStep({
           className="w-full h-11 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
         >
           {analyzing && <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
-          {analyzing ? "Analyzing job description..." : "Publish"}
+          {analyzing ? "Creating job..." : "Create"}
         </button>
-      </div>
+        {analyzing && (
+          <p role="status" className="text-center text-sm text-[#737373]">
+            Creating your job and generating its rubric. This may take a little while.
+          </p>
+        )}
+      </fieldset>
     </div>
   );
 }
