@@ -22,6 +22,7 @@ export const sectionTabs = ["Applications", "Screening"] as const;
 export const searchSchema = z.object({
   tab: z.enum(sectionTabs).default("Applications"),
   saved: z.union([z.literal(1), z.literal("1")]).optional(),
+  rescoreAction: z.string().uuid().optional(),
 });
 
 
@@ -84,10 +85,11 @@ export const ResumeSections = ["Active", "Archived"] as const;
 export const uiSearchSchema = z.object({
   tab: z.enum(sectionTabs).default("Applications"),
   saved: z.union([z.literal(1), z.literal("1")]).optional(),
+  rescoreAction: z.string().uuid().optional(),
   appId: z.string().optional(), // for opening the analysis sheet for a specific candidate
-  infoTab: z.enum(["profile","note"]).optional(),
+  infoTab: z.enum(["resume","profile","note"]).optional(),
   screenId: z.string().optional(), // for opening the analysis sheet for a specific candidate
-  analysisTab: z.enum(["profile","scorecard","voice","round","note"]).optional(), // for opening the analysis sheet for a specific candidate
+  analysisTab: z.enum(["resume","profile","scorecard","voice","round","note"]).optional(), // for opening the analysis sheet for a specific candidate
 });
 
 export type UISearchParams = z.infer<typeof uiSearchSchema>;

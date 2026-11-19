@@ -39,7 +39,7 @@ export function RubricReviewStep({
   }, [guide.startGuide]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Meta header */}
       <div className="bg-white rounded-2xl border border-[#E8E5DF] p-5">
         <h2 className="text-lg font-semibold text-[#0F0F0F] mb-1">Review rubric</h2>

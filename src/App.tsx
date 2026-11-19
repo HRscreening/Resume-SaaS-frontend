@@ -80,7 +80,7 @@ function RootLayout() {
 function AppLayout({ isSidebarRequired = true }: { isSidebarRequired?: boolean }) {
   return (
     <AuthGuard>
-      <div className="flex h-screen overflow-hidden">
+      <div data-app-shell className="flex h-dvh overflow-hidden">
         {/*
           Sidebar (desktop, ≥md) sits inline at full viewport height;
           MobileNav (<md) is fixed-position above the main column. Both
@@ -100,7 +100,7 @@ function AppLayout({ isSidebarRequired = true }: { isSidebarRequired?: boolean }
         */}
         <main
           className={cn(
-            "flex-1 min-w-0 h-screen overflow-y-auto",
+            "flex-1 min-h-0 min-w-0 h-full overflow-y-auto",
             isSidebarRequired && "pt-14 md:pt-0",
           )}
           style={{ backgroundColor: "#F5F3EE" }}
@@ -280,6 +280,7 @@ const editRubricRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/screenings/$id/rubric",
   component: EditRubric,
+  validateSearch: screeningDetailsSearchSchema,
 });
 
 const voiceConfigRoute = createRoute({
@@ -492,8 +493,8 @@ export function App() {
 
   return (
     <>
-      <RouterProvider router={router} />
-      <Toaster position="top-right" richColors={true} />
+      <RouterProvider router={router}  />
+      <Toaster position="top-right" richColors={true} duration={2700}/>
     </>
   );
 }

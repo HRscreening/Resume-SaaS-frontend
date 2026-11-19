@@ -144,6 +144,14 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* App routes scroll inside main. Prevent off-screen portal content from
+   creating a second document scrollbar and moving the entire shell.
+   Auth and public routes retain their normal document scrolling. */
+html:has([data-app-shell]),
+body:has([data-app-shell]) {
+  overflow: clip;
+}
+
 /* iOS Safari zooms <input> when font-size is < 16px; keep mobile form
    controls at the threshold so taps don't trigger a jarring zoom. */
 @media (max-width: 767.98px) {

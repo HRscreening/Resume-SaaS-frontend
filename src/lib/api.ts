@@ -1,3 +1,4 @@
+import { assertWithinCallingWindow } from "@/lib/callingWindow";
 import { getAccessToken } from "@/lib/auth";
 import { assertWritable, setAccountRole } from "@/lib/accountSession";
 import { clearSessionHint } from "@/lib/sessionHint";
@@ -840,6 +841,13 @@ export async function triggerVoiceCalls(
   // TEMPORARY (2026-07-13): dial a UI-entered number for a single candidate.
   phoneOverride?: string | null,
 ): Promise<import("@/types").TriggerCallsResponse> {
+  // Refresh at click time so a changed window or elapsed boundary is respected.
+  // Scheduled calls are validated by the scheduling API, not against "now".
+  // ! Why frontend is responsible for this validation . Two API call for one task ?
+  if (!scheduledAt) {
+    const { voice_config } = await getVoiceConfig(screeningId);
+    assertWithinCallingWindow(voice_config?.calling_window);
+  }
   return request(`/api/v1/screenings/${screeningId}/voice/calls`, {
     method: "POST",
     body: JSON.stringify({

@@ -1,3 +1,4 @@
+import { usePendingRescore } from "@/modules/screening/hooks/shared/usePendingRescore";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useParams, } from "@tanstack/react-router";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
@@ -58,6 +59,7 @@ function ScreeningDetailContent({
     const { data: active_batches, isLoading: isLoadingBatches } = useGetBatchesQuery(id);
 
     const { selectedCandidates, showSelectedOnly, clearSelection } = useSelectedCandidates();
+    const startingRescore = usePendingRescore(id, clearSelection);
 
     const [showStages, setShowStages] = useState(false);
     const hasStartedScreeningGuide = useRef(false);
@@ -215,6 +217,7 @@ function ScreeningDetailContent({
 
     return (
         <div>
+            {startingRescore && <p role="status" className="my-3 text-sm text-[#737373]">Starting rescoring for the selected candidates...</p>}
             <div className="w-full">
                 <div className="my-4 space-y-3">
                     {active_batches?.scoring_batch_ids?.map((batch_id) => (
@@ -284,6 +287,7 @@ function ScreeningDetailContent({
             
             { candidates.length > 0 && !isLoading && search.tab === "Screening" &&
                 <CandidateMultiSelectToolBar
+                startingRescore={startingRescore}
                 analysisOpen={analysisOpen}
                 stages={screening.stages}
                 type={search.screenType}

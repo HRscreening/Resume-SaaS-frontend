@@ -11,6 +11,7 @@ import { JdInputStep } from "@/components/screening/new-screening/JdInputStep";
 import { RubricReviewStep } from "@/components/screening/new-screening/RubricReviewStep";
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
 import { useGuide, GuideId } from "@/guides"
+// import sampleRubric from "../../trash/sample_rubric.json"
 
 type Step = 1 | 2;
 type JdInputMode = "paste" | "upload" | "ai";
@@ -227,7 +228,7 @@ export default function NewScreening() {
   }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-6 md:mb-8">
         <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F] mb-4">New Job</h1>

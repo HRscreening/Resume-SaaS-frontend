@@ -102,7 +102,6 @@ export function JdInputStep({
                 placeholder="Paste your full job description here..."
                 className="w-full px-3.5 py-3 rounded-xl border border-[#D4D4D4] bg-[#F5F3EE] text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] transition-shadow resize-none"
               />
-              <p className="mt-1 text-xs text-[#A0A0A0]">{jdText.length} characters</p>
             </>
           )}
 
@@ -132,7 +131,7 @@ export function JdInputStep({
           className="w-full h-11 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
         >
           {analyzing && <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
-          {analyzing ? "Analyzing job description..." : "Generate →"}
+          {analyzing ? "Analyzing job description..." : "Publish"}
         </button>
       </div>
     </div>

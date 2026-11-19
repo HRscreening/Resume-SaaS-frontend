@@ -1,17 +1,7 @@
-
-import { Button } from "@/components/ui/Button"
 import {
     DropdownMenu,
     DropdownMenuContent,
-    DropdownMenuGroup,
     DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuPortal,
-    DropdownMenuSeparator,
-    DropdownMenuShortcut,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { EllipsisVertical, ChevronDown } from "lucide-react"
@@ -59,90 +49,6 @@ interface extendedMenuButtonProps {
     align?: "start" | "center" | "end"
 }
 
-
-// export function CustomMenuButton({
-//     selectedOption,
-//     options,
-//     handleOptionClick,
-//     align = "center"
-// }: extendedMenuButtonProps) {
-//     return (
-//         <DropdownMenu>
-//             <DropdownMenuTrigger
-//                 className="
-//                     h-9 px-3
-//                     border border-[#D4D4D4]
-//                     bg-white
-//                     rounded-lg
-//                     cursor-pointer
-//                     text-sm font-medium text-[#404040]
-//                     hover:bg-[#FAFAFA]
-//                     transition-colors
-//                     flex items-center gap-2
-//                     whitespace-nowrap
-//                     outline-none
-//                 "
-//             >
-//                 <span>{selectedOption}</span>
-//                 <ChevronDown
-//                     size={14}
-//                     className="text-[#737373]"
-//                 />
-//             </DropdownMenuTrigger>
-
-//             <DropdownMenuContent
-//                 className="
-//                     w-44
-//                     p-1.5
-//                     rounded-lg
-//                     border border-[#E5E5E5]
-//                     bg-white
-//                     shadow-lg
-//                 "
-//                 align={align}
-//                 sideOffset={6}
-//             >
-//                 {options?.map((option) => {
-//                     const isSelected =
-//                         option.label === selectedOption
-
-//                     return (
-//                         <DropdownMenuItem
-//                             key={option.label}
-//                             onClick={() => handleOptionClick(option.label)}
-//                             className={`
-//                                 h-9
-//                                 px-2.5
-//                                 rounded-md
-//                                 cursor-pointer
-//                                 text-sm
-//                                 flex items-center gap-2
-//                                 outline-none
-//                                 transition-colors
-
-//                                 ${isSelected
-//                                     ? "bg-[#FFF3EA] text-[#C85A17] font-medium"
-//                                     : "text-[#404040] hover:bg-[#F5F5F5]"
-//                                 }
-
-//                                 ${option.label === "Delete"
-//                                     ? "text-[#525252] hover:bg-red-50 hover:text-red-600"
-//                                     : ""
-//                                 }
-//                             `}
-//                         >
-//                             {option.icon}
-
-//                             <span>
-//                                 {option.label}
-//                             </span>
-//                         </DropdownMenuItem>
-//                     )
-//                 })}
-//             </DropdownMenuContent>
-//         </DropdownMenu>
-//     )
-// }
 
 import { useState } from "react"
 
