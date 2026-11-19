@@ -14,6 +14,7 @@ import { RubricReviewStep } from "@/components/screening/new-screening/RubricRev
 import { AskSourceJobModal } from "@/components/screening/new-screening/AskSourcingModal";
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
 import { useGuide, GuideId } from "@/guides"
+import { detectCountry } from "@/lib/currency";
 // import sampleRubric from "../../trash/sample_rubric.json"
 
 type Step = 1 | 2;
@@ -108,6 +109,14 @@ export default function NewScreening() {
   function handleRemoveFile() {
     setJdFile(null);
     setJdText("");
+  }
+
+  function handleAnalyze() {
+    if (detectCountry() === "IN") {
+      setShowSourcingModal(true);
+      return;
+    }
+    void handleCreateJob(false);
   }
 
   async function handleCreateJob(sourceJob: boolean) {
@@ -241,7 +250,7 @@ export default function NewScreening() {
           onFileSelect={handleJDFileSelect}
           onRemoveFile={handleRemoveFile}
           analyzing={analyzingJD}
-          onAnalyze={() => setShowSourcingModal(true)}
+          onAnalyze={handleAnalyze}
         />
       )}
 

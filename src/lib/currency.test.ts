@@ -6,7 +6,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { detectBillingCurrency, formatMoney } from "./currency";
+import { detectBillingCurrency, detectCountry, formatMoney } from "./currency";
 
 function withEnvironment({ timeZone, locale }: { timeZone?: string; locale?: string }) {
   vi.spyOn(Intl, "DateTimeFormat").mockReturnValue({
@@ -22,6 +22,16 @@ afterEach(() => {
 });
 
 describe("detectBillingCurrency", () => {
+  it("detects India from the timezone", () => {
+    withEnvironment({ timeZone: "Asia/Kolkata", locale: "en-US" });
+    expect(detectCountry()).toBe("IN");
+  });
+
+  it("detects India from the locale when the timezone is unknown", () => {
+    withEnvironment({ timeZone: "Etc/Unknown", locale: "hi-IN" });
+    expect(detectCountry()).toBe("IN");
+  });
+
   it("bills India in rupees from the timezone", () => {
     withEnvironment({ timeZone: "Asia/Kolkata", locale: "en-US" });
     expect(detectBillingCurrency()).toBe("INR");

@@ -43,13 +43,20 @@ function regionFromLocale(): string | undefined {
   }
 }
 
+/** Detect the browser region used for India-specific UI behavior. */
+export function detectCountry(): string | undefined {
+  const timezoneRegion = regionFromTimezone();
+  if (timezoneRegion) return timezoneRegion;
+  return regionFromLocale();
+}
+
 /**
  * The currency to ask the backend to price in. Timezone first — it tracks
  * the OS clock, which tracks where the machine actually is — then the
  * locale's region as a fallback.
  */
 export function detectBillingCurrency(): BillingCurrency {
-  if (regionFromTimezone() === INDIA_REGION) return "INR";
+  if (detectCountry() === INDIA_REGION) return "INR";
   return "USD";
 }
 
