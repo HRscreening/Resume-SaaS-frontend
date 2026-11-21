@@ -30,7 +30,7 @@ interface CandidateRowProps {
     isOpen: boolean;
     setScreenId: (id: string | null) => void;
     onViwAllNotes: (resumeId: string) => void;
-    onVoiceIconClick: (resumeId:string) => void;
+    onVoiceIconClick: (resumeId: string) => void;
 }
 
 export function CandidateRow({
@@ -39,7 +39,7 @@ export function CandidateRow({
     processingStatus,
     candidate, compact, stage, stages, onStageChange, onManageStages, disableStageChange = false,
     selectable, selected, onToggle,
-    index, isOpen, setScreenId, onViwAllNotes,onVoiceIconClick
+    index, isOpen, setScreenId, onViwAllNotes, onVoiceIconClick
 }: CandidateRowProps) {
 
 
@@ -59,12 +59,9 @@ export function CandidateRow({
     const stickyBg = selected ? "bg-[#FBF1E7] group-hover:bg-[#F8E9D9]" : isOpen ? "bg-[#FBF1E7]" : "bg-white group-hover:bg-[#FAFAF8]";
     const rowBg = selected ? "bg-[#FBF1E7] hover:bg-[#F8E9D9]" : isOpen ? "bg-[#FBF1E7]" : "hover:bg-[#FAFAF8]";
 
-    function handleRowClick(e: React.MouseEvent) {
-        if (selectable) {
-            onToggle?.(candidate.resume_id, e);
-        } else {
-            setScreenId(candidate.resume_id);
-        }
+    function handleRowClick() {
+        if (isProcessing) return;
+        setScreenId(candidate.resume_id);
     }
 
 
@@ -121,27 +118,21 @@ export function CandidateRow({
                             <p className="text-sm font-semibold text-[#0F0F0F] truncate">
                                 {formatName(candidate.candidate_name ?? candidate.filename)}
                             </p>
-                            {(candidate.candidate_email || candidate.candidate_phone) && (
-                                <p className="text-[11px] text-[#737373] truncate">
-                                    {candidate.candidate_email ?? candidate.candidate_phone}
+                            <div className="flex gap-1">
+                                <p className="text-[11px] text-[#737373] truncate" title={candidate.candidate_current_job ?? undefined}>
+                                    {candidate.candidate_current_job ?? <span className="text-[#D4D4D4]">—</span>},
                                 </p>
-                            )}
+                                {
+                                    candidate.candidate_current_company && (
+                                        <p className="text-[11px] text-[#737373] truncate" title={candidate.candidate_current_company}> {candidate.candidate_current_company}
+                                        </p>)
+
+                                }
+                            </div>
                         </div>
                     </div>
                 </td>
-                {/* {!compact && ( */}
-                <td className="px-2 py-3 align-middle">
-                    <p className="text-xs text-[#404040] truncate font-semibold" title={candidate.candidate_current_job ?? undefined}>
-                        {candidate.candidate_current_job ?? <span className="text-[#D4D4D4]">—</span>}
-                    </p>
-                    {
-                        candidate.candidate_current_company && (
-                            <p className="text-[11px] text-[#737373] truncate" title={candidate.candidate_current_company}>
-                                {candidate.candidate_current_company}
-                            </p>)
-
-                    }
-                </td>
+            
                 {/* )} */}
                 {/* {!compact && ( */}
                 <td className="px-2 py-3 align-middle text-center">
@@ -272,7 +263,7 @@ export function SkeletonRow({
  * and only the last has a number worth reading. So the cell shows the STATE
  * first and the score only once there is one.
  */
-function VoiceCell({ candidate, onVoiceIconClick}: { candidate: RankedCandidate, onVoiceIconClick: (resumeId:string) => void; }) {
+function VoiceCell({ candidate, onVoiceIconClick }: { candidate: RankedCandidate, onVoiceIconClick: (resumeId: string) => void; }) {
     const status = candidate.voice_status ?? null;
     const score = candidate.voice_score ?? null;
     const rec = candidate.voice_recommendation ?? null;
@@ -317,8 +308,8 @@ function VoiceCell({ candidate, onVoiceIconClick}: { candidate: RankedCandidate,
     return (
         <div className="flex flex-col justify-center items-center gap-0.5" title={rec ? `Recommendation: ${rec}` : undefined}>
             <span className={`text-sm font-bold leading-none ${tone}`}>
-                {score == null ? <PhoneOutgoing  size={16}
-                className="hover:text-[#C85A17]" onClick={handleVoiceIconClick} /> : Math.round(score)}
+                {score == null ? <PhoneOutgoing size={16}
+                    className="hover:text-[#C85A17]" onClick={handleVoiceIconClick} /> : Math.round(score)}
             </span>
         </div>
     );

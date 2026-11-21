@@ -10,7 +10,7 @@ import { useUsage } from "@/hooks/useUsage";
 import { meterColor, usedRatio } from "@/components/usage/QuotaMeter";
 import { cn } from "@/lib/utils";
 import { PLAN_LABEL } from "@/lib/planLabels";
-import { User, Activity } from "lucide-react";
+import { User, Activity,BriefcaseBusiness } from "lucide-react";
 
 import { ChevronRight, GearIcon, HelpIcon, LogoutIcon, StarIcon, UserIcon, HomeIcon, ListIcon, PlusIcon } from "@/components/layout/sidebarIcons"
 
@@ -26,7 +26,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: <HomeIcon />, exact: true },
   { href: "/screenings/new", label: "New Job", icon: <PlusIcon />, exact: true , data_guide: "new_jobs" },
-  { href: "/screenings", label: "Jobs", icon: <ListIcon /> , data_guide:"existing_jobs"},
+  { href: "/screenings", label: "Jobs", icon: <BriefcaseBusiness size={18} /> , data_guide:"existing_jobs"},
   // { href: "/candidates", label: "Candidates", icon: <User size={14} />, exact: true },
 ];
 
@@ -388,7 +388,7 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
  */
 export function Sidebar() {
   return (
-    <aside className="w-55 h-screen hidden md:flex flex-col bg-white border-r border-[#E8E5DF] shrink-0">
+    <aside className="w-55 h-full hidden md:flex flex-col bg-white border-r border-[#E8E5DF] shrink-0">
       <SidebarInner />
     </aside>
   );

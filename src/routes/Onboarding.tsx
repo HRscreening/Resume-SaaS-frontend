@@ -106,7 +106,7 @@ export default function OnboardingPage() {
 
             <div>
               <label htmlFor="company" className="block text-sm font-medium text-[#0F0F0F] mb-1.5">
-                Company <span className="text-[#A0A0A0] font-normal text-xs">(optional)</span>
+                Company <span className="text-red-500">*</span>
               </label>
               <input
                 id="company"
@@ -121,7 +121,7 @@ export default function OnboardingPage() {
 
             <div>
               <label className="block text-sm font-medium text-[#0F0F0F] mb-2">
-                What best describes you? <span className="text-[#A0A0A0] font-normal text-xs">(optional)</span>
+                What best describes you? <span className="text-red-500">*</span>
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {ROLE_OPTIONS.map((opt) => (
@@ -142,7 +142,7 @@ export default function OnboardingPage() {
 
             <button
               type="submit"
-              disabled={loading || !name.trim()}
+              disabled={loading || !name.trim() || !role || !company}
               className="w-full h-11 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 mt-2"
             >
               {loading && (

@@ -169,17 +169,7 @@ export default function ResumeDetail({
 
       {/* ─── Top bar ───────────────────────────────────────────── */}
       <header className="h-12 shrink-0 border-b border-[#E8E5DF] flex items-center gap-2 sm:gap-3 px-3 sm:px-5 bg-white">
-        <Link
-          to="/screenings/$id" params={{ id }}
-          className="flex items-center gap-1.5 text-sm text-[#737373] hover:text-[#0F0F0F] transition-colors shrink-0"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M11 7H3M7 3l-4 4 4 4" />
-          </svg>
-          Back
-        </Link>
-
-        <div className="h-4 w-px bg-[#E8E5DF]" />
+    
 
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <div className="h-7 w-7 rounded-full bg-[#F0EDE8] flex items-center justify-center shrink-0">

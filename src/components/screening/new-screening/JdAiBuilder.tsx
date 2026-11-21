@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2,Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { generateJDStream, downloadJDPdf } from "@/lib/api";
 import type { JdGenerateInput, JdGenerateMeta } from "@/lib/api";
+import { jdAiFormSchema } from "./jdAiFormSchema";
 import { useTypewriter } from "@/hooks/useTypewriter";
+import { useProfile } from "@/hooks/useProfile";
 import {
   Accordion,
   AccordionContent,
@@ -29,14 +31,6 @@ const CURRENCY_OPTIONS = [
   { value: "JPY", label: "¥ JPY" },
   { value: "AUD", label: "$ AUD" },
 ]
-// The backend rejects a company_url without an http(s):// scheme, so accept a
-// bare domain in the UI and prepend https:// before sending.
-function normalizeUrl(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return trimmed;
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-}
-
 interface JdAiBuilderProps {
   // Required before generating — sent as `job_title`.
   jobTitle: string;
@@ -55,7 +49,10 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
   const [prompt, setPrompt] = useState("");
   // Structured details that ground the generation (sent as `jd_details`). The
   // first four are required by the backend; the rest are optional.
-  const [companyName, setCompanyName] = useState("");
+  const { data: profile } = useProfile();
+  // Undefined follows the profile default; an edit (including clearing) takes priority.
+  const [companyNameOverride, setCompanyName] = useState<string | undefined>();
+  const companyName = companyNameOverride ?? profile?.company_name ?? "";
   const [companyUrl, setCompanyUrl] = useState("");
   const [workArrangement, setWorkArrangement] = useState("");
   const [employmentType, setEmploymentType] = useState("");
@@ -74,10 +71,10 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
   const [department, setDepartment] = useState("");
   const [skills, setSkills] = useState("");
   const [generating, setGenerating] = useState(false);
+  const generatedBoxRef = useRef<HTMLDivElement>(null);
   // True while the PDF export request is in flight, so the button shows a
   // spinner and can't be double-fired.
   const [downloading, setDownloading] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Set once the first stream completes. Tracked separately from attemptsLeft
   // so the "reprompt" UI still works even if the X-Attempts-Left header isn't
   // exposed to the browser.
@@ -99,100 +96,38 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
   //       minute: "2-digit",
   //     })
   //   : null;
-  // The backend requires these four; gate generation on them so we surface a
-  // clear hint instead of a 422.
-  const detailsComplete =
-    Boolean(currency.trim()) &&
-    Boolean(minSalary.trim()) &&
-    Boolean(maxSalary.trim()) &&
-    Boolean(minExperience.trim()) &&
-    Boolean(maxExperience.trim())
-
-
-  const canGenerate =
-    Boolean(jobTitle.trim()) && !generating && detailsComplete && companyName.trim() && companyUrl.trim() && workArrangement.trim() && employmentType.trim();
-  // The PDF needs both a JD body and the grounding details the backend requires;
-  // gate the export the same way generation is gated so we don't send a 422.
-  const canDownload =
-    Boolean(jobTitle.trim()) &&
-    Boolean(jdText.trim()) &&
-    detailsComplete &&
-    !generating &&
-    !downloading;
-
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
+  const validation = jdAiFormSchema.safeParse({
+    jobTitle, companyName, companyUrl, workArrangement, employmentType,
+    currency, minSalary, maxSalary, minExperience, maxExperience,
+    location, department, skills, prompt,
+  });
+  const validationErrors = showValidationErrors && !validation.success
+    ? [...new Set(validation.error.issues.map((issue) => issue.message))]
+    : [];
+  const canGenerate = Boolean(jobTitle.trim()) && !generating;
+  const canDownload = Boolean(jdText.trim()) && !generating && !downloading;
 
     useEffect(()=>{
       guide.startGuide("build_jd_ai")
     },[])
 
-  // Assemble the structured `jd_details` payload shared by generation and PDF
-  // export. Optional numeric/text fields collapse to null when blank.
-  function buildJdDetails(): JdGenerateInput {
-    
-    if(!minExperience.trim() && maxExperience.trim()){
-      throw new Error("Please enter minimum experience");
-    }
-
-    if(minExperience.trim() && !maxExperience.trim()){
-      throw new Error("Please enter maximum experience");
-    }
-
-    if(!minSalary.trim() && maxSalary.trim()){
-      throw new Error("Please enter minimum salary");
-    }
-
-    if(minSalary.trim() && !maxSalary.trim()){
-      throw new Error("Please enter maximum salary");
-    }
-
-    if(minExperience.trim() && maxExperience.trim() && parseInt(minExperience) > parseInt(maxExperience)){
-      throw new Error("Minimum experience cannot be greater than maximum experience");
-    }
-
-    if(minSalary.trim() && maxSalary.trim() && parseInt(minSalary) > parseInt(maxSalary)){
-      throw new Error("Minimum salary cannot be greater than maximum salary");
-    }
-
-    if(minExperience.trim() && maxExperience.trim() && parseInt(minExperience) < 0){
-      throw new Error("Minimum experience cannot be negative");
-    }
-
-    if(minSalary.trim() && maxSalary.trim() && parseInt(minSalary) < 0){
-      throw new Error("Minimum salary cannot be negative");
-    }
-
-    if(minExperience.trim() && maxExperience.trim() && parseInt(maxExperience) < 0){
-      throw new Error("Maximum experience cannot be negative");
-    }
-
-    if(minSalary.trim() && maxSalary.trim() && parseInt(maxSalary) < 0){
-      throw new Error("Maximum salary cannot be negative");
-    }
-
-    if(minExperience.trim() && maxExperience.trim() && parseInt(maxExperience) > 50){
-      throw new Error("Maximum experience cannot be greater than 50 yrs");
-    }
-
-    const experienceRange = `${minExperience.trim()}-${maxExperience.trim()}`;
-    const salaryRange = `${currency} ${minSalary.trim()}-${maxSalary.trim()} LPA`;
-
-
-    const isCompanyUrlValid = !companyUrl.trim() || /^https?:\/\//i.test(companyUrl.trim());
-    if (!isCompanyUrlValid) {
-      throw new Error("Invalid company URL");
-    }
-
+  // Both actions validate before clearing the draft or starting a request.
+  function buildJdDetails(): JdGenerateInput | null {
+    setShowValidationErrors(true);
+    if (!validation.success) return null;
+    const data = validation.data;
     return {
-      job_title: jobTitle.trim(),
-      company_name: companyName.trim(),
-      company_url: normalizeUrl(companyUrl),
-      work_arrangement: workArrangement.trim(),
-      employment_type: employmentType.trim(),
-      location: location.trim(),
-      yrs_experience: experienceRange,
-      salary_compensation_info: salaryRange,
-      department: department.trim() || null,
-      skills: skills.trim() || null,
+      job_title: data.jobTitle,
+      company_name: data.companyName,
+      company_url: data.companyUrl,
+      work_arrangement: data.workArrangement,
+      employment_type: data.employmentType,
+      location: data.location,
+      yrs_experience: `${data.minExperience}-${data.maxExperience}`,
+      salary_compensation_info: `${data.currency} ${data.minSalary}-${data.maxSalary} LPA`,
+      department: data.department || null,
+      skills: data.skills || null,
     };
   }
 
@@ -204,14 +139,51 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
     onDone: () => setGenerating(false),
   });
 
-  // While revealing, keep the textarea pinned to the latest text so it reads
-  // top-to-bottom like a chat response. Stops once generation ends so the user
-  // can scroll back up freely.
+  // Follow layout growth once per frame, without changing textarea height or focus.
   useEffect(() => {
-    if (!generating) return;
-    const el = textareaRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [jdText, generating]);
+    const box = generatedBoxRef.current;
+    if (!generating || !box) return;
+    const page = box.closest("main");
+    if (!page) return;
+    let following = true;
+    let frame: number | null = null;
+    const follow = () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        if (following) {
+          const viewportBottom = page.getBoundingClientRect().top + page.clientHeight;
+          const distance = box.getBoundingClientRect().bottom - viewportBottom + 48;
+          if (distance > 0) page.scrollBy({ top: distance, behavior: "instant" });
+        }
+      });
+    };
+    const onWheel = (event: WheelEvent) => {
+      if (event.deltaY < 0) following = false;
+      else if (event.deltaY > 0) {
+        const bottom = box.getBoundingClientRect().bottom;
+        const viewportBottom = page.getBoundingClientRect().top + page.clientHeight;
+        if (bottom > 0 && bottom <= viewportBottom + 64) following = true;
+      }
+    };
+    const pause = () => { following = false; };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (["ArrowUp", "PageUp", "Home"].includes(event.key) || (event.key === " " && event.shiftKey)) pause();
+    };
+    const observer = new ResizeObserver(follow);
+    observer.observe(box);
+    page.addEventListener("wheel", onWheel, { passive: true });
+    page.addEventListener("touchmove", pause, { passive: true });
+    window.addEventListener("keydown", onKeyDown);
+    follow();
+    return () => {
+      observer.disconnect();
+      if (frame !== null) cancelAnimationFrame(frame);
+      page.removeEventListener("wheel", onWheel);
+      page.removeEventListener("touchmove", pause);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [generating]);
 
   // Sync the attempts/resets display from the quota headers returned by both
   // generation and download. Each field is only applied when present so a
@@ -224,6 +196,8 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
 
   async function handleGenerate() {
     if (!canGenerate) return;
+    const jdDetails = buildJdDetails();
+    if (!jdDetails) return;
     setGenerating(true);
     // Capture the JD to refine before we clear the textarea for the new stream.
     const currentJd = jdText;
@@ -232,7 +206,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
     try {
       const meta = await generateJDStream(
         {
-          jd_details: buildJdDetails(),
+          jd_details: jdDetails,
           user_input: prompt.trim(),
           current_Jd: currentJd,
         },
@@ -255,10 +229,12 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
 
   async function handleDownloadPdf() {
     if (!canDownload) return;
+    const jdDetails = buildJdDetails();
+    if (!jdDetails) return;
     setDownloading(true);
     try {
-      const { blob, filename, meta } = await downloadJDPdf({
-        jd_details: buildJdDetails(),
+      const { blob } = await downloadJDPdf({
+        jd_details: jdDetails,
         user_input: prompt.trim(),
         current_Jd: jdText,
       });
@@ -268,7 +244,12 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = filename ?? `${jobTitle.trim() || "job-description"}.pdf`;
+      const safePart = (value: string) => value
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, "-")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/[. ]+$/g, "");
+      a.download = `${safePart(jdDetails.job_title)} - ${safePart(jdDetails.company_name)}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -357,7 +338,7 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
               </div>
               {/* Employement Type */}
               <div>
-                <label htmlFor="jd-work-arrangement" className={labelClass}>
+                <label htmlFor="jd-employment-type" className={labelClass}>
                   Employment Type<span className="text-red-500">*</span>
                 </label>
                 <select
@@ -505,27 +486,39 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
         </AccordionItem>
       </Accordion>
 
+      {validationErrors.length > 0 && (
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-[#a70c0c]">
+          <p className="font-medium">Please correct the following:</p>
+          <ul className="mt-1 list-disc pl-5">
+            {validationErrors.map((message) => <li key={message}>{message}</li>)}
+          </ul>
+        </div>
+      )}
+
       {/* Prompt input + generate */}
       <div>
         <label htmlFor="jd-ai-prompt" className="block text-xs font-medium text-[#404040] mb-1.5">
           {hasGenerated ? "Refine the job description" : "Describe the role you want to hire for"}
           <span className="ml-1.5 font-normal text-[#A0A0A0]">(optional)</span>
         </label>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-          <input
+        <div className="flex flex-col gap-2 sm:items-stretch">
+          <textarea
             id="jd-ai-prompt"
-            type="text"
+            rows={1}
             value={prompt}
             data-guide="prompt_input"
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleGenerate(); } }}
+            onChange={(e) => {
+              setPrompt(e.target.value);
+              e.currentTarget.style.height = "auto";
+              e.currentTarget.style.height = `${e.currentTarget.scrollHeight + 2}px`;
+            }}
             disabled={generating}
             placeholder={
               hasGenerated
                 ? "Optional — e.g. add a section on team leadership"
                 : "Optional — e.g. 2 yrs experience, scalable systems, strong communication"
             }
-            className="flex-1 h-11 px-3.5 rounded-xl border border-[#D4D4D4] bg-[#F5F3EE] text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] transition-shadow disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full min-w-0 min-h-11 shrink-0 resize-none overflow-hidden px-3.5 py-2.5 rounded-xl border border-[#D4D4D4] bg-[#F5F3EE] text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] transition-shadow disabled:opacity-60 disabled:cursor-not-allowed"
           />
           <button
             type="button"
@@ -537,12 +530,9 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
             {generating ? (
               <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
             ) : (
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                <path d="M8 0l1.6 4.4L14 6l-4.4 1.6L8 12l-1.6-4.4L2 6l4.4-1.6L8 0z" />
-                <path d="M13 10l.7 1.8L15.5 12.5l-1.8.7L13 15l-.7-1.8L10.5 12.5l1.8-.7L13 10z" />
-              </svg>
+              <Sparkles size={17} />
             )}
-            {generating ? "Generating…" : "Generate"}
+            {generating ? "Building…" : "Build"}
           </button>
         </div>
         {!jobTitle.trim() ? (
@@ -557,16 +547,27 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
       </div>
       {/* Generated JD — editable */}
 
-      <div className="relative">
-        <textarea
-          ref={textareaRef}
-          rows={12}
+      <div
+        ref={generatedBoxRef}
+        key={generating ? "generating-jd" : "editable-jd"}
+        className={`relative min-h-32 overflow-hidden rounded-xl ${generating ? "resize-none" : "resize-y"}`}
+        style={{ overflowAnchor: "none" }}
+      >
+        {/* The mirror supplies intrinsic height without synchronous DOM measurements.
+            Match the textarea's wrapping, typography, padding, and border exactly. */}
+        <div
+          aria-hidden={!generating}
+          className={`min-h-32 whitespace-pre-wrap break-words px-3.5 py-3 rounded-xl border border-[#D4D4D4] bg-[#F5F3EE] text-[#0F0F0F] text-sm ${generating ? "" : "invisible"}`}
+        >{`${jdText} `}</div>
+        {!generating && <textarea
+          aria-label="Job description"
+          rows={1}
           value={jdText}
           onChange={(e) => onJdTextChange(e.target.value)}
           readOnly={generating}
           placeholder="Your AI-generated job description will appear here. You can edit it freely before continuing."
-          className="w-full px-3.5 py-3 rounded-xl border border-[#D4D4D4] bg-[#F5F3EE] text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] transition-shadow resize-none read-only:cursor-default"
-        />
+          className="absolute inset-0 h-full w-full px-3.5 py-3 rounded-xl border border-[#D4D4D4] bg-[#F5F3EE] text-[#0F0F0F] text-sm placeholder:text-[#A0A0A0] focus:outline-none focus:ring-2 focus:ring-[#C85A17] transition-shadow min-h-32 max-h-none resize-none overflow-y-auto whitespace-pre-wrap break-words read-only:cursor-default"
+        />}
         {generating && !jdText && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-[#F5F3EE]/80">
             <div className="h-5 w-5 rounded-full border-2 border-[#C85A17] border-t-transparent animate-spin" />
@@ -577,24 +578,8 @@ export function JdAiBuilder({ jobTitle, jdText, onJdTextChange }: JdAiBuilderPro
 
       {(hasGenerated || jdText.trim()) && (
         <div className="flex items-center justify-between gap-3 text-xs text-[#A0A0A0]">
-          <span>{jdText.length.toLocaleString()} characters</span>
           <div className="flex items-center gap-2">
-            {/* { attemptsLeft !== null && (
-              <>
-              
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium ${
-                    outOfAttempts
-                      ? "bg-[#FBE9E7] text-[#a70c0c]"
-                      : "bg-[#EFEAE1] text-[#404040]"
-                  }`}
-                >
-                  {maxAttempts !== null ? `${attemptsLeft} / ${maxAttempts}` : attemptsLeft}
-                  <span className="font-normal text-[#A0A0A0]">left</span>
-                </span>
-                {resetLabel && <span className="text-[#A0A0A0]">Resets {resetLabel}</span>}
-              </>
-            )} */}
+            
             {/* Download the current JD as a PDF (same payload as generation). */}
             <button
               type="button"

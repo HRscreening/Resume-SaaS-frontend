@@ -1,6 +1,7 @@
+import ResumeTab from "@/modules/screening/components/shared/ResumeTab";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useParams } from "@tanstack/react-router";
-import { Eye, ExternalLink, Expand, Download, Loader2, } from "lucide-react";
+import { Eye, ExternalLink, Download, Loader2, } from "lucide-react";
 import { downloadScorecard } from "@/lib/api";
 import {
   Sheet,
@@ -54,7 +55,7 @@ function criterionBarColor(score: number) {
 }
 
 
-type TabValue = "profile" | "scorecard" | "voice" | "round" | "note";
+type TabValue = "resume" | "profile" | "scorecard" | "voice" | "round" | "note";
 
 type Tab = {
   title: string;
@@ -62,13 +63,14 @@ type Tab = {
 }
 
 const tabs: Tab[] = [
+  { title: "Resume", value: "resume" },
   { title: "Profile", value: "profile" },
-  { title: "Analysis", value: "scorecard" },
+  { title: "Screening", value: "scorecard" },
   // "Interview" is the VOICE screen; "Interview Round" is the browser round
   // that comes after it. Two separate scorers, two separate scorecards, so
   // they get two tabs rather than one tab that silently changes meaning.
-  { title: "Interview", value: "voice" },
-  { title: "Interview Round", value: "round" },
+  { title: "Phone", value: "voice" },
+  { title: "First Round", value: "round" },
   { title: "Notes", value: "note" },
 ]
 
@@ -78,21 +80,25 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
 
   const { id: screening_id } = useParams({ strict: false }) as { id: string };
   const { canWrite } = useAccount();
-  const { search, setScreenId,setAnalysisTab } = useScreeningDetailsNavigation();
+  const { search, navigate, setScreenId, setAnalysisTab } = useScreeningDetailsNavigation();
 
   const tab = search.analysisTab ?? "scorecard";
   const open = search.screenId === resume_id;
   const analytics = useAnalytics();
   const trackedOpen = useRef(false);   
 
-  // Opens on Analysis even though Profile is listed first: the scorecard
-  // always has content, whereas Profile renders a "not available" notice
-  // for any candidate without an application record.
  
 
   const handleOpenChange = (next: boolean) => {
     if (next) {
-      setScreenId(resume_id);
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          screenId: resume_id,
+          analysisTab: "scorecard",
+        }),
+        replace: true,
+      });
       if (!trackedOpen.current) {
         analytics.track(AnalyticsEvent.CANDIDATE_ANALYSIS_OPENED, {
           screeningId: screening_id,
@@ -227,7 +233,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                 the resume report exists for EVERY candidate, so a candidate
                 who has not been called yet must still be shareable. */}
             <div className="flex items-center justify-between gap-2 mt-4">
-              <div className="flex items-center justify-start gap-1">
+              <div className="flex min-w-0 items-center justify-start gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {
                 tabs.map((t: Tab) => (
                   <button
@@ -235,7 +241,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                     type="button"
                     onClick={() => setAnalysisTab(t.value)}
                     disabled={tab === t.value}
-                    className={`relative px-3 py-2 text-sm font-semibold transition-colors cursor-pointer
+                    className={`relative shrink-0 whitespace-nowrap px-3 py-2 text-sm font-semibold transition-colors cursor-pointer
         ${tab === t.value
                         ? "text-[#2563EB] border-b-2 border-[#2563EB]"
                         : "text-[#0F0F0F] border-b-2 border-transparent hover:text-[#2563EB]"
@@ -282,6 +288,20 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
           )}
 
 
+          {/* Keep the iframe mounted so switching tabs preserves the loaded document. */}
+          <div className={tab === "resume" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
+          {!isLoading && (
+            isError ? (
+              <p role="alert" className="px-6 py-10 text-center text-sm text-red-700">Couldn't load the resume details. Close this sheet and try again.</p>
+            ) : (
+              <ResumeTab
+                screeningId={screening_id}
+                resumePath={resume?.pdf_url || resume?.profile?.resume_url}
+                filename={resume?.pdf_filename || resume?.original_filename}
+              />
+            )
+          )}
+          </div>
           {/* Screening Tab */}
           {
             tab === "scorecard" && <div>
@@ -373,7 +393,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                               ) : (
                                 <>
                                   <Download size={12} />
-                                  Scorecard
+                                  Download
                                 </>
                               )}
                             </button>
@@ -397,7 +417,7 @@ const AnalysisSheet = ({ resume_id }: AnalysisSheetProps) => {
                             className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg border border-[#E8E5DF] text-xs font-medium text-[#404040] hover:bg-[#F5F3EE] transition-colors"
 
                           >
-                            <Expand size={12} />
+                            <ExternalLink size={12} />
                             Expand
                           </a>
                         </TooltipTrigger>

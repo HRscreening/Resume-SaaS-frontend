@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useMutationState } from "@tanstack/react-query";
-import { RotateCcw, Archive, Trash2, Share2, Expand, UserRound, ChartNoAxesCombined, PhoneCall, Download,NotebookPen } from "lucide-react";
+import { RotateCcw, Archive, Trash2, Share2,ExternalLink, UserRound, ChartNoAxesCombined, PhoneCall, Download,NotebookPen } from "lucide-react";
 import { useScoredResumeUtility } from "@/modules/screening/hooks/screening/queries/screening.query"
 import type { RankedCandidate, ScreeningActionStatus } from "@/modules/screening/types/screening.type";
 import { archiveResume, unarchiveResume, deleteResume } from "@/modules/screening/apis/screenings.api"
@@ -103,9 +103,9 @@ export function useScreeningActions({
 
     const menuOptions: Option[] = [
         ...[
-            { label: "ScoreCard", Icon: ChartNoAxesCombined, tab: "scorecard" },
             { label: "Profile", Icon: UserRound, tab: "profile" },
-            { label: "Voice", Icon: PhoneCall, tab: "voice" },
+            { label: "Screening", Icon: ChartNoAxesCombined, tab: "scorecard" },
+            { label: "Phone", Icon: PhoneCall, tab: "voice" },
         ].map(({ label, Icon, tab }) => ({
             label,
             icon: <Icon size={12} />,
@@ -150,7 +150,7 @@ export function useScreeningActions({
         },
         {
             label: "Expand",
-            icon: <Expand size={12} />,
+            icon: <ExternalLink size={12} />,
             onClick: (candidate) => {
                 trackRowAction("expand", candidate.resume_id);
                 window.open(

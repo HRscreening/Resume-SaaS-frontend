@@ -43,4 +43,15 @@ export function weightToCategoryPill(weight: number): CategoryPill {
 }
 
 // Max subcategories allowed per category in the editor UI.
-export const MAX_SUBCATEGORIES = 5;
+export const MAX_SUBCATEGORIES = 10;
+
+export const MAX_DESCRIPTION_WORDS = 60;
+
+export function limitWords(text: string, maxWords: number): string {
+  if (maxWords <= 0) return "";
+  const matches = [...text.matchAll(/\S+/g)];
+  if (matches.length <= maxWords) return text;
+
+  const lastAllowedWord = matches[maxWords - 1];
+  return text.slice(0, lastAllowedWord.index + lastAllowedWord[0].length);
+}

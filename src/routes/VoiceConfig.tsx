@@ -1,3 +1,4 @@
+import { voiceConfigSchema } from "@/lib/voiceConfigSchema";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,8 +27,8 @@ const DEFAULT_CONFIG: VoiceConfig = {
   // already uses. The two disagreed, so whether a round worked depended on
   // which button the recruiter happened to press.
   //
-  // Enabling does not by itself allow calls: saveBlockers below still require
-  // a hiring company, and a job city when the role is onsite or hybrid.
+  // Enabling does not by itself allow calls: schema validation still requires
+  // questions, a hiring company, and a job city for onsite or hybrid location checks.
   enabled: true,
   question_plan: [],
   hiring_company: "",
@@ -146,6 +147,7 @@ export default function VoiceConfigPage() {
 
   const [draft, setDraft] = useState<VoiceConfig>(DEFAULT_CONFIG);
   const [hydrated, setHydrated] = useState(false);
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
   // True when a voice round was already configured before this visit — flips
   // the page from setup copy ("Voice screening round") to edit copy, so the
   // recruiter can tell at a glance they are changing something that exists.
@@ -200,7 +202,7 @@ export default function VoiceConfigPage() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: () => saveVoiceConfig(id, draft),
+    mutationFn: (config: VoiceConfig) => saveVoiceConfig(id, config),
     onSuccess: (res) => {
       queryClient.setQueryData(["voice-config", id], res);
       toast.success("Voice round saved");
@@ -219,16 +221,22 @@ export default function VoiceConfigPage() {
     (qual?.work_model === "onsite" || qual?.work_model === "hybrid") &&
     ((qual?.ask_location ?? true) || (qual?.relocation_required ?? false)) &&
     !(qual?.job_city ?? "").trim();
-  const saveBlockers: string[] = [];
-  if (draft.enabled && !(draft.hiring_company ?? "").trim()) {
-    saveBlockers.push("Hiring company is required before calls can start.");
-  }
-  if (draft.enabled && needsJobCity) {
-    saveBlockers.push(
-      qual?.relocation_required
-        ? "Relocation is required, so the agent must be able to name the job city."
-        : "The role is " + (qual?.work_model ?? "onsite") + ", so the location question needs a job city.",
-    );
+  const validation = voiceConfigSchema.safeParse(draft);
+  const validationMessages = validation.success ? [] : validation.error.issues.map((issue) => {
+    const questionIndex = issue.path[0] === "question_plan" && typeof issue.path[1] === "number" ? issue.path[1] : null;
+    return questionIndex === null ? issue.message : `Question ${questionIndex + 1}: ${issue.message}`;
+  });
+  const saveBlockers = showValidationErrors ? [...new Set(validationMessages)] : [];
+  const fieldInvalid = (...path: (string | number)[]) => showValidationErrors && !validation.success
+    && validation.error.issues.some((issue) => issue.path.join(".") === path.join("."));
+
+  function handleSave() {
+    if (!canWrite || saveMutation.isPending || generateMutation.isPending) return;
+    setShowValidationErrors(true);
+    if (!validation.success) {
+      return;
+    }
+    saveMutation.mutate(validation.data);
   }
 
   // ── Immutable question-plan editors ──────────────────────────────────────
@@ -270,7 +278,7 @@ export default function VoiceConfigPage() {
   //    rather than discovered after clicking save.
   const stepsDone = {
     company: Boolean(draft.hiring_company?.trim()),
-    questions: draft.question_plan.length > 0,
+    questions: draft.question_plan.length > 0 && draft.question_plan.every((q) => q.text.trim() && q.competency_ref.trim()),
   };
 
   return (
@@ -341,9 +349,9 @@ export default function VoiceConfigPage() {
         <ChoiceGrid
           choices={DEPTHS}
           value={draft.interview_depth ?? "screening"}
-          disabled={!canWrite}
+          disabled={!canWrite || saveMutation.isPending}
           onChange={(interview_depth) => {
-            if (generateMutation.isPending) return;
+            if (generateMutation.isPending || saveMutation.isPending) return;
             setDraft((d) => ({ ...d, interview_depth }));
             // Screening and deep dive differ in question count and kind, so a
             // plan generated for the other depth is stale the moment the type
@@ -370,7 +378,7 @@ export default function VoiceConfigPage() {
         <ChoiceGrid
           choices={LANGUAGES}
           value={draft.language ?? "en"}
-          disabled={!canWrite}
+          disabled={!canWrite || saveMutation.isPending}
           onChange={(language) => setDraft((d) => ({ ...d, language }))}
         />
         {(draft.language ?? "en") === "hi" ? (
@@ -385,7 +393,7 @@ export default function VoiceConfigPage() {
             <ChoiceGrid
               choices={ACCENTS}
               value={draft.voice.accent}
-              disabled={!canWrite}
+              disabled={!canWrite || saveMutation.isPending}
               onChange={(accent) => setDraft((d) => ({ ...d, voice: { ...d.voice, accent } }))}
             />
           </div>
@@ -405,7 +413,7 @@ export default function VoiceConfigPage() {
           onChange={(e) => setDraft((d) => ({ ...d, hiring_company: e.target.value }))}
           placeholder="e.g. Acme Corp"
           aria-invalid={!stepsDone.company}
-          disabled={!canWrite}
+          disabled={!canWrite || saveMutation.isPending}
           className={inputCls}
         />
         <p className="mt-1.5 rounded-lg bg-[#F5F3EE] px-3 py-2 text-xs leading-relaxed text-[#404040]">
@@ -437,7 +445,7 @@ export default function VoiceConfigPage() {
       {/* ── 3. Questions ─────────────────────────────────────────────────── */}
       <Step
         n={4}
-        title="Questions"
+        title="Questions (required)"
         hint="The assistant asks exactly these, word for word, and probes once when an answer is thin. Click any question to reword it."
         aside={
           <span className="text-xs text-[#737373]">
@@ -453,7 +461,7 @@ export default function VoiceConfigPage() {
           {canWrite && !(isEditing && draft.question_plan.length > 0) && (
             <button
               onClick={() => generateMutation.mutate(draft.interview_depth ?? "screening")}
-              disabled={generateMutation.isPending}
+              disabled={generateMutation.isPending || saveMutation.isPending}
               className="h-9 px-4 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-xs font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60"
             >
               {generateMutation.isPending
@@ -503,7 +511,8 @@ export default function VoiceConfigPage() {
                   rows={2}
                   placeholder="Question the agent will ask, word for word"
                   aria-label={`Question ${idx + 1} text`}
-                  disabled={!canWrite}
+                  aria-invalid={fieldInvalid("question_plan", idx, "text")}
+                  disabled={!canWrite || saveMutation.isPending}
                   className="min-h-0 flex-1 resize-none rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm leading-relaxed text-[#0F0F0F] transition-colors placeholder:text-[#A3A3A3] hover:border-[#E8E5DF] hover:bg-[#FAFAF8] focus:border-[#0F0F0F] focus:bg-white focus:outline-none [field-sizing:content]"
                 />
                 {/* The wording actually spoken on a Hindi call. Shown beside
@@ -519,7 +528,7 @@ export default function VoiceConfigPage() {
                     placeholder="Hindi wording — filled in when you save"
                     aria-label={`Question ${idx + 1} in Hindi`}
                     lang="hi"
-                    disabled={!canWrite}
+                    disabled={!canWrite || saveMutation.isPending}
                     className="min-h-0 flex-1 resize-none rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm leading-relaxed text-[#404040] transition-colors placeholder:text-[#A3A3A3] hover:border-[#E8E5DF] hover:bg-[#FAFAF8] focus:border-[#0F0F0F] focus:bg-white focus:outline-none [field-sizing:content]"
                   />
                 )}
@@ -548,9 +557,11 @@ export default function VoiceConfigPage() {
                   value={q.competency_ref}
                   onChange={(e) => updateQuestion(idx, { competency_ref: e.target.value })}
                   title="Competency this question assesses"
-                  disabled={!canWrite}
+                  aria-invalid={fieldInvalid("question_plan", idx, "competency_ref")}
+                  disabled={!canWrite || saveMutation.isPending}
                   className="h-7 w-fit max-w-full shrink-0 cursor-pointer rounded-md bg-[#F5F3EE] px-2 pr-6 text-xs font-medium text-[#404040] focus:outline-none"
                 >
+                  <option value="" disabled>Select a competency</option>
                   {!competencies.includes(q.competency_ref) && q.competency_ref && (
                     <option value={q.competency_ref}>{q.competency_ref} (not in rubric)</option>
                   )}
@@ -574,7 +585,7 @@ export default function VoiceConfigPage() {
                     }
                     placeholder="comma-separated, guides the follow-up"
                     title="Private notes on what a strong answer mentions — the agent probes once when these are missing, and never reads them aloud"
-                    disabled={!canWrite}
+                    disabled={!canWrite || saveMutation.isPending}
                     className="h-7 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 text-xs text-[#404040] transition-colors placeholder:text-[#C9C5BD] hover:border-[#E8E5DF] hover:bg-[#FAFAF8] focus:border-[#0F0F0F] focus:bg-white focus:outline-none"
                   />
                 </div>
@@ -611,7 +622,7 @@ export default function VoiceConfigPage() {
                     type="checkbox"
                     checked={on}
                     onChange={(e) => setQual({ [key]: e.target.checked })}
-                    disabled={!canWrite}
+                    disabled={!canWrite || saveMutation.isPending}
                     className="h-4 w-4 accent-[#0F0F0F]"
                   />
                   <span className="text-sm text-[#0F0F0F]">
@@ -631,7 +642,7 @@ export default function VoiceConfigPage() {
                         type="number" min={0}
                         value={draft.qualification?.budget_cap ?? ""}
                         onChange={(e) => setQual({ budget_cap: e.target.value ? Number(e.target.value) : null })}
-                        disabled={!canWrite}
+                        disabled={!canWrite || saveMutation.isPending}
                         className={inputCls}
                       />
                     </div>
@@ -639,9 +650,9 @@ export default function VoiceConfigPage() {
                       <label className={labelCls}>Negotiation band %</label>
                       <input
                         type="number" min={0} max={100}
-                        value={draft.qualification?.budget_band_pct ?? 10}
-                        onChange={(e) => setQual({ budget_band_pct: Number(e.target.value) })}
-                        disabled={!canWrite}
+                        value={Number.isFinite(draft.qualification?.budget_band_pct ?? 10) ? (draft.qualification?.budget_band_pct ?? 10) : ""}
+                        onChange={(e) => setQual({ budget_band_pct: e.target.valueAsNumber })}
+                        disabled={!canWrite || saveMutation.isPending}
                         className={inputCls}
                       />
                     </div>
@@ -655,7 +666,7 @@ export default function VoiceConfigPage() {
                       <select
                         value={draft.qualification?.work_model ?? ""}
                         onChange={(e) => setQual({ work_model: (e.target.value || null) as "remote" | "onsite" | "hybrid" | null })}
-                        disabled={!canWrite}
+                        disabled={!canWrite || saveMutation.isPending}
                         className={inputCls}
                       >
                         <option value="">Not set</option>
@@ -675,7 +686,7 @@ export default function VoiceConfigPage() {
                             onChange={(e) => setQual({ job_city: e.target.value || null })}
                             placeholder="e.g. Bangalore"
                             aria-invalid={needsJobCity}
-                            disabled={!canWrite}
+                            disabled={!canWrite || saveMutation.isPending}
                             className={
                               needsJobCity
                                 ? inputCls.replace("border-[#D4D4D4]", "border-red-400") + " bg-red-50/40"
@@ -695,7 +706,7 @@ export default function VoiceConfigPage() {
                             type="checkbox"
                             checked={draft.qualification?.relocation_required ?? false}
                             onChange={(e) => setQual({ relocation_required: e.target.checked })}
-                            disabled={!canWrite}
+                            disabled={!canWrite || saveMutation.isPending}
                             className="h-4 w-4 accent-[#0F0F0F]"
                           />
                           <span className="text-sm text-[#0F0F0F]">Relocation required
@@ -722,7 +733,7 @@ export default function VoiceConfigPage() {
                 <input
                   value={fact}
                   onChange={(e) => setQual({ role_facts: (draft.qualification?.role_facts ?? []).map((f, j) => (j === i ? e.target.value : f)) })}
-                  disabled={!canWrite}
+                  disabled={!canWrite || saveMutation.isPending}
                   className={inputCls}
                   placeholder="e.g. Hybrid, 3 days in office"
                 />
@@ -757,7 +768,7 @@ export default function VoiceConfigPage() {
             <label className={labelCls} htmlFor="default-country-code">Default country code</label>
             <div
               className={!canWrite ? "pointer-events-none opacity-50" : ""}
-              aria-disabled={!canWrite}
+              aria-disabled={!canWrite || saveMutation.isPending}
             >
               <CountryCodeSelect
                 id="default-country-code"
@@ -776,7 +787,7 @@ export default function VoiceConfigPage() {
               type="time"
               value={draft.calling_window.start}
               onChange={(e) => setDraft((d) => ({ ...d, calling_window: { ...d.calling_window, start: e.target.value } }))}
-              disabled={!canWrite}
+              disabled={!canWrite || saveMutation.isPending}
               className={inputCls}
             />
           </div>
@@ -786,7 +797,7 @@ export default function VoiceConfigPage() {
               type="time"
               value={draft.calling_window.end}
               onChange={(e) => setDraft((d) => ({ ...d, calling_window: { ...d.calling_window, end: e.target.value } }))}
-              disabled={!canWrite}
+              disabled={!canWrite || saveMutation.isPending}
               className={inputCls}
             />
           </div>
@@ -794,13 +805,13 @@ export default function VoiceConfigPage() {
       </details>
 
       {/* ── Sticky actions: blockers sit WITH the button that they block, so a
-             disabled save always explains itself without scrolling. */}
+             failed save explains itself without scrolling. */}
       <div className="fixed inset-x-0 bottom-0 z-10 border-t border-[#E8E5DF] bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl flex-col gap-2 px-4 py-3 sm:px-6">
           {saveBlockers.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            <div role="alert" className="max-h-40 overflow-y-auto rounded-lg border border-red-200 bg-red-50 px-3 py-2">
               {saveBlockers.map((msg, i) => (
-                <p key={i} className="text-xs leading-relaxed text-amber-800">{msg}</p>
+                <p key={i} className="text-xs leading-relaxed text-red-800">{msg}</p>
               ))}
             </div>
           )}
@@ -823,8 +834,9 @@ export default function VoiceConfigPage() {
               </Link>
               {canWrite && (
                 <button
-                  onClick={() => saveMutation.mutate()}
-                  disabled={saveMutation.isPending || saveBlockers.length > 0}
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saveMutation.isPending || generateMutation.isPending}
                   title={saveBlockers.length > 0 ? saveBlockers.join(" ") : undefined}
                   className="h-9 px-5 border border-[#0F0F0F] bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#262626] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 >
