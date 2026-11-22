@@ -23,6 +23,7 @@ const DISPLAY: Record<CallDisplayStatus, { label: string; style: string }> = {
   processing: { label: "Processing", style: "bg-violet-100 text-violet-700" },
   ready: { label: "Ready", style: "bg-green-100 text-green-700" },
   withdrawn: { label: "Withdrew", style: "bg-rose-100 text-rose-700" },
+  quit_midway: { label: "Quit midway", style: "bg-orange-100 text-orange-700" },
   unreachable: { label: "Unreachable", style: "bg-amber-100 text-amber-700" },
 };
 
@@ -208,7 +209,7 @@ export default function VoiceCalls() {
                     ) : (
                       <>
                         <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${DISPLAY[c.display_status]?.style ?? "bg-slate-100 text-slate-700"}`}>
-                          {DISPLAY[c.display_status]?.label ?? c.display_status}{c.is_partial ? " · partial" : ""}
+                          {DISPLAY[c.display_status]?.label ?? c.display_status}{c.is_partial && c.display_status !== "quit_midway" ? " · partial" : ""}
                         </span>
                         {c.display_detail && <div className="text-xs text-amber-700 mt-1">{c.display_detail}</div>}
                       </>
@@ -222,7 +223,7 @@ export default function VoiceCalls() {
                   </td>
                   <td className="px-4 py-3 text-[#404040]">{c.recommendation ?? "—"}</td>
                   <td className="px-4 py-3 text-right">
-                    {c.display_status === "ready" ? (
+                    {c.display_status === "ready" || c.display_status === "quit_midway" ? (
                       <button
                         onClick={() => setOpenCallId(c.id)}
                         className="text-xs font-medium text-[#0F0F0F] underline"

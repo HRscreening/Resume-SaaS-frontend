@@ -45,6 +45,7 @@ function statusBadge(s: CallDisplayStatus): { label: string; cls: string } {
     case "processing": return { label: "Processing", cls: "bg-violet-50 border-violet-200 text-violet-700" };
     case "ready": return { label: "Completed", cls: "bg-green-50 border-green-200 text-green-700" };
     case "withdrawn": return { label: "Withdrew", cls: "bg-rose-50 border-rose-200 text-rose-700" };
+    case "quit_midway": return { label: "Quit midway", cls: "bg-orange-50 border-orange-200 text-orange-700" };
     case "unreachable": return { label: "Unreachable", cls: "bg-amber-50 border-amber-200 text-amber-700" };
     default: return { label: s, cls: "bg-slate-50 border-slate-200 text-slate-700" };
   }
@@ -346,7 +347,8 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
     // scorecard row (qualification facts, no competency score), so it gets the
     // same affordances as a completed one. `done` alone still gates the green
     // dot, which would misread as a clean pass.
-    const done = latestCall.display_status === "ready" || withdrew;
+    const quitMidway = latestCall.display_status === "quit_midway";
+    const done = latestCall.display_status === "ready" || withdrew || quitMidway;
     const active = ACTIVE.includes(latestCall.display_status) && !scheduled;
     const duration = formatDuration(latestCall.duration_seconds);
 
@@ -376,11 +378,11 @@ export function CandidateVoicePanel({ screeningId, resumeId, candidateName,curre
                 </span>
               ) : (
                 <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${chip.cls}`}>
-                  <div className="h-2 w-2 rounded-full" style={{ backgroundColor: withdrew ? "#E11D48" : done ? "#22C55E" : "#A3A3A3" }} />
+                  <div className="h-2 w-2 rounded-full" style={{ backgroundColor: withdrew ? "#E11D48" : quitMidway ? "#EA580C" : done ? "#22C55E" : "#A3A3A3" }} />
                   {chip.label}
                 </span>
               )}
-              {latestCall.is_partial && (
+              {latestCall.is_partial && !quitMidway && (
                 <span className="text-[11px] text-amber-700 font-medium">partial</span>
               )}
             </div>

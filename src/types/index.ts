@@ -527,6 +527,9 @@ export type CallDisplayStatus =
   // interview stopped early by their choice, so there is no competency score
   // and the job is not waiting on anything.
   | "withdrawn"
+  // Ended before every planned question was covered. Scored on the answers
+  // given, or carries no score when there were none.
+  | "quit_midway"
   | "unreachable";
 
 export type RecordingStatus = "none" | "processing" | "ready" | "failed";

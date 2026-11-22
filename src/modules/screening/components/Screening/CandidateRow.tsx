@@ -281,13 +281,15 @@ function VoiceCell({ candidate, onVoiceIconClick }: { candidate: RankedCandidate
             /></div>;
     }
 
-    if (status !== "ready") {
+    const quitMidway = status === "quit_midway";
+    if (status !== "ready" && !(quitMidway && score != null)) {
         const label: Record<string, string> = {
             queued: "Queued",
             calling: "Calling",
             in_interview: "In call",
             processing: "Scoring",
             unreachable: "No answer",
+            quit_midway: "Quit midway",
         };
         const pending = status === "calling" || status === "in_interview" || status === "processing";
         return (
@@ -306,7 +308,7 @@ function VoiceCell({ candidate, onVoiceIconClick }: { candidate: RankedCandidate
     const tone =
         rec === "advance" ? "text-green-700" : rec === "reject" ? "text-red-600" : "text-[#0F0F0F]";
     return (
-        <div className="flex flex-col justify-center items-center gap-0.5" title={rec ? `Recommendation: ${rec}` : undefined}>
+        <div className="flex flex-col justify-center items-center gap-0.5" title={[quitMidway ? "Quit midway, scored on answered questions" : null, rec ? `Recommendation: ${rec}` : null].filter(Boolean).join(". ") || undefined}>
             <span className={`text-sm font-bold leading-none ${tone}`}>
                 {score == null ? <PhoneOutgoing size={16}
                     className="hover:text-[#C85A17]" onClick={handleVoiceIconClick} /> : Math.round(score)}

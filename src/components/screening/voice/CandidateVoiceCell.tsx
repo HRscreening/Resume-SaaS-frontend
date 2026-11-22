@@ -75,6 +75,11 @@ export function CandidateVoiceCell({ resumeId }: CandidateVoiceCellProps) {
     if (call.display_status === "ready" && call.voice_score != null) {
       return <span className={`${base} ${scorePill(call.voice_score)}`}><Mic /> {Math.round(call.voice_score)}{call.is_partial ? " (partial)" : ""}</span>;
     }
+    if (call.display_status === "quit_midway") {
+      return call.voice_score != null
+        ? <span className={`${base} ${scorePill(call.voice_score)}`}><Mic /> {Math.round(call.voice_score)} (quit midway)</span>
+        : <span className={`${base} bg-orange-50 border-orange-200 text-orange-700`}><Mic /> Quit midway</span>;
+    }
     if (call.display_status === "unreachable") {
       return <span className={`${base} bg-amber-50 border-amber-200 text-amber-700`}><Mic /> Unreachable</span>;
     }

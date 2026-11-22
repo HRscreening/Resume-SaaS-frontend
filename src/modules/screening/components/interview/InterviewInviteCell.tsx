@@ -16,8 +16,8 @@ import type { RankedCandidate } from "@/modules/screening/types/screening.type";
 // candidates away from the list you are choosing them from.
 //
 // The gate is `voice_status === "ready"`, which is the one status that means
-// the call actually happened and produced a score. "withdrawn" and
-// "unreachable" are finished but produced no interview, and everything else
+// the call actually happened and produced a score. "withdrawn", "quit_midway"
+// and "unreachable" did not produce a full interview, and everything else
 // is still in flight.
 export function InterviewInviteCell({
   candidate,
