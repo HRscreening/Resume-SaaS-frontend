@@ -108,7 +108,7 @@ export function CandidatesTable({
   }, [inView, hasMore, loadingMore, onLoadMore]);
 
 
-  const columnCount = 7 + (compact ? 0 : 1) + 2;
+  const columnCount = compact ? 8 : 9;
 
   const candidatesSelected = selectedCandidates.size > 0;
   // Header checkbox tri-state — reflects the current page's visible rows.
