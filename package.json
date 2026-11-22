@@ -34,7 +34,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "framer-motion": "^12.38.0",
-    "jszip": "^3.10.1",
+    "jszip": "^3.10.2",
     "livekit-client": "^2.22.3",
     "lucide-react": "^1.16.0",
     "posthog-js": "^1.435.8",

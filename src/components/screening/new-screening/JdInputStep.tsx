@@ -44,7 +44,25 @@ export function JdInputStep({
 
   return (
     <div className="bg-white rounded-2xl border border-[#E8E5DF] p-5 sm:p-6 md:p-8">
-      <h2 className="text-lg font-semibold text-[#0F0F0F] mb-1">Job description</h2>
+      <div className="md:flex md:flex-row justify-between">
+        <h2 className="text-lg font-semibold text-[#0F0F0F] mb-1">Job description</h2>
+        {/* Mode toggle */}
+        <div
+          data-guide="jd_input_btns"
+          className="flex items-center w-fit gap-1 p-0.5 rounded-lg bg-[#F0EDE8] border border-[#D4D4D4] my-2 md:my-0">
+          {MODE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onModeChange(opt.value)}
+              className={`h-6 px-3 w-fit rounded-md text-xs font-medium transition-colors ${mode === opt.value ? "bg-white text-[#0F0F0F] shadow-sm" : "text-[#737373] hover:text-[#404040]"
+                }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <p className="text-sm text-[#737373] mb-6">We'll auto-generate a 3-category scoring rubric from your JD.</p>
       <fieldset disabled={analyzing} className="min-w-0 w-full space-y-5">
         {/* Job title */}
@@ -68,28 +86,12 @@ export function JdInputStep({
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <label className="block text-sm font-medium text-[#0F0F0F]">
               Job description <span className="text-red-500">{
-                
-                mode !== "ai" && "*" 
 
-                }</span>
+                mode !== "ai" && "*"
+
+              }</span>
             </label>
-            {/* Mode toggle */}
-            <div
-            data-guide="jd_input_btns"
-             className="flex items-center gap-1 p-0.5 rounded-lg bg-[#F0EDE8] border border-[#D4D4D4]">
-              {MODE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => onModeChange(opt.value)}
-                  className={`h-6 px-3 rounded-md text-xs font-medium transition-colors ${
-                    mode === opt.value ? "bg-white text-[#0F0F0F] shadow-sm" : "text-[#737373] hover:text-[#404040]"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+          
           </div>
 
           {mode === "paste" && (
