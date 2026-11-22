@@ -27,6 +27,7 @@ export function recommendationChip(rec: string | null): Chip {
     case "advance": return { label: "Advance", tone: "positive" };
     case "hold": return { label: "Hold", tone: "caution" };
     case "reject": return { label: "Reject", tone: "critical" };
+    case "not_assessed": return { label: "Not assessed", tone: "neutral" };
     default: return { label: "Not scored", tone: "neutral" };
   }
 }
