@@ -95,7 +95,7 @@ export default function Screenings() {
               className="h-10 px-3 sm:px-4 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] transition-colors inline-flex items-center gap-2 shrink-0"
             >
               <Plus size={16} />
-              <span className="hidden sm:inline">New screening</span>
+              <span className="hidden sm:inline">New Job</span>
               <span className="sm:hidden">New</span>
             </Link>
           )}

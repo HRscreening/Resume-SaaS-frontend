@@ -16,6 +16,7 @@ import type {
 } from "@/types";
 import { truncate } from "@/lib/utils";
 import { useAccount } from "@/hooks/useAccount";
+import { useProfile } from "@/hooks/useProfile";
 
 const DEFAULT_CONFIG: VoiceConfig = {
   // True because the enable toggle below is hidden: saving the round IS what
@@ -127,6 +128,7 @@ function interviewableCompetencies(rubric: Rubric | null): string[] {
 export default function VoiceConfigPage() {
   const { id } = useParams({ strict: false }) as { id: string };
   const { canWrite } = useAccount();
+  const { data: profile, isLoading: profileLoading } = useProfile();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -157,18 +159,21 @@ export default function VoiceConfigPage() {
   // edits. Spread over DEFAULT_CONFIG so configs saved before newer fields
   // still hydrate with defaults.
   useEffect(() => {
-    if (hydrated || configLoading) return;
+    if (hydrated || configLoading || profileLoading) return;
     const saved = configResp?.voice_config;
+    const hiringCompany =
+      saved?.hiring_company?.trim() || profile?.company_name?.trim() || "";
     // The voice block is spread on its own so a round saved before the
     // accent option existed hydrates with the default rather than no accent.
     setDraft({
       ...DEFAULT_CONFIG,
       ...(saved ?? {}),
+      hiring_company: hiringCompany,
       voice: { ...DEFAULT_CONFIG.voice, ...(saved?.voice ?? {}) },
     });
     setIsEditing(Boolean(saved && (saved.enabled || (saved.question_plan?.length ?? 0) > 0)));
     setHydrated(true);
-  }, [hydrated, configLoading, configResp]);
+  }, [hydrated, configLoading, configResp, profile, profileLoading]);
 
   const generateMutation = useMutation({
     mutationFn: (depth: InterviewDepth) => generateQuestionPlan(id, depth),
@@ -261,7 +266,7 @@ export default function VoiceConfigPage() {
   const setQual = (patch: Partial<QualificationConfig>) =>
     setDraft((d) => ({ ...d, qualification: { ...(d.qualification ?? {}), ...patch } }));
 
-  if (screeningLoading || configLoading) {
+  if (screeningLoading || configLoading || profileLoading || !hydrated) {
     return <div className="p-8 text-sm text-[#737373]">Loading…</div>;
   }
   if (!screening) {
