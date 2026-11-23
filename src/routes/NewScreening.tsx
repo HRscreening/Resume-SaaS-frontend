@@ -1,13 +1,11 @@
-import { useUndoRedo } from "@/hooks/useUndoRedo";
-import { RubricHistoryControls } from "@/components/screening/RubricHistoryControls";
+import { useRubricEditor } from "@/hooks/useRubricEditor";
+import { RubricToolbar } from "@/components/screening/RubricToolbar";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useErrorToast } from "@/lib/useErrorToast";
 import { createJobNew, parseJDFile, updateRubric } from "@/lib/api";
-import type { Rubric, Subcategory } from "@/types";
-import { MAX_SUBCATEGORIES } from "@/lib/rubric";
 import { StepIndicator } from "@/components/screening/new-screening/StepIndicator";
 import { JdInputStep } from "@/components/screening/new-screening/JdInputStep";
 import { RubricReviewStep } from "@/components/screening/new-screening/RubricReviewStep";
@@ -15,14 +13,13 @@ import { AskSourceJobModal } from "@/components/screening/new-screening/AskSourc
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
 import { useGuide, GuideId } from "@/guides"
 import { detectCountry } from "@/lib/currency";
-// import sampleRubric from "../../trash/sample_rubric.json"
 
 type Step = 1 | 2;
 type JdInputMode = "paste" | "upload" | "ai";
 
 const STEPS = ["Job description", "Review rubric", "Start screening"] as const;
 
-// New-job wizard controller. Owns all wizard state and rubric mutations; the
+// New-job wizard controller. Owns job creation and saving; the
 // per-step UI lives in src/components/screening/new-screening/*.
 export default function NewScreening() {
   const navigate = useNavigate();
@@ -47,9 +44,10 @@ export default function NewScreening() {
   const [extractingJD, setExtractingJD] = useState(false);
 
   // Step 2 — rubric editor
-  const rubricHistory = useUndoRedo<Rubric | null>(null);
-  const { value: rubric, set: setRubric } = rubricHistory;
-  // const [rubric, setRubric] = useState<Rubric | null>(sampleRubric as Rubric);
+  const editor = useRubricEditor(null, {
+    onEdit: (editType) => analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType }),
+  });
+  const { rubric, validationError } = editor;
   const [saving, setSaving] = useState(false);
   const draftRef = useRef({ step, title: "", jdText: "", hasRubric: false, saving: false });
   draftRef.current = { step, title, jdText, hasRubric: Boolean(rubric), saving };
@@ -158,7 +156,7 @@ export default function NewScreening() {
           }),
         })),
       };
-      rubricHistory.reset(sorted);
+      editor.reset(sorted);
       analytics.track(AnalyticsEvent.RUBRIC_GENERATION_COMPLETED, { categoryCount: sorted.categories.length });
       analytics.track(AnalyticsEvent.JOB_CREATION_STEP_VIEWED, { step: "rubric" });
       setStep(2);
@@ -172,51 +170,14 @@ export default function NewScreening() {
     }
   }
 
-  function updateCategoryWeight(catIdx: number, weight: number) {
-    if (!rubric) return;
-    const updated = rubric.categories.map((c, i) => (i === catIdx ? { ...c, weight } : c));
-    setRubric({ ...rubric, categories: updated }, `category:${catIdx}:weight`);
-    analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType: "category_weight" });
-  }
-
-  function updateSubcategory(catIdx: number, subIdx: number, updates: Partial<Subcategory>) {
-    if (!rubric) return;
-    const updated = rubric.categories.map((cat, ci) => {
-      if (ci !== catIdx) return cat;
-      const subs = cat.subcategories.map((s, si) => (si === subIdx ? { ...s, ...updates } : s));
-      return { ...cat, subcategories: subs };
-    });
-    setRubric({ ...rubric, categories: updated }, `subcategory:${catIdx}:${subIdx}:${Object.keys(updates).sort().join(",")}`);
-    analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType: "subcategory" });
-  }
-
-  function removeSubcategory(catIdx: number, subIdx: number) {
-    if (!rubric) return;
-    const updated = rubric.categories.map((cat, ci) => {
-      if (ci !== catIdx) return cat;
-      return { ...cat, subcategories: cat.subcategories.filter((_, si) => si !== subIdx) };
-    });
-    setRubric({ ...rubric, categories: updated });
-    analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType: "remove" });
-  }
-
-  function addSubcategory(catIdx: number) {
-    if (!rubric) return;
-    if (rubric.categories[catIdx].subcategories.length >= MAX_SUBCATEGORIES) return;
-    const updated = rubric.categories.map((c, ci) => {
-      if (ci !== catIdx) return c;
-      return { ...c, subcategories: [...c.subcategories, { name: "", weight: 3, description: "" }] };
-    });
-    setRubric({ ...rubric, categories: updated });
-    analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType: "add" });
-  }
-
   async function handleSaveJob() {
-    if (!screeningId || !rubric || savingRef.current) return;
+    if (!screeningId || savingRef.current) return;
+    const validRubric = editor.validateForSave();
+    if (!validRubric) return;
     savingRef.current = true;
     setSaving(true);
     try {
-      await updateRubric(screeningId, rubric);
+      await updateRubric(screeningId, validRubric);
       queryClient.invalidateQueries({ queryKey: ["screenings"] });
       queryClient.invalidateQueries({ queryKey: ["screening", screeningId] });
       navigate({ to: "/screenings/$id", params: { id: screeningId } });
@@ -262,18 +223,22 @@ export default function NewScreening() {
       )}
 
       {step === 2 && rubric && (
-        <fieldset disabled={saving} className="min-w-0" {...rubricHistory.editorProps(!saving)}>
-          <RubricHistoryControls {...rubricHistory} disabled={saving} />
-        <RubricReviewStep
-          rubric={rubric}
-          onCategoryWeightChange={updateCategoryWeight}
-          onSubcategoryChange={updateSubcategory}
-          onRemoveSubcategory={removeSubcategory}
-          onAddSubcategory={addSubcategory}
-          onSave={handleSaveJob}
-          saving={saving}
-        />
-        </fieldset>
+        <div {...editor.editorProps(!saving)}>
+          <fieldset disabled={saving} className="min-w-0">
+            <RubricReviewStep rubric={rubric} getCategoryProps={editor.getCategoryProps} />
+          </fieldset>
+          <RubricToolbar
+            {...editor.historyProps}
+            onBack={() => {
+              if (screeningId) navigate({ to: "/screenings/$id", params: { id: screeningId } });
+            }}
+            onSave={handleSaveJob}
+            canSave={Boolean(screeningId)}
+            saving={saving}
+            validationError={validationError}
+            status="Review your rubric, then save."
+          />
+        </div>
       )}
     </div>
   );
