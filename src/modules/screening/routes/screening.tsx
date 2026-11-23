@@ -149,9 +149,6 @@ export default function ScreeningDetail() {
                         </div> */}
                         <div className="flex flex-row justify-start gap-3 items-end">
                         <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F]">{screening.title}</h1>
-                        | <small className="text-[10px]  text-[#737373] italic">
-                             Created {formatDate(screening.created_at)}
-                        </small>
                         </div>
                         {screeningUsage.length > 0 && (
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
@@ -165,7 +162,7 @@ export default function ScreeningDetail() {
                     </div>
                     <div
                         data-guide="application_header_actions"
-                        className="w-fit flex flex-wrap items-center gap-2"
+                        className="flex min-w-0 flex-wrap items-center gap-2 md:ml-auto md:justify-end"
                     >
                         {screening.jd_url &&
                             <ActionButton title="Job Desc." description="Job Desc." icon={<FileText size={12} />} compacted={analysisOpen} disabled={!screening} onClick={() => {
@@ -179,7 +176,7 @@ export default function ScreeningDetail() {
                                 setShowRubric(true);
                             }} />
 
-                        {canWrite && <ActionButton title="Post Job"
+                        {canWrite && <ActionButton title="Job Link"
                             icon={<Link2 size={12} />} compacted={analysisOpen} disabled={!screening} onClick={() => {
                                 analytics.track(AnalyticsEvent.JOB_POST_STARTED, { screeningId: id });
                                 postJob();
@@ -201,7 +198,7 @@ export default function ScreeningDetail() {
                                         {/* Voice round button */}
                                         <div
                                             data-guide="screening_header_actions"
-                                            className="flex flex-wrap items-center gap-2"
+                                            className="flex flex-wrap items-center gap-2 md:justify-end"
                                         >
                                             <ActionButton
                                                 title="Voice round"
@@ -261,6 +258,8 @@ export default function ScreeningDetail() {
 
 
             </div>
+            
+            <div aria-hidden="true" className="mx-4 h-px shrink-0 self-stretch bg-[#E8E5DF] sm:mx-6 md:mx-8" />
 
             {/* ----------------------- Tabs ------------------------ */}
             <div className="flex-1 min-h-0 flex flex-col px-4 sm:px-6 md:px-8 gap-4">

@@ -63,7 +63,7 @@ export function CandidatesTable({
 
   const { selectedCandidates, toggleSelection, togglePageSelection } = useSelectedCandidates();
 
-  const { menuOptions, getRowStatus, isShareDialogOpen, shareCandidate, setIsShareDialogOpen, isAddNoteDialogOpen, targetCandidate, setIsAddNoteDialogOpen, clearDialogs } = useScreeningActions({ screeningId: screening_id });
+  const { menuOptions, getRowStatus, isShareDialogOpen, shareCandidate, setIsShareDialogOpen,  clearDialogs } = useScreeningActions({ screeningId: screening_id });
   // Per-row "..." menu mixes read items (ScoreCard/Profile/Voice/Resume/Expand)
   // with write items wired to live mutations or dialogs (Rescore/Share/Archive/
   // Unarchive/Delete). A viewer only gets the read items.
@@ -108,7 +108,7 @@ export function CandidatesTable({
   }, [inView, hasMore, loadingMore, onLoadMore]);
 
 
-  const columnCount = 7 + (compact ? 0 : 1) + 2;
+  const columnCount = compact ? 8 : 9;
 
   const candidatesSelected = selectedCandidates.size > 0;
   // Header checkbox tri-state — reflects the current page's visible rows.
@@ -155,11 +155,11 @@ export function CandidatesTable({
                 <col className="w-8" />
 
                 {/* Candidate */}
-                <col className={compact ? "w-52" : "w-60"} />
+                <col className={compact ? "w-55" : "w-65"} />
 
                 {/* Role */}
                 {/* {!compact && */}
-                <col className="w-44" />
+                {/* <col className="w-44" /> */}
                 {/* } */}
 
                 {/* Experience */}
@@ -211,7 +211,7 @@ export function CandidatesTable({
                     <th className="pl-3 pr-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide sticky left-0 z-10 bg-[#F5F3EE]">Candidate</th>
                   
                   {/* {!compact && ( */}
-                  <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide">Role</th>
+                  {/* <th className="px-2 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide">Role</th> */}
 
                   <th
                     className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide"

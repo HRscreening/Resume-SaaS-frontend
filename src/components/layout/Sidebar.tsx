@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -7,10 +7,13 @@ import { getUsage, listScreenings } from "@/lib/api";
 import { useUserKey, userKey } from "@/lib/userKey";
 import { useAccount } from "@/hooks/useAccount";
 import { useUsage } from "@/hooks/useUsage";
-import { meterColor, usedRatio } from "@/components/usage/QuotaMeter";
+import { creditBalance } from "@/modules/subscription/credits";
+import { useUserUsageQuotas } from "@/modules/subscription/useSubscription";
+import { usedRatio } from "@/components/usage/QuotaMeter";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PLAN_LABEL } from "@/lib/planLabels";
-import { User, Activity } from "lucide-react";
+import { User, Activity, BriefcaseBusiness, PanelLeft } from "lucide-react";
 
 import { ChevronRight, GearIcon, HelpIcon, LogoutIcon, StarIcon, UserIcon, HomeIcon, ListIcon, PlusIcon } from "@/components/layout/sidebarIcons"
 
@@ -26,7 +29,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: <HomeIcon />, exact: true },
   { href: "/screenings/new", label: "New Job", icon: <PlusIcon />, exact: true , data_guide: "new_jobs" },
-  { href: "/screenings", label: "Jobs", icon: <ListIcon /> , data_guide:"existing_jobs"},
+  { href: "/screenings", label: "Jobs", icon: <BriefcaseBusiness size={18} /> , data_guide:"existing_jobs"},
   // { href: "/candidates", label: "Candidates", icon: <User size={14} />, exact: true },
 ];
 
@@ -46,20 +49,33 @@ function getInitials(name: string | null | undefined, email: string | null | und
  * `onNavigate` fires whenever a Link is clicked, so the mobile drawer can
  * close itself on route change without duplicating state.
  */
-export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
+interface SidebarInnerProps {
+  onNavigate?: () => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
+}
+
+const SIDEBAR_COLLAPSED_KEY = "hiresort:sidebar-collapsed";
+
+export function SidebarInner({ onNavigate, collapsed = false, onToggleCollapsed }: SidebarInnerProps = {}) {
+  const navigationId = useId();
+  const accountMenuId = useId();
   const location = useLocation();
   const pathname = location.pathname;
   const navigate = useNavigate();
   const { canWrite, ownerName, role } = useAccount();
-  const { unlimited, totals } = useUsage();
+  const { unlimited } = useUsage();
 
 
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { data: quotaUsage, isPending: creditsLoading } = useUserUsageQuotas(menuOpen);
+  const monthlyCredits = quotaUsage ? creditBalance(quotaUsage) : null;
 
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
 
 
   const { data: usage } = useQuery({
@@ -112,8 +128,18 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
         setMenuOpen(false);
       }
     }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        menuTriggerRef.current?.focus();
+      }
+    }
     document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onClickOutside);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [menuOpen]);
 
   // Close menu on route change
@@ -138,32 +164,55 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
   const visibleNavItems = canWrite ? navItems : navItems.filter((item) => item.href !== "/screenings/new");
   const initials = getInitials(displayName, email);
   const planLabel = usage ? PLAN_LABEL[usage.plan] : null;
-  const used = usage?.resumes_processed ?? 0;
-  const limit = usage?.quota_limit ?? 0;
-  const isFree = usage?.plan === "FREE";
-  const voiceUsed = usage?.voice_calls_made ?? 0;
-  const voiceLimit = usage?.voice_calls_limit ?? 0;
-  // Voice carries its own cadence: on Free the calls refill monthly even
-  // though the resume allowance never does.
-  const voiceRefills = usage?.voice_calls_period !== "lifetime";
-
   return (
-    <div className="flex flex-col h-full">
-      {/* Logo — clickable, returns to marketing site. */}
-      <a
-        href={import.meta.env.VITE_HOME_PAGE_URL || "https://hiresort.ai"}
-        rel="noopener noreferrer"
-      >
-        <div className="h-14 flex items-center px-5 border-b border-[#E8E5DF] shrink-0">
-          <div className="flex items-center gap-2.5">
-            <img src="/logo.png" alt="HireSort logo" className="h-6 w-auto" />
-            <span className="font-semibold text-[#0F0F0F] text-sm">HireSort</span>
-          </div>
-        </div>
-      </a>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className={cn("flex h-14 shrink-0 items-center border-b border-[#F0EEEA] px-3", collapsed ? "justify-center" : "justify-between gap-2")}>
+        {(!collapsed || !onToggleCollapsed) && (
+          <a
+            href={import.meta.env.VITE_HOME_PAGE_URL || "https://hiresort.ai"}
+            rel="noopener noreferrer"
+            aria-label="HireSort home"
+            className="flex min-w-0 items-center gap-2 rounded-lg px-1 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C85A17]"
+          >
+            <span className="text-lg font-semibold tracking-tight text-[#0F0F0F]">HireSort</span>
+          </a>
+        )}
+        {onToggleCollapsed && (
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onToggleCollapsed();
+                  }}
+                  aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  aria-expanded={!collapsed}
+                  aria-controls={navigationId}
+                  className="group relative flex size-10 shrink-0 items-center justify-center rounded-xl text-[#737373] transition-colors hover:bg-[#F0EDE8] hover:text-[#0F0F0F] focus-visible:bg-[#F0EDE8] focus-visible:text-[#0F0F0F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C85A17]"
+                >
+                  {collapsed && (
+                    <img src="/logo.png" alt="HireSort logo" className="size-6 object-contain motion-safe:transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0" />
+                  )}
+                  <span className={cn(
+                    "absolute inset-0 flex items-center justify-center motion-safe:transition-opacity",
+                    collapsed && "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100",
+                  )}>
+                    <PanelLeft size={16} strokeWidth={1.5} aria-hidden="true" />
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={10}>
+                {collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-3 space-y-0.5" aria-label="Sidebar navigation">
+      <nav id={navigationId} className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-3 md:px-2.5 md:py-2" aria-label="Sidebar navigation">
         {visibleNavItems.map((item) => {
           const active = isActive(item);
           // Dashboard and /screenings both consume the screenings list;
@@ -178,16 +227,18 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
               onFocus={wantsScreenings ? prefetchScreenings : undefined}
               onClick={onNavigate}
               data-guide={item.data_guide}
+              title={collapsed ? item.label : undefined}
               className={cn(
-                "flex items-center gap-2.5 px-3 py-2.5 md:py-2 rounded-lg text-sm font-medium transition-colors duration-150",
+                "flex min-h-11 items-center rounded-lg text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C85A17] focus-visible:ring-offset-2 md:min-h-8",
+                collapsed ? "justify-center p-1.5" : "gap-2.5 px-3 py-2.5 md:gap-2 md:px-2.5 md:py-1.5",
                 active
                   ? "bg-[#0F0F0F] text-white"
                   : "text-[#404040] hover:bg-[#F5F3EE] hover:text-[#0F0F0F]",
               )}
               aria-current={active ? "page" : undefined}
             >
-              <span className={cn(active ? "text-white" : "text-[#737373]")}>{item.icon}</span>
-              {item.label}
+              <span aria-hidden="true" className={cn("flex size-5 shrink-0 items-center justify-center", active ? "text-white" : "text-[#737373]")}>{item.icon}</span>
+              <span className={collapsed ? "sr-only" : "truncate"}>{item.label}</span>
             </Link>
           );
         })}
@@ -198,7 +249,13 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
 
         {/* Popup menu — opens upward, anchored to the trigger */}
         {menuOpen && (
-          <div className="absolute bottom-full left-2 right-2 mb-1.5 bg-white rounded-2xl border border-[#E8E5DF] shadow-lg overflow-hidden z-50">
+          <div
+            id={accountMenuId}
+            className={cn(
+              "absolute bottom-full left-2 z-50 mb-1.5 max-h-[calc(100dvh-80px)] overflow-y-auto rounded-2xl border border-[#E8E5DF] bg-white shadow-lg",
+              collapsed ? "w-64" : "right-2",
+            )}
+          >
             {/* Identity card — clickable, navigates to profile */}
             <Link
               to="/profile"
@@ -226,62 +283,26 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
               </span>
             </Link>
 
-            {/* Usage progress (HireSort-specific). Colours come from the same
-                helpers the dashboard meters use — this block used to warn at
-                70%/90% while the dashboard warned at 80%/100%, so the same
-                account could look amber in one place and neutral in the
-                other. */}
-            {!unlimited && usage && (limit > 0 || voiceLimit > 0) && (
-              <div className="px-4 pb-3 space-y-2.5">
-                {limit > 0 && (
-                  <div>
-                    <div className="flex items-center justify-between text-xs mb-1.5">
-                      <span className="text-[#737373]">
-                        {usage.month === "LIFETIME" ? "Resumes used" : "Resumes this month"}
-                      </span>
-                      <span className="font-semibold text-[#0F0F0F] tabular-nums">{used} / {limit}</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-[#F0EDE8] rounded-full overflow-hidden">
-                      <div
-                        className={cn("h-full rounded-full transition-all", meterColor(used, limit))}
-                        style={{ width: `${Math.round(usedRatio(used, limit) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {voiceLimit > 0 && (
-                  <div>
-                    <div className="flex items-center justify-between text-xs mb-1.5">
-                      <span className="text-[#737373]">
-                        {voiceRefills ? "Voice calls this month" : "Voice calls used"}
-                      </span>
-                      <span className="font-semibold text-[#0F0F0F] tabular-nums">
-                        {voiceUsed} / {voiceLimit}
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full bg-[#F0EDE8] rounded-full overflow-hidden">
-                      <div
-                        className={cn("h-full rounded-full transition-all", meterColor(voiceUsed, voiceLimit))}
-                        style={{ width: `${Math.round(usedRatio(voiceUsed, voiceLimit) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
+            <div className="px-4 pb-3 text-xs text-[#737373]" aria-busy={creditsLoading}>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+                <span>Credits Used</span>
+                {monthlyCredits ? (
+                  <span className="font-semibold tabular-nums text-[#0F0F0F]">
+                    {monthlyCredits.planUsed.toLocaleString()} / {monthlyCredits.planAllocated.toLocaleString()}
+                  </span>
+                ) : (
+                  <span>{creditsLoading ? "Loading…" : "Unavailable"}</span>
                 )}
               </div>
-            )}
-
-            {/* Unlimited accounts have no quota to show a bar for — list the
-                all-time counters as plain lines instead. */}
-            {unlimited && totals.length > 0 && (
-              <div className="px-4 pb-3 space-y-1">
-                {totals.map((counter) => (
-                  <div key={counter.key} className="flex items-center justify-between text-xs">
-                    <span className="text-[#737373]">{counter.label}</span>
-                    <span className="font-semibold text-[#0F0F0F] tabular-nums">{counter.value}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+              {monthlyCredits && monthlyCredits.planAllocated > 0 && (
+                <div aria-hidden="true" className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#F0EDE8]">
+                  <div
+                    className="h-full rounded-full bg-[#B65A27]"
+                    style={{ width: `${Math.max(0, usedRatio(monthlyCredits.planUsed, monthlyCredits.planAllocated)) * 100}%` }}
+                  />
+                </div>
+              )}
+            </div>
 
             <div className="h-px bg-[#E8E5DF]" />
 
@@ -297,11 +318,6 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
                     <StarIcon />
                     Upgrade plan
                   </span>
-                  {isFree && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-                      New
-                    </span>
-                  )}
                 </Link>
               )}
               <Link
@@ -354,16 +370,23 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
 
         {/* Trigger button — bottom-pinned identity card */}
         <button
+          ref={menuTriggerRef}
+          type="button"
+          aria-label="Account menu"
+          aria-expanded={menuOpen}
+          aria-controls={menuOpen ? accountMenuId : undefined}
+          title={collapsed ? (displayName ?? email ?? "Account menu") : undefined}
           onClick={() => setMenuOpen((v) => !v)}
           className={cn(
-            "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors text-left",
+            "flex min-h-12 w-full items-center rounded-xl py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C85A17]",
+            collapsed ? "justify-center px-0" : "gap-2.5 px-3",
             menuOpen ? "bg-[#F0EDE8]" : "hover:bg-[#F5F3EE]",
           )}
         >
           <div className="h-8 w-8 rounded-full bg-[#0F0F0F] flex items-center justify-center shrink-0 select-none">
             <span className="text-white text-xs font-semibold leading-none">{initials}</span>
           </div>
-          <div className="min-w-0 flex-1">
+          <div className={collapsed ? "sr-only" : "min-w-0 flex-1"}>
             <p className="text-sm font-semibold text-[#0F0F0F] truncate leading-tight">
               {displayName ?? email ?? "—"}
             </p>
@@ -387,9 +410,32 @@ export function SidebarInner({ onNavigate }: { onNavigate?: () => void } = {}) {
  * (see `MobileNav`) renders `SidebarInner` instead.
  */
 export function Sidebar() {
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+    } catch {
+      // Collapsing still works when browser storage is unavailable.
+    }
+  }, [collapsed]);
+
   return (
-    <aside className="w-55 h-screen hidden md:flex flex-col bg-white border-r border-[#E8E5DF] shrink-0">
-      <SidebarInner />
+    <aside
+      aria-label="Main sidebar"
+      data-collapsed={collapsed}
+      className={cn(
+        "relative z-40 hidden h-full shrink-0 flex-col border-r border-[#E8E5DF] bg-white motion-safe:transition-[width] motion-safe:duration-200 motion-safe:ease-in-out md:flex",
+        collapsed ? "w-16" : "w-55",
+      )}
+    >
+      <SidebarInner collapsed={collapsed} onToggleCollapsed={() => setCollapsed((value) => !value)} />
     </aside>
   );
 }

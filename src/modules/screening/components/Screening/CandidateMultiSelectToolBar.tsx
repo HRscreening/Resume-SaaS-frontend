@@ -1,3 +1,5 @@
+import { createPendingRescore } from "@/modules/screening/utils/pendingRescore";
+import { useAuth } from "@/hooks/useAuth";
 import { useState } from 'react'
 import { useSelectedCandidates } from "@/modules/screening/hooks/screening/custom/useSelectedCandidates"
 import { ANALYSIS_SHEET_WIDTH } from "@/modules/screening/components/Screening/AnalysisSheet";
@@ -64,16 +66,19 @@ const NO_RESUME_SELECTED_MESSAGE = "Select at least one resume to use this actio
 interface CandidateMultiSelectToolBarProps {
   type: ResumeSections,
   analysisOpen: boolean;
+  startingRescore?: boolean;
   stages: StagesMap | undefined | null;
 }
 
 const CandidateMultiSelectToolBar = ({
   type,
   analysisOpen,
+  startingRescore = false,
   stages
 }: CandidateMultiSelectToolBarProps) => {
 
   const navigate = useNavigate()
+  const { user } = useAuth();
 
   const { screening_id, selectedCandidates, clearSelection, showSelectedOnly, setShowSelectedOnly } = useSelectedCandidates()
   const { canWrite } = useAccount()
@@ -112,14 +117,18 @@ const CandidateMultiSelectToolBar = ({
     {
       label: "Edit Rubric",
       onClick: () => {
-
-        navigate({
-          to: "/screenings/$id/rubric",
-          params: {
-            id: screening_id,
-          },
-          search: (prev) => prev,
-        });
+        if (!canWrite || !user || !totalSelected || startingRescore) return;
+        if (limitBlock) { toast.error(limitBlock.message); return; }
+        try {
+          const rescoreAction = createPendingRescore(screening_id, user.id, getIdsFromSet(selectedCandidates));
+          navigate({
+            to: "/screenings/$id/rubric",
+            params: { id: screening_id },
+            search: (prev) => ({ ...prev, tab: "Screening", rescoreAction }),
+          });
+        } catch {
+          toast.error("Unable to preserve your selection. Please try again.");
+        }
       },
       icon: ClipboardPenLine,
     },
@@ -250,6 +259,7 @@ const CandidateMultiSelectToolBar = ({
 
 
   async function handleRescore() {
+    if (startingRescore || multiRescoreMutation.isPending) return;
 
     if (!totalSelected) {
       toast.error("No candidates selected for Screening.");
@@ -366,7 +376,7 @@ const CandidateMultiSelectToolBar = ({
 
 
           {canWrite && (
-            <RescoreButton options={RescoreOptions} isLoading={multiRescoreMutation.isPending} stages={stages ?? {}} compact={compact} disabled={!totalSelected} />
+            <RescoreButton options={RescoreOptions} isLoading={multiRescoreMutation.isPending || startingRescore} stages={stages ?? {}} compact={compact} disabled={!totalSelected || startingRescore} />
           )}
 
 

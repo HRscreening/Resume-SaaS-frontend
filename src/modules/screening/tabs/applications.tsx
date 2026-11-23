@@ -10,7 +10,7 @@ import { AnalyticsEvent, useAnalytics } from "@/analytics";
 import ResumeParsingProgress from "@/modules/screening/components/Application/resumeParsingProgress";
 import { useGetBatchesQuery } from "@/modules/screening/hooks/shared/batch.hook";
 import { ApplicationsToolbar } from "@/modules/screening/components/Application/filters/ApplicationToolbar";
-import { type ScreeningDetailsSearchParams } from "@/modules/screening/types/searchSchema";
+import { APPLICATION_FILTER_KEYS, DEFAULT_MIN, DEFAULT_MAX, type ScreeningDetailsSearchParams } from "@/modules/screening/types/searchSchema";
 import { Archive, CircleCheck } from 'lucide-react'
 import { useScreeningDetailsNavigation } from "@/modules/screening/hooks/shared/useScreeningDetailNavigation";
 import { useApplicationQuery } from "@/modules/screening/hooks/application/custom/useApplicationQuery"
@@ -48,7 +48,7 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
     const guide = useGuide();
 
     const ApplicationQuery = useApplicationQuery(screening_id, { limit: PAGE_SIZE });
-    const { query: ApplicationResultsQuery, setType } = ApplicationQuery;
+    const { query: ApplicationResultsQuery, setType, state } = ApplicationQuery;
     const { data, isLoading, isFetching, fetchNextPage, isFetchingNextPage, hasNextPage } = ApplicationResultsQuery;
 
     const { data: active_batches } = useGetBatchesQuery(screening_id);
@@ -64,6 +64,11 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
 
     const hasActiveParsing = (active_batches?.parsing_batch_ids?.length ?? 0) > 0;
     const applications = data?.pages.flatMap(page => page.items) ?? [];
+    // Only the unfiltered active list can show the initial upload state.
+    const isUnfilteredActiveView = state.appType === "Active" &&
+        !APPLICATION_FILTER_KEYS.some(key => state[key] !== undefined && state[key] !== "") &&
+        (state.appExperience.min ?? DEFAULT_MIN) === DEFAULT_MIN &&
+        (state.appExperience.max ?? DEFAULT_MAX) === DEFAULT_MAX;
 
     useEffect(() => {
         if (
@@ -71,6 +76,7 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
             isLoading ||
             isFetching ||
             applications.length > 0 ||
+            !isUnfilteredActiveView ||
             hasActiveParsing ||
             !canWrite
         ) {
@@ -88,6 +94,7 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
         isFetching,
         applications.length,
         hasActiveParsing,
+        isUnfilteredActiveView,
         canWrite,
     ]);
 
@@ -117,6 +124,7 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
     if (
         applications.length === 0 &&
         !isLoading &&
+        isUnfilteredActiveView &&
         hasActiveParsing
     ) {
         return (
@@ -138,7 +146,7 @@ export function ApplicationPage({ screening_id, onTabChange }: ApplicationPagePr
         );
     }
 
-    if (applications.length === 0 && !isLoading && !isFetching && !hasActiveParsing && canWrite) {
+    if (applications.length === 0 && !isLoading && !isFetching && !hasActiveParsing && isUnfilteredActiveView && canWrite) {
         return (
             <div className="my-4 flex flex-col px-4 pb-6 sm:px-6 md:px-8 md:pb-8 gap-4">
                 {<UploadResumes screening_id={screening_id} user_id={user?.id ?? ""} setShowUploadMore={setShowUploadMore} />}

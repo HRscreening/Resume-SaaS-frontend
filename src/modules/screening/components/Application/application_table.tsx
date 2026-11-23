@@ -94,7 +94,7 @@ export function ApplicationTable({
                             <col className="w-24" />
                             {!compact && <col className="w-44" />}
                             {!compact && <col className="w-36" />}
-                            {!compact && <col className="w-16" />}
+                            {!compact && <col className="w-28" />}
                         </colgroup>
 
                         <thead className="sticky top-0 z-20 bg-[#F5F3EE]">
@@ -145,13 +145,13 @@ export function ApplicationTable({
                                 )}
 
                                 {!compact && (
-                                    <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
+                                    <th className="px-9 py-2.5 text-left text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
                                         Skills
                                     </th>
                                 )}
 
                                 {!compact && (
-                                    <th className="w-20 pl-2 pr-5 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
+                                    <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-[#737373] uppercase tracking-wide">
                                         Actions
                                     </th>
                                 )}
@@ -170,7 +170,7 @@ export function ApplicationTable({
                             ) : candidates.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={ (compact ? 3 : 6)}
+                                        colSpan={compact ? 4 : 7}
                                         className="px-5 py-10 text-center text-sm text-[#737373]"
                                     >
                                         No candidates found.

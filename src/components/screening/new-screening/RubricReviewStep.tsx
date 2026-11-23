@@ -1,45 +1,30 @@
-import { useState, useEffect } from "react";
-import type { Rubric, Subcategory } from "@/types";
-import { RubricCategoryCard } from "./RubricCategoryCard";
-import { AskSourceJobModal } from "./AskSourcingModal";
-import { detectBillingCurrency } from "@/lib/currency";
+import { useEffect } from "react";
+import type { Rubric } from "@/types";
+import type { RubricEditor } from "@/hooks/useRubricEditor";
+import { RubricCategoryTable } from "@/components/screening/RubricCategoryTable";
 import { useGuide } from "@/guides"
 
 
 interface RubricReviewStepProps {
   rubric: Rubric;
-  onCategoryWeightChange: (catIdx: number, weight: number) => void;
-  onSubcategoryChange: (catIdx: number, subIdx: number, updates: Partial<Subcategory>) => void;
-  onRemoveSubcategory: (catIdx: number, subIdx: number) => void;
-  onAddSubcategory: (catIdx: number) => void;
-  onBack: () => void;
-  onSave: (allowSourcing: boolean) => void;
-  saving: boolean;
+  getCategoryProps: RubricEditor["getCategoryProps"];
 }
 
 // Step 2 of the new-job wizard: review and tweak the AI-generated rubric, then
 // save the job.
 export function RubricReviewStep({
   rubric,
-  onCategoryWeightChange,
-  onSubcategoryChange,
-  onRemoveSubcategory,
-  onAddSubcategory,
-  onBack,
-  onSave,
-  saving,
+  getCategoryProps,
 }: RubricReviewStepProps) {
 
   const guide = useGuide()
-  const isIndia = detectBillingCurrency() === "INR";
-  const [showSourcingModal, setShowSourcingModal] = useState(false);
 
   useEffect(() => {
     guide.startGuide("rubric");
   }, [guide.startGuide]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Meta header */}
       <div className="bg-white rounded-2xl border border-[#E8E5DF] p-5">
         <h2 className="text-lg font-semibold text-[#0F0F0F] mb-1">Review rubric</h2>
@@ -57,46 +42,9 @@ export function RubricReviewStep({
         )}
       </div>
 
-      {/* Category cards */}
-      {rubric.categories.map((cat, catIdx) => (
-        <RubricCategoryCard
-          key={cat.name}
-          category={cat}
-          colorIndex={catIdx}
-          onWeightChange={(weight) => onCategoryWeightChange(catIdx, weight)}
-          onSubcategoryChange={(subIdx, updates) => onSubcategoryChange(catIdx, subIdx, updates)}
-          onRemoveSubcategory={(subIdx) => onRemoveSubcategory(catIdx, subIdx)}
-          onAddSubcategory={() => onAddSubcategory(catIdx)}
-        />
+      {rubric.categories.map((category, index) => (
+        <RubricCategoryTable key={`${category.name}-${index}`} {...getCategoryProps(index)} />
       ))}
-
-      {/* Actions */}
-      <div className="flex gap-3 pt-2">
-        <button
-          onClick={onBack}
-          className="h-10 px-4 border border-[#D4D4D4] text-sm font-medium text-[#404040] rounded-xl hover:bg-[#F5F3EE] transition-colors"
-        >
-          ← Back
-        </button>
-        <button
-          onClick={() => {
-            if (rubric.job_market_scope == "non_india") { onSave(false); return; }
-            setShowSourcingModal(true);
-          }}
-          disabled={saving}
-          className="flex-1 h-10 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
-        >
-          {saving && <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
-          {saving ? "Saving job..." : "Save job"}
-        </button>
-      </div>
-
-      {showSourcingModal && isIndia &&
-        <AskSourceJobModal
-          onSave={onSave}
-          onClose={() => setShowSourcingModal(false)}
-        />
-      }
     </div>
   );
 }

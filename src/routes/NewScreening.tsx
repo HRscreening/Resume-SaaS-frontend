@@ -1,23 +1,25 @@
+import { useRubricEditor } from "@/hooks/useRubricEditor";
+import { RubricToolbar } from "@/components/screening/RubricToolbar";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useErrorToast } from "@/lib/useErrorToast";
-import { analyzeJD, createJob, createJob_v1, parseJDFile } from "@/lib/api";
-import type { Rubric, Subcategory } from "@/types";
-import { MAX_SUBCATEGORIES } from "@/lib/rubric";
+import { createJobNew, parseJDFile, updateRubric } from "@/lib/api";
 import { StepIndicator } from "@/components/screening/new-screening/StepIndicator";
 import { JdInputStep } from "@/components/screening/new-screening/JdInputStep";
 import { RubricReviewStep } from "@/components/screening/new-screening/RubricReviewStep";
+import { AskSourceJobModal } from "@/components/screening/new-screening/AskSourcingModal";
 import { AnalyticsEvent, useAnalytics } from "@/analytics";
 import { useGuide, GuideId } from "@/guides"
+import { detectCountry } from "@/lib/currency";
 
 type Step = 1 | 2;
 type JdInputMode = "paste" | "upload" | "ai";
 
 const STEPS = ["Job description", "Review rubric", "Start screening"] as const;
 
-// New-job wizard controller. Owns all wizard state and rubric mutations; the
+// New-job wizard controller. Owns job creation and saving; the
 // per-step UI lives in src/components/screening/new-screening/*.
 export default function NewScreening() {
   const navigate = useNavigate();
@@ -35,11 +37,17 @@ export default function NewScreening() {
   const [jdInputMode, setJdInputMode] = useState<JdInputMode>("upload");
   const [jdFile, setJdFile] = useState<File | null>(null);
   const [analyzingJD, setAnalyzingJD] = useState(false);
+  const [showSourcingModal, setShowSourcingModal] = useState(false);
+  const [screeningId, setScreeningId] = useState<string | null>(null);
+  const creatingRef = useRef(false);
+  const savingRef = useRef(false);
   const [extractingJD, setExtractingJD] = useState(false);
 
   // Step 2 — rubric editor
-  const [rubric, setRubric] = useState<Rubric | null>(null);
-  // const [rubric, setRubric] = useState<Rubric | null>(sampleRubric as Rubric);
+  const editor = useRubricEditor(null, {
+    onEdit: (editType) => analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType }),
+  });
+  const { rubric, validationError } = editor;
   const [saving, setSaving] = useState(false);
   const draftRef = useRef({ step, title: "", jdText: "", hasRubric: false, saving: false });
   draftRef.current = { step, title, jdText, hasRubric: Boolean(rubric), saving };
@@ -101,16 +109,40 @@ export default function NewScreening() {
     setJdText("");
   }
 
-  async function handleAnalyzeJD() {
+  function handleAnalyze() {
+    if (detectCountry() === "IN") {
+      setShowSourcingModal(true);
+      return;
+    }
+    void handleCreateJob(false);
+  }
+
+  async function handleCreateJob(sourceJob: boolean) {
+    if (creatingRef.current || screeningId || extractingJD) return;
+    if (!title.trim()) {
+      analytics.track(AnalyticsEvent.JOB_CREATION_VALIDATION_FAILED, { reason: "missing_title" });
+      return;
+    }
     if (!jdText.trim()) {
       analytics.track(AnalyticsEvent.JOB_CREATION_VALIDATION_FAILED, { reason: "missing_jd" });
       return;
     }
-    if (analyzingJD) return;
+    creatingRef.current = true;
+    setShowSourcingModal(false);
     setAnalyzingJD(true);
     analytics.track(AnalyticsEvent.JD_GENERATION_STARTED, { inputMode: jdInputMode });
     try {
-      const result = await analyzeJD(jdText);
+      const data = new FormData();
+      data.append("title", title.trim());
+      data.append("raw_jd_text", jdText);
+      data.append("source_job", String(sourceJob));
+      if (jdFile) data.append("jd_file", jdFile, jdFile.name);
+      const { screening_id, rubric: result } = await createJobNew(data);
+      setScreeningId(screening_id);
+      hasTrackedAbandonment.current = true;
+      analytics.track(AnalyticsEvent.JOB_SOURCING_ALLOWED, { allowed: sourceJob });
+      analytics.track(AnalyticsEvent.JOB_CREATED, { jobId: screening_id, source: "dashboard" });
+      queryClient.invalidateQueries({ queryKey: ["screenings"] });
       analytics.track(AnalyticsEvent.JD_GENERATION_COMPLETED, { inputMode: jdInputMode });
       const sorted = {
         ...result,
@@ -124,110 +156,42 @@ export default function NewScreening() {
           }),
         })),
       };
-      setRubric(sorted);
+      editor.reset(sorted);
       analytics.track(AnalyticsEvent.RUBRIC_GENERATION_COMPLETED, { categoryCount: sorted.categories.length });
       analytics.track(AnalyticsEvent.JOB_CREATION_STEP_VIEWED, { step: "rubric" });
       setStep(2);
     } catch (err) {
       analytics.track(AnalyticsEvent.JD_GENERATION_FAILED, { inputMode: jdInputMode });
       analytics.track(AnalyticsEvent.JOB_CREATION_FAILED, { reason: "jd_generation" });
-      toast.error(err instanceof Error ? err.message : "Failed to analyze JD");
+      showError(err, err instanceof Error ? err.message : "Failed to create job");
     } finally {
+      creatingRef.current = false;
       setAnalyzingJD(false);
     }
   }
 
-  function updateCategoryWeight(catIdx: number, weight: number) {
-    if (!rubric) return;
-    const updated = rubric.categories.map((c, i) => (i === catIdx ? { ...c, weight } : c));
-    setRubric({ ...rubric, categories: updated });
-    analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType: "category_weight" });
-  }
-
-  function updateSubcategory(catIdx: number, subIdx: number, updates: Partial<Subcategory>) {
-    if (!rubric) return;
-    const updated = rubric.categories.map((cat, ci) => {
-      if (ci !== catIdx) return cat;
-      const subs = cat.subcategories.map((s, si) => (si === subIdx ? { ...s, ...updates } : s));
-      return { ...cat, subcategories: subs };
-    });
-    setRubric({ ...rubric, categories: updated });
-    analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType: "subcategory" });
-  }
-
-  function removeSubcategory(catIdx: number, subIdx: number) {
-    if (!rubric) return;
-    const updated = rubric.categories.map((cat, ci) => {
-      if (ci !== catIdx) return cat;
-      return { ...cat, subcategories: cat.subcategories.filter((_, si) => si !== subIdx) };
-    });
-    setRubric({ ...rubric, categories: updated });
-    analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType: "remove" });
-  }
-
-  function addSubcategory(catIdx: number) {
-    if (!rubric) return;
-    if (rubric.categories[catIdx].subcategories.length >= MAX_SUBCATEGORIES) return;
-    const updated = rubric.categories.map((c, ci) => {
-      if (ci !== catIdx) return c;
-      return { ...c, subcategories: [...c.subcategories, { name: "", weight: 3, description: "" }] };
-    });
-    setRubric({ ...rubric, categories: updated });
-    analytics.track(AnalyticsEvent.RUBRIC_EDITED, { editType: "add" });
-  }
-
-  async function handleSaveJob(sourceJob: boolean) {
-    if (!title.trim()) {
-      analytics.track(AnalyticsEvent.JOB_CREATION_VALIDATION_FAILED, { reason: "missing_title" });
-      return;
-    }
-    if (!rubric) {
-      analytics.track(AnalyticsEvent.JOB_CREATION_VALIDATION_FAILED, { reason: "missing_rubric" });
-      return;
-    }
+  async function handleSaveJob() {
+    if (!screeningId || savingRef.current) return;
+    const validRubric = editor.validateForSave();
+    if (!validRubric) return;
+    savingRef.current = true;
     setSaving(true);
     try {
-      const data = new FormData();
-      // const data = {
-      //   title: title.trim(),
-      //   raw_jd_text: jdText,
-      //   rubric,
-      //   source_job: sourceJob || false,
-      // }
-
-      data.append("title", title);
-      data.append("raw_jd_text", jdText);
-      data.append("rubric", JSON.stringify(rubric));
-      data.append("source_job", sourceJob ? "true" : "false");
-      if (rubric.job_category) {
-        data.append("job_category", rubric.job_category);
-      }
-      if (rubric.job_market_scope) {
-        data.append("job_market_scope", rubric.job_market_scope);
-      }
-
-
-      if (jdFile) {
-        data.append("jd_file", jdFile, jdFile.name);
-      }
-      // console.log("Saving job with data:", data);
-
-      const { screening_id } = await createJob_v1(data);
-      hasTrackedAbandonment.current = true;
-      analytics.track(AnalyticsEvent.JOB_SOURCING_ALLOWED, { allowed: sourceJob });
-      analytics.track(AnalyticsEvent.JOB_CREATED, { jobId: screening_id, source: "dashboard" });
+      await updateRubric(screeningId, validRubric);
       queryClient.invalidateQueries({ queryKey: ["screenings"] });
-      navigate({ to: "/screenings/$id", params: { id: screening_id } });
+      queryClient.invalidateQueries({ queryKey: ["screening", screeningId] });
+      navigate({ to: "/screenings/$id", params: { id: screeningId } });
     } catch (err) {
       analytics.track(AnalyticsEvent.JOB_CREATION_FAILED, { reason: "job_save" });
-      showError(err, err instanceof Error ? err.message : "Failed to save job");
+      showError(err, err instanceof Error ? err.message : "Failed to save rubric");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 md:p-8 max-w-6xl mx-auto">
       {/* Header */}
       <div className="mb-6 md:mb-8">
         <h1 className="text-xl sm:text-2xl font-bold text-[#0F0F0F] mb-4">New Job</h1>
@@ -247,24 +211,34 @@ export default function NewScreening() {
           onFileSelect={handleJDFileSelect}
           onRemoveFile={handleRemoveFile}
           analyzing={analyzingJD}
-          onAnalyze={handleAnalyzeJD}
+          onAnalyze={handleAnalyze}
+        />
+      )}
+
+      {showSourcingModal && (
+        <AskSourceJobModal
+          onSave={handleCreateJob}
+          onClose={() => setShowSourcingModal(false)}
         />
       )}
 
       {step === 2 && rubric && (
-        <RubricReviewStep
-          rubric={rubric}
-          onCategoryWeightChange={updateCategoryWeight}
-          onSubcategoryChange={updateSubcategory}
-          onRemoveSubcategory={removeSubcategory}
-          onAddSubcategory={addSubcategory}
-          onBack={() => {
-            setStep(1);
-            analytics.track(AnalyticsEvent.JOB_CREATION_STEP_VIEWED, { step: "jd" });
-          }}
-          onSave={handleSaveJob}
-          saving={saving}
-        />
+        <div {...editor.editorProps(!saving)}>
+          <fieldset disabled={saving} className="min-w-0">
+            <RubricReviewStep rubric={rubric} getCategoryProps={editor.getCategoryProps} />
+          </fieldset>
+          <RubricToolbar
+            {...editor.historyProps}
+            onBack={() => {
+              if (screeningId) navigate({ to: "/screenings/$id", params: { id: screeningId } });
+            }}
+            onSave={handleSaveJob}
+            canSave={Boolean(screeningId)}
+            saving={saving}
+            validationError={validationError}
+            status="Review your rubric, then save."
+          />
+        </div>
       )}
     </div>
   );

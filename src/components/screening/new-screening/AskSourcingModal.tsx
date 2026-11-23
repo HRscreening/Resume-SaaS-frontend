@@ -66,7 +66,7 @@ export function AskSourceJobModal({
               onClose();
             }}
           >
-            Skip
+            Don't Post
           </Button>
 
           <Button onClick={()=>{
@@ -76,7 +76,7 @@ export function AskSourceJobModal({
           }}
           disabled={!isChecked}
           >
-            Yes, Source Job
+            Post Job
           </Button>
         </div>
       </div>

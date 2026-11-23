@@ -50,13 +50,9 @@ export default function CandidateRow({
             ? "bg-[#FBF1E7]"
             : "hover:bg-[#FAFAF8]";
 
-    function handleRowClick(e: React.MouseEvent) {
+    function handleRowClick() {
         if (isProcessing) return;
-        if (e.shiftKey || e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-        } else {
-            setAppId(candidate.id);
-        }
+        setAppId(candidate.id);
     }
 
     const currentJob = candidate.candidate_current_job;
@@ -101,14 +97,7 @@ export default function CandidateRow({
     return (
         <tr
             data-guide="application_candidate_row"
-            onClick={(e) => {
-                if (isProcessing) return;
-                if (selectable) {
-                    toggleSelection(candidate.id);
-                } else {
-                    handleRowClick(e);
-                }
-            }}
+            onClick={handleRowClick}
             className={`group cursor-pointer transition-colors ${rowBg} ${selected ? "shadow-[inset_2px_0_0_0_#C85A17]" : ""
                 }`}
         >
@@ -203,8 +192,8 @@ export default function CandidateRow({
 
                 {/* Skills */}
                 {!compact && (
-                    <td className="px-2 py-3 align-middle">
-                        <div className="flex flex-wrap justify-center gap-1">
+                    <td className="pr-2 px-8 py-3 align-middle">
+                        <div className="flex flex-wrap justify-start gap-1">
                             {visibleSkills.map((skill, i) => (
                                 <span
                                     key={i}
@@ -230,12 +219,14 @@ export default function CandidateRow({
                 {!compact && (
                     <td
                         data-guide="application_row_actions"
-                        className="w-24 px-2 py-3 flex justify-between items-center gap-2 text-center align-middle"
+                        className="px-2 py-3 text-center align-middle"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <InfoSheet key={candidate.id} candidate={candidate} disabled={isPending} open={isOpen} />
-                        <AddNote key={candidate.id} screeningId={screening_id} resumeId={candidate.id} onViwAllNotes={onViwAllNotes} />
-                        <MenuButton key={candidate.id} options={MenuOptions} data={candidate} />
+                        <div className="flex items-center justify-center gap-2">
+                            <InfoSheet key={candidate.id} candidate={candidate} disabled={isPending} open={isOpen} />
+                            <AddNote key={candidate.id} screeningId={screening_id} resumeId={candidate.id} onViwAllNotes={onViwAllNotes} />
+                            <MenuButton key={candidate.id} options={MenuOptions} data={candidate} />
+                        </div>
                     </td>
                 )}
                 {compact && isOpen && (
