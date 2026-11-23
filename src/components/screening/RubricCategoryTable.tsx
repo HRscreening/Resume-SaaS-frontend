@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { rubricCriterionSchema } from "@/lib/rubricValidation";
 import { ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 import type { RubricCategory, Subcategory } from "@/types";
 import {
@@ -12,6 +13,7 @@ import {
 interface RubricCategoryTableProps {
   category: RubricCategory;
   colorIndex: number;
+  showValidationErrors?: boolean;
   onSubcategoryChange: (subIdx: number, updates: Partial<Subcategory>) => void;
   onRemoveSubcategory: (subIdx: number) => void;
   onAddSubcategory: () => void;
@@ -25,6 +27,7 @@ const TABLE_COLUMNS = "lg:grid-cols-[minmax(11rem,0.85fr)_minmax(24rem,2fr)_minm
 export function RubricCategoryTable({
   category,
   colorIndex,
+  showValidationErrors = false,
   onSubcategoryChange,
   onRemoveSubcategory,
   onAddSubcategory,
@@ -68,14 +71,20 @@ export function RubricCategoryTable({
             role="row"
             className={`hidden ${TABLE_COLUMNS} gap-2 border-b border-[#E8E5DF] bg-[#FAFAF8] px-3 py-2 text-xs font-semibold text-[#737373] lg:grid`}
           >
-            <span role="columnheader">Title</span>
+            <span role="columnheader">Screening Parameter</span>
             <span role="columnheader">What to evaluate</span>
             <span role="columnheader">Importance</span>
             <span role="columnheader" className="sr-only">Actions</span>
           </div>
 
           {category.subcategories.map((subcategory, subIdx) => {
-            const descriptionWordCount = (subcategory.description.match(/\S+/g) ?? []).length;
+            const description = subcategory.description ?? "";
+            const descriptionWordCount = (description.match(/\S+/g) ?? []).length;
+            const validation = showValidationErrors ? rubricCriterionSchema.safeParse(subcategory) : null;
+            const issues = validation && !validation.success ? validation.error.issues : [];
+            const nameError = issues.find((issue) => issue.path[0] === "name")?.message;
+            const descriptionError = issues.find((issue) => issue.path[0] === "description")?.message;
+            const weightError = issues.find((issue) => issue.path[0] === "weight")?.message;
             return (
               <div
                 key={subIdx}
@@ -85,19 +94,22 @@ export function RubricCategoryTable({
               >
                 <div role="cell" className="group/field min-w-0">
                   <label htmlFor={`${id}-title-${subIdx}`} className="mb-1 block text-xs font-medium text-[#737373] lg:sr-only">
-                    Title
+                    Screening Parameter
                   </label>
                   <div className="relative">
                   <textarea
                     id={`${id}-title-${subIdx}`}
-                    value={subcategory.name}
+                    value={subcategory.name ?? ""}
+                    aria-invalid={Boolean(nameError)}
+                    aria-describedby={nameError ? `${id}-title-error-${subIdx}` : undefined}
                     onChange={(event) => onSubcategoryChange(subIdx, { name: event.target.value })}
-                    placeholder="Click to add a title"
+                    placeholder="Click to add a parameter"
                     rows={1}
                     className={`${EDITABLE_FIELD} font-medium text-[#0F0F0F]`}
                   />
                   <Pencil size={13} aria-hidden="true" className={EDIT_HINT} />
                   </div>
+                  {nameError && <p id={`${id}-title-error-${subIdx}`} className="mt-1 text-xs text-red-700">{nameError}</p>}
                 </div>
 
                 <div role="cell" className="group/field min-w-0">
@@ -107,7 +119,8 @@ export function RubricCategoryTable({
                   <div className="relative">
                   <textarea
                     id={`${id}-description-${subIdx}`}
-                    value={subcategory.description}
+                    value={description}
+                    aria-invalid={Boolean(descriptionError)}
                     onChange={(event) =>
                       onSubcategoryChange(subIdx, {
                         description: limitWords(event.target.value, MAX_DESCRIPTION_WORDS),
@@ -115,11 +128,12 @@ export function RubricCategoryTable({
                     }
                     placeholder="Click to describe what to evaluate..."
                     rows={1}
-                    aria-describedby={`${id}-count-${subIdx}`}
+                    aria-describedby={descriptionError ? `${id}-description-error-${subIdx} ${id}-count-${subIdx}` : `${id}-count-${subIdx}`}
                     className={`${EDITABLE_FIELD} text-[#404040]`}
                   />
                   <Pencil size={13} aria-hidden="true" className={EDIT_HINT} />
                   </div>
+                  {descriptionError && <p id={`${id}-description-error-${subIdx}`} className="mt-1 text-xs text-red-700">{descriptionError}</p>}
                   <span
                     id={`${id}-count-${subIdx}`}
                     className={`mt-0.5 text-right text-[10px] leading-3 ${descriptionWordCount >= MAX_DESCRIPTION_WORDS - 15 ? "block text-[#A1440B]" : "hidden text-[#737373] group-focus-within/field:block"}`}
@@ -134,6 +148,7 @@ export function RubricCategoryTable({
                     <div
                       role="group"
                       aria-label={`Importance for ${subcategory.name || "subcategory"}`}
+                      aria-describedby={weightError ? `${id}-weight-error-${subIdx}` : undefined}
                       data-guide="rubric_subcategory_weight"
                       className="flex items-center gap-0.5 rounded-lg border border-[#E8E5DF] bg-[#FAFAF8] p-0.5"
                     >
@@ -151,6 +166,7 @@ export function RubricCategoryTable({
                         </button>
                       ))}
                     </div>
+                    {weightError && <p id={`${id}-weight-error-${subIdx}`} className="text-xs text-red-700">{weightError}</p>}
                     <div className="w-full text-[10px] text-center leading-3 text-[#737373]">
                       {IMPORTANCE_LABELS[subcategory.weight - 1] ?? ""}
                     </div>

@@ -1,29 +1,20 @@
 import { useEffect } from "react";
-import type { Rubric, Subcategory } from "@/types";
-import { RubricCategoryCard } from "./RubricCategoryCard";
+import type { Rubric } from "@/types";
+import type { RubricEditor } from "@/hooks/useRubricEditor";
+import { RubricCategoryTable } from "@/components/screening/RubricCategoryTable";
 import { useGuide } from "@/guides"
 
 
 interface RubricReviewStepProps {
   rubric: Rubric;
-  onCategoryWeightChange: (catIdx: number, weight: number) => void;
-  onSubcategoryChange: (catIdx: number, subIdx: number, updates: Partial<Subcategory>) => void;
-  onRemoveSubcategory: (catIdx: number, subIdx: number) => void;
-  onAddSubcategory: (catIdx: number) => void;
-  onSave: () => void;
-  saving: boolean;
+  getCategoryProps: RubricEditor["getCategoryProps"];
 }
 
 // Step 2 of the new-job wizard: review and tweak the AI-generated rubric, then
 // save the job.
 export function RubricReviewStep({
   rubric,
-  onCategoryWeightChange,
-  onSubcategoryChange,
-  onRemoveSubcategory,
-  onAddSubcategory,
-  onSave,
-  saving,
+  getCategoryProps,
 }: RubricReviewStepProps) {
 
   const guide = useGuide()
@@ -51,32 +42,9 @@ export function RubricReviewStep({
         )}
       </div>
 
-      {/* Category cards */}
-      {rubric.categories.map((cat, catIdx) => (
-        <RubricCategoryCard
-          key={cat.name}
-          category={cat}
-          colorIndex={catIdx}
-          onWeightChange={(weight) => onCategoryWeightChange(catIdx, weight)}
-          onSubcategoryChange={(subIdx, updates) => onSubcategoryChange(catIdx, subIdx, updates)}
-          onRemoveSubcategory={(subIdx) => onRemoveSubcategory(catIdx, subIdx)}
-          onAddSubcategory={() => onAddSubcategory(catIdx)}
-        />
+      {rubric.categories.map((category, index) => (
+        <RubricCategoryTable key={`${category.name}-${index}`} {...getCategoryProps(index)} />
       ))}
-
-      {/* Actions */}
-      <div className="flex gap-3 pt-2">
-        <button
-          onClick={onSave}
-          disabled={saving}
-          className="flex-1 h-10 bg-[#0F0F0F] text-white text-sm font-medium rounded-xl hover:bg-[#1C1C1C] disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
-        >
-          {saving && <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />}
-          {saving ? "Saving rubric..." : "Save rubric"}
-        </button>
-      </div>
-
-
     </div>
   );
 }
