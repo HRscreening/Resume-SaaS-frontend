@@ -507,6 +507,29 @@ export interface InterviewInviteItem {
   emailed?: boolean;
 }
 
+// Why a candidate can or cannot be invited to the interview round. The server
+// decides (backend app/modules/interview/eligibility.py) so the button and
+// the invite endpoint always agree.
+export type InterviewEligibility =
+  | "eligible" | "no_screen" | "screen_in_progress" | "screen_not_completed"
+  | "withdrawn" | "no_score";
+
+export interface InterviewCandidateState {
+  resume_id: string;
+  eligibility: InterviewEligibility;
+  reason: string;
+  // Latest interview session status, or null when never invited.
+  session_status: string | null;
+  // Present while the candidate can still open their interview.
+  invite_url: string | null;
+}
+
+export interface InterviewCandidatesResponse {
+  round_state: "none" | "draft" | "published";
+  round_id: string | null;
+  candidates: InterviewCandidateState[];
+}
+
 export interface InterviewInviteResponse {
   invites: InterviewInviteItem[];
   // resume_ids that were not invited: not at the entry stage, or already

@@ -838,6 +838,14 @@ export async function createInterviewInvites(
   });
 }
 
+/** Every candidate's interview-round status: eligibility and why not, the
+ * round's state, and each open invite's link. */
+export async function getInterviewCandidates(
+  screeningId: string,
+): Promise<import("@/types").InterviewCandidatesResponse> {
+  return request(`/api/v1/screenings/${screeningId}/interview/candidates`);
+}
+
 // ─── Voice calls + scorecards (Phase 2) ────────────────────────────────────
 
 export async function triggerVoiceCalls(

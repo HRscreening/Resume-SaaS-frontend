@@ -52,6 +52,8 @@ export default function PublishGate({ screeningId, roundId, round }: PublishGate
     mutationFn: () => publishRound(roundId),
     onSuccess: (updated) => {
       queryClient.setQueryData(["round", roundId], updated);
+      // The board's interview column reads the round's state from here.
+      queryClient.invalidateQueries({ queryKey: ["interview-candidates"] });
       setConfirmOpen(false);
       toast.success("Round published. You can now invite candidates.");
     },

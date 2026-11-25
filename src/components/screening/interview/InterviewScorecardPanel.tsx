@@ -6,6 +6,28 @@ import { InterviewAssessmentSection } from "./scorecard/InterviewAssessmentSecti
 import { InterviewBreakdownSection } from "./scorecard/InterviewBreakdownSection";
 import { InterviewQuestionDetail } from "./scorecard/InterviewQuestionDetail";
 import { InterviewRecordingSection } from "./scorecard/InterviewRecordingSection";
+import { useAccount } from "@/hooks/useAccount";
+import { useInterviewInvite, useInterviewRound } from "@/modules/screening/hooks/interview/useInterviewRound";
+import { interviewCellState } from "@/modules/screening/components/interview/interviewCellState";
+import { InterviewRoundAction } from "@/modules/screening/components/interview/InterviewRoundAction";
+
+/** No scorecard yet: say where this candidate stands and what to do next. */
+function InterviewRoundStatus({ screeningId, resumeId }: InterviewScorecardPanelProps) {
+  const { canWrite } = useAccount();
+  const round = useInterviewRound(screeningId, resumeId);
+  const invite = useInterviewInvite(screeningId, resumeId);
+  return (
+    <div className="py-8">
+      <InterviewRoundAction
+        view={interviewCellState({ ...round, canWrite })}
+        screeningId={screeningId}
+        variant="full"
+        onInvite={() => invite.mutate()}
+        inviting={invite.isPending}
+      />
+    </div>
+  );
+}
 
 interface InterviewScorecardPanelProps {
   screeningId: string;
@@ -49,11 +71,7 @@ export function InterviewScorecardPanel({ screeningId, resumeId }: InterviewScor
     );
   }
   if (!scorecard) {
-    return (
-      <div className="py-10 text-center text-sm text-[#737373]">
-        This candidate has not completed the interview round yet.
-      </div>
-    );
+    return <InterviewRoundStatus screeningId={screeningId} resumeId={resumeId} />;
   }
 
   return (

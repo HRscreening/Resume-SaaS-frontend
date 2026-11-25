@@ -48,6 +48,7 @@ export default function InterviewConfigPage() {
       // ["rounds", id] list and creates a second round. See final review
       // item 3.
       queryClient.invalidateQueries({ queryKey: ["rounds", id] });
+      queryClient.invalidateQueries({ queryKey: ["interview-candidates", id] });
       navigate({
         to: "/screenings/$id/rounds/$roundId",
         params: { id, roundId: round.id },

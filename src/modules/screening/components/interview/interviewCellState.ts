@@ -1,67 +1,67 @@
-// What the interview column shows for one candidate, as a pure decision.
+// What the interview round shows for one candidate, as a pure decision.
 //
-// Extracted from InterviewInviteCell because the ORDER of these cases is
-// the whole behaviour, and it was wrong: the cell knew how to invite a
-// candidate and nothing about what came back. A finished, scored
-// interview still rendered an "Invite" button, so the only place a
-// recruiter could see a result was the resume detail page they had no
-// reason to open. The result now outranks every invite affordance, which
-// is the one rule worth pinning in a test.
-import type { InterviewScorecard } from "@/types";
+// One function for the candidate row and the First Round tab, so the two can
+// never disagree. The ORDER of these cases is the behaviour:
+//   1. A scored interview beats everything: showing "Invite" next to a
+//      candidate who already sat the round is how a recruiter concludes it
+//      never ran.
+//   2. An open invite shows its link, from the server, so it survives a reload.
+//   3. A candidate the screening round has not cleared says why.
+//   4. Only then does the round's own setup decide: set it up, publish it,
+//      or invite.
+import type { InterviewCandidateState, InterviewEligibility, InterviewScorecard } from "@/types";
 
 export type InterviewCellState =
-  // The voice screen has not finished, so this round is not offered yet.
-  | { kind: "not-eligible" }
-  // Scored. Terminal, and beats everything below it.
+  | { kind: "loading" }
   | { kind: "scored"; score: number; isPartial: boolean }
-  // Invited in THIS page session: `link` is local state, so this is lost
-  // on reload. That is survivable only because "scored" above is not.
-  | { kind: "invited"; link: string; emailed: boolean }
+  | { kind: "invited"; link: string; sessionStatus: string | null }
+  | { kind: "not-eligible"; eligibility: InterviewEligibility; label: string; reason: string }
   | { kind: "read-only" }
-  | { kind: "no-round" }
-  | { kind: "invite"; disabled: boolean };
+  | { kind: "setup-round" }
+  | { kind: "publish-round"; roundId: string }
+  | { kind: "invite" };
 
 export interface InterviewCellInput {
-  voiceDone: boolean;
+  loading: boolean;
   scorecard: InterviewScorecard | undefined;
-  link: string | null;
-  emailed: boolean;
+  candidate: InterviewCandidateState | undefined;
+  roundState: "none" | "draft" | "published" | undefined;
+  roundId: string | null;
   canWrite: boolean;
-  // undefined while the rounds query is still in flight.
-  rounds: { status: string }[] | undefined;
 }
 
-export function interviewCellState({
-  voiceDone,
-  scorecard,
-  link,
-  emailed,
-  canWrite,
-  rounds,
-}: InterviewCellInput): InterviewCellState {
-  if (!voiceDone) return { kind: "not-eligible" };
+// Short enough for a table cell; the full reason goes in the tooltip and tab.
+export const ELIGIBILITY_LABELS: Record<InterviewEligibility, string> = {
+  eligible: "Ready",
+  no_screen: "Screen first",
+  screen_in_progress: "Screening…",
+  screen_not_completed: "Not reached",
+  withdrawn: "Withdrew",
+  no_score: "No score",
+};
 
-  // Before the invite affordances on purpose. A scored interview is the
-  // end of this flow; showing "Invite" next to a candidate who already
-  // sat the round is how a recruiter concludes the round never ran.
+export function interviewCellState({
+  loading, scorecard, candidate, roundState, roundId, canWrite,
+}: InterviewCellInput): InterviewCellState {
   if (scorecard && scorecard.overall_score != null) {
+    return { kind: "scored", score: scorecard.overall_score, isPartial: scorecard.is_partial === true };
+  }
+  if (loading || !candidate || roundState === undefined) return { kind: "loading" };
+  if (candidate.invite_url) {
+    return { kind: "invited", link: candidate.invite_url, sessionStatus: candidate.session_status };
+  }
+  if (candidate.eligibility !== "eligible") {
     return {
-      kind: "scored",
-      score: scorecard.overall_score,
-      isPartial: scorecard.is_partial === true,
+      kind: "not-eligible",
+      eligibility: candidate.eligibility,
+      label: ELIGIBILITY_LABELS[candidate.eligibility],
+      reason: candidate.reason,
     };
   }
-
-  if (link) return { kind: "invited", link, emailed };
   if (!canWrite) return { kind: "read-only" };
-
-  // Only once the query has answered: "No round" while still loading
-  // would flicker onto every row of a large board.
-  if (rounds !== undefined && !rounds.some((r) => r.status === "published")) {
-    return { kind: "no-round" };
-  }
-
-  return { kind: "invite", disabled: rounds === undefined };
+  if (roundState === "none" || !roundId) return { kind: "setup-round" };
+  if (roundState === "draft") return { kind: "publish-round", roundId };
+  return { kind: "invite" };
 }
 
 // Shared with CandidateVoiceCell's thresholds so the two rounds read the
