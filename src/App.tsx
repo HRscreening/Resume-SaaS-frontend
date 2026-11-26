@@ -1,3 +1,4 @@
+import TalentSearchPage from "@/modules/talent-search/routes/TalentSearchPage";
 import {
   createRouter,
   createRootRoute,
@@ -340,6 +341,14 @@ const transcriptRoute = createRoute({
   component: TranscriptPage,
 });
 
+const talentSearchRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/talent-search",
+  validateSearch: (search: Record<string, unknown>): { id?: string } =>
+    typeof search.id === "string" ? { id: search.id } : {},
+  component: TalentSearchPage,
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/settings",
@@ -393,6 +402,15 @@ const checkoutRoute = createRoute({
 
 // Development only: the interview coding pane on its own, with no LiveKit
 // room behind it. Lazy, and never registered in a production build.
+// Development only: talent search screens with sample data.
+const devTalentSearchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dev/talent-search",
+  component: import.meta.env.DEV
+    ? lazyRouteComponent(() => import("@/modules/talent-search/routes/TalentSearchPreview"))
+    : undefined,
+});
+
 const devCodingPaneRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dev/coding-pane",
@@ -429,7 +447,7 @@ const routeTree = rootRoute.addChildren([
   termsRoute,
   privacyRoute,
   interviewJoinRoute,
-  ...(import.meta.env.DEV ? [devCodingPaneRoute, devSpokenStageRoute, devInterviewRoomRoute] : []),
+  ...(import.meta.env.DEV ? [devCodingPaneRoute, devSpokenStageRoute, devInterviewRoomRoute, devTalentSearchRoute] : []),
   appLayoutNoSidebarRoute.addChildren([
     upgradePlanRoute,
     contactUsRoute,
@@ -442,6 +460,7 @@ const routeTree = rootRoute.addChildren([
   appLayoutRoute.addChildren([
     dashboardRoute,
     screeningsRoute,
+    talentSearchRoute,
     // candidatesRoute,
     newScreeningRoute,
     screeningDetailRoute,

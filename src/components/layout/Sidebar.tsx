@@ -13,7 +13,7 @@ import { usedRatio } from "@/components/usage/QuotaMeter";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PLAN_LABEL } from "@/lib/planLabels";
-import { User, Activity, BriefcaseBusiness, PanelLeft } from "lucide-react";
+import { User, Activity, BriefcaseBusiness, PanelLeft, UserSearch } from "lucide-react";
 
 import { ChevronRight, GearIcon, HelpIcon, LogoutIcon, StarIcon, UserIcon, HomeIcon, ListIcon, PlusIcon } from "@/components/layout/sidebarIcons"
 
@@ -30,6 +30,9 @@ const navItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: <HomeIcon />, exact: true },
   { href: "/screenings/new", label: "New Job", icon: <PlusIcon />, exact: true , data_guide: "new_jobs" },
   { href: "/screenings", label: "Jobs", icon: <BriefcaseBusiness size={18} /> , data_guide:"existing_jobs"},
+  ...(import.meta.env.VITE_TALENT_SEARCH_LITE === "1"
+    ? [{ href: "/talent-search", label: "Find candidates", icon: <UserSearch size={18} />, exact: true }]
+    : []),
   // { href: "/candidates", label: "Candidates", icon: <User size={14} />, exact: true },
 ];
 
