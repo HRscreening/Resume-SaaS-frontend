@@ -60,3 +60,15 @@ export const SWITCH_LABEL: Record<string, string> = {
   low: "Recently moved",
   unknown: "Not enough history",
 };
+
+// Poll for at most 3 minutes per run; the worker gives up after 6, and a search
+// stuck longer can be restarted (the server treats it as stale after 10).
+export const MAX_POLL_MS = 3 * 60 * 1000;
+
+export function shouldPoll(status: string | undefined, now: number, pollUntil: number | undefined): boolean {
+  return status === "searching" && (pollUntil === undefined || now < pollUntil);
+}
+
+export function finishedRun(previous: string | undefined, next: string | undefined): boolean {
+  return previous === "searching" && (next === "done" || next === "failed");
+}

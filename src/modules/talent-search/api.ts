@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { request, requestFormData } from "@/lib/api";
+import { shouldPoll } from "./logic";
 import type { Answer, Coverage, SearchResult, SearchSpec, TalentSearch } from "./types";
 
 const BASE = "/api/v1/talent-search";
@@ -18,12 +19,12 @@ export function createSearch(input: { jdText?: string; file?: File | null }): Pr
   return requestFormData<TalentSearch>(BASE, form);
 }
 
-export function useSearch(id: string | undefined) {
+export function useSearch(id: string | undefined, pollUntil?: number) {
   return useQuery({
     queryKey: talentSearchKeys.search(id ?? ""),
     queryFn: () => request<TalentSearch>(`${BASE}/${id}`),
     enabled: !!id,
-    refetchInterval: (query) => (query.state.data?.status === "searching" ? POLL_MS : false),
+    refetchInterval: (query) => (shouldPoll(query.state.data?.status, Date.now(), pollUntil) ? POLL_MS : false),
   });
 }
 
@@ -32,6 +33,7 @@ export function useResults(id: string | undefined, enabled: boolean) {
     queryKey: talentSearchKeys.results(id ?? ""),
     queryFn: () => request<SearchResult[]>(`${BASE}/${id}/results`),
     enabled: !!id && enabled,
+    staleTime: 0, // a re-run replaces every row, so never serve the previous run
   });
 }
 
@@ -40,6 +42,7 @@ export function useCoverage(id: string | undefined, enabled: boolean) {
     queryKey: talentSearchKeys.coverage(id ?? ""),
     queryFn: () => request<Coverage>(`${BASE}/${id}/coverage`),
     enabled: !!id && enabled,
+    staleTime: 0,
   });
 }
 

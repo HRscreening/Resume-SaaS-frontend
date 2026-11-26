@@ -47,3 +47,21 @@ describe("providerNotice", () => {
     expect(providerNotice({ crustdata: "ok" })).toBe("");
   });
 });
+
+describe("search lifecycle helpers", () => {
+  it("refreshes results only when a run finishes", async () => {
+    const { finishedRun } = await import("./logic");
+    expect(finishedRun("searching", "done")).toBe(true);
+    expect(finishedRun("searching", "failed")).toBe(true);
+    expect(finishedRun("done", "done")).toBe(false);
+    expect(finishedRun(undefined, "done")).toBe(false);
+  });
+
+  it("stops polling once the run's time cap passes", async () => {
+    const { shouldPoll } = await import("./logic");
+    expect(shouldPoll("searching", 1_000, 5_000)).toBe(true);
+    expect(shouldPoll("searching", 6_000, 5_000)).toBe(false);
+    expect(shouldPoll("searching", 6_000, undefined)).toBe(true);
+    expect(shouldPoll("done", 1_000, 5_000)).toBe(false);
+  });
+});

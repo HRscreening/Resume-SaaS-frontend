@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch as useRouteSearch } from "@tanstack/react-router";
 import { ApiError } from "@/lib/api";
 import { JdFileUpload } from "@/components/screening/new-screening/JdFileUpload";
-import { createSearch, useAnswer, useCoverage, useResults, useSearch, useStartSearch, useUpdateSpec, useVerdict } from "../api";
-import { providerNotice } from "../logic";
+import { createSearch, talentSearchKeys, useAnswer, useCoverage, useResults, useSearch, useStartSearch, useUpdateSpec, useVerdict } from "../api";
+import { MAX_POLL_MS, finishedRun, providerNotice } from "../logic";
 import type { SearchResult } from "../types";
 import { CoveragePanel } from "../components/CoveragePanel";
 import { ProspectDrawer } from "../components/ProspectDrawer";
@@ -28,7 +29,9 @@ export default function TalentSearchPage() {
   const [open, setOpen] = useState<SearchResult | null>(null);
   const [progress, setProgress] = useState(0);
 
-  const search = useSearch(id);
+  const [pollUntil, setPollUntil] = useState<number | undefined>(undefined);
+  const [pollingStopped, setPollingStopped] = useState(false);
+  const search = useSearch(id, pollUntil);
   const s = search.data;
   const done = s?.status === "done";
   const results = useResults(id, done);
@@ -37,6 +40,26 @@ export default function TalentSearchPage() {
   const updateSpec = useUpdateSpec(id);
   const start = useStartSearch(id);
   const verdict = useVerdict(id);
+
+  const qc = useQueryClient();
+  const previousStatus = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (id && finishedRun(previousStatus.current, s?.status)) {
+      qc.invalidateQueries({ queryKey: talentSearchKeys.results(id) });
+      qc.invalidateQueries({ queryKey: talentSearchKeys.coverage(id) });
+    }
+    if (s?.status === "searching" && previousStatus.current !== "searching") {
+      setPollUntil(Date.now() + MAX_POLL_MS);
+      setPollingStopped(false);
+    }
+    previousStatus.current = s?.status;
+  }, [id, s?.status, qc]);
+
+  useEffect(() => {
+    if (!pollUntil || s?.status !== "searching") return;
+    const timer = setTimeout(() => setPollingStopped(true), Math.max(0, pollUntil - Date.now()));
+    return () => clearTimeout(timer);
+  }, [pollUntil, s?.status]);
 
   useEffect(() => {
     if (s?.status !== "searching") { setProgress(0); return; }
@@ -113,7 +136,7 @@ export default function TalentSearchPage() {
           saving={updateSpec.isPending}
           searching={start.isPending || s.status === "searching"}
           onSave={(spec) => updateSpec.mutate(spec)}
-          onSearch={async (spec) => { await updateSpec.mutateAsync(spec); start.mutate(); }}
+          onSearch={(spec) => updateSpec.mutate(spec, { onSuccess: () => start.mutate() })}
         />
       )}
       {(updateSpec.error || start.error) && <p className="text-sm text-red-600">{errorText(updateSpec.error ?? start.error)}</p>}
@@ -121,7 +144,7 @@ export default function TalentSearchPage() {
       {s?.status === "searching" && (
         <div className="flex items-center gap-3 rounded-2xl border border-[#E5E3DF] bg-white p-5 text-sm">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#C85A17] border-t-transparent" />
-          <span>{PROGRESS_STEPS[progress]}…</span>
+          <span>{pollingStopped ? "This is taking longer than usual. Refresh the page to check again." : `${PROGRESS_STEPS[progress]}…`}</span>
         </div>
       )}
 
