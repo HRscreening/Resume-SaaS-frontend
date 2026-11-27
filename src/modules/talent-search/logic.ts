@@ -40,7 +40,7 @@ export function formatMonths(months: number): string {
   return `${rest}m`;
 }
 
-const SOURCE_LABELS: Record<string, string> = { crustdata: "Crustdata", apollo: "Apollo", internal: "Your resumes" };
+const SOURCE_LABELS: Record<string, string> = { crustdata: "Crustdata", apollo: "Apollo", internal: "Your resumes", sample: "Sample data" };
 
 export function sourceLabel(source: string): string {
   return SOURCE_LABELS[source] ?? source;
